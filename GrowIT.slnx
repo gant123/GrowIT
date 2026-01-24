@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GrowIT.API/GrowIT.API.csproj" />
+    <Project Path="src/GrowIT.Client/GrowIT.Client.csproj" />
+    <Project Path="src/GrowIT.Core/GrowIT.Core.csproj" />
+    <Project Path="src/GrowIT.Infrastructure/GrowIT.Infrastructure.csproj" />
+  </Folder>
+</Solution>
