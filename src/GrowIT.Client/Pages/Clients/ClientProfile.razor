@@ -2,6 +2,7 @@
 @using GrowIT.Shared.DTOs
 @using GrowIT.Client.Shared 
 @inject HttpClient Http
+@inject NavigationManager Nav
 
 @if (client == null)
 {
@@ -35,14 +36,15 @@ else
                                 </span>
                             </div>
                             <div class="small opacity-75">
-                                <span class="me-3"><span class="oi oi-people me-1"></span>Family of @(client.HouseholdMembers.Count + 1)</span> <span class="me-3"><span class="oi oi-briefcase me-1"></span>@client.EmploymentStatus</span>
+                                <span class="me-3"><span class="oi oi-people me-1"></span>Family of @(client.HouseholdMembers.Count + 1)</span> 
+                                <span class="me-3"><span class="oi oi-briefcase me-1"></span>@client.EmploymentStatus</span>
                             </div>
                         </div>
                     </div>
                     
                     <div class="d-flex gap-2">
                          <a href="clients" class="btn btn-outline-secondary" style="color: var(--growit-text-primary); border-color: var(--growit-border);">Back</a>
-                         <button class="btn text-white fw-bold" style="background-color: var(--growit-success);">
+                         <button class="btn text-white fw-bold" style="background-color: var(--growit-success);" @onclick="OpenEditClientModal">
                              <span class="oi oi-pencil me-2"></span>Edit Profile
                          </button>
                     </div>
@@ -65,7 +67,6 @@ else
 
         <div class="row g-4">
             <div class="col-lg-4">
-                
                 <div class="card border-0 shadow-sm mb-4" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
                     <div class="card-header bg-transparent fw-bold py-3" style="border-color: var(--growit-border);">
                         Financial Impact
@@ -90,7 +91,6 @@ else
                 <div class="card border-0 shadow-sm" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
                     <div class="card-header bg-transparent fw-bold py-3 d-flex justify-content-between align-items-center" style="border-color: var(--growit-border);">
                         <span>Household (@client.HouseholdMembers.Count)</span>
-                        
                         <button class="btn btn-sm btn-link text-success text-decoration-none fw-bold" @onclick="OpenAddMemberModal">
                             <span class="oi oi-plus me-1"></span>Add
                         </button>
@@ -135,7 +135,6 @@ else
                         }
                     </div>
                 </div>
-
             </div>
 
             <div class="col-lg-8">
@@ -151,7 +150,6 @@ else
                                 @foreach (var item in client.Timeline)
                                 {
                                     <div class="list-group-item p-4 d-flex gap-3" style="background-color: transparent; border-color: var(--growit-border);">
-                                        
                                         <div class="d-flex flex-column align-items-center" style="min-width: 50px;">
                                             <div class="rounded-circle d-flex align-items-center justify-content-center border" 
                                                  style="width: 40px; height: 40px; border-color: var(--growit-border);">
@@ -163,7 +161,15 @@ else
                                         <div class="flex-grow-1 pb-3">
                                             <div class="d-flex justify-content-between align-items-start">
                                                 <h6 class="fw-bold mb-1">@item.Title</h6>
-                                                <small class="text-muted">@item.Date.ToString("MMM dd, yyyy")</small>
+                                                <div>
+                                                    <small class="text-muted">@item.Date.ToString("MMM dd, yyyy")</small>
+                                                    @if (item.Type == "Investment")
+                                                    {
+                                                        <button class="btn btn-sm btn-link text-info p-0 ms-2" @onclick="() => OpenReassignModal(item.Id)">
+                                                            <span class="oi oi-transfer"></span>
+                                                        </button>
+                                                    }
+                                                </div>
                                             </div>
                                             <p class="mb-1 opacity-75 small">@item.Description</p>
                                             
@@ -196,6 +202,11 @@ else
                               ClientId="@Id" 
                               DefaultLastName="@(client.LastName)"
                               OnMemberAdded="ReloadProfile" />
+
+        <ReassignInvestmentModal @bind-Show="showReassignModal" 
+                                 InvestmentId="selectedInvestmentId"
+                                 Members="client.HouseholdMembers"
+                                 OnChanged="ReloadProfile" />
     </div>
 }
 
@@ -203,8 +214,16 @@ else
     [Parameter] public Guid Id { get; set; }
     private ClientDetailDto? client;
     private bool showAddMemberModal = false;
+    private bool showEditClientModal = false;
+    private bool showReassignModal = false;
+    private Guid selectedInvestmentId;
 
     protected override async Task OnInitializedAsync()
+    {
+        await ReloadProfile();
+    }
+
+    private async Task ReloadProfile()
     {
         try
         {
@@ -212,27 +231,25 @@ else
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error: {ex.Message}");
+            Console.WriteLine($"Error loading profile: {ex.Message}");
         }
     }
-@inject NavigationManager Nav
-private void NavigateToMember(Guid memberId)
-{
-    Nav.NavigateTo($"/clients/member/{memberId}");
-}
-    // Opens the modal when the "Add" button is clicked
-    private void OpenAddMemberModal()
+
+    private void NavigateToMember(Guid memberId)
     {
-        showAddMemberModal = true;
+        Nav.NavigateTo($"/clients/member/{memberId}");
     }
 
-    // Reloads the data after a new kid/pet is added
-    private async Task ReloadProfile()
+    private void OpenAddMemberModal() => showAddMemberModal = true;
+    
+    private void OpenEditClientModal() => showEditClientModal = true;
+
+    private void OpenReassignModal(Guid investmentId)
     {
-        await OnInitializedAsync();
+        selectedInvestmentId = investmentId;
+        showReassignModal = true;
     }
 
-    // Gets the Initials for the Big Avatar
     private string GetInitials(string name)
     {
         if (string.IsNullOrEmpty(name)) return "??";
@@ -242,12 +259,11 @@ private void NavigateToMember(Guid memberId)
         return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
     }
 
-    // Smart Icons for Family Members
     private string GetRelationshipIcon(string relationship)
     {
         var rel = relationship?.ToLower() ?? "";
         if (rel.Contains("spouse") || rel.Contains("wife") || rel.Contains("husband")) return "oi-heart text-danger";
-        if (rel.Contains("pet") || rel.Contains("dog") || rel.Contains("cat")) return "oi-star text-warning"; // Star for pets
-        return "oi-person"; // Default
+        if (rel.Contains("pet") || rel.Contains("dog") || rel.Contains("cat")) return "oi-star text-warning";
+        return "oi-person";
     }
 }

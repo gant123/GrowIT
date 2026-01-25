@@ -75,4 +75,23 @@ public class InvestmentsController : ControllerBase
             
         return Ok(investments);
     }
+    [HttpPatch("{id}/reassign")]
+public async Task<IActionResult> ReassignInvestment(Guid id, [FromBody] ReassignRequest request)
+{
+    var investment = await _context.Investments.FindAsync(id);
+    if (investment == null) return NotFound();
+
+    // Track the change for the AuditLog
+    investment.FamilyMemberId = request.NewFamilyMemberId;
+    investment.Reason = $"[REASSIGNED: {request.ReassignReason}] " + investment.Reason;
+
+    await _context.SaveChangesAsync();
+    return Ok();
+}
+
+public class ReassignRequest
+{
+    public Guid? NewFamilyMemberId { get; set; }
+    public string ReassignReason { get; set; } = string.Empty;
+}
 }

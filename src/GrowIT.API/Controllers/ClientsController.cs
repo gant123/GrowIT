@@ -177,6 +177,7 @@ public async Task<ActionResult<FamilyMemberProfileDto>> GetMemberProfile(Guid me
         Name = $"{member.FirstName} {member.LastName}",
         Relationship = member.Relationship,
         Age = member.Age,
+        DateOfBirth = member.DateOfBirth,
         School = member.SchoolOrEmployer,
         Notes = member.Notes,
         TotalInvested = investments.Sum(i => i.Amount),
@@ -192,5 +193,40 @@ public async Task<ActionResult<FamilyMemberProfileDto>> GetMemberProfile(Guid me
             ColorClass = "text-info"
         }).ToList()
     });
+}
+[HttpPut("members/{memberId}")]
+public async Task<IActionResult> UpdateFamilyMember(Guid memberId, CreateFamilyMemberRequest request)
+{
+    var member = await _context.FamilyMembers.FindAsync(memberId);
+    if (member == null) return NotFound();
+
+    member.FirstName = request.FirstName;
+    member.LastName = request.LastName;
+    member.Relationship = request.Relationship;
+    member.DateOfBirth = request.DateOfBirth.HasValue 
+        ? DateTime.SpecifyKind(request.DateOfBirth.Value, DateTimeKind.Utc) 
+        : null;
+    member.SchoolOrEmployer = request.SchoolOrEmployer;
+    member.Notes = request.Notes;
+
+    await _context.SaveChangesAsync();
+    return Ok(member);
+}
+[HttpDelete("members/{memberId}")]
+public async Task<IActionResult> DeleteFamilyMember(Guid memberId)
+{
+    var member = await _context.FamilyMembers.FindAsync(memberId);
+    if (member == null) return NotFound();
+
+    // Safety Check: Are there investments linked to this person?
+    var hasInvestments = await _context.Investments.AnyAsync(i => i.FamilyMemberId == memberId);
+    if (hasInvestments)
+    {
+        return BadRequest("Cannot delete a member who has recorded investments. Reassign the investments first.");
+    }
+
+    _context.FamilyMembers.Remove(member);
+    await _context.SaveChangesAsync();
+    return Ok();
 }
 }

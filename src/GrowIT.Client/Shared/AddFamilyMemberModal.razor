@@ -3,14 +3,15 @@
 
 @if (Show)
 {
-    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);" tabindex="-1">
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 1100;" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg" 
                  style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
                 
                 <div class="modal-header border-bottom" style="border-color: var(--growit-border);">
                     <h5 class="modal-title fw-bold">
-                        <span class="oi oi-people me-2 text-primary"></span>Add Family Member
+                        <span class="oi @(IsEditMode ? "oi-pencil" : "oi-people") me-2 text-primary"></span>
+                        @(IsEditMode ? "Edit Family Member" : "Add Family Member")
                     </h5>
                     <button type="button" class="btn-close btn-close-white" @onclick="Close"></button>
                 </div>
@@ -22,7 +23,7 @@
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold text-muted">First Name</label>
-                                <InputText @bind-Value="request.FirstName" class="form-control" placeholder="e.g. Sarah" style="@ThemeInputStyle" />
+                                <InputText @bind-Value="request.FirstName" class="form-control" placeholder="Sarah" style="@ThemeInputStyle" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label small fw-bold text-muted">Last Name</label>
@@ -47,13 +48,13 @@
                             <div class="col-12">
                                 <label class="form-label small fw-bold text-muted">School or Employer</label>
                                 <InputText @bind-Value="request.SchoolOrEmployer" class="form-control" 
-                                           placeholder="e.g. Little Cypress Elementary" style="@ThemeInputStyle" />
+                                           placeholder="Little Cypress Elementary" style="@ThemeInputStyle" />
                             </div>
 
                             <div class="col-12">
                                 <label class="form-label small fw-bold text-muted">Profile Notes</label>
                                 <InputTextArea @bind-Value="request.Notes" class="form-control" rows="2" 
-                                               placeholder="e.g. Needs size 4 shoes, loves dinosaurs, has reading tutor." 
+                                               placeholder="Needs size 4 shoes, loves dinosaurs..." 
                                                style="@ThemeInputStyle" />
                             </div>
                         </div>
@@ -61,7 +62,8 @@
                         <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top" style="border-color: var(--growit-border);">
                             <button type="button" class="btn btn-outline-secondary" @onclick="Close">Cancel</button>
                             <button type="submit" class="btn btn-primary fw-bold px-4">
-                                <span class="oi oi-plus me-2"></span>Add Member
+                                <span class="oi @(IsEditMode ? "oi-circle-check" : "oi-plus") me-2"></span>
+                                @(IsEditMode ? "Save Changes" : "Add Member")
                             </button>
                         </div>
                     </EditForm>
@@ -74,39 +76,67 @@
 @code {
     [Parameter] public bool Show { get; set; }
     [Parameter] public EventCallback<bool> ShowChanged { get; set; }
-    [Parameter] public Guid ClientId { get; set; } // The Head of Household
-    [Parameter] public string DefaultLastName { get; set; } = ""; // Auto-fill helper
+    [Parameter] public Guid ClientId { get; set; }
+    [Parameter] public Guid? MemberId { get; set; } 
+    [Parameter] public string DefaultLastName { get; set; } = "";
     [Parameter] public EventCallback OnMemberAdded { get; set; }
 
     private CreateFamilyMemberRequest request = new();
+    private bool IsEditMode => MemberId.HasValue;
+
     private string ThemeInputStyle => "background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border: 1px solid var(--growit-border);";
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
-        if (Show && string.IsNullOrEmpty(request.LastName))
+        if (Show)
         {
-            // Auto-populate Last Name from Parent to save typing
-            request.LastName = DefaultLastName;
+            if (IsEditMode)
+            {
+                // Load existing data for Edit Mode
+                var existing = await Http.GetFromJsonAsync<FamilyMemberProfileDto>($"api/clients/members/{MemberId}");
+                if (existing != null)
+                {
+                    var nameParts = existing.Name.Split(' ', 2);
+                    request.FirstName = nameParts[0];
+                    request.LastName = nameParts.Length > 1 ? nameParts[1] : "";
+                    request.Relationship = existing.Relationship;
+                    request.DateOfBirth = existing.DateOfBirth; // Now populates DOB
+                    request.SchoolOrEmployer = existing.School;
+                    request.Notes = existing.Notes;
+                }
+            }
+            else if (string.IsNullOrEmpty(request.LastName))
+            {
+                request.LastName = DefaultLastName;
+            }
         }
     }
 
     private async Task HandleSubmit()
     {
-        var response = await Http.PostAsJsonAsync($"api/clients/{ClientId}/members", request);
+        HttpResponseMessage response;
+        if (IsEditMode)
+        {
+            // API PUT for updates
+            response = await Http.PutAsJsonAsync($"api/clients/members/{MemberId}", request);
+        }
+        else
+        {
+            // API POST for new members
+            response = await Http.PostAsJsonAsync($"api/clients/{ClientId}/members", request);
+        }
+
         if (response.IsSuccessStatusCode)
         {
-            // Reset for next child
-            var oldLast = request.LastName; // Keep last name for next entry
-            request = new CreateFamilyMemberRequest { LastName = oldLast }; 
-            
-            await Close();
             await OnMemberAdded.InvokeAsync();
+            await Close();
         }
     }
 
     private async Task Close()
     {
         Show = false;
+        request = new(); 
         await ShowChanged.InvokeAsync(false);
     }
 }

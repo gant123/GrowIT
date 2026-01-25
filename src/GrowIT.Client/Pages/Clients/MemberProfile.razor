@@ -1,7 +1,9 @@
 @page "/clients/member/{Id:guid}"
 @using GrowIT.Shared.DTOs
+@using GrowIT.Client.Shared
 @inject HttpClient Http
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @if (profile == null)
 {
@@ -29,7 +31,15 @@ else
                             </div>
                         </div>
                     </div>
-                    <button class="btn btn-outline-secondary" @onclick="GoBack">Back to Family</button>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-warning" @onclick="ToggleEdit">
+                            <span class="oi oi-pencil me-1"></span>Edit
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="ConfirmDelete">
+                            <span class="oi oi-trash me-1"></span>Delete
+                        </button>
+                        <button class="btn btn-outline-secondary" @onclick="GoBack">Back to Family</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -70,7 +80,15 @@ else
                                         <div class="flex-grow-1">
                                             <div class="d-flex justify-content-between">
                                                 <h6 class="fw-bold mb-1">@item.Title</h6>
-                                                <small class="text-muted">@item.Date.ToShortDateString()</small>
+                                                <div>
+                                                    <small class="text-muted">@item.Date.ToShortDateString()</small>
+                                                    @if (item.Type == "Investment")
+                                                    {
+                                                        <button class="btn btn-sm btn-link text-info p-0 ms-2" @onclick="() => OpenReassignModal(item.Id)">
+                                                            <span class="oi oi-transfer"></span>
+                                                        </button>
+                                                    }
+                                                </div>
                                             </div>
                                             <p class="small mb-2 opacity-75">@item.Description</p>
                                             @if (item.Amount.HasValue)
@@ -82,33 +100,51 @@ else
                                 }
                             </div>
                         }
-                        else
-                        {
-                            <div class="text-center py-5 opacity-50">
-                                <span class="oi oi-info fs-1 mb-3 d-block"></span>
-                                <p>No individual investments recorded for @profile.Name.</p>
-                            </div>
-                        }
                     </div>
                 </div>
             </div>
         </div>
+        
+        <AddFamilyMemberModal @bind-Show="showEditModal" 
+                              MemberId="@Id" 
+                              OnMemberAdded="LoadProfile" />
+
+        <ReassignInvestmentModal @bind-Show="showReassignModal" 
+                                 InvestmentId="selectedInvestmentId"
+                                 OnChanged="LoadProfile" />
     </div>
 }
 
 @code {
     [Parameter] public Guid Id { get; set; }
     private FamilyMemberProfileDto? profile;
+    private bool showEditModal = false;
+    private bool showReassignModal = false;
+    private Guid selectedInvestmentId;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync() => await LoadProfile();
+
+    private async Task LoadProfile()
     {
         profile = await Http.GetFromJsonAsync<FamilyMemberProfileDto>($"api/clients/members/{Id}");
     }
 
-    private void GoBack()
+    private void ToggleEdit() => showEditModal = true;
+
+    private void OpenReassignModal(Guid investmentId)
     {
-        // This is a simple back button; in a real app, you might want to pass the ClientId 
-        // in the DTO to go back to the specific family page.
-        Nav.NavigateTo("clients"); 
+        selectedInvestmentId = investmentId;
+        showReassignModal = true;
     }
+
+    private async Task ConfirmDelete()
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Delete this member?"))
+        {
+            var res = await Http.DeleteAsync($"api/clients/members/{Id}");
+            if (res.IsSuccessStatusCode) Nav.NavigateTo("clients");
+        }
+    }
+
+    private void GoBack() => Nav.NavigateTo("clients");
 }
