@@ -11,7 +11,9 @@
             <div class="kpi-row">
                 <div class="kpi-card">
                     <div class="kpi-header">
-                        <span class="kpi-icon unit">📊</span>
+                        <div class="kpi-icon unit">
+                            <span class="oi oi-graph"></span>
+                        </div>
                         <span class="kpi-label">UNIT ECONOMICS</span>
                     </div>
                     <div class="kpi-value">
@@ -22,21 +24,19 @@
 
                 <div class="kpi-card">
                     <div class="kpi-header">
-                        <span class="kpi-icon capacity">⚡</span>
+                        <div class="kpi-icon capacity">
+                            <span class="oi oi-dashboard"></span>
+                        </div>
                         <span class="kpi-label">CAPACITY METER</span>
                     </div>
                     <div class="kpi-gauge">
                         <div class="gauge-ring">
-                            <svg viewBox="0 0 36 36" class="circular-chart">
-                                <path class="circle-bg"
-                                    d="M18 2.0845
-                                       a 15.9155 15.9155 0 0 1 0 31.831
-                                       a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                <path class="circle-progress"
+                            <svg class="gauge-svg" viewBox="0 0 36 36">
+                                <path class="gauge-bg"
+                                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path class="gauge-progress"
                                     stroke-dasharray="@capacityPercent, 100"
-                                    d="M18 2.0845
-                                       a 15.9155 15.9155 0 0 1 0 31.831
-                                       a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                             </svg>
                             <div class="gauge-text">@capacityPercent%</div>
                         </div>
@@ -49,11 +49,13 @@
 
                 <div class="kpi-card">
                     <div class="kpi-header">
-                        <span class="kpi-icon growth">🌱</span>
+                        <div class="kpi-icon growth">
+                            <span class="oi oi-arrow-thick-top"></span>
+                        </div>
                         <span class="kpi-label">GROWTH PULSE</span>
                     </div>
                     <div class="kpi-growth">
-                        <span class="growth-direction up">↑</span>
+                        <span class="oi oi-caret-top growth-arrow"></span>
                         <span class="growth-value">Up @growthPercent%</span>
                     </div>
                 </div>
@@ -63,14 +65,14 @@
             <div class="chart-section">
                 <div class="section-header">
                     <h2 class="section-title">FINANCIAL NARRATIVE</h2>
-                    <span class="section-subtitle">Year to Date</span>
+                    <span class="section-badge">Year to Date</span>
                     <div class="chart-legend">
-                        <span class="legend-item impact">
-                            <span class="legend-dot"></span>
+                        <span class="legend-item">
+                            <span class="legend-dot impact"></span>
                             Impact Value Generated
                         </span>
-                        <span class="legend-item cost">
-                            <span class="legend-dot"></span>
+                        <span class="legend-item">
+                            <span class="legend-dot cost"></span>
                             Actual Cost
                         </span>
                     </div>
@@ -83,8 +85,7 @@
                         <span>$0</span>
                     </div>
                     <div class="chart-area">
-                        <svg viewBox="0 0 800 200" class="area-chart" preserveAspectRatio="none">
-                            <!-- Impact Value Area (Green) -->
+                        <svg class="chart-svg" viewBox="0 0 800 180" preserveAspectRatio="none">
                             <defs>
                                 <linearGradient id="impactGradient" x1="0%" y1="0%" x2="0%" y2="100%">
                                     <stop offset="0%" style="stop-color:#6fba2c;stop-opacity:0.4" />
@@ -97,16 +98,16 @@
                             </defs>
                             
                             <!-- Impact Area -->
-                            <path class="chart-fill impact" fill="url(#impactGradient)"
-                                d="M0,180 C50,175 100,165 150,150 C200,135 250,115 300,95 C350,75 400,60 450,50 C500,40 550,35 600,32 C650,30 700,28 750,25 L800,23 L800,200 L0,200 Z" />
-                            <path class="chart-line impact" stroke="#6fba2c" stroke-width="2" fill="none"
-                                d="M0,180 C50,175 100,165 150,150 C200,135 250,115 300,95 C350,75 400,60 450,50 C500,40 550,35 600,32 C650,30 700,28 750,25 L800,23" />
+                            <path fill="url(#impactGradient)"
+                                d="M0,160 C80,155 160,140 240,120 C320,100 400,75 480,55 C560,40 640,30 720,25 L800,20 L800,180 L0,180 Z" />
+                            <path stroke="#6fba2c" stroke-width="2" fill="none"
+                                d="M0,160 C80,155 160,140 240,120 C320,100 400,75 480,55 C560,40 640,30 720,25 L800,20" />
                             
                             <!-- Cost Area -->
-                            <path class="chart-fill cost" fill="url(#costGradient)"
-                                d="M0,185 C50,182 100,178 150,170 C200,162 250,152 300,140 C350,128 400,118 450,110 C500,102 550,96 600,92 C650,88 700,85 750,83 L800,81 L800,200 L0,200 Z" />
-                            <path class="chart-line cost" stroke="#3b82f6" stroke-width="2" fill="none"
-                                d="M0,185 C50,182 100,178 150,170 C200,162 250,152 300,140 C350,128 400,118 450,110 C500,102 550,96 600,92 C650,88 700,85 750,83 L800,81" />
+                            <path fill="url(#costGradient)"
+                                d="M0,165 C80,162 160,155 240,145 C320,135 400,120 480,105 C560,92 640,82 720,75 L800,70 L800,180 L0,180 Z" />
+                            <path stroke="#3b82f6" stroke-width="2" fill="none"
+                                d="M0,165 C80,162 160,155 240,145 C320,135 400,120 480,105 C560,92 640,82 720,75 L800,70" />
                         </svg>
                         <div class="chart-x-axis">
                             <span>Jan</span>
@@ -132,11 +133,11 @@
                         {
                             <div class="activity-item">
                                 <div class="activity-icon @activity.Type">
-                                    @GetActivityIcon(activity.Type)
+                                    <span class="oi @GetActivityIconClass(activity.Type)"></span>
                                 </div>
                                 <div class="activity-content">
                                     <span class="activity-text">@activity.Description</span>
-                                    <span class="activity-meta">@activity.Amount</span>
+                                    <span class="activity-amount">@activity.Amount</span>
                                 </div>
                                 <span class="activity-time">@activity.TimeAgo</span>
                             </div>
@@ -148,16 +149,15 @@
                 <div class="tasks-section">
                     <div class="section-header">
                         <h2 class="section-title">TASKS</h2>
-                        <span class="section-subtitle">Follow-Ups</span>
+                        <span class="section-badge">Follow-Ups</span>
                     </div>
                     <div class="tasks-list">
                         @foreach (var task in pendingTasks)
                         {
                             <div class="task-item">
-                                <label class="task-checkbox">
-                                    <input type="checkbox" @bind="task.IsCompleted" />
-                                    <span class="checkmark"></span>
-                                </label>
+                                <div class="task-checkbox @(task.IsCompleted ? "checked" : "")" @onclick="() => task.IsCompleted = !task.IsCompleted">
+                                    <span class="oi oi-check"></span>
+                                </div>
                                 <div class="task-content">
                                     <span class="task-action">@task.Action</span>
                                     <span class="task-client">@task.ClientName</span>
@@ -171,35 +171,24 @@
         </div>
     </Authorized>
     <NotAuthorized>
-        <div class="welcome-screen">
-            <div class="welcome-content">
-                <div class="welcome-logo">
-                    <img src="images/growITLogo.png" alt="GrowIT" />
-                </div>
-                <h1 class="welcome-title">Impact Management Platform</h1>
-                <p class="welcome-subtitle">Track investments, measure outcomes, grow communities.</p>
-                <a href="login" class="welcome-cta">
-                    <span>Sign In to Dashboard</span>
-                    <span class="cta-arrow">→</span>
-                </a>
-            </div>
-            <div class="welcome-decoration">
-                <div class="deco-ring ring-1"></div>
-                <div class="deco-ring ring-2"></div>
-                <div class="deco-ring ring-3"></div>
-            </div>
+        <div class="d-flex flex-column align-items-center justify-content-center" style="min-height: calc(100vh - 120px);">
+            <img src="images/growITLogo.png" alt="GrowIT" style="height: 56px; margin-bottom: 24px;" />
+            <h1 style="font-size: 36px; font-weight: 700; color: var(--growit-text-primary); margin: 0 0 8px 0;">Impact Management Platform</h1>
+            <p style="font-size: 16px; color: var(--growit-text-secondary); margin: 0 0 32px 0;">Track investments, measure outcomes, grow communities.</p>
+            <a href="login" class="btn-primary-growit" style="font-size: 16px; padding: 14px 32px;">
+                <span>Sign In to Dashboard</span>
+                <span class="oi oi-arrow-right"></span>
+            </a>
         </div>
     </NotAuthorized>
 </AuthorizeView>
 
 @code {
-    // KPI Data
     private decimal unitEconomics = 42.50m;
     private int capacityPercent = 65;
     private decimal capacityRemaining = 3200m;
     private int growthPercent = 12;
     
-    // Activity Data
     private List<ActivityItem> recentActivities = new();
     private List<TaskItem> pendingTasks = new();
 
@@ -210,7 +199,6 @@
 
     private async Task LoadDashboardData()
     {
-        // Load real data from API when available
         try
         {
             var funds = await Http.GetFromJsonAsync<List<FundDto>>("api/financials/funds");
@@ -222,12 +210,8 @@
                 capacityPercent = totalFunds > 0 ? (int)((availableFunds / totalFunds) * 100) : 0;
             }
         }
-        catch
-        {
-            // Use defaults if API unavailable
-        }
+        catch { }
 
-        // Sample activity data (replace with real API calls)
         recentActivities = new List<ActivityItem>
         {
             new ActivityItem { Type = "investment", Description = "Food Box → Smith Family", Amount = "$50", TimeAgo = "2m ago" },
@@ -243,15 +227,14 @@
         };
     }
 
-    private string GetActivityIcon(string type) => type switch
+    private string GetActivityIconClass(string type) => type switch
     {
-        "investment" => "📦",
-        "client" => "👤",
-        "fund" => "💰",
-        _ => "📋"
+        "investment" => "oi-box",
+        "client" => "oi-person",
+        "fund" => "oi-dollar",
+        _ => "oi-task"
     };
 
-    // Helper classes
     public class ActivityItem
     {
         public string Type { get; set; } = "";

@@ -8,39 +8,38 @@
 <div class="login-page">
     <div class="login-container">
         <div class="login-brand">
-            <img src="images/growITLogo.png" alt="GrowIT" class="brand-logo" />
+            <img src="images/growITLogo.png" alt="GrowIT" />
         </div>
         
         <div class="login-card">
-            <div class="card-header">
-                <h1>Welcome back</h1>
-                <p>Sign in to your account to continue</p>
-            </div>
+            <h1>Welcome back</h1>
+            <p class="subtitle">Sign in to your account to continue</p>
 
             @if (!string.IsNullOrEmpty(errorMessage))
             {
-                <div class="alert alert-danger">
-                    <span>⚠️</span> @errorMessage
+                <div class="alert-danger-growit">
+                    <span class="oi oi-warning"></span>
+                    <span>@errorMessage</span>
                 </div>
             }
 
             <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
                 <DataAnnotationsValidator />
 
-                <div class="form-group">
+                <div class="form-group-growit">
                     <label>Email Address</label>
-                    <div class="input-wrapper">
-                        <span class="input-icon">📧</span>
-                        <InputText @bind-Value="loginModel.Email" class="form-input" placeholder="you@example.com" />
+                    <div style="position: relative;">
+                        <span class="oi oi-envelope-closed" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--growit-text-muted);"></span>
+                        <InputText @bind-Value="loginModel.Email" class="form-input-growit" style="padding-left: 36px;" placeholder="you@example.com" />
                     </div>
                     <ValidationMessage For="@(() => loginModel.Email)" />
                 </div>
 
-                <div class="form-group">
+                <div class="form-group-growit">
                     <label>Password</label>
-                    <div class="input-wrapper">
-                        <span class="input-icon">🔒</span>
-                        <InputText @bind-Value="loginModel.Password" type="password" class="form-input" placeholder="••••••••" />
+                    <div style="position: relative;">
+                        <span class="oi oi-lock-locked" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--growit-text-muted);"></span>
+                        <InputText @bind-Value="loginModel.Password" type="password" class="form-input-growit" style="padding-left: 36px;" placeholder="Enter your password" />
                     </div>
                     <ValidationMessage For="@(() => loginModel.Password)" />
                 </div>
@@ -48,13 +47,13 @@
                 <button type="submit" class="btn-login" disabled="@isLoading">
                     @if (isLoading)
                     {
-                        <span class="spinner"></span>
+                        <span class="spinner-growit" style="width: 18px; height: 18px; border-width: 2px;"></span>
                         <span>Signing in...</span>
                     }
                     else
                     {
                         <span>Sign In</span>
-                        <span class="arrow">→</span>
+                        <span class="oi oi-arrow-right"></span>
                     }
                 </button>
             </EditForm>
@@ -63,12 +62,6 @@
                 <p>Don't have an account? <a href="register">Create one</a></p>
             </div>
         </div>
-    </div>
-    
-    <div class="login-decoration">
-        <div class="deco-circle c1"></div>
-        <div class="deco-circle c2"></div>
-        <div class="deco-circle c3"></div>
     </div>
 </div>
 
@@ -100,9 +93,9 @@
                 errorMessage = "Invalid email or password. Please try again.";
             }
         }
-        catch (Exception ex)
+        catch
         {
-            errorMessage = $"Connection error. Please check your network.";
+            errorMessage = "Connection error. Please check your network.";
         }
         finally
         {

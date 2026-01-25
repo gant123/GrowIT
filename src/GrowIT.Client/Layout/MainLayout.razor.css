@@ -5,23 +5,7 @@
 
 /* CSS Variables - Theme Colors */
 :root {
-    --growit-dark: #1a1f2e;
-    --growit-darker: #141821;
-    --growit-sidebar: #1e2433;
-    --growit-card: #242b3d;
-    --growit-card-hover: #2a3247;
-    --growit-green: #6fba2c;
-    --growit-green-light: #8fd04d;
-    --growit-green-glow: rgba(111, 186, 44, 0.2);
-    --growit-blue: #3b82f6;
-    --growit-blue-light: #60a5fa;
-    --growit-text: #e8eaed;
-    --growit-text-muted: #8b92a5;
-    --growit-text-dim: #5a6275;
-    --growit-border: #2d3548;
-    --growit-success: #22c55e;
-    --growit-warning: #f59e0b;
-    --growit-danger: #ef4444;
+
     
     /* Typography */
     --font-display: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -75,12 +59,13 @@ html, body {
 }
 
 .sidebar-brand {
-    padding: 20px 16px;
     border-bottom: 1px solid var(--growit-border);
+    display: flex;
+    justify-content: center;
 }
 
 .brand-logo {
-    height: 32px;
+    height: 40px;
     width: auto;
 }
 

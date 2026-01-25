@@ -7,7 +7,7 @@
 <div class="growit-app">
     <aside class="growit-sidebar">
         <div class="sidebar-brand">
-            <img src="images/growITLogo.png" alt="GrowIT" class="brand-logo" />
+            <img src="images/growITLogo-Dark3.png" alt="GrowIT" class="brand-logo" />
         </div>
         <nav class="sidebar-nav">
             <NavMenu />
@@ -18,31 +18,31 @@
         <header class="growit-topbar">
             <div class="topbar-left">
                 <div class="fiscal-selector">
-                    <span class="fiscal-icon">📅</span>
-                    <span class="fiscal-label">FY 2026 · Q1</span>
-                    <span class="dropdown-arrow">▾</span>
+                    <span class="oi oi-calendar"></span>
+                    <span class="fiscal-text">FY 2026 · Q1</span>
+                    <span class="oi oi-chevron-bottom"></span>
                 </div>
-                <div class="search-container">
-                    <span class="search-icon">🔍</span>
-                    <input type="text" class="search-input" placeholder="Search clients, funds, or services... (Cmd K)" />
+                <div class="search-box">
+                    <span class="oi oi-magnifying-glass"></span>
+                    <input type="text" placeholder="Search clients, funds, or services... (Cmd K)" />
                 </div>
             </div>
             <div class="topbar-right">
                 <AuthorizeView>
                     <Authorized>
-                        <button class="plant-seed-btn">
-                            <span class="seed-icon">🌱</span>
-                            Plant Seed
+                        <button class="btn-plant-seed">
+                            <span class="oi oi-plus"></span>
+                            <span>Plant Seed</span>
                         </button>
-                        <div class="user-menu">
+                        <div class="user-area">
                             <div class="user-avatar">@GetInitials(context.User.Identity?.Name)</div>
-                            <button class="logout-btn" @onclick="Logout" title="Sign Out">
-                                <span>⏻</span>
+                            <button class="btn-logout" @onclick="Logout" title="Sign Out">
+                                <span class="oi oi-account-logout"></span>
                             </button>
                         </div>
                     </Authorized>
                     <NotAuthorized>
-                        <a href="login" class="login-link">Log In</a>
+                        <a href="login" class="btn-login-link">Log In</a>
                     </NotAuthorized>
                 </AuthorizeView>
             </div>
