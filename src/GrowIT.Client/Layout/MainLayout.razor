@@ -1,17 +1,21 @@
 ﻿@inherits LayoutComponentBase
 @inject NavigationManager NavManager
 @using GrowIT.Client.Auth
-@using GrowIT.Shared.DTOs 
 @inject AuthenticationStateProvider AuthStateProvider
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 
-<div class="page">
+<div class="app-container">
     <div class="sidebar">
-        <NavMenu />
+        <div class="sidebar-header">
+            <span class="oi oi-graph me-2" style="color: #6fba2c;"></span> GrowIT
+        </div>
+        <div class="sidebar-menu">
+            <NavMenu />
+        </div>
     </div>
 
-    <main>
-        <div class="top-row">
+    <div class="main-content">
+        <div class="top-bar">
             <AuthorizeView>
                 <Authorized>
                     <span class="me-3 text-secondary small">
@@ -27,10 +31,10 @@
             </AuthorizeView>
         </div>
 
-        <article class="content">
+        <div class="page-content">
             @Body
-        </article>
-    </main>
+        </div>
+    </div>
 </div>
 
 @code {
