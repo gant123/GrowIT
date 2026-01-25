@@ -1,0 +1,79 @@
+/* Mobile Toggle Bar (Hidden on Desktop) */
+.navbar-toggler {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.top-row {
+    height: 60px;
+    background-color: rgba(0,0,0,0.2); /* Darker shade for logo area */
+    display: flex;
+    align-items: center;
+}
+
+.navbar-brand {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: white !important;
+    text-transform: uppercase;
+    letter-spacing: 0.05rem;
+}
+
+.oi {
+    width: 2rem;
+    font-size: 1.1rem;
+    vertical-align: text-top;
+    top: -2px;
+}
+
+/* The Menu Links Container */
+.nav-scrollable {
+    background-color: #1a252f; /* Dark Slate */
+    height: calc(100vh - 60px);
+    overflow-y: auto;
+}
+
+.nav-item {
+    font-size: 0.9rem;
+    padding-bottom: 0.5rem;
+}
+
+.nav-item:first-of-type {
+    padding-top: 1rem;
+}
+
+/* Link Styling */
+.nav-item ::deep a {
+    color: rgba(255,255,255,0.8);
+    border-radius: 4px;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    line-height: 3rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    margin: 0 0.5rem;
+    transition: all 0.2s;
+}
+
+.nav-item ::deep a.active {
+    background-color: #6fba2c; /* GrowIT Green */
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.nav-item ::deep a:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+/* Dividers ("Core", "Finance") */
+.nav-divider {
+    color: rgba(255,255,255,0.4);
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 1.5rem 1.5rem 0.5rem;
+    letter-spacing: 0.05em;
+}
