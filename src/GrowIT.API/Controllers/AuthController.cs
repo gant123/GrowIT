@@ -65,6 +65,7 @@ public class AuthController : ControllerBase
     {
         // 1. Find User
         var user = await _context.Users
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => u.Email == request.Email);
             
         if (user == null) return Unauthorized("Invalid credentials");
