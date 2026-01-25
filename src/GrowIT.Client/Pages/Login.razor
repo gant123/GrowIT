@@ -1,47 +1,86 @@
 @page "/login"
+@layout EmptyLayout
 @inject HttpClient Http
 @inject AuthenticationStateProvider AuthStateProvider
 @inject ILocalStorageService LocalStorage
 @inject NavigationManager NavManager
 
-<div class="container mt-5" style="max-width: 400px;">
-    <div class="card shadow">
-        <div class="card-header bg-primary text-white text-center">
-            <h3>GrowIT Login</h3>
+<div class="login-page">
+    <div class="login-container">
+        <div class="login-brand">
+            <img src="images/growITLogo.png" alt="GrowIT" class="brand-logo" />
         </div>
-        <div class="card-body">
+        
+        <div class="login-card">
+            <div class="card-header">
+                <h1>Welcome back</h1>
+                <p>Sign in to your account to continue</p>
+            </div>
+
             @if (!string.IsNullOrEmpty(errorMessage))
             {
-                <div class="alert alert-danger">@errorMessage</div>
+                <div class="alert alert-danger">
+                    <span>⚠️</span> @errorMessage
+                </div>
             }
 
             <EditForm Model="@loginModel" OnValidSubmit="HandleLogin">
                 <DataAnnotationsValidator />
-                <ValidationSummary />
 
-                <div class="mb-3">
-                    <label>Email</label>
-                    <InputText @bind-Value="loginModel.Email" class="form-control" placeholder="user@example.com" />
+                <div class="form-group">
+                    <label>Email Address</label>
+                    <div class="input-wrapper">
+                        <span class="input-icon">📧</span>
+                        <InputText @bind-Value="loginModel.Email" class="form-input" placeholder="you@example.com" />
+                    </div>
+                    <ValidationMessage For="@(() => loginModel.Email)" />
                 </div>
 
-                <div class="mb-3">
+                <div class="form-group">
                     <label>Password</label>
-                    <InputText @bind-Value="loginModel.Password" type="password" class="form-control" placeholder="******" />
+                    <div class="input-wrapper">
+                        <span class="input-icon">🔒</span>
+                        <InputText @bind-Value="loginModel.Password" type="password" class="form-input" placeholder="••••••••" />
+                    </div>
+                    <ValidationMessage For="@(() => loginModel.Password)" />
                 </div>
 
-                <button type="submit" class="btn btn-primary w-100">Login</button>
+                <button type="submit" class="btn-login" disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <span class="spinner"></span>
+                        <span>Signing in...</span>
+                    }
+                    else
+                    {
+                        <span>Sign In</span>
+                        <span class="arrow">→</span>
+                    }
+                </button>
             </EditForm>
+
+            <div class="login-footer">
+                <p>Don't have an account? <a href="register">Create one</a></p>
+            </div>
         </div>
+    </div>
+    
+    <div class="login-decoration">
+        <div class="deco-circle c1"></div>
+        <div class="deco-circle c2"></div>
+        <div class="deco-circle c3"></div>
     </div>
 </div>
 
 @code {
     private LoginRequest loginModel = new();
-    private string errorMessage;
+    private string? errorMessage;
+    private bool isLoading = false;
 
     private async Task HandleLogin()
     {
         errorMessage = null;
+        isLoading = true;
 
         try
         {
@@ -51,27 +90,26 @@
             {
                 var result = await response.Content.ReadFromJsonAsync<LoginResponse>();
                 
-                // 1. Save Token to Backpack
-                await LocalStorage.SetItemAsync("authToken", result.Token);
-
-                // 2. Tell Security Guard "We are in!"
-                ((CustomAuthStateProvider)AuthStateProvider).MarkUserAsAuthenticated(result.Token);
-
-                // 3. Go to Home Page
+                await LocalStorage.SetItemAsync("authToken", result!.Token);
+                await ((CustomAuthStateProvider)AuthStateProvider).MarkUserAsAuthenticated(result.Token);
+                
                 NavManager.NavigateTo("/");
             }
             else
             {
-                errorMessage = "Invalid Email or Password.";
+                errorMessage = "Invalid email or password. Please try again.";
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error: {ex.Message}";
+            errorMessage = $"Connection error. Please check your network.";
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 
-    // Simple models to catch the data
     public class LoginRequest
     {
         public string Email { get; set; } = "";
@@ -80,7 +118,7 @@
 
     public class LoginResponse
     {
-        public string Token { get; set; }
-        public string UserId { get; set; }
+        public string Token { get; set; } = "";
+        public string UserId { get; set; } = "";
     }
 }

@@ -1,0 +1,135 @@
+@page "/settings"
+@attribute [Authorize]
+
+<div class="settings-page">
+    <div class="page-header">
+        <h1 class="page-title">Settings</h1>
+        <p class="page-subtitle">Manage your organization and preferences</p>
+    </div>
+
+    <div class="settings-grid">
+        <div class="settings-card">
+            <div class="card-icon">🏢</div>
+            <h3>Organization</h3>
+            <p>Manage your organization details, branding, and contact information.</p>
+            <button class="btn-secondary" disabled>Configure</button>
+        </div>
+        
+        <div class="settings-card">
+            <div class="card-icon">👤</div>
+            <h3>Users & Roles</h3>
+            <p>Invite team members and manage access permissions.</p>
+            <button class="btn-secondary" disabled>Manage</button>
+        </div>
+        
+        <div class="settings-card">
+            <div class="card-icon">🔔</div>
+            <h3>Notifications</h3>
+            <p>Configure email alerts and in-app notification preferences.</p>
+            <button class="btn-secondary" disabled>Configure</button>
+        </div>
+        
+        <div class="settings-card">
+            <div class="card-icon">🔗</div>
+            <h3>Integrations</h3>
+            <p>Connect with external services and data sources.</p>
+            <button class="btn-secondary" disabled>View</button>
+        </div>
+        
+        <div class="settings-card">
+            <div class="card-icon">💳</div>
+            <h3>Billing</h3>
+            <p>Manage your subscription and payment methods.</p>
+            <button class="btn-secondary" disabled>Manage</button>
+        </div>
+        
+        <div class="settings-card">
+            <div class="card-icon">🔒</div>
+            <h3>Security</h3>
+            <p>Password policies, two-factor authentication, and audit logs.</p>
+            <button class="btn-secondary" disabled>Configure</button>
+        </div>
+    </div>
+</div>
+
+<style>
+    .settings-page {
+        max-width: 1000px;
+        margin: 0 auto;
+    }
+    
+    .page-header {
+        margin-bottom: 32px;
+    }
+    
+    .page-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--growit-text);
+        margin: 0 0 4px 0;
+    }
+    
+    .page-subtitle {
+        font-size: 14px;
+        color: var(--growit-text-muted);
+        margin: 0;
+    }
+    
+    .settings-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+    }
+    
+    .settings-card {
+        background: var(--growit-card);
+        border: 1px solid var(--growit-border);
+        border-radius: 12px;
+        padding: 24px;
+        transition: all 0.2s ease;
+    }
+    
+    .settings-card:hover {
+        border-color: var(--growit-text-dim);
+    }
+    
+    .card-icon {
+        font-size: 32px;
+        margin-bottom: 12px;
+    }
+    
+    .settings-card h3 {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--growit-text);
+        margin: 0 0 8px 0;
+    }
+    
+    .settings-card p {
+        font-size: 13px;
+        color: var(--growit-text-muted);
+        margin: 0 0 16px 0;
+        line-height: 1.5;
+    }
+    
+    .btn-secondary {
+        background: var(--growit-darker);
+        border: 1px solid var(--growit-border);
+        color: var(--growit-text);
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .btn-secondary:hover:not(:disabled) {
+        background: var(--growit-card-hover);
+    }
+    
+    .btn-secondary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+</style>

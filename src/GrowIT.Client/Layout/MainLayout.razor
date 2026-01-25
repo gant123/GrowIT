@@ -4,40 +4,66 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 
-<div class="app-container">
-    <div class="sidebar">
-        <div class="sidebar-header">
-            <span class="oi oi-graph me-2" style="color: #6fba2c;"></span> GrowIT
+<div class="growit-app">
+    <aside class="growit-sidebar">
+        <div class="sidebar-brand">
+            <img src="images/growITLogo.png" alt="GrowIT" class="brand-logo" />
         </div>
-        <div class="sidebar-menu">
+        <nav class="sidebar-nav">
             <NavMenu />
-        </div>
-    </div>
+        </nav>
+    </aside>
 
-    <div class="main-content">
-        <div class="top-bar">
-            <AuthorizeView>
-                <Authorized>
-                    <span class="me-3 text-secondary small">
-                        Logged in as <strong>@context.User.Identity?.Name</strong>
-                    </span>
-                    <button class="btn btn-sm btn-outline-danger" @onclick="Logout">
-                        Sign Out
-                    </button>
-                </Authorized>
-                <NotAuthorized>
-                    <a href="login" class="btn btn-sm btn-primary">Log In</a>
-                </NotAuthorized>
-            </AuthorizeView>
-        </div>
+    <main class="growit-main">
+        <header class="growit-topbar">
+            <div class="topbar-left">
+                <div class="fiscal-selector">
+                    <span class="fiscal-icon">📅</span>
+                    <span class="fiscal-label">FY 2026 · Q1</span>
+                    <span class="dropdown-arrow">▾</span>
+                </div>
+                <div class="search-container">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" class="search-input" placeholder="Search clients, funds, or services... (Cmd K)" />
+                </div>
+            </div>
+            <div class="topbar-right">
+                <AuthorizeView>
+                    <Authorized>
+                        <button class="plant-seed-btn">
+                            <span class="seed-icon">🌱</span>
+                            Plant Seed
+                        </button>
+                        <div class="user-menu">
+                            <div class="user-avatar">@GetInitials(context.User.Identity?.Name)</div>
+                            <button class="logout-btn" @onclick="Logout" title="Sign Out">
+                                <span>⏻</span>
+                            </button>
+                        </div>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a href="login" class="login-link">Log In</a>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+        </header>
 
-        <div class="page-content">
+        <div class="growit-content">
             @Body
         </div>
-    </div>
+    </main>
 </div>
 
 @code {
+    private string GetInitials(string? name)
+    {
+        if (string.IsNullOrEmpty(name)) return "?";
+        var parts = name.Split('@')[0].Split('.');
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        return name.Substring(0, Math.Min(2, name.Length)).ToUpper();
+    }
+
     private async Task Logout()
     {
         await LocalStorage.RemoveItemAsync("authToken");

@@ -1,118 +1,386 @@
-/* 1. RESET & FONTS */
-html, body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background-color: #f8f9fc; /* Dashboard Gray */
+/* ========================================
+   GROWIT - GLOBAL APPLICATION STYLES
+   Dark professional theme with growth accents
+   ======================================== */
+
+/* Import Google Font */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* CSS Variables - Theme Colors */
+:root {
+    /* Core Colors */
+    --growit-dark: #1a1f2e;
+    --growit-darker: #141821;
+    --growit-sidebar: #1e2433;
+    --growit-card: #242b3d;
+    --growit-card-hover: #2a3247;
+    
+    /* Accent Colors */
+    --growit-green: #6fba2c;
+    --growit-green-light: #8fd04d;
+    --growit-green-glow: rgba(111, 186, 44, 0.2);
+    --growit-blue: #3b82f6;
+    --growit-blue-light: #60a5fa;
+    
+    /* Text Colors */
+    --growit-text: #e8eaed;
+    --growit-text-muted: #8b92a5;
+    --growit-text-dim: #5a6275;
+    
+    /* Semantic Colors */
+    --growit-border: #2d3548;
+    --growit-success: #22c55e;
+    --growit-warning: #f59e0b;
+    --growit-danger: #ef4444;
+    
+    /* Typography */
+    --font-display: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+}
+
+/* Reset & Base */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html, body, #app {
     margin: 0;
     padding: 0;
-    height: 100vh;
-    overflow: hidden; /* Important: Prevents double scrollbars */
+    height: 100%;
 }
 
-/* 2. LAYOUT GRID */
-.app-container {
-    display: flex;
-    width: 100vw;
-    height: 100vh;
+body {
+    background: var(--growit-dark);
+    color: var(--growit-text);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
-/* 3. SIDEBAR (Dark Slate) */
-.sidebar {
-    width: 250px;
-    background-color: #1a252f;
-    color: white;
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0; /* Ensures it never shrinks */
-    transition: all 0.3s;
-}
-
-.sidebar-header {
-    height: 64px;
-    display: flex;
-    align-items: center;
-    padding-left: 1.5rem;
-    font-weight: 800;
-    font-size: 1.25rem;
-    color: white;
-    background-color: rgba(0,0,0,0.1);
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-
-.sidebar-menu {
-    flex: 1;
-    overflow-y: auto;
-    padding-top: 1rem;
-}
-
-/* Sidebar Links */
-.nav-item a {
-    color: rgba(255,255,255,0.7);
-    padding: 0.8rem 1.5rem;
-    display: flex;
-    align-items: center;
+/* Links */
+a {
+    color: var(--growit-green);
     text-decoration: none;
-    font-size: 0.95rem;
-    transition: 0.2s;
+    transition: color 0.2s ease;
 }
 
-.nav-item a:hover {
-    color: white;
-    background-color: rgba(255,255,255,0.08);
+a:hover {
+    color: var(--growit-green-light);
 }
 
-.nav-item a.active {
-    color: white;
-    background-color: #6fba2c; /* GrowIT Green */
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--growit-text);
+    font-family: var(--font-display);
     font-weight: 600;
+    margin: 0;
 }
 
-.nav-item .oi {
-    margin-right: 10px;
-    font-size: 1.1rem;
+/* Form Elements Override */
+input, select, textarea, button {
+    font-family: var(--font-body);
 }
 
-.nav-divider {
-    padding: 1.5rem 1.5rem 0.5rem;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    color: rgba(255,255,255,0.4);
-    letter-spacing: 0.05em;
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+select,
+textarea {
+    background: var(--growit-darker);
+    border: 1px solid var(--growit-border);
+    border-radius: 8px;
+    color: var(--growit-text);
+    padding: 10px 14px;
+    font-size: 14px;
+    width: 100%;
+    transition: all 0.2s ease;
 }
 
-/* 4. MAIN CONTENT AREA */
-.main-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: var(--growit-green);
+    box-shadow: 0 0 0 3px var(--growit-green-glow);
+}
+
+input::placeholder,
+textarea::placeholder {
+    color: var(--growit-text-dim);
+}
+
+/* Blazor Validation Styling */
+.validation-message {
+    color: var(--growit-danger);
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+.invalid {
+    border-color: var(--growit-danger) !important;
+}
+
+/* Alert Overrides */
+.alert {
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    border: none;
+}
+
+.alert-danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--growit-danger);
+    border-left: 3px solid var(--growit-danger);
+}
+
+.alert-warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--growit-warning);
+    border-left: 3px solid var(--growit-warning);
+}
+
+.alert-success {
+    background: rgba(34, 197, 94, 0.15);
+    color: var(--growit-success);
+    border-left: 3px solid var(--growit-success);
+}
+
+.alert-info {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--growit-blue-light);
+    border-left: 3px solid var(--growit-blue);
+}
+
+/* Card Base */
+.card {
+    background: var(--growit-card);
+    border: 1px solid var(--growit-border);
+    border-radius: 12px;
     overflow: hidden;
 }
 
-.top-bar {
-    height: 64px;
-    background-color: white;
-    border-bottom: 1px solid #e3e6f0;
-    display: flex;
+.card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--growit-border);
+    background: var(--growit-darker);
+}
+
+.card-body {
+    padding: 20px;
+}
+
+/* Button Overrides */
+.btn {
+    display: inline-flex;
     align-items: center;
-    justify-content: flex-end;
-    padding: 0 2rem;
-    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-    z-index: 100;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
 }
 
-.page-content {
-    flex: 1;
-    padding: 2rem;
-    overflow-y: auto; /* Scrolls ONLY the content */
+.btn-primary {
+    background: var(--growit-green);
+    color: white;
 }
 
-/* 5. COMPONENTS */
-.kpi-card {
-    background: white;
-    border-radius: 0.5rem;
-    border-left: 0.25rem solid #4e73df;
-    padding: 1.5rem;
-    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-    margin-bottom: 1.5rem;
+.btn-primary:hover {
+    background: var(--growit-green-light);
+    transform: translateY(-1px);
+}
+
+.btn-secondary,
+.btn-light {
+    background: var(--growit-card);
+    color: var(--growit-text);
+    border-color: var(--growit-border);
+}
+
+.btn-secondary:hover,
+.btn-light:hover {
+    background: var(--growit-card-hover);
+}
+
+.btn-danger {
+    background: var(--growit-danger);
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+.btn-outline-primary {
+    background: transparent;
+    border-color: var(--growit-green);
+    color: var(--growit-green);
+}
+
+.btn-outline-primary:hover {
+    background: var(--growit-green);
+    color: white;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 12px;
+}
+
+.btn-lg {
+    padding: 14px 28px;
+    font-size: 16px;
+}
+
+/* Table Overrides */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--growit-card);
+}
+
+.table th {
+    background: var(--growit-darker);
+    color: var(--growit-text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 14px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--growit-border);
+}
+
+.table td {
+    padding: 14px 16px;
+    color: var(--growit-text);
+    border-bottom: 1px solid var(--growit-border);
+}
+
+.table tbody tr:hover {
+    background: var(--growit-card-hover);
+}
+
+/* Breadcrumb Override */
+.breadcrumb {
+    background: transparent;
+    padding: 0;
+    margin-bottom: 20px;
+}
+
+.breadcrumb-item a {
+    color: var(--growit-text-muted);
+}
+
+.breadcrumb-item.active {
+    color: var(--growit-text);
+}
+
+/* Modal Override */
+.modal {
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    background: var(--growit-card);
+    border: 1px solid var(--growit-border);
+    border-radius: 16px;
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--growit-border);
+    background: var(--growit-darker);
+}
+
+.modal-footer {
+    border-top: 1px solid var(--growit-border);
+    background: var(--growit-darker);
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--growit-darker);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--growit-border);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--growit-text-dim);
+}
+
+/* Selection */
+::selection {
+    background: var(--growit-green);
+    color: white;
+}
+
+/* Utility Classes */
+.text-muted {
+    color: var(--growit-text-muted) !important;
+}
+
+.text-success {
+    color: var(--growit-success) !important;
+}
+
+.text-warning {
+    color: var(--growit-warning) !important;
+}
+
+.text-danger {
+    color: var(--growit-danger) !important;
+}
+
+.text-primary {
+    color: var(--growit-green) !important;
+}
+
+.bg-dark {
+    background: var(--growit-dark) !important;
+}
+
+.bg-darker {
+    background: var(--growit-darker) !important;
+}
+
+.border-0 {
+    border: none !important;
+}
+
+/* Animation Utilities */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-in {
+    animation: slideIn 0.3s ease-out;
 }

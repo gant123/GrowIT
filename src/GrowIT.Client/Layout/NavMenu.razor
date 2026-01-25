@@ -1,39 +1,30 @@
-﻿<div class="d-flex flex-column">
+﻿@using Microsoft.AspNetCore.Components.Routing
+
+<div class="nav-menu">
+    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+        <span class="nav-icon">📊</span>
+        <span class="nav-text">Dashboard</span>
+    </NavLink>
     
-    <div class="nav-divider">Core</div>
+    <NavLink class="nav-link" href="clients">
+        <span class="nav-icon">👥</span>
+        <span class="nav-text">Clients</span>
+    </NavLink>
     
-    <div class="nav-item">
-        <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-            <span class="oi oi-home" aria-hidden="true"></span> Dashboard
-        </NavLink>
-    </div>
+    <NavLink class="nav-link" href="financials">
+        <span class="nav-icon">💰</span>
+        <span class="nav-text">Financials</span>
+    </NavLink>
     
-    <div class="nav-item">
-        <NavLink class="nav-link" href="clients">
-            <span class="oi oi-people" aria-hidden="true"></span> Clients
-        </NavLink>
-    </div>
-
-    <div class="nav-divider">Finance</div>
-
-    <div class="nav-item">
-        <NavLink class="nav-link" href="funds">
-            <span class="oi oi-dollar" aria-hidden="true"></span> Funds
-        </NavLink>
-    </div>
+    <NavLink class="nav-link" href="reports">
+        <span class="nav-icon">📈</span>
+        <span class="nav-text">Reports</span>
+    </NavLink>
     
-    <div class="nav-item">
-        <NavLink class="nav-link" href="investments">
-            <span class="oi oi-briefcase" aria-hidden="true"></span> Investments
-        </NavLink>
-    </div>
-
-    <div class="nav-divider">Admin</div>
-
-    <div class="nav-item">
-        <NavLink class="nav-link" href="settings">
-            <span class="oi oi-cog" aria-hidden="true"></span> Settings
-        </NavLink>
-    </div>
-
+    <div class="nav-divider"></div>
+    
+    <NavLink class="nav-link" href="settings">
+        <span class="nav-icon">⚙️</span>
+        <span class="nav-text">Settings</span>
+    </NavLink>
 </div>

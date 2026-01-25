@@ -1,57 +1,270 @@
 ﻿@page "/"
 @using GrowIT.Client.Auth
+@using GrowIT.Shared.DTOs
 @inject AuthenticationStateProvider AuthStateProvider
+@inject HttpClient Http
 
 <AuthorizeView>
     <Authorized>
-        <div class="container-fluid mt-4">
-            <div class="d-sm-flex align-items-center justify-content-between mb-4">
-                <h1 class="h3 mb-0 text-gray-800">Dashboard</h1>
-                <span class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
-                    <i class="oi oi-calendar me-1"></i> @DateTime.Now.ToString("MMMM dd, yyyy")
-                </span>
+        <div class="dashboard">
+            <!-- KPI Cards Row -->
+            <div class="kpi-row">
+                <div class="kpi-card">
+                    <div class="kpi-header">
+                        <span class="kpi-icon unit">📊</span>
+                        <span class="kpi-label">UNIT ECONOMICS</span>
+                    </div>
+                    <div class="kpi-value">
+                        <span class="kpi-amount">$@unitEconomics.ToString("N2")</span>
+                        <span class="kpi-unit">/ family</span>
+                    </div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-header">
+                        <span class="kpi-icon capacity">⚡</span>
+                        <span class="kpi-label">CAPACITY METER</span>
+                    </div>
+                    <div class="kpi-gauge">
+                        <div class="gauge-ring">
+                            <svg viewBox="0 0 36 36" class="circular-chart">
+                                <path class="circle-bg"
+                                    d="M18 2.0845
+                                       a 15.9155 15.9155 0 0 1 0 31.831
+                                       a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                <path class="circle-progress"
+                                    stroke-dasharray="@capacityPercent, 100"
+                                    d="M18 2.0845
+                                       a 15.9155 15.9155 0 0 1 0 31.831
+                                       a 15.9155 15.9155 0 0 1 0 -31.831" />
+                            </svg>
+                            <div class="gauge-text">@capacityPercent%</div>
+                        </div>
+                        <div class="gauge-info">
+                            <span class="gauge-value">$@capacityRemaining.ToString("N0")</span>
+                            <span class="gauge-label">Remaining</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="kpi-header">
+                        <span class="kpi-icon growth">🌱</span>
+                        <span class="kpi-label">GROWTH PULSE</span>
+                    </div>
+                    <div class="kpi-growth">
+                        <span class="growth-direction up">↑</span>
+                        <span class="growth-value">Up @growthPercent%</span>
+                    </div>
+                </div>
             </div>
 
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="card shadow mb-4">
-                        <div class="card-header py-3 bg-white">
-                            <h6 class="m-0 font-weight-bold text-primary">Quick Actions</h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="d-flex gap-3 flex-wrap">
-                                <a href="clients/create" class="btn btn-outline-primary btn-lg flex-grow-1 p-4 text-center">
-                                    <div class="fs-1 mb-2"><i class="oi oi-people"></i></div>
-                                    Add New Client
-                                </a>
-                                <a href="investments/create" class="btn btn-outline-success btn-lg flex-grow-1 p-4 text-center">
-                                    <div class="fs-1 mb-2"><i class="oi oi-dollar"></i></div>
-                                    Record Investment
-                                </a>
-                                <a href="funds" class="btn btn-outline-info btn-lg flex-grow-1 p-4 text-center">
-                                    <div class="fs-1 mb-2"><i class="oi oi-pie-chart"></i></div>
-                                    Check Budget
-                                </a>
-                            </div>
+            <!-- Financial Narrative Chart -->
+            <div class="chart-section">
+                <div class="section-header">
+                    <h2 class="section-title">FINANCIAL NARRATIVE</h2>
+                    <span class="section-subtitle">Year to Date</span>
+                    <div class="chart-legend">
+                        <span class="legend-item impact">
+                            <span class="legend-dot"></span>
+                            Impact Value Generated
+                        </span>
+                        <span class="legend-item cost">
+                            <span class="legend-dot"></span>
+                            Actual Cost
+                        </span>
+                    </div>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-y-axis">
+                        <span>$600k</span>
+                        <span>$400k</span>
+                        <span>$200k</span>
+                        <span>$0</span>
+                    </div>
+                    <div class="chart-area">
+                        <svg viewBox="0 0 800 200" class="area-chart" preserveAspectRatio="none">
+                            <!-- Impact Value Area (Green) -->
+                            <defs>
+                                <linearGradient id="impactGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#6fba2c;stop-opacity:0.4" />
+                                    <stop offset="100%" style="stop-color:#6fba2c;stop-opacity:0.05" />
+                                </linearGradient>
+                                <linearGradient id="costGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.3" />
+                                    <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.05" />
+                                </linearGradient>
+                            </defs>
+                            
+                            <!-- Impact Area -->
+                            <path class="chart-fill impact" fill="url(#impactGradient)"
+                                d="M0,180 C50,175 100,165 150,150 C200,135 250,115 300,95 C350,75 400,60 450,50 C500,40 550,35 600,32 C650,30 700,28 750,25 L800,23 L800,200 L0,200 Z" />
+                            <path class="chart-line impact" stroke="#6fba2c" stroke-width="2" fill="none"
+                                d="M0,180 C50,175 100,165 150,150 C200,135 250,115 300,95 C350,75 400,60 450,50 C500,40 550,35 600,32 C650,30 700,28 750,25 L800,23" />
+                            
+                            <!-- Cost Area -->
+                            <path class="chart-fill cost" fill="url(#costGradient)"
+                                d="M0,185 C50,182 100,178 150,170 C200,162 250,152 300,140 C350,128 400,118 450,110 C500,102 550,96 600,92 C650,88 700,85 750,83 L800,81 L800,200 L0,200 Z" />
+                            <path class="chart-line cost" stroke="#3b82f6" stroke-width="2" fill="none"
+                                d="M0,185 C50,182 100,178 150,170 C200,162 250,152 300,140 C350,128 400,118 450,110 C500,102 550,96 600,92 C650,88 700,85 750,83 L800,81" />
+                        </svg>
+                        <div class="chart-x-axis">
+                            <span>Jan</span>
+                            <span>Feb</span>
+                            <span>Mar</span>
+                            <span>Apr</span>
+                            <span>May</span>
+                            <span>Jun</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="alert alert-info border-left-info shadow-sm" role="alert">
-                <h4 class="alert-heading"><i class="oi oi-info me-2"></i>Welcome to GrowIT v1.0</h4>
-                <p>
-                    You are logged in as <strong>@context.User.Identity?.Name</strong>. 
-                    Use the sidebar to manage your Funds, Clients, and Investments.
-                </p>
+            <!-- Bottom Row: Activity & Tasks -->
+            <div class="bottom-row">
+                <!-- Recent Activity -->
+                <div class="activity-section">
+                    <div class="section-header">
+                        <h2 class="section-title">RECENT ACTIVITY</h2>
+                    </div>
+                    <div class="activity-list">
+                        @foreach (var activity in recentActivities)
+                        {
+                            <div class="activity-item">
+                                <div class="activity-icon @activity.Type">
+                                    @GetActivityIcon(activity.Type)
+                                </div>
+                                <div class="activity-content">
+                                    <span class="activity-text">@activity.Description</span>
+                                    <span class="activity-meta">@activity.Amount</span>
+                                </div>
+                                <span class="activity-time">@activity.TimeAgo</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Tasks -->
+                <div class="tasks-section">
+                    <div class="section-header">
+                        <h2 class="section-title">TASKS</h2>
+                        <span class="section-subtitle">Follow-Ups</span>
+                    </div>
+                    <div class="tasks-list">
+                        @foreach (var task in pendingTasks)
+                        {
+                            <div class="task-item">
+                                <label class="task-checkbox">
+                                    <input type="checkbox" @bind="task.IsCompleted" />
+                                    <span class="checkmark"></span>
+                                </label>
+                                <div class="task-content">
+                                    <span class="task-action">@task.Action</span>
+                                    <span class="task-client">@task.ClientName</span>
+                                </div>
+                                <span class="task-category @task.Category.ToLower()">@task.Category</span>
+                            </div>
+                        }
+                    </div>
+                </div>
             </div>
         </div>
     </Authorized>
     <NotAuthorized>
-        <div class="text-center mt-5 pt-5">
-            <h1 class="display-4 fw-bold text-primary">GrowIT</h1>
-            <p class="lead mb-4">Enterprise Resource Management System</p>
-            <a href="login" class="btn btn-primary btn-lg px-5 shadow-lg rounded-pill">Login to Dashboard</a>
+        <div class="welcome-screen">
+            <div class="welcome-content">
+                <div class="welcome-logo">
+                    <img src="images/growITLogo.png" alt="GrowIT" />
+                </div>
+                <h1 class="welcome-title">Impact Management Platform</h1>
+                <p class="welcome-subtitle">Track investments, measure outcomes, grow communities.</p>
+                <a href="login" class="welcome-cta">
+                    <span>Sign In to Dashboard</span>
+                    <span class="cta-arrow">→</span>
+                </a>
+            </div>
+            <div class="welcome-decoration">
+                <div class="deco-ring ring-1"></div>
+                <div class="deco-ring ring-2"></div>
+                <div class="deco-ring ring-3"></div>
+            </div>
         </div>
     </NotAuthorized>
 </AuthorizeView>
+
+@code {
+    // KPI Data
+    private decimal unitEconomics = 42.50m;
+    private int capacityPercent = 65;
+    private decimal capacityRemaining = 3200m;
+    private int growthPercent = 12;
+    
+    // Activity Data
+    private List<ActivityItem> recentActivities = new();
+    private List<TaskItem> pendingTasks = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        // Load real data from API when available
+        try
+        {
+            var funds = await Http.GetFromJsonAsync<List<FundDto>>("api/financials/funds");
+            if (funds != null && funds.Any())
+            {
+                var totalFunds = funds.Sum(f => f.TotalAmount);
+                var availableFunds = funds.Sum(f => f.AvailableAmount);
+                capacityRemaining = availableFunds;
+                capacityPercent = totalFunds > 0 ? (int)((availableFunds / totalFunds) * 100) : 0;
+            }
+        }
+        catch
+        {
+            // Use defaults if API unavailable
+        }
+
+        // Sample activity data (replace with real API calls)
+        recentActivities = new List<ActivityItem>
+        {
+            new ActivityItem { Type = "investment", Description = "Food Box → Smith Family", Amount = "$50", TimeAgo = "2m ago" },
+            new ActivityItem { Type = "investment", Description = "Food Box → Smith Family", Amount = "$50", TimeAgo = "2m ago" },
+            new ActivityItem { Type = "client", Description = "Food Box → Smith Family", Amount = "$50", TimeAgo = "5m ago" }
+        };
+
+        pendingTasks = new List<TaskItem>
+        {
+            new TaskItem { Action = "Call", ClientName = "J. Doe", Category = "Housing", IsCompleted = false },
+            new TaskItem { Action = "Call", ClientName = "J. Doe", Category = "Housing", IsCompleted = false },
+            new TaskItem { Action = "Review", ClientName = "M. Smith", Category = "Benefits", IsCompleted = false }
+        };
+    }
+
+    private string GetActivityIcon(string type) => type switch
+    {
+        "investment" => "📦",
+        "client" => "👤",
+        "fund" => "💰",
+        _ => "📋"
+    };
+
+    // Helper classes
+    public class ActivityItem
+    {
+        public string Type { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string Amount { get; set; } = "";
+        public string TimeAgo { get; set; } = "";
+    }
+
+    public class TaskItem
+    {
+        public string Action { get; set; } = "";
+        public string ClientName { get; set; } = "";
+        public string Category { get; set; } = "";
+        public bool IsCompleted { get; set; }
+    }
+}

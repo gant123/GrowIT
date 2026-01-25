@@ -1,0 +1,310 @@
+/* ========================================
+   CREATE CLIENT PAGE STYLES
+   ======================================== */
+
+.create-client-page {
+    max-width: 720px;
+    margin: 0 auto;
+}
+
+/* Page Header */
+.page-header {
+    margin-bottom: 24px;
+}
+
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--growit-text-muted);
+    font-size: 13px;
+    margin-bottom: 12px;
+    transition: color 0.2s ease;
+}
+
+.back-link:hover {
+    color: var(--growit-green);
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--growit-text);
+    margin: 0 0 4px 0;
+}
+
+.page-subtitle {
+    font-size: 14px;
+    color: var(--growit-text-muted);
+    margin: 0;
+}
+
+/* Form Card */
+.form-card {
+    background: var(--growit-card);
+    border: 1px solid var(--growit-border);
+    border-radius: 16px;
+    padding: 32px;
+}
+
+/* Alert */
+.alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+.alert-danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--growit-danger);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* Form Sections */
+.form-section {
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--growit-border);
+}
+
+.form-section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--growit-text);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin: 0 0 20px 0;
+}
+
+/* Form Rows */
+.form-row {
+    margin-bottom: 20px;
+}
+
+.form-row.two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+/* Form Group */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--growit-text);
+}
+
+.required {
+    color: var(--growit-danger);
+}
+
+.form-input {
+    width: 100%;
+    padding: 12px 16px;
+    background: var(--growit-darker);
+    border: 1px solid var(--growit-border);
+    border-radius: 8px;
+    color: var(--growit-text);
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--growit-green);
+    box-shadow: 0 0 0 3px var(--growit-green-glow);
+}
+
+.form-input::placeholder {
+    color: var(--growit-text-dim);
+}
+
+/* Score Input */
+.score-input-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.score-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.score-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--growit-darker);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.score-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--growit-danger), var(--growit-warning), var(--growit-green));
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+/* Phase Selector */
+.phase-selector {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.phase-option {
+    position: relative;
+    background: var(--growit-darker);
+    border: 2px solid var(--growit-border);
+    border-radius: 12px;
+    padding: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.phase-option input {
+    position: absolute;
+    opacity: 0;
+}
+
+.phase-option:hover {
+    border-color: var(--growit-text-muted);
+}
+
+.phase-option.selected {
+    border-color: var(--growit-green);
+    background: rgba(111, 186, 44, 0.1);
+}
+
+.phase-icon {
+    display: block;
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.phase-name {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--growit-text);
+    margin-bottom: 4px;
+}
+
+.phase-desc {
+    display: block;
+    font-size: 11px;
+    color: var(--growit-text-muted);
+}
+
+/* Form Actions */
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--growit-border);
+}
+
+.btn-primary,
+.btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    border: none;
+}
+
+.btn-primary {
+    background: var(--growit-green);
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--growit-green-light);
+    transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-secondary {
+    background: var(--growit-darker);
+    color: var(--growit-text);
+    border: 1px solid var(--growit-border);
+}
+
+.btn-secondary:hover {
+    background: var(--growit-card-hover);
+}
+
+.spinner-small {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Validation */
+::deep .validation-message {
+    color: var(--growit-danger);
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .form-card {
+        padding: 20px;
+    }
+    
+    .form-row.two-col {
+        grid-template-columns: 1fr;
+    }
+    
+    .phase-selector {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .form-actions .btn-secondary,
+    .form-actions .btn-primary {
+        width: 100%;
+        justify-content: center;
+    }
+}

@@ -1,173 +1,187 @@
-@page "/funds"
+@page "/financials"
 @using GrowIT.Shared.DTOs
-@using Syncfusion.Blazor.Grids
 @attribute [Authorize]
 @inject HttpClient Http
 @inject NavigationManager NavManager
 
-<div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3 mb-0 text-gray-800">Funds Management</h1>
-        <button class="btn btn-primary shadow-sm" @onclick="OpenCreateModal">
-            <span class="oi oi-plus me-2"></span> Add New Fund
-        </button>
+<div class="financials-page">
+    <div class="page-header">
+        <div class="header-left">
+            <h1 class="page-title">Financials</h1>
+            <p class="page-subtitle">Manage funds, programs, and track investments</p>
+        </div>
+        <div class="header-actions">
+            <button class="btn-secondary" @onclick="OpenProgramModal">
+                <span>📋</span> New Program
+            </button>
+            <button class="btn-primary" @onclick="OpenFundModal">
+                <span>💰</span> New Fund
+            </button>
+        </div>
     </div>
 
-    <div class="row mb-4">
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card kpi-card primary h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="kpi-label text-primary">Total Capital Raised</div>
-                            <div class="kpi-value">@TotalCapital.ToString("C0")</div>
-                        </div>
-                        <div class="col-auto">
-                            <span class="oi oi-dollar kpi-icon"></span>
-                        </div>
-                    </div>
-                </div>
+    <!-- Summary Cards -->
+    <div class="summary-row">
+        <div class="summary-card">
+            <div class="summary-icon funds">💰</div>
+            <div class="summary-content">
+                <span class="summary-label">Total Funds</span>
+                <span class="summary-value">$@TotalCapital.ToString("N0")</span>
             </div>
         </div>
-
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card kpi-card success h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="kpi-label text-success">Available Liquidity</div>
-                            <div class="kpi-value">@TotalAvailable.ToString("C0")</div>
-                        </div>
-                        <div class="col-auto">
-                            <span class="oi oi-graph kpi-icon"></span>
-                        </div>
-                    </div>
-                </div>
+        <div class="summary-card">
+            <div class="summary-icon available">✅</div>
+            <div class="summary-content">
+                <span class="summary-label">Available</span>
+                <span class="summary-value success">$@TotalAvailable.ToString("N0")</span>
             </div>
         </div>
-
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card kpi-card warning h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="kpi-label text-warning">Deployment Rate</div>
-                            <div class="row no-gutters align-items-center">
-                                <div class="col-auto">
-                                    <div class="kpi-value mr-3">@DeploymentRate.ToString("0")%</div>
-                                </div>
-                                <div class="col px-2">
-                                    <div class="progress progress-sm mr-2">
-                                        <div class="progress-bar bg-warning" role="progressbar" style="width: @(DeploymentRate)%" aria-valuenow="@DeploymentRate" aria-valuemin="0" aria-valuemax="100"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <span class="oi oi-pie-chart kpi-icon"></span>
-                        </div>
-                    </div>
-                </div>
+        <div class="summary-card">
+            <div class="summary-icon deployed">📊</div>
+            <div class="summary-content">
+                <span class="summary-label">Deployed</span>
+                <span class="summary-value">@DeploymentRate.ToString("0")%</span>
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-icon programs">📋</div>
+            <div class="summary-content">
+                <span class="summary-label">Programs</span>
+                <span class="summary-value">@programCount</span>
             </div>
         </div>
     </div>
 
-    <div class="card shadow mb-4">
-        <div class="card-header py-3 bg-white">
-            <h6 class="m-0 font-weight-bold text-primary">Fund Allocation</h6>
+    <!-- Funds Table -->
+    <div class="data-section">
+        <div class="section-header">
+            <h2>Fund Allocation</h2>
         </div>
-        <div class="card-body">
+        <div class="table-container">
             @if (funds == null)
             {
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status"></div>
+                <div class="loading-state">
+                    <div class="spinner"></div>
+                    <span>Loading funds...</span>
+                </div>
+            }
+            else if (!funds.Any())
+            {
+                <div class="empty-state">
+                    <span class="empty-icon">💰</span>
+                    <p>No funds created yet</p>
+                    <button class="btn-primary" @onclick="OpenFundModal">Create First Fund</button>
                 </div>
             }
             else
             {
-                <SfGrid DataSource="@funds" AllowPaging="true" AllowSorting="true" AllowFiltering="true" Toolbar="@(new List<string>() { "Search", "ExcelExport", "PdfExport" })">
-                    <GridPageSettings PageSize="10"></GridPageSettings>
-                    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Menu"></GridFilterSettings>
-                    
-                    <GridColumns>
-                        <GridColumn Field=@nameof(FundDto.Name) HeaderText="Fund Name" Width="220">
-                            <Template>
-                                @{ var fund = (context as FundDto); }
-                                <div class="d-flex align-items-center">
-                                    <div class="bg-light rounded-circle p-2 me-2 text-primary">
-                                        <span class="oi oi-briefcase"></span>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Fund Name</th>
+                            <th class="align-right">Total Budget</th>
+                            <th class="align-right">Available</th>
+                            <th class="align-center">Status</th>
+                            <th class="align-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var fund in funds)
+                        {
+                            var percentUsed = fund.TotalAmount > 0
+                                ? ((fund.TotalAmount - fund.AvailableAmount) / fund.TotalAmount) * 100
+                                : 0;
+                            var statusClass = percentUsed > 90 ? "critical" : percentUsed > 75 ? "warning" : "healthy";
+                            var statusText = percentUsed > 90 ? "Critical" : percentUsed > 75 ? "Low" : "Healthy";
+
+                            <tr>
+                                <td>
+                                    <div class="fund-name">
+                                        <span class="fund-icon">💼</span>
+                                        <span>@fund.Name</span>
                                     </div>
-                                    <span class="fw-bold">@fund.Name</span>
-                                </div>
-                            </Template>
-                        </GridColumn>
-
-                        <GridColumn Field=@nameof(FundDto.TotalAmount) HeaderText="Total Budget" Format="C0" TextAlign="TextAlign.Right" Width="150"></GridColumn>
-                        <GridColumn Field=@nameof(FundDto.AvailableAmount) HeaderText="Available" Format="C0" TextAlign="TextAlign.Right" Width="150" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
-
-                        <GridColumn HeaderText="Status" Width="150" TextAlign="TextAlign.Center">
-                            <Template>
-                                @{
-                                    var fund = (context as FundDto);
-                                    var percentUsed = fund.TotalAmount > 0 
-                                        ? ((fund.TotalAmount - fund.AvailableAmount) / fund.TotalAmount) * 100 
-                                        : 0;
-                                    
-                                    string badgeClass = "bg-success";
-                                    string statusText = "Healthy";
-
-                                    if (percentUsed > 90) { badgeClass = "bg-danger"; statusText = "Critical"; }
-                                    else if (percentUsed > 75) { badgeClass = "bg-warning text-dark"; statusText = "Low Funds"; }
-                                }
-                                <span class="badge rounded-pill @badgeClass">@statusText</span>
-                            </Template>
-                        </GridColumn>
-                        
-                        <GridColumn HeaderText="Actions" Width="100" TextAlign="TextAlign.Center">
-                            <Template>
-                                <button class="btn btn-sm btn-link text-secondary"><span class="oi oi-pencil"></span></button>
-                                <button class="btn btn-sm btn-link text-danger"><span class="oi oi-trash"></span></button>
-                            </Template>
-                        </GridColumn>
-                    </GridColumns>
-                </SfGrid>
+                                </td>
+                                <td class="align-right">@fund.TotalAmount.ToString("C0")</td>
+                                <td class="align-right">@fund.AvailableAmount.ToString("C0")</td>
+                                <td class="align-center">
+                                    <span class="status-badge @statusClass">@statusText</span>
+                                </td>
+                                <td class="align-center">
+                                    <button class="icon-btn" title="Edit">✏️</button>
+                                    <button class="icon-btn danger" title="Delete">🗑️</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
             }
         </div>
     </div>
 </div>
 
-@if (showCreateModal)
+@* Fund Creation Modal *@
+@if (showFundModal)
 {
-    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.5);" tabindex="-1" role="dialog">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content border-0 shadow-lg">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title fw-bold">Create New Fund</h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="CloseModal"></button>
-                </div>
-                <div class="modal-body p-4">
-                    <EditForm Model="@newFund" OnValidSubmit="HandleCreateFund">
-                        <DataAnnotationsValidator />
-                        
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">Fund Name</label>
-                            <InputText @bind-Value="newFund.Name" class="form-control form-control-lg" placeholder="e.g. Q1 Grants" />
-                            <ValidationMessage For="@(() => newFund.Name)" />
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="form-label fw-bold">Initial Budget ($)</label>
-                            <InputNumber @bind-Value="newFund.TotalAmount" class="form-control form-control-lg" />
-                            <ValidationMessage For="@(() => newFund.TotalAmount)" />
-                        </div>
-
-                        <div class="d-flex justify-content-end gap-2">
-                            <button type="button" class="btn btn-light" @onclick="CloseModal">Cancel</button>
-                            <button type="submit" class="btn btn-primary px-4">Create Fund</button>
-                        </div>
-                    </EditForm>
-                </div>
+    <div class="modal-overlay" @onclick="CloseFundModal">
+        <div class="modal-content" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Create New Fund</h3>
+                <button class="modal-close" @onclick="CloseFundModal">×</button>
             </div>
+            <EditForm Model="@newFund" OnValidSubmit="HandleCreateFund">
+                <DataAnnotationsValidator />
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Fund Name</label>
+                        <InputText @bind-Value="newFund.Name" class="form-input" placeholder="e.g. Emergency Relief Fund" />
+                        <ValidationMessage For="@(() => newFund.Name)" />
+                    </div>
+                    <div class="form-group">
+                        <label>Initial Budget ($)</label>
+                        <InputNumber @bind-Value="newFund.TotalAmount" class="form-input" />
+                        <ValidationMessage For="@(() => newFund.TotalAmount)" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" @onclick="CloseFundModal">Cancel</button>
+                    <button type="submit" class="btn-primary">Create Fund</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@* Program Creation Modal *@
+@if (showProgramModal)
+{
+    <div class="modal-overlay" @onclick="CloseProgramModal">
+        <div class="modal-content" @onclick:stopPropagation="true">
+            <div class="modal-header">
+                <h3>Create New Program</h3>
+                <button class="modal-close" @onclick="CloseProgramModal">×</button>
+            </div>
+            <EditForm Model="@newProgram" OnValidSubmit="HandleCreateProgram">
+                <DataAnnotationsValidator />
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Program Name</label>
+                        <InputText @bind-Value="newProgram.Name" class="form-input" placeholder="e.g. Utility Assistance" />
+                        <ValidationMessage For="@(() => newProgram.Name)" />
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <InputText @bind-Value="newProgram.Description" class="form-input" placeholder="Brief description of the program" />
+                    </div>
+                    <div class="form-group">
+                        <label>Default Unit Cost ($)</label>
+                        <InputNumber @bind-Value="newProgram.DefaultUnitCost" class="form-input" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" @onclick="CloseProgramModal">Cancel</button>
+                    <button type="submit" class="btn-primary">Create Program</button>
+                </div>
+            </EditForm>
         </div>
     </div>
 }
@@ -175,41 +189,58 @@
 @code {
     private List<FundDto>? funds;
     private CreateFundRequest newFund = new();
-    private bool showCreateModal = false;
+    private CreateProgramRequest newProgram = new();
+    private bool showFundModal = false;
+    private bool showProgramModal = false;
+    private int programCount = 0;
 
-    // KPI Metrics
     private decimal TotalCapital => funds?.Sum(f => f.TotalAmount) ?? 0;
     private decimal TotalAvailable => funds?.Sum(f => f.AvailableAmount) ?? 0;
     private decimal DeploymentRate => TotalCapital > 0 ? ((TotalCapital - TotalAvailable) / TotalCapital) * 100 : 0;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadFunds();
+        await LoadData();
     }
 
-    private async Task LoadFunds()
+    private async Task LoadData()
     {
-        try 
+        try
         {
             funds = await Http.GetFromJsonAsync<List<FundDto>>("api/financials/funds");
+            var programs = await Http.GetFromJsonAsync<List<object>>("api/financials/programs");
+            programCount = programs?.Count ?? 0;
         }
-        catch 
+        catch
         {
             funds = new List<FundDto>();
         }
     }
 
-    private void OpenCreateModal() => showCreateModal = true;
-    private void CloseModal() => showCreateModal = false;
+    private void OpenFundModal() => showFundModal = true;
+    private void CloseFundModal() => showFundModal = false;
+    private void OpenProgramModal() => showProgramModal = true;
+    private void CloseProgramModal() => showProgramModal = false;
 
     private async Task HandleCreateFund()
     {
         var response = await Http.PostAsJsonAsync("api/financials/funds", newFund);
         if (response.IsSuccessStatusCode)
         {
-            CloseModal();
+            CloseFundModal();
             newFund = new();
-            await LoadFunds();
+            await LoadData();
+        }
+    }
+
+    private async Task HandleCreateProgram()
+    {
+        var response = await Http.PostAsJsonAsync("api/financials/programs", newProgram);
+        if (response.IsSuccessStatusCode)
+        {
+            CloseProgramModal();
+            newProgram = new();
+            await LoadData();
         }
     }
 }
