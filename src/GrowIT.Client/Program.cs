@@ -4,7 +4,7 @@ using GrowIT.Client;
 using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.Authorization;
 using GrowIT.Client.Auth;
-
+using Syncfusion.Blazor;
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
@@ -24,5 +24,5 @@ builder.Services.AddScoped(sp => new HttpClient
 { 
     BaseAddress = new Uri("http://localhost:5286") 
 });
-
+builder.Services.AddSyncfusionBlazor();
 await builder.Build().RunAsync();

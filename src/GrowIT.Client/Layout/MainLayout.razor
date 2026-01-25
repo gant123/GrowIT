@@ -1,16 +1,43 @@
 ﻿@inherits LayoutComponentBase
+@inject NavigationManager NavManager
+@using GrowIT.Client.Auth
+@using GrowIT.Shared.DTOs 
+@inject AuthenticationStateProvider AuthStateProvider
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+
 <div class="page">
     <div class="sidebar">
         <NavMenu />
     </div>
 
     <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+        <div class="top-row">
+            <AuthorizeView>
+                <Authorized>
+                    <span class="me-3 text-secondary small">
+                        Logged in as <strong>@context.User.Identity?.Name</strong>
+                    </span>
+                    <button class="btn btn-sm btn-outline-danger" @onclick="Logout">
+                        Sign Out
+                    </button>
+                </Authorized>
+                <NotAuthorized>
+                    <a href="login" class="btn btn-sm btn-primary">Log In</a>
+                </NotAuthorized>
+            </AuthorizeView>
         </div>
 
-        <article class="content px-4">
+        <article class="content">
             @Body
         </article>
     </main>
 </div>
+
+@code {
+    private async Task Logout()
+    {
+        await LocalStorage.RemoveItemAsync("authToken");
+        await ((CustomAuthStateProvider)AuthStateProvider).MarkUserAsLoggedOut();
+        NavManager.NavigateTo("/login");
+    }
+}

@@ -35,20 +35,28 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
         return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(ParseClaimsFromJwt(token), "jwt")));
     }
 
-    public void MarkUserAsAuthenticated(string token)
+// Change 'void' to 'Task'
+    public Task MarkUserAsAuthenticated(string email)
     {
-        var authenticatedUser = new ClaimsPrincipal(new ClaimsIdentity(ParseClaimsFromJwt(token), "jwt"));
+        var authenticatedUser = new ClaimsPrincipal(new ClaimsIdentity(new[]
+        {
+            new Claim(ClaimTypes.Name, email)
+        }, "apiauth"));
+        
         var authState = Task.FromResult(new AuthenticationState(authenticatedUser));
         NotifyAuthenticationStateChanged(authState);
+
+        return Task.CompletedTask;
     }
 
-    public void MarkUserAsLoggedOut()
+public Task MarkUserAsLoggedOut()
     {
         var anonymousUser = new ClaimsPrincipal(new ClaimsIdentity());
         var authState = Task.FromResult(new AuthenticationState(anonymousUser));
         NotifyAuthenticationStateChanged(authState);
+        
+        return Task.CompletedTask; // <--- Return a completed task
     }
-
     // Helper to read the "eyJ..." string without a heavy library
     private IEnumerable<Claim> ParseClaimsFromJwt(string jwt)
     {

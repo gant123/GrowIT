@@ -1,6 +1,8 @@
 ﻿<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">GrowIT.Client</a>
+        <a class="navbar-brand" href="">
+            <span class="oi oi-graph me-2" style="color: #6fba2c;"></span>GrowIT
+        </a>
         <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -8,20 +10,36 @@
 </div>
 
 <div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="nav flex-column">
+    <nav class="flex-column">
+        
+        <div class="nav-divider">Core</div>
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                <span class="oi oi-home" aria-hidden="true"></span> Dashboard
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
+            <NavLink class="nav-link" href="clients">
+                <span class="oi oi-people" aria-hidden="true"></span> Clients
+            </NavLink>
+        </div>
+
+        <div class="nav-divider">Finance</div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="funds">
+                <span class="oi oi-dollar" aria-hidden="true"></span> Funds
             </NavLink>
         </div>
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
+            <NavLink class="nav-link" href="investments">
+                <span class="oi oi-briefcase" aria-hidden="true"></span> Investments
+            </NavLink>
+        </div>
+
+        <div class="nav-divider">System</div>
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="settings">
+                <span class="oi oi-cog" aria-hidden="true"></span> Settings
             </NavLink>
         </div>
     </nav>

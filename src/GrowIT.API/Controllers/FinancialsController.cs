@@ -43,12 +43,21 @@ public class FinancialsController : ControllerBase
         return Ok(new { Message = "Fund Created", FundId = fund.Id });
     }
 
-    [HttpGet("funds")]
-    public async Task<IActionResult> GetFunds()
+[HttpGet("funds")]
+    public async Task<ActionResult<List<FundDto>>> GetFunds()
     {
-        return Ok(await _context.Funds.ToListAsync());
-    }
+        var funds = await _context.Funds
+            .Select(f => new FundDto 
+            {
+                Id = f.Id,
+                Name = f.Name,
+                TotalAmount = f.TotalAmount,
+                AvailableAmount = f.AvailableAmount
+            })
+            .ToListAsync();
 
+        return Ok(funds);
+    }
     // ==========================================
     // PROGRAMS
     // ==========================================
