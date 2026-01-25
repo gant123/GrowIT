@@ -1,6 +1,7 @@
 ﻿@inherits LayoutComponentBase
 @inject NavigationManager NavManager
 @using GrowIT.Client.Auth
+@using GrowIT.Client.Shared 
 @inject AuthenticationStateProvider AuthStateProvider
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 @inject IJSRuntime JSRuntime
@@ -8,15 +9,14 @@
 <div class="growit-app">
     <aside class="growit-sidebar">
         <div class="sidebar-brand">
-           
-                   @if (isDarkMode)
-                {
-                    <img src="images/logo-dark.png" alt="GrowIT" class="brand-logo" />
-                }
-                else
-                {
-                     <img src="images/logo-light.png" alt="GrowIT" class="brand-logo" />
-                }
+           @if (isDarkMode)
+            {
+                <img src="images/logo-dark.png" alt="GrowIT" class="brand-logo" />
+            }
+            else
+            {
+                 <img src="images/logo-light.png" alt="GrowIT" class="brand-logo" />
+            }
         </div>
         <nav class="sidebar-nav">
             <NavMenu />
@@ -49,10 +49,11 @@
             </button>
                 <AuthorizeView>
                     <Authorized>
-                        <button class="btn-plant-seed">
+                        <button class="btn-plant-seed" @onclick="() => showSeedModal = true">
                             <span class="oi oi-plus"></span>
                             <span>Plant Seed</span>
                         </button>
+                        
                         <div class="user-area">
                             <div class="user-avatar">@GetInitials(context.User.Identity?.Name)</div>
                             <button class="btn-logout" @onclick="Logout" title="Sign Out">
@@ -73,20 +74,26 @@
     </main>
 </div>
 
+<PlantSeedModal @bind-Show="showSeedModal" OnSeedPlanted="RefreshDashboard" />
+
 @code {
     private bool isDarkMode = false;
+    private bool showSeedModal = false; // ADDED: State for modal
+
     protected override async Task OnInitializedAsync()
     {
         // Load preference from JS when app starts
         var currentTheme = await JSRuntime.InvokeAsync<string>("themeManager.getTheme");
         isDarkMode = currentTheme == "dark";
     }
+
     private async Task ToggleTheme()
     {
         isDarkMode = !isDarkMode;
         var newTheme = isDarkMode ? "dark" : "light";
         await JSRuntime.InvokeVoidAsync("themeManager.setTheme", newTheme);
     }
+
     private string GetInitials(string? name)
     {
         if (string.IsNullOrEmpty(name)) return "?";
@@ -101,5 +108,11 @@
         await LocalStorage.RemoveItemAsync("authToken");
         await ((CustomAuthStateProvider)AuthStateProvider).MarkUserAsLoggedOut();
         NavManager.NavigateTo("/login");
+    }
+
+    // ADDED: Refreshes the page after an investment is made
+    private void RefreshDashboard()
+    {
+        NavManager.NavigateTo(NavManager.Uri, forceLoad: true);
     }
 }

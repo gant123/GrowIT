@@ -20,7 +20,69 @@ public class ClientsController : ControllerBase
         _context = context;
         _tenantService = tenantService;
     }
+[HttpGet("{id}")]
+    public async Task<ActionResult<ClientDetailDto>> GetClientDetail(Guid id)
+    {
+        // 1. Fetch Client with related data (Investments)
+        // Note: Ensure your DbContext has .Include(c => c.Investments) if relationships are set up.
+        // For now, we will query them separately to be safe.
+        
+        var client = await _context.Clients
+            .FirstOrDefaultAsync(c => c.Id == id); // Tenant filter handled by Global Query Filter usually, or add manually
 
+        if (client == null) return NotFound("Client not found.");
+
+        // 2. Fetch Investments (The Financial History)
+        var investments = await _context.Investments
+            .Where(i => i.ClientId == id)
+            .OrderByDescending(i => i.CreatedAt)
+            .ToListAsync();
+
+        // 3. Build the Timeline
+        var timeline = new List<TimelineItemDto>();
+
+        // Add Investments to Timeline
+        foreach (var inv in investments)
+        {
+            timeline.Add(new TimelineItemDto
+            {
+                Id = inv.Id,
+                Date = inv.CreatedAt,
+                Type = "Investment",
+                Title = $"Investment: {inv.PayeeName}", // e.g., "Entergy"
+                Description = inv.Reason,
+                Amount = inv.Amount,
+                Icon = "oi-dollar",
+                ColorClass = "text-success"
+            });
+        }
+
+        // (Future: Add Imprints/Notes to this same list here)
+
+        // 4. Construct Final DTO
+        var detail = new ClientDetailDto
+        {
+            Id = client.Id,
+            FirstName = client.FirstName,
+            LastName = client.LastName,
+            Email = client.Email,
+            Phone = client.Phone,
+            Address = client.Address,
+            StabilityScore = client.StabilityScore,
+            LifePhase = client.LifePhase.ToString(),
+            HouseholdCount = client.HouseholdCount,
+            EmploymentStatus = client.EmploymentStatus.ToString(),
+            
+            // Stats
+            TotalInvestment = investments.Sum(x => x.Amount),
+            LastInvestmentDate = investments.FirstOrDefault()?.CreatedAt,
+            
+            // Sort timeline by newest first
+            Timeline = timeline.OrderByDescending(t => t.Date).ToList()
+        };
+
+        return Ok(detail);
+    }
     [HttpPost]
     public async Task<IActionResult> CreateClient(CreateClientRequest request)
     {

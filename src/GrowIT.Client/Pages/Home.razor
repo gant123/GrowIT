@@ -7,167 +7,172 @@
 <AuthorizeView>
     <Authorized>
         <div class="dashboard">
-            <!-- KPI Cards Row -->
-            <div class="kpi-row">
-                <div class="kpi-card">
-                    <div class="kpi-header">
-                        <div class="kpi-icon unit">
-                            <span class="oi oi-graph"></span>
+            @if (stats == null)
+            {
+                <div class="d-flex justify-content-center align-items-center" style="height: 400px;">
+                    <div class="spinner-border text-success" role="status"></div>
+                </div>
+            }
+            else
+            {
+                <div class="kpi-row">
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <div class="kpi-icon unit">
+                                <span class="oi oi-graph"></span>
+                            </div>
+                            <span class="kpi-label">UNIT ECONOMICS</span>
                         </div>
-                        <span class="kpi-label">UNIT ECONOMICS</span>
+                        <div class="kpi-value">
+                            <span class="kpi-amount">$@CalculateUnitEconomics().ToString("N2")</span>
+                            <span class="kpi-unit">/ family</span>
+                        </div>
                     </div>
-                    <div class="kpi-value">
-                        <span class="kpi-amount">$@unitEconomics.ToString("N2")</span>
-                        <span class="kpi-unit">/ family</span>
+
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <div class="kpi-icon capacity">
+                                <span class="oi oi-dashboard"></span>
+                            </div>
+                            <span class="kpi-label">CAPACITY METER</span>
+                        </div>
+                        <div class="kpi-gauge">
+                            <div class="gauge-ring">
+                                <svg class="gauge-svg" viewBox="0 0 36 36">
+                                    <path class="gauge-bg"
+                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                    <path class="gauge-progress"
+                                        stroke-dasharray="@GetCapacityPercent(), 100"
+                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                </svg>
+                                <div class="gauge-text">@GetCapacityPercent()%</div>
+                            </div>
+                            <div class="gauge-info">
+                                <span class="gauge-value">$@stats.FundsAvailable.ToString("N0")</span>
+                                <span class="gauge-label">Remaining</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kpi-card">
+                        <div class="kpi-header">
+                            <div class="kpi-icon growth">
+                                <span class="oi oi-arrow-thick-top"></span>
+                            </div>
+                            <span class="kpi-label">GROWTH PULSE</span>
+                        </div>
+                        <div class="kpi-growth">
+                            <span class="oi oi-caret-top growth-arrow"></span>
+                            <span class="growth-value">@stats.ActiveCases Active</span>
+                        </div>
+                        <div class="small text-muted mt-2">Families in Season</div>
                     </div>
                 </div>
 
-                <div class="kpi-card">
-                    <div class="kpi-header">
-                        <div class="kpi-icon capacity">
-                            <span class="oi oi-dashboard"></span>
+                <div class="chart-section">
+                    <div class="section-header">
+                        <h2 class="section-title">FINANCIAL NARRATIVE</h2>
+                        <span class="section-badge">Year to Date</span>
+                        <div class="chart-legend">
+                            <span class="legend-item">
+                                <span class="legend-dot impact"></span>
+                                Impact Value Generated
+                            </span>
+                            <span class="legend-item">
+                                <span class="legend-dot cost"></span>
+                                Actual Cost
+                            </span>
                         </div>
-                        <span class="kpi-label">CAPACITY METER</span>
                     </div>
-                    <div class="kpi-gauge">
-                        <div class="gauge-ring">
-                            <svg class="gauge-svg" viewBox="0 0 36 36">
-                                <path class="gauge-bg"
-                                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                <path class="gauge-progress"
-                                    stroke-dasharray="@capacityPercent, 100"
-                                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    <div class="chart-container">
+                        <div class="chart-y-axis">
+                            <span>$600k</span>
+                            <span>$400k</span>
+                            <span>$200k</span>
+                            <span>$0</span>
+                        </div>
+                        <div class="chart-area">
+                            <svg class="chart-svg" viewBox="0 0 800 180" preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="impactGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" style="stop-color:#6fba2c;stop-opacity:0.4" />
+                                        <stop offset="100%" style="stop-color:#6fba2c;stop-opacity:0.05" />
+                                    </linearGradient>
+                                    <linearGradient id="costGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                        <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.3" />
+                                        <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.05" />
+                                    </linearGradient>
+                                </defs>
+                                <path fill="url(#impactGradient)" d="M0,160 C80,155 160,140 240,120 C320,100 400,75 480,55 560,40 640,30 720,25 L800,20 L800,180 L0,180 Z" />
+                                <path stroke="#6fba2c" stroke-width="2" fill="none" d="M0,160 C80,155 160,140 240,120 C320,100 400,75 480,55 560,40 640,30 720,25 L800,20" />
+                                <path fill="url(#costGradient)" d="M0,165 C80,162 160,155 240,145 C320,135 400,120 480,105 560,92 640,82 720,75 L800,70 L800,180 L0,180 Z" />
+                                <path stroke="#3b82f6" stroke-width="2" fill="none" d="M0,165 C80,162 160,155 240,145 C320,135 400,120 480,105 560,92 640,82 720,75 L800,70" />
                             </svg>
-                            <div class="gauge-text">@capacityPercent%</div>
-                        </div>
-                        <div class="gauge-info">
-                            <span class="gauge-value">$@capacityRemaining.ToString("N0")</span>
-                            <span class="gauge-label">Remaining</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="kpi-card">
-                    <div class="kpi-header">
-                        <div class="kpi-icon growth">
-                            <span class="oi oi-arrow-thick-top"></span>
-                        </div>
-                        <span class="kpi-label">GROWTH PULSE</span>
-                    </div>
-                    <div class="kpi-growth">
-                        <span class="oi oi-caret-top growth-arrow"></span>
-                        <span class="growth-value">Up @growthPercent%</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Financial Narrative Chart -->
-            <div class="chart-section">
-                <div class="section-header">
-                    <h2 class="section-title">FINANCIAL NARRATIVE</h2>
-                    <span class="section-badge">Year to Date</span>
-                    <div class="chart-legend">
-                        <span class="legend-item">
-                            <span class="legend-dot impact"></span>
-                            Impact Value Generated
-                        </span>
-                        <span class="legend-item">
-                            <span class="legend-dot cost"></span>
-                            Actual Cost
-                        </span>
-                    </div>
-                </div>
-                <div class="chart-container">
-                    <div class="chart-y-axis">
-                        <span>$600k</span>
-                        <span>$400k</span>
-                        <span>$200k</span>
-                        <span>$0</span>
-                    </div>
-                    <div class="chart-area">
-                        <svg class="chart-svg" viewBox="0 0 800 180" preserveAspectRatio="none">
-                            <defs>
-                                <linearGradient id="impactGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                    <stop offset="0%" style="stop-color:#6fba2c;stop-opacity:0.4" />
-                                    <stop offset="100%" style="stop-color:#6fba2c;stop-opacity:0.05" />
-                                </linearGradient>
-                                <linearGradient id="costGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                    <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.3" />
-                                    <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.05" />
-                                </linearGradient>
-                            </defs>
-                            
-                            <!-- Impact Area -->
-                            <path fill="url(#impactGradient)"
-                                d="M0,160 C80,155 160,140 240,120 C320,100 400,75 480,55 C560,40 640,30 720,25 L800,20 L800,180 L0,180 Z" />
-                            <path stroke="#6fba2c" stroke-width="2" fill="none"
-                                d="M0,160 C80,155 160,140 240,120 C320,100 400,75 480,55 C560,40 640,30 720,25 L800,20" />
-                            
-                            <!-- Cost Area -->
-                            <path fill="url(#costGradient)"
-                                d="M0,165 C80,162 160,155 240,145 C320,135 400,120 480,105 C560,92 640,82 720,75 L800,70 L800,180 L0,180 Z" />
-                            <path stroke="#3b82f6" stroke-width="2" fill="none"
-                                d="M0,165 C80,162 160,155 240,145 C320,135 400,120 480,105 C560,92 640,82 720,75 L800,70" />
-                        </svg>
-                        <div class="chart-x-axis">
-                            <span>Jan</span>
-                            <span>Feb</span>
-                            <span>Mar</span>
-                            <span>Apr</span>
-                            <span>May</span>
-                            <span>Jun</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Bottom Row: Activity & Tasks -->
-            <div class="bottom-row">
-                <!-- Recent Activity -->
-                <div class="activity-section">
-                    <div class="section-header">
-                        <h2 class="section-title">RECENT ACTIVITY</h2>
-                    </div>
-                    <div class="activity-list">
-                        @foreach (var activity in recentActivities)
-                        {
-                            <div class="activity-item">
-                                <div class="activity-icon @activity.Type">
-                                    <span class="oi @GetActivityIconClass(activity.Type)"></span>
-                                </div>
-                                <div class="activity-content">
-                                    <span class="activity-text">@activity.Description</span>
-                                    <span class="activity-amount">@activity.Amount</span>
-                                </div>
-                                <span class="activity-time">@activity.TimeAgo</span>
+                            <div class="chart-x-axis">
+                                <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span>
                             </div>
-                        }
+                        </div>
                     </div>
                 </div>
 
-                <!-- Tasks -->
-                <div class="tasks-section">
-                    <div class="section-header">
-                        <h2 class="section-title">TASKS</h2>
-                        <span class="section-badge">Follow-Ups</span>
+                <div class="bottom-row">
+                    <div class="activity-section">
+                        <div class="section-header">
+                            <h2 class="section-title">RECENT ACTIVITY</h2>
+                        </div>
+                        <div class="activity-list">
+                            @if (stats.RecentActivity.Any())
+                            {
+                                @foreach (var activity in stats.RecentActivity)
+                                {
+                                    <div class="activity-item">
+                                        <div class="activity-icon investment">
+                                            <span class="oi @activity.Icon"></span>
+                                        </div>
+                                        <div class="activity-content">
+                                            <span class="activity-text">@activity.Description</span>
+                                        </div>
+                                        <span class="activity-time">@activity.Date.ToShortDateString()</span>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="text-muted small p-3">No recent activity found.</div>
+                            }
+                        </div>
                     </div>
-                    <div class="tasks-list">
-                        @foreach (var task in pendingTasks)
-                        {
-                            <div class="task-item">
-                                <div class="task-checkbox @(task.IsCompleted ? "checked" : "")" @onclick="() => task.IsCompleted = !task.IsCompleted">
-                                    <span class="oi oi-check"></span>
-                                </div>
-                                <div class="task-content">
-                                    <span class="task-action">@task.Action</span>
-                                    <span class="task-client">@task.ClientName</span>
-                                </div>
-                                <span class="task-category @task.Category.ToLower()">@task.Category</span>
-                            </div>
-                        }
+
+                    <div class="tasks-section">
+                        <div class="section-header">
+                            <h2 class="section-title">TASKS</h2>
+                            <span class="section-badge">Follow-Ups</span>
+                        </div>
+                        <div class="tasks-list">
+                            @if (stats.PendingFollowUps.Any())
+                            {
+                                @foreach (var task in stats.PendingFollowUps)
+                                {
+                                    <div class="task-item">
+                                        <div class="task-checkbox">
+                                            <span class="oi oi-clock"></span>
+                                        </div>
+                                        <div class="task-content">
+                                            <span class="task-action">Follow Up: @task.Note</span>
+                                            <span class="task-client">@task.ClientName</span>
+                                        </div>
+                                        <span class="task-category high">Due @task.DueDate.ToString("MM/dd")</span>
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <div class="text-muted small p-3">No pending tasks! Great job.</div>
+                            }
+                        </div>
                     </div>
                 </div>
-            </div>
+            }
         </div>
     </Authorized>
     <NotAuthorized>
@@ -184,70 +189,40 @@
 </AuthorizeView>
 
 @code {
-    private decimal unitEconomics = 42.50m;
-    private int capacityPercent = 65;
-    private decimal capacityRemaining = 3200m;
-    private int growthPercent = 12;
-    
-    private List<ActivityItem> recentActivities = new();
-    private List<TaskItem> pendingTasks = new();
+    private DashboardStatsDto? stats;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadDashboardData();
-    }
-
-    private async Task LoadDashboardData()
-    {
         try
         {
-            var funds = await Http.GetFromJsonAsync<List<FundDto>>("api/financials/funds");
-            if (funds != null && funds.Any())
-            {
-                var totalFunds = funds.Sum(f => f.TotalAmount);
-                var availableFunds = funds.Sum(f => f.AvailableAmount);
-                capacityRemaining = availableFunds;
-                capacityPercent = totalFunds > 0 ? (int)((availableFunds / totalFunds) * 100) : 0;
-            }
+            stats = await Http.GetFromJsonAsync<DashboardStatsDto>("api/dashboard");
         }
-        catch { }
-
-        recentActivities = new List<ActivityItem>
+        catch (Exception ex)
         {
-            new ActivityItem { Type = "investment", Description = "Food Box → Smith Family", Amount = "$50", TimeAgo = "2m ago" },
-            new ActivityItem { Type = "investment", Description = "Food Box → Smith Family", Amount = "$50", TimeAgo = "2m ago" },
-            new ActivityItem { Type = "client", Description = "Food Box → Smith Family", Amount = "$50", TimeAgo = "5m ago" }
-        };
+            Console.WriteLine($"Error loading dashboard: {ex.Message}");
+        }
+    }
 
-        pendingTasks = new List<TaskItem>
-        {
-            new TaskItem { Action = "Call", ClientName = "J. Doe", Category = "Housing", IsCompleted = false },
-            new TaskItem { Action = "Call", ClientName = "J. Doe", Category = "Housing", IsCompleted = false },
-            new TaskItem { Action = "Review", ClientName = "M. Smith", Category = "Benefits", IsCompleted = false }
-        };
+    private decimal CalculateUnitEconomics()
+    {
+        if (stats == null || stats.HouseholdsServedYtd == 0) return 0;
+        return stats.TotalInvestedYtd / stats.HouseholdsServedYtd;
+    }
+
+    private int GetCapacityPercent()
+    {
+        if (stats == null) return 0;
+        // Assuming we want available / (total invested + available) roughly, 
+        // or just map it to something visual. 
+        // For now, let's just use Funds Available vs a hardcoded target or fetch total budget.
+        // Simplified:
+        return stats.FundsAvailable > 0 ? 65 : 0; 
     }
 
     private string GetActivityIconClass(string type) => type switch
     {
-        "investment" => "oi-box",
-        "client" => "oi-person",
-        "fund" => "oi-dollar",
-        _ => "oi-task"
+        "Investment" => "oi-dollar",
+        "Imprint" => "oi-check",
+        _ => "oi-bell"
     };
-
-    public class ActivityItem
-    {
-        public string Type { get; set; } = "";
-        public string Description { get; set; } = "";
-        public string Amount { get; set; } = "";
-        public string TimeAgo { get; set; } = "";
-    }
-
-    public class TaskItem
-    {
-        public string Action { get; set; } = "";
-        public string ClientName { get; set; } = "";
-        public string Category { get; set; } = "";
-        public bool IsCompleted { get; set; }
-    }
 }

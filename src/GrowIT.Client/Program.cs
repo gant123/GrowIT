@@ -5,7 +5,20 @@ using Blazored.LocalStorage;
 using Microsoft.AspNetCore.Components.Authorization;
 using GrowIT.Client.Auth;
 using Syncfusion.Blazor;
+using Syncfusion.Licensing;
+
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
+var config = builder.Configuration;
+var syncfusionKey = config["SyncfusionLicense"];
+
+if (!string.IsNullOrEmpty(syncfusionKey))
+{
+    SyncfusionLicenseProvider.RegisterLicense(syncfusionKey);
+}
+else
+{
+    Console.WriteLine("WARNING: Syncfusion License Key not found in appsettings.json");
+}
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 

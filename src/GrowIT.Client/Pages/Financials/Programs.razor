@@ -1,0 +1,97 @@
+@page "/programs"
+@using GrowIT.Shared.DTOs
+@using GrowIT.Client.Shared
+@inject HttpClient Http
+
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 fw-bold" style="color: var(--growit-heading-color)">Programs & Services</h1>
+            <p class="small mb-0 opacity-75" style="color: var(--growit-text-secondary)">Define the types of assistance you offer.</p>
+        </div>
+        <button class="btn btn-primary shadow-sm" @onclick="() => showCreateModal = true">
+            <span class="oi oi-plus me-2"></span>Add Program
+        </button>
+    </div>
+
+    @if (programs == null)
+    {
+        <div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>
+    }
+    else if (!programs.Any())
+    {
+        <div class="kpi-card text-center py-5">
+            <span class="oi oi-list fs-1 opacity-25 mb-3 d-block"></span>
+            <h5 class="fw-bold">No Programs Defined</h5>
+            <p class="small opacity-75 mb-4">Create services like "Utility Assistance" or "Food Pantry" to track your impact.</p>
+            <button class="btn btn-outline-primary" @onclick="() => showCreateModal = true">Create First Program</button>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var p in programs)
+            {
+                <div class="col-md-4 mb-4">
+                    <div class="kpi-card h-100 border-start border-4 border-primary p-4">
+                        <h5 class="fw-bold text-primary mb-2">@p.Name</h5>
+                        <p class="opacity-75 small mb-0">@p.Description</p>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@if (showCreateModal)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
+                <div class="modal-header border-bottom" style="border-color: var(--growit-border);">
+                    <h5 class="modal-title fw-bold">New Program</h5>
+                    <button class="btn btn-link" style="color: var(--growit-text-muted)" @onclick="() => showCreateModal = false"><span class="oi oi-x"></span></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold opacity-75">Program Name</label>
+                        <input @bind="newProgram.Name" class="form-control" style="@InputStyle" placeholder="e.g. Utility Assistance" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold opacity-75">Description</label>
+                        <textarea @bind="newProgram.Description" class="form-control" rows="3" style="@InputStyle" placeholder="What does this service provide?"></textarea>
+                    </div>
+                    <button class="btn btn-primary w-100 fw-bold" @onclick="CreateProgram">Save Program</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<ProgramDto>? programs;
+    private bool showCreateModal = false;
+    private CreateProgramRequest newProgram = new();
+    private string InputStyle => "background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border-color: var(--growit-border);";
+
+    protected override async Task OnInitializedAsync() => await LoadPrograms();
+
+    private async Task LoadPrograms()
+    {
+        try { programs = await Http.GetFromJsonAsync<List<ProgramDto>>("api/financials/programs"); }
+        catch { /* Handle error */ }
+    }
+
+    private async Task CreateProgram()
+    {
+        var response = await Http.PostAsJsonAsync("api/financials/programs", newProgram);
+        if (response.IsSuccessStatusCode)
+        {
+            showCreateModal = false;
+            newProgram = new();
+            await LoadPrograms();
+        }
+    }
+
+    public class ProgramDto { public Guid Id { get; set; } public string Name { get; set; } = ""; public string Description { get; set; } = ""; }
+}

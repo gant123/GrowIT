@@ -1,0 +1,204 @@
+@using GrowIT.Shared.DTOs
+@inject HttpClient Http
+@inject NavigationManager NavManager
+
+@if (Show)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            
+            <div class="modal-content border-0 shadow-lg" 
+                 style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
+                
+                <div class="modal-header border-bottom" style="border-color: var(--growit-border);">
+                    <div>
+                        <h5 class="modal-title fw-bold mb-1">
+                            <span class="oi oi-briefcase text-success me-2"></span>New Investment
+                        </h5>
+                        <p class="mb-0 small text-uppercase fw-bold opacity-75">Action: Plant a Seed</p>
+                    </div>
+                    <button type="button" class="btn btn-link text-decoration-none" style="color: var(--growit-text-muted);" @onclick="Close">
+                        <span class="oi oi-x fs-5"></span>
+                    </button>
+                </div>
+
+                <div class="modal-body p-4">
+                    
+                    @if (isLoading)
+                    {
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-success" role="status"></div>
+                            <p class="mt-2 opacity-75 small">Checking fertile ground...</p>
+                        </div>
+                    }
+                    else if (!clients.Any())
+                    {
+                        <div class="alert border-0 d-flex align-items-center" style="background-color: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                            <span class="oi oi-warning fs-4 me-3"></span>
+                            <div>
+                                <strong>No Clients Found.</strong>
+                                <p class="mb-0 small opacity-75">You cannot plant a seed without a beneficiary.</p>
+                                <a href="clients/create" class="btn btn-sm btn-warning mt-2 text-dark fw-bold" @onclick="Close">Create Client</a>
+                            </div>
+                        </div>
+                    }
+                    else if (!funds.Any())
+                    {
+                        <div class="alert border-0 d-flex align-items-center" style="background-color: rgba(239, 68, 68, 0.15); color: #ef4444;">
+                            <span class="oi oi-ban fs-4 me-3"></span>
+                            <div>
+                                <strong>No Funds Available.</strong>
+                                <p class="mb-0 small opacity-75">You have no money in the bank (Funds) to draw from.</p>
+                                <a href="funds" class="btn btn-sm btn-danger mt-2 fw-bold" @onclick="Close">Go to Funds</a>
+                            </div>
+                        </div>
+                    }
+                    else if (!programs.Any())
+                    {
+                        <div class="alert border-0 d-flex align-items-center" style="background-color: rgba(59, 130, 246, 0.15); color: #3b82f6;">
+                            <span class="oi oi-list fs-4 me-3"></span>
+                            <div>
+                                <strong>No Programs Defined.</strong>
+                                <p class="mb-0 small opacity-75">You need to define a Program (e.g., "Utility Assistance", "Youth Sports") to categorize this investment.</p>
+                                <a href="programs" class="btn btn-sm btn-primary mt-2 fw-bold" @onclick="Close">Create Program</a>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="alert border-0 d-flex align-items-center mb-4" style="background-color: rgba(39, 176, 98, 0.1); color: var(--growit-green);">
+                            <span class="oi oi-info me-3 fs-5"></span>
+                            <div class="small">
+                                <strong>Impact Record</strong><br/>
+                                This will deduct funds and create a permanent history record for the client.
+                            </div>
+                        </div>
+
+                        <EditForm Model="@request" OnValidSubmit="HandleValidSubmit">
+                            <DataAnnotationsValidator />
+
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <label class="form-label small fw-bold text-uppercase opacity-75">Beneficiary (Client)</label>
+                                    <InputSelect @bind-Value="request.ClientId" class="form-select form-select-lg" style="@InputStyle">
+                                        <option value="">-- Select Client --</option>
+                                        @foreach (var c in clients) { <option value="@c.Id">@c.Name</option> }
+                                    </InputSelect>
+                                    <ValidationMessage For="@(() => request.ClientId)" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold text-uppercase opacity-75">Program / Service</label>
+                                    <InputSelect @bind-Value="request.ProgramId" class="form-select" style="@InputStyle">
+                                        <option value="">-- Select Program --</option>
+                                        @foreach (var p in programs) { <option value="@p.Id">@p.Name</option> }
+                                    </InputSelect>
+                                    <ValidationMessage For="@(() => request.ProgramId)" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold text-uppercase opacity-75">Fund Source</label>
+                                    <InputSelect @bind-Value="request.FundId" class="form-select" style="@InputStyle">
+                                        <option value="">-- Select Fund --</option>
+                                        @foreach (var f in funds) { <option value="@f.Id">@f.Name ($@f.AvailableAmount.ToString("N0"))</option> }
+                                    </InputSelect>
+                                    <ValidationMessage For="@(() => request.FundId)" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold text-uppercase opacity-75">Amount</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text fw-bold text-success" 
+                                              style="background-color: var(--growit-bg-primary); border-color: var(--growit-border);">$</span>
+                                        <InputNumber @bind-Value="request.Amount" class="form-control fw-bold" placeholder="0.00" style="@InputStyle" />
+                                    </div>
+                                    <ValidationMessage For="@(() => request.Amount)" />
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold text-uppercase opacity-75">Payee (Vendor)</label>
+                                    <InputText @bind-Value="request.PayeeName" class="form-control" placeholder="e.g. Entergy" style="@InputStyle" />
+                                    <ValidationMessage For="@(() => request.PayeeName)" />
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label small fw-bold text-uppercase opacity-75">Notes</label>
+                                    <InputTextArea @bind-Value="request.Reason" class="form-control" rows="2" style="@InputStyle" />
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top" style="border-color: var(--growit-border) !important;">
+                                <button type="button" class="btn btn-outline-secondary px-4" @onclick="Close">Cancel</button>
+                                <button type="submit" class="btn btn-success px-4 shadow-sm fw-bold">
+                                    <span class="oi oi-check me-2"></span>Plant Seed
+                                </button>
+                            </div>
+                        </EditForm>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Show { get; set; }
+    [Parameter] public EventCallback<bool> ShowChanged { get; set; }
+    [Parameter] public EventCallback OnSeedPlanted { get; set; }
+
+    private CreateInvestmentRequest request = new();
+    private List<ClientDto> clients = new();
+    private List<FundDto> funds = new();
+    private List<ProgramDto> programs = new(); // NEW
+    private bool isLoading = true;
+
+    // Themed Input Style
+    private string InputStyle => "background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border-color: var(--growit-border);";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Show)
+        {
+            isLoading = true;
+            try 
+            {
+                var clientsTask = Http.GetFromJsonAsync<List<ClientDto>>("api/clients");
+                var fundsTask = Http.GetFromJsonAsync<List<FundDto>>("api/financials/funds");
+                var programsTask = Http.GetFromJsonAsync<List<ProgramDto>>("api/financials/programs");
+
+                await Task.WhenAll(clientsTask, fundsTask, programsTask);
+
+                clients = await clientsTask ?? new();
+                funds = await fundsTask ?? new();
+                programs = await programsTask ?? new();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Data load error: {ex.Message}");
+            }
+            finally
+            {
+                isLoading = false;
+            }
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        var response = await Http.PostAsJsonAsync("api/investments", request);
+        if (response.IsSuccessStatusCode)
+        {
+            await Close();
+            await OnSeedPlanted.InvokeAsync();
+        }
+    }
+
+    private async Task Close()
+    {
+        Show = false;
+        request = new(); 
+        await ShowChanged.InvokeAsync(false);
+    }
+
+    public class ProgramDto { public Guid Id { get; set; } public string Name { get; set; } = ""; }
+}
