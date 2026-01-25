@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
-using GrowIT.Core.Enums;
+using GrowIT.Shared.Enums;
 
-namespace GrowIT.API.DTOs;
+namespace GrowIT.Shared.DTOs;
 
 public class CreateImprintRequest
 {

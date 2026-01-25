@@ -1,4 +1,4 @@
-using GrowIT.Core.Enums;
+using GrowIT.Shared.Enums;
 using GrowIT.Core.Interfaces;
 
 namespace GrowIT.Core.Entities;

@@ -1,4 +1,4 @@
-using GrowIT.Core.Enums;
+using GrowIT.Shared.Enums;
 using GrowIT.Core.Interfaces;
 
 namespace GrowIT.Core.Entities;
@@ -63,7 +63,7 @@ public class AppTask : IMustHaveTenant // Named 'AppTask' to avoid conflict with
     public User? AssignedUser { get; set; }
 
     public DateTime DueDate { get; set; }
-    public Enums.TaskStatus Status { get; set; }
+    public GrowIT.Shared.Enums.TaskStatus Status { get; set; }
     public string Notes { get; set; } = string.Empty;
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

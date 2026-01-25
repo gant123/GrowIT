@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace GrowIT.API.DTOs;
+namespace GrowIT.Shared.DTOs;
 
 public class CreateProgramRequest
 {

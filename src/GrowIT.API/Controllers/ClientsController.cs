@@ -1,9 +1,10 @@
-using GrowIT.API.DTOs;
+
 using GrowIT.Core.Entities;
 using GrowIT.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using GrowIT.Core.Interfaces;
+using GrowIT.Shared.DTOs;
 
 namespace GrowIT.API.Controllers;
 
@@ -23,35 +24,46 @@ public class ClientsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateClient(CreateClientRequest request)
     {
-        // 1. Convert DTO to Entity
+        // 1. Map DTO -> Entity
         var newClient = new Client
         {
-            FirstName = request.FirstName,
-            LastName = request.LastName,
+            // Map "Name" from form to "FirstName" in DB (Standard for Orgs)
+            FirstName = request.Name,
+            LastName = "", 
+            
             Email = request.Email ?? "",
             Phone = request.Phone ?? "",
+            
             HouseholdCount = request.HouseholdCount,
             StabilityScore = request.StabilityScore,
-            LifePhase = request.LifePhase,
-            HouseholdId = request.HouseholdId,
+            LifePhase = request.LifePhase, // Works because we fixed the Enum in DTO
             
-            // Auto-set the Tenant (Security)
             TenantId = _tenantService.TenantId ?? Guid.Empty 
         };
 
-        // 2. Save to Database
         _context.Clients.Add(newClient);
         await _context.SaveChangesAsync();
 
-        // 3. Return the result
         return Ok(new { Message = "Client Created", ClientId = newClient.Id });
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<ActionResult<List<ClientDto>>> GetAll()
     {
-        // This query is AUTOMATICALLY filtered by TenantId due to your Global Filter!
-        var clients = await _context.Clients.ToListAsync();
+        // 2. Map Entity -> DTO (This requires the ClientDto class we just created)
+        var clients = await _context.Clients
+            .Select(c => new ClientDto 
+            {
+                Id = c.Id,
+                // If LastName is empty, just show FirstName (Organization Name)
+                Name = c.FirstName + (string.IsNullOrEmpty(c.LastName) ? "" : " " + c.LastName),
+                Email = c.Email,
+                Phone = c.Phone,
+                StabilityScore = c.StabilityScore,
+                LifePhase = c.LifePhase.ToString()
+            })
+            .ToListAsync();
+            
         return Ok(clients);
     }
 }

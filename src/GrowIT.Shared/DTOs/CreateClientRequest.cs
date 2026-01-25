@@ -1,15 +1,13 @@
 using System.ComponentModel.DataAnnotations;
-using GrowIT.Core.Enums;
+using GrowIT.Shared.Enums;
 
-namespace GrowIT.API.DTOs;
+namespace GrowIT.Shared.DTOs;
 
 public class CreateClientRequest
 {
+   
     [Required]
-    public string FirstName { get; set; } = string.Empty;
-
-    [Required]
-    public string LastName { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
 
     public string? Email { get; set; }
     public string? Phone { get; set; }
@@ -17,8 +15,10 @@ public class CreateClientRequest
     // Intake details
     public int HouseholdCount { get; set; }
     public int StabilityScore { get; set; } // 1-10
+    
+    // STRICT ENUM: This fixes the "operator ??" error
     public LifePhase LifePhase { get; set; } = LifePhase.Crisis;
     
-    // Linking to a family? (Optional for now)
+    // Optional linking
     public Guid? HouseholdId { get; set; }
 }

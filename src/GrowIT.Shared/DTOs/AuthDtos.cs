@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace GrowIT.API.DTOs;
+namespace GrowIT.Shared.DTOs;
 
 public class RegisterRequest
 {
@@ -19,6 +19,7 @@ public class RegisterRequest
 
     [Required]
     public string Password { get; set; } = string.Empty;
+  
 }
 
 public class LoginRequest

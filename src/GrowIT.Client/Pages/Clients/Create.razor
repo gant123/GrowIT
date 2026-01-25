@@ -1,0 +1,102 @@
+@page "/clients/create"
+@using GrowIT.Client.Models
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager NavManager
+
+<div class="container mt-4" style="max-width: 600px;">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="clients" class="text-decoration-none">Clients</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Add New</li>
+        </ol>
+    </nav>
+
+    <div class="card shadow border-0">
+        <div class="card-header bg-white py-3">
+            <h4 class="mb-0 text-success">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-plus-circle me-2" viewBox="0 0 16 16">
+                  <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                  <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/>
+                </svg>
+                New Client
+            </h4>
+        </div>
+        <div class="card-body p-4">
+            
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger">@errorMessage</div>
+            }
+
+            <EditForm Model="@clientModel" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Organization / Name</label>
+                    <InputText @bind-Value="clientModel.Name" class="form-control" placeholder="e.g. Moe Media, LLC" />
+                    <ValidationMessage For="@(() => clientModel.Name)" />
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Email</label>
+                        <InputText @bind-Value="clientModel.Email" class="form-control" placeholder="contact@example.com" />
+                        <ValidationMessage For="@(() => clientModel.Email)" />
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Phone</label>
+                        <InputText @bind-Value="clientModel.Phone" class="form-control" placeholder="(555) 123-4567" />
+                        <ValidationMessage For="@(() => clientModel.Phone)" />
+                    </div>
+                </div>
+
+                <hr class="my-4" />
+
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="clients" class="btn btn-light">Cancel</a>
+                    <button type="submit" class="btn btn-primary px-4">
+                        Save Client
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    // 1. Initialize the empty model
+    private CreateClientModel clientModel = new();
+    private string? errorMessage;
+
+    // 2. Handle the Form Submission
+    private async Task HandleSubmit()
+    {
+        errorMessage = null;
+
+        try
+        {
+            // 3. Send POST request to API
+            // Matches [HttpPost] in ClientsController.cs
+            var response = await Http.PostAsJsonAsync("api/Clients", clientModel);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // 4. Success: Redirect back to the list
+                NavManager.NavigateTo("/clients");
+            }
+            else
+            {
+                // 5. Failure: Read the error from the API
+                var errorContent = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Error saving client: {errorContent}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"System Error: {ex.Message}";
+        }
+    }
+}

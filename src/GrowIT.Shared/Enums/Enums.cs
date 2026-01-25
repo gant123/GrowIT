@@ -1,4 +1,4 @@
-namespace GrowIT.Core.Enums;
+namespace GrowIT.Shared.Enums;
 
 public enum SubscriptionPlanType { Free, Pro, Enterprise }
 public enum SubscriptionStatus { Active, Trialing, PastDue, Canceled }

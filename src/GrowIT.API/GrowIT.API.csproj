@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\GrowIT.Core\GrowIT.Core.csproj" />
     <ProjectReference Include="..\GrowIT.Infrastructure\GrowIT.Infrastructure.csproj" />
+    <ProjectReference Include="..\GrowIT.Shared\GrowIT.Shared.csproj" />
   </ItemGroup>
 
 </Project>

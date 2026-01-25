@@ -1,4 +1,4 @@
-using GrowIT.API.DTOs;
+using GrowIT.Shared.DTOs;
 using GrowIT.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;

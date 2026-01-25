@@ -4,5 +4,6 @@
     <Project Path="src/GrowIT.Client/GrowIT.Client.csproj" />
     <Project Path="src/GrowIT.Core/GrowIT.Core.csproj" />
     <Project Path="src/GrowIT.Infrastructure/GrowIT.Infrastructure.csproj" />
+    <Project Path="src/GrowIT.Shared/GrowIT.Shared.csproj" />
   </Folder>
 </Solution>

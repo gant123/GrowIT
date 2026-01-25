@@ -1,7 +1,7 @@
-using GrowIT.API.DTOs;
+using GrowIT.Shared.DTOs;
 using GrowIT.API.Services;
 using GrowIT.Core.Entities;
-using GrowIT.Core.Enums;
+using GrowIT.Shared.Enums;
 using GrowIT.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
