@@ -39,5 +39,22 @@
     </div>
 
     <script src="_framework/blazor.webassembly.js"></script>
+    <script>
+    window.themeManager = {
+        setTheme: function (theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+        },
+        getTheme: function () {
+            return localStorage.getItem('theme') || 'light';
+        }
+    };
+
+    // Immediate load to prevent flash
+    (function() {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    })();
+</script>
 </body>
 </html>

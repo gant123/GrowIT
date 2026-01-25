@@ -7,29 +7,31 @@
    CSS VARIABLES
    ---------------------------------------- */
 :root {
-    /* Core Dark Theme Colors */
-    --growit-bg-primary: #1a1f2e;
-    --growit-bg-secondary: #141821;
-    --growit-bg-sidebar: #1e2433;
-    --growit-bg-card: #242b3d;
-    --growit-bg-card-hover: #2a3247;
+    /* ------------------------------------
+       DEFAULT (LIGHT MODE) PALETTE
+       ------------------------------------ */
+    --growit-bg-primary: #f3f4f6;       /* Light Gray Background */
+    --growit-bg-secondary: #ffffff;     /* White Topbar */
+    --growit-bg-sidebar: #1a1f2e;       /* Keep Sidebar Dark (Hybrid Theme) */
+    --growit-bg-card: #ffffff;          /* White Cards */
+    --growit-bg-card-hover: #f8f9fa;    /* Light Hover */
     
-    /* Brand Colors */
-    --growit-green: #27b062;     
+    /* Brand Colors (Preserved) */
+    --growit-green: #27b062;            /* YOUR GREEN */
     --growit-green-light: #62d694; 
     --growit-green-dark: #1a8249;  
     --growit-green-glow: rgba(39, 176, 98, 0.2); 
     --growit-blue: #3b82f6;        
     --growit-blue-light: #60a5fa; 
     
-    /* Text Colors */
-    --growit-text-primary: #e8eaed;
-    --growit-text-secondary: #8b92a5;
-    --growit-text-muted: #5a6275;
+    /* Text Colors (Inverted for Light Mode) */
+    --growit-text-primary: #374151;     /* Dark Grey Text */
+    --growit-text-secondary: #6b7280;   /* Muted Grey */
+    --growit-text-muted: #9ca3af;       /* Very Light Grey */
     
-    /* Border & Dividers */
-    --growit-border: #2d3548;
-    --growit-border-light: #3d4558;
+    /* Borders */
+    --growit-border: #e5e7eb;
+    --growit-border-light: #d1d5db;
     
     /* Status Colors */
     --growit-success: #22c55e;
@@ -38,6 +40,23 @@
     --growit-info: #3b82f6;
 }
 
+[data-theme="dark"] {
+    /* ------------------------------------
+       DARK MODE PALETTE (Your Original Colors)
+       ------------------------------------ */
+    --growit-bg-primary: #1a1f2e;
+    --growit-bg-secondary: #141821;
+    --growit-bg-sidebar: #1e2433;
+    --growit-bg-card: #242b3d;
+    --growit-bg-card-hover: #2a3247;
+    
+    --growit-text-primary: #e8eaed;
+    --growit-text-secondary: #8b92a5;
+    --growit-text-muted: #5a6275;
+    
+    --growit-border: #2d3548;
+    --growit-border-light: #3d4558;
+}
 /* ----------------------------------------
    GLOBAL RESETS & BASE
    ---------------------------------------- */

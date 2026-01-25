@@ -3,11 +3,20 @@
 @using GrowIT.Client.Auth
 @inject AuthenticationStateProvider AuthStateProvider
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inject IJSRuntime JSRuntime
 
 <div class="growit-app">
     <aside class="growit-sidebar">
         <div class="sidebar-brand">
-            <img src="images/growITLogo-Dark3.png" alt="GrowIT" class="brand-logo" />
+           
+                   @if (isDarkMode)
+                {
+                    <img src="images/logo-dark.png" alt="GrowIT" class="brand-logo" />
+                }
+                else
+                {
+                     <img src="images/logo-light.png" alt="GrowIT" class="brand-logo" />
+                }
         </div>
         <nav class="sidebar-nav">
             <NavMenu />
@@ -28,6 +37,16 @@
                 </div>
             </div>
             <div class="topbar-right">
+                <button class="btn btn-link text-decoration-none me-4" @onclick="ToggleTheme">
+                @if (isDarkMode)
+                {
+                    <span class="oi oi-sun text-warning fs-5" title="Switch to Light Mode"></span>
+                }
+                else
+                {
+                    <span class="oi oi-moon text-secondary fs-5" title="Switch to Dark Mode"></span>
+                }
+            </button>
                 <AuthorizeView>
                     <Authorized>
                         <button class="btn-plant-seed">
@@ -55,6 +74,19 @@
 </div>
 
 @code {
+    private bool isDarkMode = false;
+    protected override async Task OnInitializedAsync()
+    {
+        // Load preference from JS when app starts
+        var currentTheme = await JSRuntime.InvokeAsync<string>("themeManager.getTheme");
+        isDarkMode = currentTheme == "dark";
+    }
+    private async Task ToggleTheme()
+    {
+        isDarkMode = !isDarkMode;
+        var newTheme = isDarkMode ? "dark" : "light";
+        await JSRuntime.InvokeVoidAsync("themeManager.setTheme", newTheme);
+    }
     private string GetInitials(string? name)
     {
         if (string.IsNullOrEmpty(name)) return "?";
