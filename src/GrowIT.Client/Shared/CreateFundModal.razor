@@ -1,64 +1,102 @@
 @using GrowIT.Shared.DTOs
+@using System.Text.Json
 @inject HttpClient Http
 
 @if (Show)
 {
-    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);" tabindex="-1">
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 1050;" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             
             <div class="modal-content border-0 shadow-lg" 
                  style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
                 
-                <div class="modal-header border-bottom" style="border-color: var(--growit-border);">
+                <div class="modal-header" style="border-bottom: 1px solid var(--growit-border);">
                     <div>
-                        <h5 class="modal-title fw-bold mb-1">
-                            <span class="oi oi-dollar text-success me-2"></span>Initialize New Fund
+                        <h5 class="modal-title fw-bold mb-1" style="color: var(--growit-text-primary);">
+                            <span class="oi @(IsEditMode ? "oi-pencil" : "oi-dollar") me-2" 
+                                  style="color: @(IsEditMode ? "var(--growit-warning)" : "var(--growit-green)");"></span>
+                            @(IsEditMode ? "Adjust Fund Budget" : "Initialize New Fund")
                         </h5>
-                        <p class="mb-0 small text-uppercase fw-bold opacity-75">Financial Source Configuration</p>
+                        <p class="mb-0 small text-uppercase fw-bold" style="color: var(--growit-text-secondary);">
+                            @(IsEditMode ? "Change Management" : "Financial Source Configuration")
+                        </p>
                     </div>
-                    <button type="button" class="btn btn-link text-decoration-none" style="color: var(--growit-text-muted);" @onclick="Close">
+                    <button type="button" class="btn btn-link text-decoration-none" 
+                            style="color: var(--growit-text-muted);" 
+                            @onclick="Close">
                         <span class="oi oi-x fs-5"></span>
                     </button>
                 </div>
 
                 <div class="modal-body p-4">
-                    <div class="alert border-0 d-flex align-items-center mb-4" role="alert" 
-                         style="background-color: rgba(62, 162, 240, 0.15); color: #3b82f6;">
-                        <span class="oi oi-info me-3 fs-5"></span>
-                        <div class="small">
-                            <strong>Fund Definition</strong><br/>
-                            A "Fund" is a bucket of money available to spend (e.g., "Grant 2026").
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger d-flex align-items-center mb-3 border-0" role="alert" style="background-color: rgba(220, 53, 69, 0.1); color: #dc3545;">
+                            <span class="oi oi-warning me-2 fs-5"></span>
+                            <div class="small fw-bold">@errorMessage</div>
                         </div>
-                    </div>
+                    }
 
                     <EditForm Model="@request" OnValidSubmit="HandleValidSubmit">
                         <DataAnnotationsValidator />
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-uppercase opacity-75">Fund Name</label>
-                            <InputText @bind-Value="request.Name" class="form-control form-control-lg" 
+                            <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Fund Name</label>
+                            <InputText @bind-Value="request.Name" 
+                                       class="form-control form-control-lg" 
                                        placeholder="e.g. General Benevolence 2026" 
-                                       style="background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border-color: var(--growit-border);" />
+                                       style="@ThemeInputStyle" />
                             <ValidationMessage For="@(() => request.Name)" />
                         </div>
 
                         <div class="mb-4">
-                            <label class="form-label small fw-bold text-uppercase opacity-75">Total Budget</label>
+                            <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Total Budget</label>
                             <div class="input-group input-group-lg">
-                                <span class="input-group-text fw-bold text-success" 
-                                      style="background-color: var(--growit-bg-primary); border-color: var(--growit-border);">$</span>
-                                <InputNumber @bind-Value="request.TotalAmount" class="form-control fw-bold" 
+                                <span class="input-group-text fw-bold" 
+                                      style="background-color: var(--growit-bg-primary); border-color: var(--growit-border); color: var(--growit-green);">$</span>
+                                <InputNumber @bind-Value="request.TotalAmount" 
+                                             class="form-control fw-bold" 
                                              placeholder="0.00" 
-                                             style="background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border-color: var(--growit-border);" />
+                                             style="@ThemeInputStyle" />
                             </div>
-                            <div class="form-text small opacity-50">Maximum amount distributable from this source.</div>
+                            @if (IsEditMode && FundToEdit != null)
+                            {
+                                <div class="mt-2 small d-flex align-items-center" style="color: var(--growit-text-secondary);">
+                                    <span class="oi oi-info me-2 text-warning"></span>
+                                    <span>Current Usage: <strong>@((FundToEdit.TotalAmount - FundToEdit.AvailableAmount).ToString("C0"))</strong>. New budget cannot be lower than this.</span>
+                                </div>
+                            }
                             <ValidationMessage For="@(() => request.TotalAmount)" />
                         </div>
 
-                        <div class="d-flex justify-content-end gap-2 pt-3 border-top" style="border-color: var(--growit-border) !important;">
-                            <button type="button" class="btn btn-outline-secondary px-4" @onclick="Close">Cancel</button>
-                            <button type="submit" class="btn btn-success px-4 shadow-sm fw-bold">
-                                <span class="oi oi-plus me-2"></span>Create Fund
+                        @if (IsEditMode)
+                        {
+                            <div class="mb-4 p-3 rounded border border-warning bg-opacity-10" style="background-color: rgba(245, 158, 11, 0.1);">
+                                <label class="form-label small fw-bold text-uppercase text-warning">
+                                    <span class="oi oi-warning me-1"></span> Reason for Adjustment (Required)
+                                </label>
+                                <InputTextArea @bind-Value="changeReason" 
+                                             class="form-control" 
+                                             rows="2"
+                                             placeholder="Why are you changing this budget? (e.g. Donor reduced grant funding)" 
+                                             style="@ThemeInputStyle" />
+                                <div class="form-text small text-warning opacity-75">This explanation will be permanently recorded in the audit log.</div>
+                                @if (showReasonError) 
+                                {
+                                    <div class="text-danger small mt-1">An explanation is required to audit this change.</div>
+                                }
+                            </div>
+                        }
+
+                        <div class="d-flex justify-content-end gap-2 pt-3" style="border-top: 1px solid var(--growit-border);">
+                            <button type="button" class="btn btn-outline-secondary px-4" 
+                                    style="color: var(--growit-text-primary); border-color: var(--growit-border);" 
+                                    @onclick="Close">Cancel</button>
+                            
+                            <button type="submit" class="btn px-4 shadow-sm fw-bold text-white" 
+                                    style="background-color: @(IsEditMode ? "var(--growit-warning)" : "var(--growit-green)"); border: none;">
+                                <span class="oi @(IsEditMode ? "oi-pencil" : "oi-plus") me-2"></span>
+                                @(IsEditMode ? "Confirm Change" : "Create Fund")
                             </button>
                         </div>
                     </EditForm>
@@ -72,23 +110,109 @@
     [Parameter] public bool Show { get; set; }
     [Parameter] public EventCallback<bool> ShowChanged { get; set; }
     [Parameter] public EventCallback OnFundCreated { get; set; }
+    [Parameter] public FundDto? FundToEdit { get; set; }
 
     private CreateFundRequest request = new();
+    private string changeReason = "";
+    private bool showReasonError = false;
+    private string errorMessage = ""; // Holds the error message from the API
+    private bool IsEditMode => FundToEdit != null;
 
-    private async Task HandleValidSubmit()
+    private string ThemeInputStyle => "background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border: 1px solid var(--growit-border);";
+
+    protected override void OnParametersSet()
     {
-        var response = await Http.PostAsJsonAsync("api/financials/funds", request);
+        if (Show && FundToEdit != null)
+        {
+            request.Name = FundToEdit.Name;
+            request.TotalAmount = FundToEdit.TotalAmount;
+            changeReason = "";
+            showReasonError = false;
+            errorMessage = ""; // Clear errors when opening
+        }
+    }
+
+ private async Task HandleValidSubmit()
+    {
+        errorMessage = ""; // Clear previous errors
+        HttpResponseMessage response;
+
+        if (IsEditMode && FundToEdit != null)
+        {
+            if (string.IsNullOrWhiteSpace(changeReason) || changeReason.Length < 5)
+            {
+                showReasonError = true;
+                return;
+            }
+
+            var updateReq = new UpdateFundRequest 
+            { 
+                Name = request.Name, 
+                TotalAmount = request.TotalAmount,
+                ChangeReason = changeReason 
+            };
+            
+            response = await Http.PutAsJsonAsync($"api/financials/funds/{FundToEdit.Id}", updateReq);
+        }
+        else
+        {
+            response = await Http.PostAsJsonAsync("api/financials/funds", request);
+        }
+
         if (response.IsSuccessStatusCode)
         {
             await Close();
             await OnFundCreated.InvokeAsync();
         }
+        else
+        {
+            // *** THE FIX: PARSE THE JSON ERROR ***
+            var rawError = await response.Content.ReadAsStringAsync();
+            try 
+            {
+                // Parse the "Problem Details" JSON
+                using var doc = JsonDocument.Parse(rawError);
+                var root = doc.RootElement;
+                
+                // 1. Check for Validation Errors (e.g. "TotalAmount": ["Must be positive"])
+                if (root.TryGetProperty("errors", out var errors))
+                {
+                    var messages = new List<string>();
+                    foreach (var prop in errors.EnumerateObject())
+                    {
+                        // Extract each error message from the array
+                        foreach (var msg in prop.Value.EnumerateArray())
+                        {
+                            messages.Add(msg.GetString() ?? "");
+                        }
+                    }
+                    errorMessage = string.Join("\n", messages);
+                }
+                // 2. Check for Simple "Detail" (e.g. "Cannot reduce budget...")
+                else if (root.TryGetProperty("detail", out var detail))
+                {
+                    errorMessage = detail.GetString() ?? "An error occurred.";
+                }
+                // 3. Fallback
+                else
+                {
+                    errorMessage = "An unexpected error occurred.";
+                }
+            }
+            catch
+            {
+                // If it's not JSON (e.g. server crash HTML), just show the raw text
+                errorMessage = rawError.Length > 100 ? "Server Error (Check logs)" : rawError;
+            }
+        }
     }
-
     private async Task Close()
     {
         Show = false;
         request = new(); 
+        changeReason = "";
+        errorMessage = "";
+        FundToEdit = null; 
         await ShowChanged.InvokeAsync(false);
     }
 }

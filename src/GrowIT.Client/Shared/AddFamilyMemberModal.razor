@@ -1,0 +1,112 @@
+@using GrowIT.Shared.DTOs
+@inject HttpClient Http
+
+@if (Show)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" 
+                 style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
+                
+                <div class="modal-header border-bottom" style="border-color: var(--growit-border);">
+                    <h5 class="modal-title fw-bold">
+                        <span class="oi oi-people me-2 text-primary"></span>Add Family Member
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="Close"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <EditForm Model="@request" OnValidSubmit="HandleSubmit">
+                        <DataAnnotationsValidator />
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">First Name</label>
+                                <InputText @bind-Value="request.FirstName" class="form-control" placeholder="e.g. Sarah" style="@ThemeInputStyle" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">Last Name</label>
+                                <InputText @bind-Value="request.LastName" class="form-control" style="@ThemeInputStyle" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">Relationship</label>
+                                <InputSelect @bind-Value="request.Relationship" class="form-select" style="@ThemeInputStyle">
+                                    <option value="Child">Child</option>
+                                    <option value="Spouse">Spouse</option>
+                                    <option value="Parent">Parent</option>
+                                    <option value="Sibling">Sibling</option>
+                                    <option value="Other">Other</option>
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">Date of Birth</label>
+                                <InputDate @bind-Value="request.DateOfBirth" class="form-control" style="@ThemeInputStyle" />
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label small fw-bold text-muted">School or Employer</label>
+                                <InputText @bind-Value="request.SchoolOrEmployer" class="form-control" 
+                                           placeholder="e.g. Little Cypress Elementary" style="@ThemeInputStyle" />
+                            </div>
+
+                            <div class="col-12">
+                                <label class="form-label small fw-bold text-muted">Profile Notes</label>
+                                <InputTextArea @bind-Value="request.Notes" class="form-control" rows="2" 
+                                               placeholder="e.g. Needs size 4 shoes, loves dinosaurs, has reading tutor." 
+                                               style="@ThemeInputStyle" />
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top" style="border-color: var(--growit-border);">
+                            <button type="button" class="btn btn-outline-secondary" @onclick="Close">Cancel</button>
+                            <button type="submit" class="btn btn-primary fw-bold px-4">
+                                <span class="oi oi-plus me-2"></span>Add Member
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Show { get; set; }
+    [Parameter] public EventCallback<bool> ShowChanged { get; set; }
+    [Parameter] public Guid ClientId { get; set; } // The Head of Household
+    [Parameter] public string DefaultLastName { get; set; } = ""; // Auto-fill helper
+    [Parameter] public EventCallback OnMemberAdded { get; set; }
+
+    private CreateFamilyMemberRequest request = new();
+    private string ThemeInputStyle => "background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border: 1px solid var(--growit-border);";
+
+    protected override void OnParametersSet()
+    {
+        if (Show && string.IsNullOrEmpty(request.LastName))
+        {
+            // Auto-populate Last Name from Parent to save typing
+            request.LastName = DefaultLastName;
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        var response = await Http.PostAsJsonAsync($"api/clients/{ClientId}/members", request);
+        if (response.IsSuccessStatusCode)
+        {
+            // Reset for next child
+            var oldLast = request.LastName; // Keep last name for next entry
+            request = new CreateFamilyMemberRequest { LastName = oldLast }; 
+            
+            await Close();
+            await OnMemberAdded.InvokeAsync();
+        }
+    }
+
+    private async Task Close()
+    {
+        Show = false;
+        await ShowChanged.InvokeAsync(false);
+    }
+}

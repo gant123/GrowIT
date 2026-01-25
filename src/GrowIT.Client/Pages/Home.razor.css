@@ -22,7 +22,7 @@
 }
 
 .kpi-card {
-    background: var(--growit-card);
+    background: var(--growit-bg-card);
     border: 1px solid var(--growit-border);
     border-radius: 12px;
     padding: 20px 24px;
@@ -166,7 +166,7 @@
    CHART SECTION
    ======================================== */
 .chart-section {
-    background: var(--growit-card);
+    background: var(--growit-bg-card);
     border: 1px solid var(--growit-border);
     border-radius: 12px;
     padding: 24px;
@@ -274,7 +274,7 @@
 
 .activity-section,
 .tasks-section {
-    background: var(--growit-card);
+    background: var(--growit-bg-card);
     border: 1px solid var(--growit-border);
     border-radius: 12px;
     padding: 20px 24px;
@@ -298,7 +298,7 @@
 }
 
 .activity-item:hover {
-    background: var(--growit-card-hover);
+    background: var(--growit-bg-card-hover);
 }
 
 .activity-icon {
@@ -366,7 +366,7 @@
 }
 
 .task-item:hover {
-    background: var(--growit-card-hover);
+    background: var(--growit-bg-card-hover);
 }
 
 .task-checkbox {

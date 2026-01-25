@@ -26,7 +26,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Subscription> Subscriptions { get; set; }
     public DbSet<Invoice> Invoices { get; set; }
     public DbSet<Payment> Payments { get; set; }
-
+    public DbSet<FamilyMember> FamilyMembers { get; set; }
     // Domain: Security & Users
     public DbSet<User> Users { get; set; }
     public DbSet<Role> Roles { get; set; }

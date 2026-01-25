@@ -23,7 +23,7 @@
 }
 
 .nav-link:hover {
-    background: var(--growit-card);
+    background: var(--growit-bg-card);
     color: var(--growit-text);
 }
 

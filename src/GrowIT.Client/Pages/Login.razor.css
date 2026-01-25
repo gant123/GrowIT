@@ -30,7 +30,7 @@
 }
 
 .login-card {
-    background: var(--growit-card);
+    background: var(--growit-bg-card);
     border: 1px solid var(--growit-border);
     border-radius: 20px;
     padding: 40px;

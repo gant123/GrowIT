@@ -23,7 +23,7 @@ public class Fund : IMustHaveTenant
 
 public class Investment : IMustHaveTenant
 {
-public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid Id { get; set; } = Guid.NewGuid();
     public Guid TenantId { get; set; }
     
     public Guid ClientId { get; set; }
@@ -43,6 +43,8 @@ public Guid Id { get; set; } = Guid.NewGuid();
     
     public Guid CreatedBy { get; set; } 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public Guid? FamilyMemberId { get; set; } // Nullable because some things (like Rent) are for the whole family
+    public FamilyMember? FamilyMember { get; set; }
 }
 
 public class Imprint : IMustHaveTenant

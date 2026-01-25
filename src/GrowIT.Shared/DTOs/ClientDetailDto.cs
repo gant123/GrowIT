@@ -23,6 +23,19 @@ public class ClientDetailDto
 
     // --- The Unified Timeline ---
     public List<TimelineItemDto> Timeline { get; set; } = new();
+
+    // *** NEW: The Family List ***
+    public List<FamilyMemberDto> HouseholdMembers { get; set; } = new();
+}
+
+// *** NEW: Helper Class for the Kids ***
+public class FamilyMemberDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Relationship { get; set; } = string.Empty;
+    public int Age { get; set; }
+    public string School { get; set; } = string.Empty;
 }
 
 public class TimelineItemDto

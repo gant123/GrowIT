@@ -3,6 +3,7 @@ using System;
 using GrowIT.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GrowIT.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260125222043_AddFamilyMembers")]
+    partial class AddFamilyMembers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -360,9 +363,6 @@ namespace GrowIT.Infrastructure.Migrations
                     b.Property<Guid>("CreatedBy")
                         .HasColumnType("uuid");
 
-                    b.Property<Guid?>("FamilyMemberId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid>("FundId")
                         .HasColumnType("uuid");
 
@@ -386,8 +386,6 @@ namespace GrowIT.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ClientId");
-
-                    b.HasIndex("FamilyMemberId");
 
                     b.HasIndex("FundId");
 
@@ -751,10 +749,6 @@ namespace GrowIT.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("GrowIT.Core.Entities.FamilyMember", "FamilyMember")
-                        .WithMany()
-                        .HasForeignKey("FamilyMemberId");
-
                     b.HasOne("GrowIT.Core.Entities.Fund", "Fund")
                         .WithMany()
                         .HasForeignKey("FundId")
@@ -768,8 +762,6 @@ namespace GrowIT.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Client");
-
-                    b.Navigation("FamilyMember");
 
                     b.Navigation("Fund");
 

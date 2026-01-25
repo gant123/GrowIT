@@ -74,4 +74,6 @@ public class HouseholdsController : ControllerBase
         await _context.SaveChangesAsync();
         return Ok(new { Message = $"Added {client.FirstName} to the household." });
     }
+
+    
 }

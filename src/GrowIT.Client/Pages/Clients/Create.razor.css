@@ -41,7 +41,7 @@
 
 /* Form Card */
 .form-card {
-    background: var(--growit-card);
+    background: var(--growit-bg-card);
     border: 1px solid var(--growit-border);
     border-radius: 16px;
     padding: 32px;
@@ -261,7 +261,7 @@
 }
 
 .btn-secondary:hover {
-    background: var(--growit-card-hover);
+    background: var(--growit-bg-card-hover);
 }
 
 .spinner-small {

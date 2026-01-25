@@ -6,6 +6,8 @@ using GrowIT.Core.Interfaces;
 using GrowIT.Core.Entities; 
 
 using CoreProgram = GrowIT.Core.Entities.Program;
+using GrowIT.API.Services;
+using GrowIT.API.Validators;
 
 namespace GrowIT.API.Controllers;
 
@@ -15,11 +17,13 @@ public class FinancialsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentUserService _currentUserService;
 
-    public FinancialsController(ApplicationDbContext context, ICurrentTenantService tenantService)
+    public FinancialsController(ApplicationDbContext context, ICurrentTenantService tenantService, ICurrentUserService currentUserService)
     {
         _context = context;
         _tenantService = tenantService;
+        _currentUserService = currentUserService;
     }
 
     // ==========================================
@@ -84,5 +88,51 @@ public class FinancialsController : ControllerBase
     public async Task<IActionResult> GetPrograms()
     {
         return Ok(await _context.Programs.ToListAsync());
+    }
+
+    [HttpPut("funds/{id}")]
+    public async Task<IActionResult> UpdateFund(Guid id, UpdateFundRequest request)
+    {
+        // 1. VALIDATION (The Enterprise Way)
+        // We run the validator manually here to inject the 'id' and 'context'
+        var validator = new UpdateFundRequestValidator(_context, id);
+        var validationResult = await validator.ValidateAsync(request);
+
+        if (!validationResult.IsValid)
+            return BadRequest(validationResult.Errors.Select(e => e.ErrorMessage));
+
+        var fund = await _context.Funds.FirstOrDefaultAsync(f => f.Id == id);
+        if (fund == null) return NotFound("Fund not found.");
+
+        // 2. PREPARE DATA (Capture old state for Audit)
+        var oldName = fund.Name;
+        var oldTotal = fund.TotalAmount;
+        var oldAvailable = fund.AvailableAmount;
+
+        // 3. APPLY UPDATE (Logic is now safe because Validator passed)
+        var realUsage = await _context.Investments.Where(i => i.FundId == id).SumAsync(i => i.Amount);
+        
+        fund.Name = request.Name;
+        fund.TotalAmount = request.TotalAmount;
+        fund.AvailableAmount = request.TotalAmount - realUsage; 
+
+        // 4. MANUAL AUDIT (Reason)
+        var audit = new AuditLog
+        {
+            Id = Guid.NewGuid(),
+            UserId = (Guid)_currentUserService.UserId,  
+            TenantId = fund.TenantId,   
+            ActionType = "Budget Adjustment",
+            TableName = "Funds",
+            RecordId = fund.Id,
+            PreviousData = System.Text.Json.JsonSerializer.Serialize(new { Total = oldTotal, Available = oldAvailable, Name = oldName }),
+            NewData = System.Text.Json.JsonSerializer.Serialize(new { Total = request.TotalAmount, Available = fund.AvailableAmount, Reason = request.ChangeReason }),
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.AuditLogs.Add(audit);
+        await _context.SaveChangesAsync();
+
+        return Ok(fund);
     }
 }

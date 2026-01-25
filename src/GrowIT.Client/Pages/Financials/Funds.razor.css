@@ -63,13 +63,13 @@
 }
 
 .btn-secondary {
-    background: var(--growit-card);
+    background: var(--growit-bg-card);
     color: var(--growit-text);
     border: 1px solid var(--growit-border);
 }
 
 .btn-secondary:hover {
-    background: var(--growit-card-hover);
+    background: var(--growit-bg-card-hover);
     border-color: var(--growit-text-muted);
 }
 
@@ -81,7 +81,7 @@
 }
 
 .summary-card {
-    background: var(--growit-card);
+    background: var(--growit-bg-card);
     border: 1px solid var(--growit-border);
     border-radius: 12px;
     padding: 20px;
@@ -146,7 +146,7 @@
 
 /* Data Section */
 .data-section {
-    background: var(--growit-card);
+    background: var(--growit-bg-card);
     border: 1px solid var(--growit-border);
     border-radius: 12px;
     overflow: hidden;
@@ -197,7 +197,7 @@
 }
 
 .data-table tbody tr:hover {
-    background: var(--growit-card-hover);
+    background: var(--growit-bg-card-hover);
 }
 
 .data-table .align-right {
@@ -309,7 +309,7 @@
 }
 
 .modal-content {
-    background: var(--growit-card);
+    background: var(--growit-bg-card);
     border: 1px solid var(--growit-border);
     border-radius: 16px;
     width: 100%;

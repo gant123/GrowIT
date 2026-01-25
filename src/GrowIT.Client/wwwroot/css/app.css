@@ -15,7 +15,7 @@
     --growit-bg-sidebar: #1a1f2e;       /* Keep Sidebar Dark (Hybrid Theme) */
     --growit-bg-card: #ffffff;          /* White Cards */
     --growit-bg-card-hover: #f8f9fa;    /* Light Hover */
-    
+    --growit-darker: #e5e7ebd5;        /* Slightly Darker Background */
     /* Brand Colors (Preserved) */
     --growit-green: #27b062;            /* YOUR GREEN */
     --growit-green-light: #62d694; 
@@ -49,7 +49,7 @@
     --growit-bg-sidebar: #1e2433;
     --growit-bg-card: #242b3d;
     --growit-bg-card-hover: #2a3247;
-    
+    --growit-darker: #e5e7eb13;  
     --growit-text-primary: #e8eaed;
     --growit-text-secondary: #8b92a5;
     --growit-text-muted: #5a6275;
@@ -99,7 +99,7 @@ html, body {
 }
 
 .sidebar-brand {
-    padding: 16px 20px;
+    padding: 7px 20px;
     border-bottom: 1px solid var(--growit-border);
 }
 
@@ -112,6 +112,7 @@ html, body {
     flex: 1;
     overflow-y: auto;
     padding: 8px 0;
+    background: var(--growit-bg-sidebar);
 }
 
 /* Navigation Menu */

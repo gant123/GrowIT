@@ -47,7 +47,7 @@ html, body {
 .growit-sidebar {
     width: 220px;
     min-width: 220px;
-    background: var(--growit-sidebar);
+    background: var(--growit-bg-secondary);
     border-right: 1px solid var(--growit-border);
     display: flex;
     flex-direction: column;
@@ -91,7 +91,7 @@ html, body {
    ======================================== */
 .growit-topbar {
     height: 56px;
-    background: var(--growit-darker);
+    background: var(--growit-bg-secondary);
     border-bottom: 1px solid var(--growit-border);
     display: flex;
     align-items: center;
@@ -112,7 +112,7 @@ html, body {
     display: flex;
     align-items: center;
     gap: 8px;
-    background: var(--growit-card);
+    background: var(--growit-bg-card);
     border: 1px solid var(--growit-border);
     border-radius: 8px;
     padding: 8px 12px;
@@ -121,7 +121,7 @@ html, body {
 }
 
 .fiscal-selector:hover {
-    background: var(--growit-card-hover);
+    background: var(--growit-bg-card-hover);
     border-color: var(--growit-green);
 }
 
@@ -143,7 +143,7 @@ html, body {
 .search-container {
     display: flex;
     align-items: center;
-    background: var(--growit-card);
+    background: var(--growit-bg-card);
     border: 1px solid var(--growit-border);
     border-radius: 8px;
     padding: 0 12px;
@@ -227,7 +227,7 @@ html, body {
 }
 
 .logout-btn {
-    background: var(--growit-card);
+    background: var(--growit-bg-card);
     border: 1px solid var(--growit-border);
     border-radius: 6px;
     width: 32px;

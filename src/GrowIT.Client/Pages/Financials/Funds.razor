@@ -6,10 +6,10 @@
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="h3 mb-0 fw-bold">Financial Funds</h1>
-            <p class="small mb-0 opacity-75">Manage budget sources and track utilization.</p>
+            <h1 class="h3 mb-0 fw-bold" style="color: var(--growit-heading-color)">Financial Funds</h1>
+            <p class="small mb-0 opacity-75" style="color: var(--growit-text-secondary)">Manage budget sources and track utilization.</p>
         </div>
-        <button class="btn btn-success shadow-sm" @onclick="() => showCreateModal = true">
+        <button class="btn shadow-sm text-white fw-bold" style="background-color: var(--growit-success);" @onclick="CreateNew">
             <span class="oi oi-plus me-2"></span>Create New Fund
         </button>
     </div>
@@ -23,11 +23,11 @@
     }
     else if (!funds.Any())
     {
-        <div class="kpi-card text-center py-5">
+        <div class="kpi-card text-center py-5" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
             <span class="oi oi-inbox fs-1 opacity-25 mb-3 d-block"></span>
             <h5 class="fw-bold">No Funds Configured</h5>
             <p class="small opacity-75 mb-4">You need to define a funding source before you can serve clients.</p>
-            <button class="btn btn-outline-success" @onclick="() => showCreateModal = true">
+            <button class="btn btn-outline-success" @onclick="CreateNew">
                 Initialize First Fund
             </button>
         </div>
@@ -35,22 +35,25 @@
     else
     {
         <div class="row">
-            @foreach (var fund in funds)
+           @foreach (var fund in funds)
             {
                 <div class="col-xl-4 col-md-6 mb-4">
-                    <div class="kpi-card h-100 border-start border-4 border-success">
-                        <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div class="kpi-card h-100 border-start border-4 border-success position-relative" 
+                         style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
+                        
+                        <div class="position-absolute top-0 end-0 p-2">
+                            <button class="btn btn-sm btn-link" style="color: var(--growit-text-muted);" @onclick="() => EditFund(fund)" title="Edit Budget">
+                                <span class="oi oi-pencil"></span>
+                            </button>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-start mb-3 pe-4"> 
                             <div>
-                                <div class="small fw-bold text-success text-uppercase mb-1">
-                                    @fund.Name
-                                </div>
+                                <div class="small fw-bold text-uppercase mb-1" style="color: var(--growit-success);">@fund.Name</div>
                                 <div class="h4 mb-0 fw-bold">
                                     @fund.AvailableAmount.ToString("C0") 
                                     <span class="small fw-normal opacity-50">/ @fund.TotalAmount.ToString("C0")</span>
                                 </div>
-                            </div>
-                            <div class="p-2 rounded-circle" style="background-color: rgba(39, 176, 98, 0.1);">
-                                <span class="oi oi-dollar fs-4 text-success"></span>
                             </div>
                         </div>
                         
@@ -60,8 +63,8 @@
                                 <span>@GetPercent(fund)%</span>
                             </div>
                             <div class="progress" style="height: 6px; background-color: var(--growit-bg-primary);">
-                                <div class="progress-bar bg-success" role="progressbar" 
-                                     style="width: @GetPercent(fund)%" 
+                                <div class="progress-bar" role="progressbar" 
+                                     style="width: @GetPercent(fund)%; background-color: var(--growit-success);" 
                                      aria-valuenow="@GetPercent(fund)" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
                         </div>
@@ -72,10 +75,13 @@
     }
 </div>
 
-<CreateFundModal @bind-Show="showCreateModal" OnFundCreated="ReloadFunds" />
+<CreateFundModal @bind-Show="showCreateModal" 
+                 FundToEdit="selectedFund" 
+                 OnFundCreated="ReloadFunds" />
 
 @code {
     private List<FundDto>? funds;
+    private FundDto? selectedFund; 
     private bool showCreateModal = false;
 
     protected override async Task OnInitializedAsync()
@@ -93,6 +99,18 @@
         {
             Console.WriteLine($"Error: {ex.Message}");
         }
+    }
+
+    private void EditFund(FundDto fund)
+    {
+        selectedFund = fund;
+        showCreateModal = true;
+    }
+
+    private void CreateNew()
+    {
+        selectedFund = null; // Ensure we are in Create Mode
+        showCreateModal = true;
     }
 
     private int GetPercent(FundDto f)
