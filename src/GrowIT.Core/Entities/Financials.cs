@@ -51,9 +51,21 @@ public class Imprint : IMustHaveTenant
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid TenantId { get; set; }
-    public Guid InvestmentId { get; set; }
+
+    // --- NEW: Context Links ---
+    public Guid ClientId { get; set; } // Required: Link to Head of Household
+    public Client? Client { get; set; } // Navigation property
+
+    public Guid? FamilyMemberId { get; set; } // Optional: Link to specific person (Sarah)
+    public FamilyMember? FamilyMember { get; set; } // Navigation property
+
+    public Guid? InvestmentId { get; set; } // Optional: Now nullable (Milestones don't always cost money)
     public Investment? Investment { get; set; }
-    public ImpactOutcome Outcome { get; set; }
+
+    // --- NEW: Milestone Data ---
+    public string Title { get; set; } = string.Empty; // e.g. "Made Honor Roll"
+    public DateTime DateOccurred { get; set; } = DateTime.UtcNow; 
+    public ImpactOutcome Outcome { get; set; } // Uses the Enum directly
     public string Notes { get; set; } = string.Empty;
     public DateTime? FollowupDate { get; set; }
 }

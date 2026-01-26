@@ -6,12 +6,21 @@ namespace GrowIT.Shared.DTOs;
 public class CreateImprintRequest
 {
     [Required]
-    public Guid InvestmentId { get; set; } // Which investment are we grading?
+    public Guid ClientId { get; set; } // Context: Which family?
+
+    public Guid? FamilyMemberId { get; set; } // Specific Person: Who achieved this?
+
+    public Guid? InvestmentId { get; set; } // Optional: Was this caused by a specific funding source?
 
     [Required]
-    public ImpactOutcome Outcome { get; set; }// Improved, Maintained, Regressed, Unknown (This shit is broke will need to fix...i Just did a CAST on the section i need in teh ImprinsCOntroller)
+    public string Title { get; set; } = string.Empty; // The Headline: "Got a Job", "Passed Math"
 
-    public string Notes { get; set; } = string.Empty; // "Client found a new job"
+    [Required]
+    public ImpactOutcome Outcome { get; set; } // Improved, Stable, Regressed
 
-    public DateTime? FollowupDate { get; set; } // When should we check again?
+    public DateTime DateOccurred { get; set; } = DateTime.UtcNow; // When did it happen?
+
+    public string Notes { get; set; } = string.Empty; 
+
+    public DateTime? FollowupDate { get; set; }
 }

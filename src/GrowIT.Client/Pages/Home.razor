@@ -1,199 +1,208 @@
 ﻿@page "/"
-@using GrowIT.Client.Auth
 @using GrowIT.Shared.DTOs
-@inject AuthenticationStateProvider AuthStateProvider
+@using Syncfusion.Blazor.Charts 
 @inject HttpClient Http
+@inject NavigationManager Nav
 
-<AuthorizeView>
-    <Authorized>
-        <div class="dashboard">
-            @if (stats == null)
-            {
-                <div class="d-flex justify-content-center align-items-center" style="height: 400px;">
-                    <div class="spinner-border text-success" role="status"></div>
-                </div>
-            }
-            else
-            {
-                <div class="kpi-row">
-                    <div class="kpi-card">
-                        <div class="kpi-header">
-                            <div class="kpi-icon unit">
-                                <span class="oi oi-graph"></span>
-                            </div>
-                            <span class="kpi-label">UNIT ECONOMICS</span>
-                        </div>
-                        <div class="kpi-value">
-                            <span class="kpi-amount">$@CalculateUnitEconomics().ToString("N2")</span>
-                            <span class="kpi-unit">/ family</span>
-                        </div>
-                    </div>
+<PageTitle>GrowIT - Executive Dashboard</PageTitle>
 
-                    <div class="kpi-card">
-                        <div class="kpi-header">
-                            <div class="kpi-icon capacity">
-                                <span class="oi oi-dashboard"></span>
-                            </div>
-                            <span class="kpi-label">CAPACITY METER</span>
-                        </div>
-                        <div class="kpi-gauge">
-                            <div class="gauge-ring">
-                                <svg class="gauge-svg" viewBox="0 0 36 36">
-                                    <path class="gauge-bg"
-                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                    <path class="gauge-progress"
-                                        stroke-dasharray="@GetCapacityPercent(), 100"
-                                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                                </svg>
-                                <div class="gauge-text">@GetCapacityPercent()%</div>
-                            </div>
-                            <div class="gauge-info">
-                                <span class="gauge-value">$@stats.FundsAvailable.ToString("N0")</span>
-                                <span class="gauge-label">Remaining</span>
-                            </div>
-                        </div>
-                    </div>
+@if (stats == null)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-success" role="status"></div>
+        <p class="mt-2 text-muted">Calculating harvest...</p>
+    </div>
+}
+else
+{
+    <div class="container-fluid mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1 class="h3 fw-bold" style="color: var(--growit-heading-color);">Executive Dashboard</h1>
+                <p class="text-muted mb-0">Year-to-Date Impact Report</p>
+            </div>
+            <button class="btn btn-outline-secondary" @onclick="Refresh">
+                <span class="oi oi-reload me-1"></span> Refresh
+            </button>
+        </div>
 
-                    <div class="kpi-card">
-                        <div class="kpi-header">
-                            <div class="kpi-icon growth">
-                                <span class="oi oi-arrow-thick-top"></span>
-                            </div>
-                            <span class="kpi-label">GROWTH PULSE</span>
+        <div class="row g-4 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm h-100" style="background-color: var(--growit-bg-card);">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="text-uppercase small fw-bold text-muted">Invested YTD</div>
+                            <span class="oi oi-dollar text-success bg-success bg-opacity-10 p-2 rounded"></span>
                         </div>
-                        <div class="kpi-growth">
-                            <span class="oi oi-caret-top growth-arrow"></span>
-                            <span class="growth-value">@stats.ActiveCases Active</span>
-                        </div>
-                        <div class="small text-muted mt-2">Families in Season</div>
+                        <div class="display-6 fw-bold text-dark">@stats.TotalInvestedYtd.ToString("C0")</div>
+                        <div class="small text-muted mt-1">Direct Aid Distributed</div>
                     </div>
                 </div>
-
-                <div class="chart-section">
-                    <div class="section-header">
-                        <h2 class="section-title">FINANCIAL NARRATIVE</h2>
-                        <span class="section-badge">Year to Date</span>
-                        <div class="chart-legend">
-                            <span class="legend-item">
-                                <span class="legend-dot impact"></span>
-                                Impact Value Generated
-                            </span>
-                            <span class="legend-item">
-                                <span class="legend-dot cost"></span>
-                                Actual Cost
-                            </span>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm h-100" style="background-color: var(--growit-bg-card);">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="text-uppercase small fw-bold text-muted">Households</div>
+                            <span class="oi oi-home text-primary bg-primary bg-opacity-10 p-2 rounded"></span>
                         </div>
-                    </div>
-                    <div class="chart-container">
-                        <div class="chart-y-axis">
-                            <span>$600k</span>
-                            <span>$400k</span>
-                            <span>$200k</span>
-                            <span>$0</span>
-                        </div>
-                        <div class="chart-area">
-                            <svg class="chart-svg" viewBox="0 0 800 180" preserveAspectRatio="none">
-                                <defs>
-                                    <linearGradient id="impactGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" style="stop-color:#6fba2c;stop-opacity:0.4" />
-                                        <stop offset="100%" style="stop-color:#6fba2c;stop-opacity:0.05" />
-                                    </linearGradient>
-                                    <linearGradient id="costGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                        <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:0.3" />
-                                        <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:0.05" />
-                                    </linearGradient>
-                                </defs>
-                                <path fill="url(#impactGradient)" d="M0,160 C80,155 160,140 240,120 C320,100 400,75 480,55 560,40 640,30 720,25 L800,20 L800,180 L0,180 Z" />
-                                <path stroke="#6fba2c" stroke-width="2" fill="none" d="M0,160 C80,155 160,140 240,120 C320,100 400,75 480,55 560,40 640,30 720,25 L800,20" />
-                                <path fill="url(#costGradient)" d="M0,165 C80,162 160,155 240,145 C320,135 400,120 480,105 560,92 640,82 720,75 L800,70 L800,180 L0,180 Z" />
-                                <path stroke="#3b82f6" stroke-width="2" fill="none" d="M0,165 C80,162 160,155 240,145 C320,135 400,120 480,105 560,92 640,82 720,75 L800,70" />
-                            </svg>
-                            <div class="chart-x-axis">
-                                <span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span>
-                            </div>
-                        </div>
+                        <div class="display-6 fw-bold text-dark">@stats.HouseholdsServedYtd</div>
+                        <div class="small text-muted mt-1">Unique Families Served</div>
                     </div>
                 </div>
-
-                <div class="bottom-row">
-                    <div class="activity-section">
-                        <div class="section-header">
-                            <h2 class="section-title">RECENT ACTIVITY</h2>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm h-100" style="background-color: var(--growit-bg-card);">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="text-uppercase small fw-bold text-muted">Active Cases</div>
+                            <span class="oi oi-people text-warning bg-warning bg-opacity-10 p-2 rounded"></span>
                         </div>
-                        <div class="activity-list">
-                            @if (stats.RecentActivity.Any())
-                            {
-                                @foreach (var activity in stats.RecentActivity)
-                                {
-                                    <div class="activity-item">
-                                        <div class="activity-icon investment">
-                                            <span class="oi @activity.Icon"></span>
-                                        </div>
-                                        <div class="activity-content">
-                                            <span class="activity-text">@activity.Description</span>
-                                        </div>
-                                        <span class="activity-time">@activity.Date.ToShortDateString()</span>
-                                    </div>
-                                }
-                            }
-                            else
-                            {
-                                <div class="text-muted small p-3">No recent activity found.</div>
-                            }
-                        </div>
+                        <div class="display-6 fw-bold text-dark">@stats.ActiveCases</div>
+                        <div class="small text-muted mt-1">Total Profiles Managed</div>
                     </div>
-
-                    <div class="tasks-section">
-                        <div class="section-header">
-                            <h2 class="section-title">TASKS</h2>
-                            <span class="section-badge">Follow-Ups</span>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm h-100" style="background-color: var(--growit-bg-card);">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div class="text-uppercase small fw-bold text-muted">Funds Available</div>
+                            <span class="oi oi-briefcase text-info bg-info bg-opacity-10 p-2 rounded"></span>
                         </div>
-                        <div class="tasks-list">
-                            @if (stats.PendingFollowUps.Any())
-                            {
+                        <div class="display-6 fw-bold text-dark">@stats.FundsAvailable.ToString("C0")</div>
+                        <div class="small text-muted mt-1">Remaining Budget</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm" style="background-color: var(--growit-bg-card);">
+                    <div class="card-body">
+                        <SfChart Title="Monthly Investment Trends" Height="350px">
+                            <ChartPrimaryXAxis ValueType="Syncfusion.Blazor.Charts.ValueType.Category" 
+                                               Title="Month"
+                                               LabelPlacement="LabelPlacement.OnTicks">
+                                <ChartAxisMajorGridLines Width="0"></ChartAxisMajorGridLines>
+                            </ChartPrimaryXAxis>
+                            
+                            <ChartPrimaryYAxis LabelFormat="${value}" Title="Amount Invested ($)">
+                                <ChartAxisLineStyle Width="0"></ChartAxisLineStyle>
+                            </ChartPrimaryYAxis>
+                            
+                            <ChartTooltipSettings Enable="true" Shared="true"></ChartTooltipSettings>
+                            
+                            <ChartSeriesCollection>
+                                <ChartSeries DataSource="@stats.MonthlyTrends" 
+                                             XName="Month" 
+                                             YName="Amount" 
+                                             Type="ChartSeriesType.Spline" 
+                                             Width="4"
+                                             Fill="var(--growit-green)">
+                                    <ChartMarker Visible="true" Width="10" Height="10" Shape="ChartShape.Circle" Fill="white">
+                                        <ChartMarkerBorder Width="2" Color="var(--growit-green)"></ChartMarkerBorder>
+                                    </ChartMarker>
+                                </ChartSeries>
+                            </ChartSeriesCollection>
+                        </SfChart>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-5">
+                <div class="card border-0 shadow-sm h-100" style="background-color: var(--growit-bg-card);">
+                    <div class="card-header bg-transparent fw-bold py-3 border-bottom d-flex justify-content-between align-items-center" 
+                         style="border-color: var(--growit-border);">
+                        <span><span class="oi oi-clipboard me-2 text-warning"></span>To-Grow List</span>
+                        <span class="badge bg-warning text-dark rounded-pill">@stats.PendingFollowUps.Count</span>
+                    </div>
+                    <div class="card-body p-0">
+                        @if (stats.PendingFollowUps.Any())
+                        {
+                            <div class="list-group list-group-flush">
                                 @foreach (var task in stats.PendingFollowUps)
                                 {
-                                    <div class="task-item">
-                                        <div class="task-checkbox">
-                                            <span class="oi oi-clock"></span>
+                                    <div class="list-group-item p-3 d-flex gap-3 align-items-start" style="cursor: pointer;" 
+                                         @onclick="() => NavigateToClient(task.ClientId)">
+                                        <div class="mt-1">
+                                            <input class="form-check-input" type="checkbox" style="cursor: pointer;">
                                         </div>
-                                        <div class="task-content">
-                                            <span class="task-action">Follow Up: @task.Note</span>
-                                            <span class="task-client">@task.ClientName</span>
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between">
+                                                <span class="fw-bold">@task.ClientName</span>
+                                                <small class="text-danger fw-bold">Due: @task.DueDate.ToString("MMM dd")</small>
+                                            </div>
+                                            <p class="mb-0 small text-muted">@task.Note</p>
                                         </div>
-                                        <span class="task-category high">Due @task.DueDate.ToString("MM/dd")</span>
                                     </div>
                                 }
-                            }
-                            else
-                            {
-                                <div class="text-muted small p-3">No pending tasks! Great job.</div>
-                            }
-                        </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-5 opacity-50">
+                                <span class="oi oi-circle-check fs-1 mb-3 d-block text-success"></span>
+                                <p>All follow-ups complete!</p>
+                            </div>
+                        }
                     </div>
                 </div>
-            }
+            </div>
+
+            <div class="col-lg-7">
+                <div class="card border-0 shadow-sm h-100" style="background-color: var(--growit-bg-card);">
+                    <div class="card-header bg-transparent fw-bold py-3 border-bottom" style="border-color: var(--growit-border);">
+                        <span class="oi oi-pulse me-2 text-primary"></span>Live Harvest Feed
+                    </div>
+                    <div class="card-body p-0">
+                        @if (stats.RecentActivity.Any())
+                        {
+                            <div class="list-group list-group-flush">
+                                @foreach (var item in stats.RecentActivity)
+                                {
+                                    <div class="list-group-item p-3 d-flex gap-3 align-items-center">
+                                        <div class="rounded-circle d-flex align-items-center justify-content-center border" 
+                                             style="width: 42px; height: 42px; min-width: 42px; border-color: var(--growit-border);">
+                                            <span class="oi @item.Icon @item.Color"></span>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="fw-bold text-dark">@item.Description</span>
+                                                <small class="text-muted ms-2" style="white-space: nowrap;">@GetTimeAgo(item.Date)</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="text-center py-5 opacity-50">
+                                <p>No recent activity recorded.</p>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
         </div>
-    </Authorized>
-    <NotAuthorized>
-        <div class="d-flex flex-column align-items-center justify-content-center" style="min-height: calc(100vh - 120px);">
-            <img src="images/growITLogo.png" alt="GrowIT" style="height: 56px; margin-bottom: 24px;" />
-            <h1 style="font-size: 36px; font-weight: 700; color: var(--growit-text-primary); margin: 0 0 8px 0;">Impact Management Platform</h1>
-            <p style="font-size: 16px; color: var(--growit-text-secondary); margin: 0 0 32px 0;">Track investments, measure outcomes, grow communities.</p>
-            <a href="login" class="btn-primary-growit" style="font-size: 16px; padding: 14px 32px;">
-                <span>Sign In to Dashboard</span>
-                <span class="oi oi-arrow-right"></span>
-            </a>
-        </div>
-    </NotAuthorized>
-</AuthorizeView>
+    </div>
+}
 
 @code {
     private DashboardStatsDto? stats;
 
     protected override async Task OnInitializedAsync()
     {
-        try
+        await Refresh();
+    }
+
+    private async Task Refresh()
+    {
+        try 
         {
             stats = await Http.GetFromJsonAsync<DashboardStatsDto>("api/dashboard");
         }
@@ -203,26 +212,17 @@
         }
     }
 
-    private decimal CalculateUnitEconomics()
+    private void NavigateToClient(Guid clientId)
     {
-        if (stats == null || stats.HouseholdsServedYtd == 0) return 0;
-        return stats.TotalInvestedYtd / stats.HouseholdsServedYtd;
+        Nav.NavigateTo($"clients/{clientId}");
     }
 
-    private int GetCapacityPercent()
+    private string GetTimeAgo(DateTime date)
     {
-        if (stats == null) return 0;
-        // Assuming we want available / (total invested + available) roughly, 
-        // or just map it to something visual. 
-        // For now, let's just use Funds Available vs a hardcoded target or fetch total budget.
-        // Simplified:
-        return stats.FundsAvailable > 0 ? 65 : 0; 
+        var span = DateTime.UtcNow - date;
+        if (span.TotalMinutes < 1) return "Just now";
+        if (span.TotalHours < 1) return $"{span.Minutes}m ago";
+        if (span.TotalHours < 24) return $"{span.Hours}h ago";
+        return $"{span.Days}d ago";
     }
-
-    private string GetActivityIconClass(string type) => type switch
-    {
-        "Investment" => "oi-dollar",
-        "Imprint" => "oi-check",
-        _ => "oi-bell"
-    };
 }
