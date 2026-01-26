@@ -1,0 +1,575 @@
+/* ========================================
+   SYNCFUSION COMPONENT OVERRIDES
+   Matching GrowIT Enterprise Theme
+   ======================================== */
+
+/* ========================================
+   GRID COMPONENT
+   ======================================== */
+.e-grid {
+    border: 1px solid var(--growit-border) !important;
+    border-radius: var(--radius-lg) !important;
+    overflow: hidden;
+    background: var(--growit-bg-card) !important;
+}
+
+.e-grid .e-gridheader {
+    background: var(--growit-bg-primary) !important;
+    border-bottom: 1px solid var(--growit-border) !important;
+}
+
+.e-grid .e-headercell {
+    background: var(--growit-bg-primary) !important;
+    color: var(--growit-text-muted) !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    border-color: var(--growit-border) !important;
+    padding: 14px 16px !important;
+}
+
+.e-grid .e-rowcell {
+    background: var(--growit-bg-card) !important;
+    color: var(--growit-text-primary) !important;
+    border-color: var(--growit-border) !important;
+    font-size: 0.9375rem !important;
+    padding: 14px 16px !important;
+}
+
+.e-grid .e-row:hover .e-rowcell {
+    background: var(--growit-bg-card-hover) !important;
+}
+
+.e-grid .e-row.e-altrow .e-rowcell {
+    background: var(--growit-bg-card) !important;
+}
+
+.e-grid .e-row.e-altrow:hover .e-rowcell {
+    background: var(--growit-bg-card-hover) !important;
+}
+
+/* Grid Toolbar */
+.e-grid .e-toolbar {
+    background: var(--growit-bg-card) !important;
+    border-bottom: 1px solid var(--growit-border) !important;
+    padding: 12px 16px !important;
+}
+
+.e-grid .e-toolbar-items .e-toolbar-item .e-tbar-btn {
+    background: var(--growit-bg-primary) !important;
+    border: 1px solid var(--growit-border) !important;
+    border-radius: var(--radius-md) !important;
+    color: var(--growit-text-secondary) !important;
+}
+
+.e-grid .e-toolbar-items .e-toolbar-item .e-tbar-btn:hover {
+    background: var(--growit-bg-card-hover) !important;
+    color: var(--growit-text-primary) !important;
+}
+
+/* Grid Search */
+.e-grid .e-search .e-input {
+    background: var(--growit-bg-input) !important;
+    border: 1px solid var(--growit-border) !important;
+    border-radius: var(--radius-md) !important;
+    color: var(--growit-text-primary) !important;
+    padding: 8px 12px !important;
+}
+
+.e-grid .e-search .e-input:focus {
+    border-color: var(--growit-green) !important;
+    box-shadow: 0 0 0 3px var(--growit-green-glow) !important;
+}
+
+/* Grid Pager */
+.e-grid .e-gridpager {
+    background: var(--growit-bg-card) !important;
+    border-top: 1px solid var(--growit-border) !important;
+    padding: 12px 16px !important;
+}
+
+.e-grid .e-pager .e-numericitem {
+    background: transparent !important;
+    border: 1px solid var(--growit-border) !important;
+    border-radius: var(--radius-md) !important;
+    color: var(--growit-text-secondary) !important;
+    margin: 0 2px !important;
+}
+
+.e-grid .e-pager .e-numericitem:hover {
+    background: var(--growit-bg-card-hover) !important;
+    color: var(--growit-text-primary) !important;
+}
+
+.e-grid .e-pager .e-numericitem.e-currentitem {
+    background: var(--growit-green) !important;
+    border-color: var(--growit-green) !important;
+    color: white !important;
+}
+
+.e-grid .e-pager .e-icons {
+    color: var(--growit-text-muted) !important;
+}
+
+/* Grid Filter Menu */
+.e-grid .e-filtermenudiv {
+    background: var(--growit-bg-card) !important;
+    border: 1px solid var(--growit-border) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--growit-shadow-lg) !important;
+}
+
+/* Grid Checkbox */
+.e-grid .e-checkbox-wrapper .e-frame {
+    border-color: var(--growit-border) !important;
+    border-radius: 4px !important;
+}
+
+.e-grid .e-checkbox-wrapper .e-frame.e-check {
+    background: var(--growit-green) !important;
+    border-color: var(--growit-green) !important;
+}
+
+/* ========================================
+   CHART COMPONENT
+   ======================================== */
+.e-chart {
+    background: transparent !important;
+}
+
+.e-chart .e-chart-title {
+    font-family: var(--font-display) !important;
+    font-weight: 600 !important;
+    color: var(--growit-heading-color) !important;
+}
+
+.e-chart .e-legend-item text {
+    fill: var(--growit-text-secondary) !important;
+}
+
+.e-chart .e-axis-title {
+    fill: var(--growit-text-muted) !important;
+}
+
+.e-chart .e-axislabel {
+    fill: var(--growit-text-muted) !important;
+}
+
+.e-chart .e-axis-line {
+    stroke: var(--growit-border) !important;
+}
+
+.e-chart .e-majorgridline {
+    stroke: var(--growit-border) !important;
+    stroke-dasharray: 3, 3 !important;
+}
+
+/* ========================================
+   DROPDOWN/SELECT COMPONENT
+   ======================================== */
+.e-dropdown-base {
+    background: var(--growit-bg-input) !important;
+    border: 1px solid var(--growit-border) !important;
+    border-radius: var(--radius-md) !important;
+}
+
+.e-dropdown-base:hover {
+    border-color: var(--growit-text-muted) !important;
+}
+
+.e-dropdown-base.e-input-focus {
+    border-color: var(--growit-green) !important;
+    box-shadow: 0 0 0 3px var(--growit-green-glow) !important;
+}
+
+.e-dropdownbase .e-list-item {
+    color: var(--growit-text-primary) !important;
+    padding: 10px 14px !important;
+}
+
+.e-dropdownbase .e-list-item.e-hover {
+    background: var(--growit-bg-card-hover) !important;
+}
+
+.e-dropdownbase .e-list-item.e-active {
+    background: rgba(34, 197, 94, 0.1) !important;
+    color: var(--growit-green) !important;
+}
+
+/* Popup styling */
+.e-popup {
+    background: var(--growit-bg-card) !important;
+    border: 1px solid var(--growit-border) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--growit-shadow-lg) !important;
+}
+
+/* ========================================
+   DATE PICKER
+   ======================================== */
+.e-datepicker .e-input-group {
+    background: var(--growit-bg-input) !important;
+    border: 1px solid var(--growit-border) !important;
+    border-radius: var(--radius-md) !important;
+}
+
+.e-datepicker .e-input-group:hover {
+    border-color: var(--growit-text-muted) !important;
+}
+
+.e-datepicker .e-input-group.e-input-focus {
+    border-color: var(--growit-green) !important;
+    box-shadow: 0 0 0 3px var(--growit-green-glow) !important;
+}
+
+.e-datepicker .e-input-group .e-input {
+    color: var(--growit-text-primary) !important;
+}
+
+.e-calendar {
+    background: var(--growit-bg-card) !important;
+    border: 1px solid var(--growit-border) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--growit-shadow-lg) !important;
+}
+
+.e-calendar .e-header {
+    background: var(--growit-bg-primary) !important;
+    border-bottom: 1px solid var(--growit-border) !important;
+}
+
+.e-calendar .e-day {
+    color: var(--growit-text-primary) !important;
+}
+
+.e-calendar .e-cell.e-selected .e-day {
+    background: var(--growit-green) !important;
+    color: white !important;
+}
+
+.e-calendar .e-cell:hover .e-day {
+    background: var(--growit-bg-card-hover) !important;
+}
+
+/* ========================================
+   TOOLTIP
+   ======================================== */
+.e-tooltip-wrap {
+    background: var(--growit-text-primary) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--growit-shadow-lg) !important;
+}
+
+.e-tooltip-wrap .e-tip-content {
+    color: var(--growit-bg-card) !important;
+    font-size: 0.8125rem !important;
+}
+
+.e-tooltip-wrap .e-arrow-tip-inner {
+    color: var(--growit-text-primary) !important;
+}
+
+/* ========================================
+   DIALOG/MODAL
+   ======================================== */
+.e-dialog {
+    background: var(--growit-bg-card) !important;
+    border: 1px solid var(--growit-border) !important;
+    border-radius: var(--radius-xl) !important;
+    box-shadow: var(--growit-shadow-xl) !important;
+}
+
+.e-dialog .e-dlg-header-content {
+    background: transparent !important;
+    border-bottom: 1px solid var(--growit-border) !important;
+    padding: 20px 24px !important;
+}
+
+.e-dialog .e-dlg-header {
+    color: var(--growit-heading-color) !important;
+    font-family: var(--font-display) !important;
+    font-weight: 700 !important;
+}
+
+.e-dialog .e-dlg-content {
+    color: var(--growit-text-primary) !important;
+    padding: 24px !important;
+}
+
+.e-dialog .e-footer-content {
+    background: var(--growit-bg-primary) !important;
+    border-top: 1px solid var(--growit-border) !important;
+    padding: 16px 24px !important;
+}
+
+.e-dialog .e-btn.e-flat {
+    background: transparent !important;
+    color: var(--growit-text-secondary) !important;
+    border: 1px solid var(--growit-border) !important;
+    border-radius: var(--radius-md) !important;
+}
+
+.e-dialog .e-btn.e-flat:hover {
+    background: var(--growit-bg-card-hover) !important;
+    color: var(--growit-text-primary) !important;
+}
+
+.e-dialog .e-btn.e-primary {
+    background: var(--growit-green) !important;
+    border-color: var(--growit-green) !important;
+    border-radius: var(--radius-md) !important;
+}
+
+.e-dialog .e-btn.e-primary:hover {
+    background: var(--growit-green-light) !important;
+}
+
+/* Dialog Overlay */
+.e-dlg-overlay {
+    background: rgba(0, 0, 0, 0.6) !important;
+    backdrop-filter: blur(4px) !important;
+}
+
+/* ========================================
+   TAB COMPONENT
+   ======================================== */
+.e-tab {
+    background: transparent !important;
+}
+
+.e-tab .e-tab-header {
+    background: transparent !important;
+    border-bottom: 1px solid var(--growit-border) !important;
+}
+
+.e-tab .e-tab-header .e-toolbar-item .e-tab-wrap {
+    color: var(--growit-text-muted) !important;
+    padding: 12px 20px !important;
+}
+
+.e-tab .e-tab-header .e-toolbar-item .e-tab-wrap:hover {
+    color: var(--growit-text-primary) !important;
+}
+
+.e-tab .e-tab-header .e-toolbar-item.e-active .e-tab-wrap {
+    color: var(--growit-green) !important;
+}
+
+.e-tab .e-tab-header .e-indicator {
+    background: var(--growit-green) !important;
+}
+
+.e-tab .e-content {
+    background: transparent !important;
+}
+
+/* ========================================
+   BUTTON COMPONENT
+   ======================================== */
+.e-btn {
+    font-family: var(--font-body) !important;
+    font-weight: 600 !important;
+    border-radius: var(--radius-md) !important;
+    transition: all var(--transition-fast) !important;
+}
+
+.e-btn.e-primary {
+    background: linear-gradient(135deg, var(--growit-green), var(--growit-green-dark)) !important;
+    border-color: transparent !important;
+}
+
+.e-btn.e-primary:hover {
+    background: linear-gradient(135deg, var(--growit-green-light), var(--growit-green)) !important;
+}
+
+.e-btn.e-outline {
+    background: transparent !important;
+    border: 1px solid var(--growit-border) !important;
+    color: var(--growit-text-secondary) !important;
+}
+
+.e-btn.e-outline:hover {
+    background: var(--growit-bg-card-hover) !important;
+    color: var(--growit-text-primary) !important;
+}
+
+/* ========================================
+   SPINNER/LOADING
+   ======================================== */
+.e-spinner-pane .e-spinner-inner .e-spin-material {
+    stroke: var(--growit-green) !important;
+}
+
+/* ========================================
+   TOAST NOTIFICATIONS
+   ======================================== */
+.e-toast-container .e-toast {
+    background: var(--growit-bg-card) !important;
+    border: 1px solid var(--growit-border) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--growit-shadow-lg) !important;
+}
+
+.e-toast-container .e-toast .e-toast-title {
+    color: var(--growit-heading-color) !important;
+    font-weight: 600 !important;
+}
+
+.e-toast-container .e-toast .e-toast-content {
+    color: var(--growit-text-secondary) !important;
+}
+
+.e-toast-container .e-toast.e-toast-success {
+    border-left: 4px solid var(--growit-success) !important;
+}
+
+.e-toast-container .e-toast.e-toast-warning {
+    border-left: 4px solid var(--growit-warning) !important;
+}
+
+.e-toast-container .e-toast.e-toast-danger,
+.e-toast-container .e-toast.e-toast-error {
+    border-left: 4px solid var(--growit-danger) !important;
+}
+
+.e-toast-container .e-toast.e-toast-info {
+    border-left: 4px solid var(--growit-info) !important;
+}
+
+/* ========================================
+   SWITCH/TOGGLE
+   ======================================== */
+.e-switch-wrapper .e-switch-inner {
+    background: var(--growit-border) !important;
+    border-radius: var(--radius-full) !important;
+}
+
+.e-switch-wrapper .e-switch-handle {
+    background: white !important;
+    border-radius: 50% !important;
+}
+
+.e-switch-wrapper .e-switch:checked + .e-switch-inner {
+    background: var(--growit-green) !important;
+}
+
+/* ========================================
+   SLIDER
+   ======================================== */
+.e-slider .e-slider-track {
+    background: var(--growit-border) !important;
+    border-radius: var(--radius-full) !important;
+}
+
+.e-slider .e-range {
+    background: var(--growit-green) !important;
+}
+
+.e-slider .e-handle {
+    background: var(--growit-green) !important;
+    border-color: var(--growit-green) !important;
+}
+
+/* ========================================
+   NUMERIC INPUT
+   ======================================== */
+.e-numeric .e-input-group {
+    background: var(--growit-bg-input) !important;
+    border: 1px solid var(--growit-border) !important;
+    border-radius: var(--radius-md) !important;
+}
+
+.e-numeric .e-input-group:hover {
+    border-color: var(--growit-text-muted) !important;
+}
+
+.e-numeric .e-input-group.e-input-focus {
+    border-color: var(--growit-green) !important;
+    box-shadow: 0 0 0 3px var(--growit-green-glow) !important;
+}
+
+.e-numeric .e-input {
+    color: var(--growit-text-primary) !important;
+}
+
+/* ========================================
+   TEXTAREA
+   ======================================== */
+.e-textbox.e-multi-line {
+    background: var(--growit-bg-input) !important;
+    border: 1px solid var(--growit-border) !important;
+    border-radius: var(--radius-md) !important;
+    color: var(--growit-text-primary) !important;
+}
+
+.e-textbox.e-multi-line:focus {
+    border-color: var(--growit-green) !important;
+    box-shadow: 0 0 0 3px var(--growit-green-glow) !important;
+}
+
+/* ========================================
+   FILE UPLOAD
+   ======================================== */
+.e-upload .e-file-select-wrap {
+    background: var(--growit-bg-primary) !important;
+    border: 2px dashed var(--growit-border) !important;
+    border-radius: var(--radius-lg) !important;
+}
+
+.e-upload .e-file-select-wrap:hover {
+    border-color: var(--growit-green) !important;
+    background: rgba(34, 197, 94, 0.05) !important;
+}
+
+.e-upload .e-upload-files {
+    background: var(--growit-bg-card) !important;
+    border: 1px solid var(--growit-border) !important;
+    border-radius: var(--radius-lg) !important;
+}
+
+/* ========================================
+   ACCORDION
+   ======================================== */
+.e-accordion {
+    background: var(--growit-bg-card) !important;
+    border: 1px solid var(--growit-border) !important;
+    border-radius: var(--radius-lg) !important;
+}
+
+.e-accordion .e-acrdn-header {
+    background: transparent !important;
+    border-bottom: 1px solid var(--growit-border) !important;
+    padding: 16px 20px !important;
+}
+
+.e-accordion .e-acrdn-header .e-acrdn-header-content {
+    color: var(--growit-heading-color) !important;
+    font-weight: 600 !important;
+}
+
+.e-accordion .e-acrdn-panel .e-acrdn-content {
+    background: var(--growit-bg-primary) !important;
+    color: var(--growit-text-primary) !important;
+    padding: 20px !important;
+}
+
+/* ========================================
+   TREE VIEW
+   ======================================== */
+.e-treeview {
+    background: var(--growit-bg-card) !important;
+}
+
+.e-treeview .e-list-item {
+    color: var(--growit-text-primary) !important;
+}
+
+.e-treeview .e-list-item:hover {
+    background: var(--growit-bg-card-hover) !important;
+}
+
+.e-treeview .e-list-item.e-active {
+    background: rgba(34, 197, 94, 0.1) !important;
+    color: var(--growit-green) !important;
+}

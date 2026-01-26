@@ -1,0 +1,108 @@
+@namespace GrowIT.Client.Components.Shared
+
+<div class="modal-overlay @(IsOpen ? "open" : "")" @onclick="Cancel">
+    <div class="modal modal-sm confirm-dialog" @onclick:stopPropagation="true">
+        <div class="confirm-icon @TypeClass">
+            @switch (Type)
+            {
+                case ConfirmType.Warning:
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                    break;
+                case ConfirmType.Danger:
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="15" y1="9" x2="9" y2="15"/>
+                        <line x1="9" y1="9" x2="15" y2="15"/>
+                    </svg>
+                    break;
+                case ConfirmType.Success:
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    break;
+                default:
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <line x1="12" y1="16" x2="12" y2="12"/>
+                        <line x1="12" y1="8" x2="12.01" y2="8"/>
+                    </svg>
+                    break;
+            }
+        </div>
+        
+        <h3 class="confirm-title">@Title</h3>
+        
+        @if (!string.IsNullOrEmpty(Message))
+        {
+            <p class="confirm-message">@Message</p>
+        }
+        
+        @if (ChildContent != null)
+        {
+            <div class="confirm-content">
+                @ChildContent
+            </div>
+        }
+        
+        <div class="confirm-actions">
+            <button class="btn btn-ghost" @onclick="Cancel" disabled="@IsLoading">
+                @CancelText
+            </button>
+            <button class="btn @ConfirmButtonClass" @onclick="Confirm" disabled="@IsLoading">
+                @if (IsLoading)
+                {
+                    <span class="btn-loading"></span>
+                }
+                @ConfirmText
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public string Title { get; set; } = "Confirm";
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string ConfirmText { get; set; } = "Confirm";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public ConfirmType Type { get; set; } = ConfirmType.Info;
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+    [Parameter] public bool IsLoading { get; set; }
+
+    private string TypeClass => Type.ToString().ToLower();
+    
+    private string ConfirmButtonClass => Type switch
+    {
+        ConfirmType.Danger => "btn-danger",
+        ConfirmType.Warning => "btn-warning",
+        ConfirmType.Success => "btn-success",
+        _ => "btn-primary"
+    };
+
+    private async Task Confirm()
+    {
+        await OnConfirm.InvokeAsync();
+    }
+
+    private async Task Cancel()
+    {
+        await IsOpenChanged.InvokeAsync(false);
+        await OnCancel.InvokeAsync();
+    }
+
+    public enum ConfirmType
+    {
+        Info,
+        Success,
+        Warning,
+        Danger
+    }
+}

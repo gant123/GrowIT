@@ -1,32 +1,362 @@
 @page "/reports"
-@attribute [Authorize]
+@using GrowIT.Client.Models
 
-<div style="max-width: 800px; margin: 0 auto;">
+<PageTitle>Reports - grow.IT</PageTitle>
+
+<div class="page-reports">
+    <!-- Page Header -->
     <div class="page-header">
-        <div>
+        <div class="page-header-content">
             <h1 class="page-title">Reports</h1>
-            <p class="page-subtitle">Analytics and impact reporting</p>
+            <p class="page-subtitle">Generate reports for grant compliance and impact measurement.</p>
         </div>
     </div>
 
-    <div class="card-growit" style="text-align: center; padding: 48px;">
-        <span class="oi oi-bar-chart" style="font-size: 48px; color: var(--growit-text-muted); display: block; margin-bottom: 16px;"></span>
-        <h2 style="font-size: 20px; color: var(--growit-text-primary); margin: 0 0 8px 0;">Reports Coming Soon</h2>
-        <p style="color: var(--growit-text-secondary); margin: 0 0 24px 0;">Advanced analytics and impact reporting features are currently in development.</p>
+    <!-- Report Templates -->
+    <div class="report-section">
+        <h2 class="section-title">Quick Reports</h2>
+        <div class="report-cards">
+            <div class="report-card" @onclick="() => GenerateReport("impact-summary")">
+                <div class="report-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
+                        <path d="M22 12A10 10 0 0 0 12 2v10z"/>
+                    </svg>
+                </div>
+                <div class="report-content">
+                    <h3 class="report-title">Impact Summary</h3>
+                    <p class="report-desc">Overview of people served, investments made, and outcomes documented.</p>
+                </div>
+                <div class="report-action">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="report-card" @onclick="() => GenerateReport("investment-detail")">
+                <div class="report-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="1" x2="12" y2="23"/>
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                    </svg>
+                </div>
+                <div class="report-content">
+                    <h3 class="report-title">Investment Detail</h3>
+                    <p class="report-desc">Complete breakdown of all investments by category, source, and recipient.</p>
+                </div>
+                <div class="report-action">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="report-card" @onclick="() => GenerateReport("outcomes-by-category")">
+                <div class="report-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                </div>
+                <div class="report-content">
+                    <h3 class="report-title">Outcomes by Category</h3>
+                    <p class="report-desc">Documented imprints grouped by outcome category with verification status.</p>
+                </div>
+                <div class="report-action">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="report-card" @onclick="() => GenerateReport("funding-utilization")">
+                <div class="report-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                        <line x1="1" y1="10" x2="23" y2="10"/>
+                    </svg>
+                </div>
+                <div class="report-content">
+                    <h3 class="report-title">Funding Utilization</h3>
+                    <p class="report-desc">Track spending by funding source, grant, and budget allocation.</p>
+                </div>
+                <div class="report-action">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="report-card" @onclick="() => GenerateReport("season-progression")">
+                <div class="report-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                        <polyline points="17 6 23 6 23 12"/>
+                    </svg>
+                </div>
+                <div class="report-content">
+                    <h3 class="report-title">Season Progression</h3>
+                    <p class="report-desc">Track how people move through Crisis, Planting, Growing, and Harvest seasons.</p>
+                </div>
+                <div class="report-action">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </div>
+            </div>
+
+            <div class="report-card" @onclick="() => GenerateReport("demographic-breakdown")">
+                <div class="report-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                </div>
+                <div class="report-content">
+                    <h3 class="report-title">Demographic Breakdown</h3>
+                    <p class="report-desc">People served by household size, income level, and employment status.</p>
+                </div>
+                <div class="report-action">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="9 18 15 12 9 6"/>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Report Builder -->
+    <div class="report-section">
+        <h2 class="section-title">Custom Report</h2>
+        <div class="custom-report-builder">
+            <div class="builder-row">
+                <div class="builder-field">
+                    <label>Report Type</label>
+                    <select @bind="_customReportType">
+                        <option value="investments">Investments</option>
+                        <option value="imprints">Imprints</option>
+                        <option value="people">People</option>
+                        <option value="growth-plans">Growth Plans</option>
+                    </select>
+                </div>
+                
+                <div class="builder-field">
+                    <label>Fiscal Year</label>
+                    <select @bind="_customFiscalYear">
+                        <option value="FY24-25">FY24-25</option>
+                        <option value="FY23-24">FY23-24</option>
+                        <option value="FY22-23">FY22-23</option>
+                    </select>
+                </div>
+                
+                <div class="builder-field">
+                    <label>Date Range</label>
+                    <div class="date-range-inputs">
+                        <input type="date" @bind="_customDateFrom" />
+                        <span>to</span>
+                        <input type="date" @bind="_customDateTo" />
+                    </div>
+                </div>
+            </div>
+            
+            <div class="builder-row">
+                <div class="builder-field">
+                    <label>Group By</label>
+                    <select @bind="_customGroupBy">
+                        <option value="none">No Grouping</option>
+                        <option value="category">Category</option>
+                        <option value="season">Season</option>
+                        <option value="funding-source">Funding Source</option>
+                        <option value="month">Month</option>
+                    </select>
+                </div>
+                
+                <div class="builder-field">
+                    <label>Format</label>
+                    <select @bind="_customFormat">
+                        <option value="pdf">PDF</option>
+                        <option value="excel">Excel</option>
+                        <option value="csv">CSV</option>
+                    </select>
+                </div>
+                
+                <div class="builder-field builder-actions">
+                    <button class="btn btn-primary" @onclick="GenerateCustomReport">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        Generate Report
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Reports -->
+    <div class="report-section">
+        <h2 class="section-title">Recent Reports</h2>
+        <div class="recent-reports-list">
+            @foreach (var report in _recentReports)
+            {
+                <div class="recent-report-item">
+                    <div class="report-file-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10 9 9 9 8 9"/>
+                        </svg>
+                    </div>
+                    <div class="report-file-info">
+                        <span class="report-file-name">@report.Name</span>
+                        <span class="report-file-meta">@report.GeneratedAt.ToString("MMM d, yyyy h:mm tt") • @report.Format.ToUpperInvariant()</span>
+                    </div>
+                    <div class="report-file-actions">
+                        <button class="btn btn-ghost btn-sm" @onclick="() => DownloadReport(report.Id)">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            Download
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <!-- Scheduled Reports -->
+    <div class="report-section">
+        <h2 class="section-title">Scheduled Reports</h2>
+        <p class="section-desc">Set up automatic reports to be generated and emailed on a schedule.</p>
         
-        <div class="d-flex justify-content-center gap-3 flex-wrap">
-            <div class="d-flex align-items-center gap-2 px-3 py-2 rounded" style="background-color: var(--growit-bg-secondary);">
-                <span class="oi oi-graph" style="color: var(--growit-green);"></span>
-                <span style="color: var(--growit-text-primary); font-size: 13px;">Impact Metrics</span>
-            </div>
-            <div class="d-flex align-items-center gap-2 px-3 py-2 rounded" style="background-color: var(--growit-bg-secondary);">
-                <span class="oi oi-pie-chart" style="color: var(--growit-blue);"></span>
-                <span style="color: var(--growit-text-primary); font-size: 13px;">Fund Utilization</span>
-            </div>
-            <div class="d-flex align-items-center gap-2 px-3 py-2 rounded" style="background-color: var(--growit-bg-secondary);">
-                <span class="oi oi-people" style="color: var(--growit-warning);"></span>
-                <span style="color: var(--growit-text-primary); font-size: 13px;">Client Progress</span>
-            </div>
+        <div class="scheduled-reports">
+            @if (_scheduledReports.Any())
+            {
+                @foreach (var scheduled in _scheduledReports)
+                {
+                    <div class="scheduled-report-item">
+                        <div class="scheduled-info">
+                            <span class="scheduled-name">@scheduled.Name</span>
+                            <span class="scheduled-frequency">@scheduled.Frequency • Next: @scheduled.NextRun.ToString("MMM d")</span>
+                        </div>
+                        <div class="scheduled-actions">
+                            <button class="btn-icon-only" title="Edit" @onclick="() => EditSchedule(scheduled.Id)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                </svg>
+                            </button>
+                            <button class="btn-icon-only danger" title="Delete" @onclick="() => DeleteSchedule(scheduled.Id)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <div class="empty-scheduled">
+                    <p>No scheduled reports yet.</p>
+                </div>
+            }
+            
+            <button class="btn btn-secondary" @onclick="AddScheduledReport">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Scheduled Report
+            </button>
         </div>
     </div>
 </div>
+
+@code {
+    // Custom report builder
+    private string _customReportType = "investments";
+    private string _customFiscalYear = "FY24-25";
+    private DateTime? _customDateFrom;
+    private DateTime? _customDateTo;
+    private string _customGroupBy = "none";
+    private string _customFormat = "pdf";
+
+    // Recent reports
+    private List<RecentReport> _recentReports = new();
+    
+    // Scheduled reports
+    private List<ScheduledReport> _scheduledReports = new();
+
+    private class RecentReport
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = "";
+        public string Format { get; set; } = "";
+        public DateTime GeneratedAt { get; set; }
+    }
+
+    private class ScheduledReport
+    {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = "";
+        public string Frequency { get; set; } = "";
+        public DateTime NextRun { get; set; }
+    }
+
+    protected override void OnInitialized()
+    {
+        _recentReports = new List<RecentReport>
+        {
+            new() { Id = Guid.NewGuid(), Name = "Impact Summary FY24-25", Format = "pdf", GeneratedAt = DateTime.Now.AddDays(-1) },
+            new() { Id = Guid.NewGuid(), Name = "Investment Detail Q3", Format = "excel", GeneratedAt = DateTime.Now.AddDays(-3) },
+            new() { Id = Guid.NewGuid(), Name = "Outcomes by Category", Format = "pdf", GeneratedAt = DateTime.Now.AddDays(-7) },
+            new() { Id = Guid.NewGuid(), Name = "United Way Grant Report", Format = "pdf", GeneratedAt = DateTime.Now.AddDays(-14) }
+        };
+
+        _scheduledReports = new List<ScheduledReport>
+        {
+            new() { Id = Guid.NewGuid(), Name = "Weekly Investment Summary", Frequency = "Weekly (Monday)", NextRun = DateTime.Now.AddDays(2) },
+            new() { Id = Guid.NewGuid(), Name = "Monthly Impact Report", Frequency = "Monthly (1st)", NextRun = DateTime.Now.AddDays(6) }
+        };
+    }
+
+    private void GenerateReport(string reportType)
+    {
+        // Generate specific report
+    }
+
+    private void GenerateCustomReport()
+    {
+        // Generate custom report based on builder settings
+    }
+
+    private void DownloadReport(Guid id)
+    {
+        // Download report
+    }
+
+    private void AddScheduledReport()
+    {
+        // Open schedule modal
+    }
+
+    private void EditSchedule(Guid id)
+    {
+        // Edit scheduled report
+    }
+
+    private void DeleteSchedule(Guid id)
+    {
+        // Delete scheduled report
+    }
+}

@@ -1,0 +1,538 @@
+@page "/people"
+@page "/people/{Filter}"
+@using GrowIT.Client.Models
+@inject NavigationManager Navigation
+
+<PageTitle>People - grow.IT</PageTitle>
+
+<div class="page-people">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-header-content">
+            <h1 class="page-title">People</h1>
+            <p class="page-subtitle">Manage and support the people in your community.</p>
+        </div>
+        <div class="page-header-actions">
+            <button class="btn btn-secondary" @onclick="ExportList">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Export
+            </button>
+            <button class="btn btn-primary" @onclick="OpenAddPerson">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Add Person
+            </button>
+        </div>
+    </div>
+
+    <!-- Quick Filters -->
+    <div class="filter-tabs">
+        <button class="filter-tab @(string.IsNullOrEmpty(_activeFilter) ? "active" : "")" @onclick="() => SetFilter(null)">
+            All People
+            <span class="filter-count">@_allPeople.Count</span>
+        </button>
+        <button class="filter-tab @(_activeFilter == "crisis" ? "active" : "")" @onclick="() => SetFilter("crisis")">
+            <span class="status-dot crisis"></span>
+            Crisis
+            <span class="filter-count">@_allPeople.Count(p => p.CurrentSeason == Season.Crisis)</span>
+        </button>
+        <button class="filter-tab @(_activeFilter == "planting" ? "active" : "")" @onclick="() => SetFilter("planting")">
+            <span class="status-dot planting"></span>
+            Planting
+            <span class="filter-count">@_allPeople.Count(p => p.CurrentSeason == Season.Planting)</span>
+        </button>
+        <button class="filter-tab @(_activeFilter == "growing" ? "active" : "")" @onclick="() => SetFilter("growing")">
+            <span class="status-dot growing"></span>
+            Growing
+            <span class="filter-count">@_allPeople.Count(p => p.CurrentSeason == Season.Growing)</span>
+        </button>
+        <button class="filter-tab @(_activeFilter == "harvest" ? "active" : "")" @onclick="() => SetFilter("harvest")">
+            <span class="status-dot harvest"></span>
+            Harvest
+            <span class="filter-count">@_allPeople.Count(p => p.CurrentSeason == Season.Harvest)</span>
+        </button>
+    </div>
+
+    <!-- Search and Advanced Filters -->
+    <div class="toolbar">
+        <div class="search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
+                <circle cx="11" cy="11" r="8"/>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" 
+                   placeholder="Search by name, phone, or email..." 
+                   @bind="_searchQuery" 
+                   @bind:event="oninput"
+                   @onkeyup="HandleSearch" />
+            @if (!string.IsNullOrEmpty(_searchQuery))
+            {
+                <button class="search-clear" @onclick="ClearSearch">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            }
+        </div>
+        
+        <div class="toolbar-actions">
+            <div class="dropdown">
+                <button class="btn btn-ghost dropdown-trigger" @onclick="ToggleSortDropdown">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                        <line x1="4" y1="6" x2="20" y2="6"/>
+                        <line x1="4" y1="12" x2="14" y2="12"/>
+                        <line x1="4" y1="18" x2="8" y2="18"/>
+                    </svg>
+                    Sort
+                </button>
+                @if (_showSortDropdown)
+                {
+                    <div class="dropdown-menu">
+                        <button class="dropdown-item @(_sortBy == "name" ? "active" : "")" @onclick="() => SetSort("name")">Name A-Z</button>
+                        <button class="dropdown-item @(_sortBy == "name-desc" ? "active" : "")" @onclick="() => SetSort("name-desc")">Name Z-A</button>
+                        <button class="dropdown-item @(_sortBy == "recent" ? "active" : "")" @onclick="() => SetSort("recent")">Most Recent</button>
+                        <button class="dropdown-item @(_sortBy == "stability" ? "active" : "")" @onclick="() => SetSort("stability")">Stability Score</button>
+                        <button class="dropdown-item @(_sortBy == "invested" ? "active" : "")" @onclick="() => SetSort("invested")">Total Invested</button>
+                    </div>
+                }
+            </div>
+            
+            <button class="btn btn-ghost @(_viewMode == "grid" ? "active" : "")" @onclick="() => _viewMode = "grid"" title="Grid view">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                    <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                </svg>
+            </button>
+            <button class="btn btn-ghost @(_viewMode == "list" ? "active" : "")" @onclick="() => _viewMode = "list"" title="List view">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+                    <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Results Summary -->
+    <div class="results-summary">
+        <span>Showing @_filteredPeople.Count of @_allPeople.Count people</span>
+        @if (!string.IsNullOrEmpty(_searchQuery) || !string.IsNullOrEmpty(_activeFilter))
+        {
+            <button class="btn-link" @onclick="ClearAllFilters">Clear all filters</button>
+        }
+    </div>
+
+    <!-- People Grid/List -->
+    @if (_viewMode == "grid")
+    {
+        <div class="people-grid">
+            @foreach (var person in _filteredPeople)
+            {
+                <div class="person-card" @onclick="() => ViewPerson(person.Id)">
+                    <div class="person-card-header">
+                        <div class="avatar">
+                            <span>@person.Initials</span>
+                        </div>
+                        <div class="person-info">
+                            <h3 class="person-name">@person.FullName</h3>
+                            <span class="phase-badge phase-@person.CurrentSeason.ToString().ToLower()">
+                                @person.CurrentSeason
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="person-card-body">
+                        <div class="stability-indicator">
+                            <div class="stability-label">
+                                <span>Stability</span>
+                                <span class="stability-value">@person.StabilityScore%</span>
+                            </div>
+                            <div class="stability-bar">
+                                <div class="stability-fill @GetStabilityClass(person.StabilityScore)" 
+                                     style="width: @person.StabilityScore%"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="person-stats">
+                            <div class="stat">
+                                <span class="stat-value">@person.TotalInvestments</span>
+                                <span class="stat-label">Investments</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value">@person.TotalInvested.ToString("C0")</span>
+                                <span class="stat-label">Total</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="person-card-footer">
+                        @if (person.Phone != null)
+                        {
+                            <span class="contact-info">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                                </svg>
+                                @person.Phone
+                            </span>
+                        }
+                        @if (person.LastContactDate.HasValue)
+                        {
+                            <span class="last-contact">Last contact: @FormatRelativeTime(person.LastContactDate.Value)</span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="data-table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th class="col-checkbox">
+                            <input type="checkbox" @bind="_selectAll" @onclick="ToggleSelectAll" />
+                        </th>
+                        <th class="col-name sortable" @onclick="() => SetSort("name")">
+                            Name
+                            @if (_sortBy == "name" || _sortBy == "name-desc")
+                            {
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="sort-icon @(_sortBy == "name-desc" ? "desc" : "")">
+                                    <polyline points="18 15 12 9 6 15"/>
+                                </svg>
+                            }
+                        </th>
+                        <th>Season</th>
+                        <th class="col-stability sortable" @onclick="() => SetSort("stability")">Stability</th>
+                        <th>Contact</th>
+                        <th class="col-invested sortable" @onclick="() => SetSort("invested")">Invested</th>
+                        <th class="col-recent sortable" @onclick="() => SetSort("recent")">Added</th>
+                        <th class="col-actions">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var person in _filteredPeople)
+                    {
+                        <tr class="@(_selectedIds.Contains(person.Id) ? "selected" : "")" @onclick="() => ViewPerson(person.Id)">
+                            <td class="col-checkbox" @onclick:stopPropagation="true">
+                                <input type="checkbox" checked="@_selectedIds.Contains(person.Id)" @onchange="() => ToggleSelect(person.Id)" />
+                            </td>
+                            <td class="col-name">
+                                <div class="person-cell">
+                                    <div class="avatar avatar-sm">
+                                        <span>@person.Initials</span>
+                                    </div>
+                                    <div class="person-cell-info">
+                                        <span class="person-cell-name">@person.FullName</span>
+                                        @if (person.Tags.Any())
+                                        {
+                                            <div class="person-tags">
+                                                @foreach (var tag in person.Tags.Take(2))
+                                                {
+                                                    <span class="tag">@tag</span>
+                                                }
+                                                @if (person.Tags.Count > 2)
+                                                {
+                                                    <span class="tag-more">+@(person.Tags.Count - 2)</span>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="phase-badge phase-@person.CurrentSeason.ToString().ToLower()">
+                                    @person.CurrentSeason
+                                </span>
+                            </td>
+                            <td class="col-stability">
+                                <div class="stability-inline">
+                                    <div class="stability-bar-small">
+                                        <div class="stability-fill @GetStabilityClass(person.StabilityScore)" 
+                                             style="width: @person.StabilityScore%"></div>
+                                    </div>
+                                    <span>@person.StabilityScore%</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="contact-cell">
+                                    @if (!string.IsNullOrEmpty(person.Phone))
+                                    {
+                                        <span class="contact-line">@person.Phone</span>
+                                    }
+                                    @if (!string.IsNullOrEmpty(person.Email))
+                                    {
+                                        <span class="contact-line secondary">@person.Email</span>
+                                    }
+                                </div>
+                            </td>
+                            <td class="col-invested">
+                                <div class="invested-cell">
+                                    <span class="invested-amount">@person.TotalInvested.ToString("C0")</span>
+                                    <span class="invested-count">@person.TotalInvestments investments</span>
+                                </div>
+                            </td>
+                            <td class="col-recent">@person.CreatedAt.ToString("MMM d, yyyy")</td>
+                            <td class="col-actions" @onclick:stopPropagation="true">
+                                <div class="action-buttons">
+                                    <button class="btn-icon-only" title="View profile" @onclick="() => ViewPerson(person.Id)">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                            <circle cx="12" cy="12" r="3"/>
+                                        </svg>
+                                    </button>
+                                    <button class="btn-icon-only" title="Add investment" @onclick="() => AddInvestment(person.Id)">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <line x1="12" y1="1" x2="12" y2="23"/>
+                                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                                        </svg>
+                                    </button>
+                                    <button class="btn-icon-only" title="More options" @onclick="() => ShowMoreOptions(person.Id)">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <!-- Pagination -->
+    @if (_totalPages > 1)
+    {
+        <div class="pagination">
+            <button class="pagination-btn" disabled="@(_currentPage == 1)" @onclick="PreviousPage">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="15 18 9 12 15 6"/>
+                </svg>
+                Previous
+            </button>
+            
+            <div class="pagination-pages">
+                @for (int i = 1; i <= _totalPages; i++)
+                {
+                    var page = i;
+                    <button class="pagination-page @(page == _currentPage ? "active" : "")" @onclick="() => GoToPage(page)">
+                        @page
+                    </button>
+                }
+            </div>
+            
+            <button class="pagination-btn" disabled="@(_currentPage == _totalPages)" @onclick="NextPage">
+                Next
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="9 18 15 12 9 6"/>
+                </svg>
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string? Filter { get; set; }
+
+    private List<PersonListDto> _allPeople = new();
+    private List<PersonListDto> _filteredPeople = new();
+    private HashSet<Guid> _selectedIds = new();
+    
+    private string _searchQuery = "";
+    private string? _activeFilter;
+    private string _sortBy = "recent";
+    private string _viewMode = "list";
+    
+    private bool _selectAll = false;
+    private bool _showSortDropdown = false;
+    
+    private int _currentPage = 1;
+    private int _pageSize = 20;
+    private int _totalPages => (int)Math.Ceiling((double)_filteredPeople.Count / _pageSize);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _activeFilter = Filter;
+        await LoadPeople();
+        ApplyFilters();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_activeFilter != Filter)
+        {
+            _activeFilter = Filter;
+            ApplyFilters();
+        }
+    }
+
+    private async Task LoadPeople()
+    {
+        // Sample data - in production this would be an API call
+        _allPeople = new List<PersonListDto>
+        {
+            new() { Id = Guid.NewGuid(), FullName = "Maria Santos", Initials = "MS", Phone = "(555) 123-4567", Email = "maria.s@email.com", CurrentSeason = Season.Growing, StabilityScore = 72, TotalInvestments = 8, TotalInvested = 2450, CreatedAt = DateTime.Now.AddMonths(-6), Tags = new() { "Single Parent", "Housing" } },
+            new() { Id = Guid.NewGuid(), FullName = "James Wilson", Initials = "JW", Phone = "(555) 234-5678", CurrentSeason = Season.Planting, StabilityScore = 45, TotalInvestments = 3, TotalInvested = 1800, CreatedAt = DateTime.Now.AddMonths(-2), Tags = new() { "Veteran" } },
+            new() { Id = Guid.NewGuid(), FullName = "Sarah Johnson", Initials = "SJ", Phone = "(555) 345-6789", Email = "sarah.j@email.com", CurrentSeason = Season.Harvest, StabilityScore = 92, TotalInvestments = 12, TotalInvested = 4200, CreatedAt = DateTime.Now.AddYears(-1), LastContactDate = DateTime.Now.AddDays(-3) },
+            new() { Id = Guid.NewGuid(), FullName = "Michael Chen", Initials = "MC", Phone = "(555) 456-7890", CurrentSeason = Season.Crisis, StabilityScore = 28, TotalInvestments = 2, TotalInvested = 650, CreatedAt = DateTime.Now.AddWeeks(-3), Tags = new() { "Urgent", "Medical" } },
+            new() { Id = Guid.NewGuid(), FullName = "Robert Thompson", Initials = "RT", Phone = "(555) 567-8901", CurrentSeason = Season.Crisis, StabilityScore = 18, TotalInvestments = 1, TotalInvested = 350, CreatedAt = DateTime.Now.AddDays(-5) },
+            new() { Id = Guid.NewGuid(), FullName = "Linda Martinez", Initials = "LM", Phone = "(555) 678-9012", Email = "linda.m@email.com", CurrentSeason = Season.Planting, StabilityScore = 55, TotalInvestments = 5, TotalInvested = 1950, CreatedAt = DateTime.Now.AddMonths(-4), Tags = new() { "Senior", "Fixed Income" } },
+            new() { Id = Guid.NewGuid(), FullName = "David Kim", Initials = "DK", Phone = "(555) 789-0123", CurrentSeason = Season.Growing, StabilityScore = 68, TotalInvestments = 6, TotalInvested = 2100, CreatedAt = DateTime.Now.AddMonths(-8), LastContactDate = DateTime.Now.AddDays(-7) },
+            new() { Id = Guid.NewGuid(), FullName = "Angela Davis", Initials = "AD", Phone = "(555) 890-1234", Email = "angela.d@email.com", CurrentSeason = Season.Harvest, StabilityScore = 88, TotalInvestments = 15, TotalInvested = 5600, CreatedAt = DateTime.Now.AddYears(-2) },
+            new() { Id = Guid.NewGuid(), FullName = "Thomas Brown", Initials = "TB", Phone = "(555) 901-2345", CurrentSeason = Season.Growing, StabilityScore = 75, TotalInvestments = 7, TotalInvested = 2800, CreatedAt = DateTime.Now.AddMonths(-10) },
+            new() { Id = Guid.NewGuid(), FullName = "Jessica Lee", Initials = "JL", Phone = "(555) 012-3456", Email = "jess.lee@email.com", CurrentSeason = Season.Planting, StabilityScore = 42, TotalInvestments = 4, TotalInvested = 1200, CreatedAt = DateTime.Now.AddMonths(-1), Tags = new() { "Young Adult" } }
+        };
+    }
+
+    private void ApplyFilters()
+    {
+        var filtered = _allPeople.AsEnumerable();
+
+        // Apply season filter
+        if (!string.IsNullOrEmpty(_activeFilter))
+        {
+            filtered = _activeFilter.ToLower() switch
+            {
+                "crisis" => filtered.Where(p => p.CurrentSeason == Season.Crisis),
+                "planting" => filtered.Where(p => p.CurrentSeason == Season.Planting),
+                "growing" => filtered.Where(p => p.CurrentSeason == Season.Growing),
+                "harvest" => filtered.Where(p => p.CurrentSeason == Season.Harvest),
+                _ => filtered
+            };
+        }
+
+        // Apply search
+        if (!string.IsNullOrWhiteSpace(_searchQuery))
+        {
+            var query = _searchQuery.ToLower();
+            filtered = filtered.Where(p => 
+                p.FullName.ToLower().Contains(query) ||
+                (p.Phone?.Contains(query) ?? false) ||
+                (p.Email?.ToLower().Contains(query) ?? false));
+        }
+
+        // Apply sort
+        filtered = _sortBy switch
+        {
+            "name" => filtered.OrderBy(p => p.FullName),
+            "name-desc" => filtered.OrderByDescending(p => p.FullName),
+            "stability" => filtered.OrderByDescending(p => p.StabilityScore),
+            "invested" => filtered.OrderByDescending(p => p.TotalInvested),
+            "recent" => filtered.OrderByDescending(p => p.CreatedAt),
+            _ => filtered.OrderByDescending(p => p.CreatedAt)
+        };
+
+        _filteredPeople = filtered.ToList();
+        _currentPage = 1;
+    }
+
+    private void SetFilter(string? filter)
+    {
+        _activeFilter = filter;
+        ApplyFilters();
+        if (filter == null)
+            Navigation.NavigateTo("/people");
+        else
+            Navigation.NavigateTo($"/people/{filter}");
+    }
+
+    private void HandleSearch(KeyboardEventArgs e)
+    {
+        ApplyFilters();
+    }
+
+    private void ClearSearch()
+    {
+        _searchQuery = "";
+        ApplyFilters();
+    }
+
+    private void ClearAllFilters()
+    {
+        _searchQuery = "";
+        _activeFilter = null;
+        ApplyFilters();
+        Navigation.NavigateTo("/people");
+    }
+
+    private void SetSort(string sort)
+    {
+        _sortBy = sort;
+        _showSortDropdown = false;
+        ApplyFilters();
+    }
+
+    private void ToggleSortDropdown()
+    {
+        _showSortDropdown = !_showSortDropdown;
+    }
+
+    private void ToggleSelectAll()
+    {
+        if (_selectAll)
+        {
+            _selectedIds.Clear();
+        }
+        else
+        {
+            _selectedIds = _filteredPeople.Select(p => p.Id).ToHashSet();
+        }
+        _selectAll = !_selectAll;
+    }
+
+    private void ToggleSelect(Guid id)
+    {
+        if (_selectedIds.Contains(id))
+            _selectedIds.Remove(id);
+        else
+            _selectedIds.Add(id);
+        
+        _selectAll = _selectedIds.Count == _filteredPeople.Count;
+    }
+
+    private string GetStabilityClass(int score) => score switch
+    {
+        < 30 => "danger",
+        < 50 => "warning",
+        < 70 => "info",
+        _ => "success"
+    };
+
+    private string FormatRelativeTime(DateTime date)
+    {
+        var diff = DateTime.Now - date;
+        if (diff.TotalDays < 1) return "Today";
+        if (diff.TotalDays < 2) return "Yesterday";
+        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays} days ago";
+        if (diff.TotalDays < 30) return $"{(int)(diff.TotalDays / 7)} weeks ago";
+        return date.ToString("MMM d");
+    }
+
+    private void ViewPerson(Guid id) => Navigation.NavigateTo($"/people/{id}");
+    private void AddInvestment(Guid personId) => Navigation.NavigateTo($"/investments/new?personId={personId}");
+    private void ShowMoreOptions(Guid id) { /* Show dropdown */ }
+    private void OpenAddPerson() { /* Open modal */ }
+    private void ExportList() { /* Export functionality */ }
+
+    private void PreviousPage()
+    {
+        if (_currentPage > 1) _currentPage--;
+    }
+
+    private void NextPage()
+    {
+        if (_currentPage < _totalPages) _currentPage++;
+    }
+
+    private void GoToPage(int page)
+    {
+        _currentPage = page;
+    }
+}

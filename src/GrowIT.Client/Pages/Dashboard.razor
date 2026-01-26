@@ -1,0 +1,436 @@
+@page "/"
+@using GrowIT.Client.Models
+
+<PageTitle>Dashboard - grow.IT</PageTitle>
+
+<div class="page-dashboard">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="page-header-content">
+            <h1 class="page-title">Dashboard</h1>
+            <p class="page-subtitle">Welcome back. Here's what's happening with your community.</p>
+        </div>
+        <div class="page-header-actions">
+            <button class="btn btn-secondary" @onclick="ExportReport">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Export
+            </button>
+        </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+        <div class="kpi-card" data-trend="up">
+            <div class="kpi-header">
+                <span class="kpi-icon" style="--kpi-color: var(--growit-green);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                </span>
+                <span class="kpi-trend up">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                        <polyline points="17 6 23 6 23 12"/>
+                    </svg>
+                    +12%
+                </span>
+            </div>
+            <div class="kpi-value">@_dashboardData.TotalPeopleServed</div>
+            <div class="kpi-label">People Served</div>
+            <div class="kpi-subtext">@_dashboardData.NewPeopleThisPeriod new this month</div>
+        </div>
+
+        <div class="kpi-card" data-trend="up">
+            <div class="kpi-header">
+                <span class="kpi-icon" style="--kpi-color: var(--color-primary);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="1" x2="12" y2="23"/>
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                    </svg>
+                </span>
+                <span class="kpi-trend up">+8%</span>
+            </div>
+            <div class="kpi-value">@_dashboardData.TotalInvested.ToString("C0")</div>
+            <div class="kpi-label">Total Invested</div>
+            <div class="kpi-subtext">@_dashboardData.TotalInvestments investments this year</div>
+        </div>
+
+        <div class="kpi-card" data-trend="up">
+            <div class="kpi-header">
+                <span class="kpi-icon" style="--kpi-color: var(--color-success);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                </span>
+                <span class="kpi-trend up">+15%</span>
+            </div>
+            <div class="kpi-value">@_dashboardData.TotalImprints</div>
+            <div class="kpi-label">Documented Outcomes</div>
+            <div class="kpi-subtext">@_dashboardData.VerifiedImprints verified imprints</div>
+        </div>
+
+        <div class="kpi-card" data-trend="neutral">
+            <div class="kpi-header">
+                <span class="kpi-icon" style="--kpi-color: var(--color-warning);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                </span>
+            </div>
+            <div class="kpi-value">@_dashboardData.ActiveGrowthPlans</div>
+            <div class="kpi-label">Active Growth Plans</div>
+            <div class="kpi-subtext">@_dashboardData.GoalsAchieved goals achieved</div>
+        </div>
+    </div>
+
+    <!-- Season Distribution -->
+    <div class="dashboard-section">
+        <h2 class="section-title">Season Distribution</h2>
+        <p class="section-subtitle">Current phase of people in your care</p>
+        
+        <div class="season-cards">
+            <div class="season-card crisis">
+                <div class="season-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                        <line x1="12" y1="9" x2="12" y2="13"/>
+                        <line x1="12" y1="17" x2="12.01" y2="17"/>
+                    </svg>
+                </div>
+                <div class="season-content">
+                    <div class="season-value">@_dashboardData.PeopleInCrisisSeason</div>
+                    <div class="season-label">Crisis</div>
+                    <div class="season-desc">Immediate stabilization</div>
+                </div>
+            </div>
+
+            <div class="season-card planting">
+                <div class="season-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    </svg>
+                </div>
+                <div class="season-content">
+                    <div class="season-value">@_dashboardData.PeopleInPlantingSeason</div>
+                    <div class="season-label">Planting</div>
+                    <div class="season-desc">Building foundation</div>
+                </div>
+            </div>
+
+            <div class="season-card growing">
+                <div class="season-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                        <polyline points="17 6 23 6 23 12"/>
+                    </svg>
+                </div>
+                <div class="season-content">
+                    <div class="season-value">@_dashboardData.PeopleInGrowingSeason</div>
+                    <div class="season-label">Growing</div>
+                    <div class="season-desc">Developing independence</div>
+                </div>
+            </div>
+
+            <div class="season-card harvest">
+                <div class="season-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="8" r="7"/>
+                        <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+                    </svg>
+                </div>
+                <div class="season-content">
+                    <div class="season-value">@_dashboardData.PeopleInHarvestSeason</div>
+                    <div class="season-label">Harvest</div>
+                    <div class="season-desc">Thriving & giving back</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="dashboard-grid">
+        <!-- Recent Activity -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">Recent Investments</h3>
+                <a href="/investments" class="card-link">View all</a>
+            </div>
+            <div class="card-content">
+                @if (_recentInvestments.Any())
+                {
+                    <div class="activity-list">
+                        @foreach (var investment in _recentInvestments)
+                        {
+                            <div class="activity-item">
+                                <div class="activity-icon investment">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="1" x2="12" y2="23"/>
+                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                                    </svg>
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-main">
+                                        <span class="activity-title">@investment.Purpose</span>
+                                        <span class="activity-meta">for @investment.PersonName</span>
+                                    </div>
+                                    <div class="activity-details">
+                                        <span class="activity-amount">@investment.Amount.ToString("C0")</span>
+                                        <span class="activity-time">@FormatRelativeTime(investment.Date)</span>
+                                    </div>
+                                </div>
+                                <span class="badge badge-@GetStatusClass(investment.Status)">@investment.Status</span>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="empty-icon">
+                            <line x1="12" y1="1" x2="12" y2="23"/>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                        <p>No recent investments</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- People Needing Attention -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">Needs Attention</h3>
+                <a href="/people?filter=crisis" class="card-link">View all</a>
+            </div>
+            <div class="card-content">
+                @if (_peopleNeedingAttention.Any())
+                {
+                    <div class="attention-list">
+                        @foreach (var person in _peopleNeedingAttention)
+                        {
+                            <div class="attention-item">
+                                <div class="avatar avatar-sm">
+                                    <span>@person.Initials</span>
+                                </div>
+                                <div class="attention-content">
+                                    <div class="attention-name">@person.FullName</div>
+                                    <div class="attention-reason">@GetAttentionReason(person)</div>
+                                </div>
+                                <span class="phase-badge phase-@person.CurrentSeason.ToString().ToLower()">
+                                    @person.CurrentSeason
+                                </span>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="empty-icon">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        <p>Everyone is on track</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Recent Imprints -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">Recent Imprints</h3>
+                <a href="/imprints" class="card-link">View all</a>
+            </div>
+            <div class="card-content">
+                @if (_recentImprints.Any())
+                {
+                    <div class="activity-list">
+                        @foreach (var imprint in _recentImprints)
+                        {
+                            <div class="activity-item">
+                                <div class="activity-icon imprint">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                        <polyline points="22 4 12 14.01 9 11.01"/>
+                                    </svg>
+                                </div>
+                                <div class="activity-content">
+                                    <div class="activity-main">
+                                        <span class="activity-title">@imprint.Title</span>
+                                        <span class="activity-meta">@imprint.PersonName</span>
+                                    </div>
+                                    <div class="activity-details">
+                                        <span class="badge badge-outline">@imprint.Category</span>
+                                        <span class="activity-time">@FormatRelativeTime(imprint.Date)</span>
+                                    </div>
+                                </div>
+                                @if (imprint.IsVerified)
+                                {
+                                    <span class="verified-badge" title="Verified">
+                                        <svg viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                                        </svg>
+                                    </span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="empty-icon">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                            <polyline points="22 4 12 14.01 9 11.01"/>
+                        </svg>
+                        <p>No recent imprints</p>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="dashboard-card">
+            <div class="card-header">
+                <h3 class="card-title">Investment by Category</h3>
+            </div>
+            <div class="card-content">
+                <div class="category-stats">
+                    @foreach (var cat in _investmentsByCategory.Take(6))
+                    {
+                        <div class="category-stat">
+                            <div class="category-header">
+                                <span class="category-name">@cat.Category</span>
+                                <span class="category-value">@cat.TotalAmount.ToString("C0")</span>
+                            </div>
+                            <div class="category-bar">
+                                <div class="category-fill" style="width: @GetCategoryPercentage(cat)%"></div>
+                            </div>
+                            <div class="category-count">@cat.Count investments</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private ImpactDashboardDto _dashboardData = new();
+    private List<InvestmentListDto> _recentInvestments = new();
+    private List<PersonListDto> _peopleNeedingAttention = new();
+    private List<ImprintListDto> _recentImprints = new();
+    private List<InvestmentSummaryByCategory> _investmentsByCategory = new();
+    private decimal _maxCategoryAmount = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        // In production, this would call an API service
+        // For now, populate with sample data
+        _dashboardData = new ImpactDashboardDto
+        {
+            FiscalYear = "FY24-25",
+            TotalPeopleServed = 847,
+            NewPeopleThisPeriod = 42,
+            PeopleInCrisis = 23,
+            PeopleThriving = 156,
+            TotalInvestments = 1284,
+            TotalInvested = 428750,
+            AverageInvestmentPerPerson = 506,
+            TotalImprints = 2156,
+            VerifiedImprints = 1892,
+            ActiveGrowthPlans = 312,
+            CompletedGrowthPlans = 89,
+            GoalsAchieved = 567,
+            PeopleInCrisisSeason = 23,
+            PeopleInPlantingSeason = 245,
+            PeopleInGrowingSeason = 423,
+            PeopleInHarvestSeason = 156
+        };
+
+        _recentInvestments = new List<InvestmentListDto>
+        {
+            new() { Id = Guid.NewGuid(), PersonName = "Maria Santos", Amount = 450, Purpose = "Utility Assistance", Category = InvestmentCategory.Utilities, Date = DateTime.Now.AddHours(-2), Status = InvestmentStatus.Disbursed },
+            new() { Id = Guid.NewGuid(), PersonName = "James Wilson", Amount = 1200, Purpose = "Security Deposit", Category = InvestmentCategory.Housing, Date = DateTime.Now.AddHours(-5), Status = InvestmentStatus.Approved },
+            new() { Id = Guid.NewGuid(), PersonName = "Sarah Johnson", Amount = 85, Purpose = "Food Box Program", Category = InvestmentCategory.Food, Date = DateTime.Now.AddDays(-1), Status = InvestmentStatus.Completed },
+            new() { Id = Guid.NewGuid(), PersonName = "Michael Chen", Amount = 350, Purpose = "Car Repair", Category = InvestmentCategory.Transportation, Date = DateTime.Now.AddDays(-1), Status = InvestmentStatus.Pending }
+        };
+
+        _peopleNeedingAttention = new List<PersonListDto>
+        {
+            new() { Id = Guid.NewGuid(), FullName = "Robert Thompson", Initials = "RT", CurrentSeason = Season.Crisis, StabilityScore = 25 },
+            new() { Id = Guid.NewGuid(), FullName = "Linda Martinez", Initials = "LM", CurrentSeason = Season.Crisis, StabilityScore = 30 },
+            new() { Id = Guid.NewGuid(), FullName = "David Kim", Initials = "DK", CurrentSeason = Season.Planting, StabilityScore = 45 }
+        };
+
+        _recentImprints = new List<ImprintListDto>
+        {
+            new() { Id = Guid.NewGuid(), PersonName = "Angela Davis", Title = "Secured Full-Time Employment", Category = ImprintCategory.EmploymentStability, Date = DateTime.Now.AddHours(-3), IsVerified = true },
+            new() { Id = Guid.NewGuid(), PersonName = "Thomas Brown", Title = "Completed GED Program", Category = ImprintCategory.EducationalAttainment, Date = DateTime.Now.AddDays(-1), IsVerified = true },
+            new() { Id = Guid.NewGuid(), PersonName = "Jessica Lee", Title = "Moved to Permanent Housing", Category = ImprintCategory.HousingStability, Date = DateTime.Now.AddDays(-2), IsVerified = false }
+        };
+
+        _investmentsByCategory = new List<InvestmentSummaryByCategory>
+        {
+            new() { Category = InvestmentCategory.Housing, Count = 156, TotalAmount = 142500 },
+            new() { Category = InvestmentCategory.Utilities, Count = 289, TotalAmount = 87600 },
+            new() { Category = InvestmentCategory.Food, Count = 412, TotalAmount = 62400 },
+            new() { Category = InvestmentCategory.Transportation, Count = 98, TotalAmount = 54200 },
+            new() { Category = InvestmentCategory.Medical, Count = 67, TotalAmount = 48900 },
+            new() { Category = InvestmentCategory.Education, Count = 45, TotalAmount = 33150 }
+        };
+
+        _maxCategoryAmount = _investmentsByCategory.Max(c => c.TotalAmount);
+    }
+
+    private string FormatRelativeTime(DateTime date)
+    {
+        var diff = DateTime.Now - date;
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}d ago";
+        return date.ToString("MMM d");
+    }
+
+    private string GetStatusClass(InvestmentStatus status) => status switch
+    {
+        InvestmentStatus.Pending => "warning",
+        InvestmentStatus.Approved => "info",
+        InvestmentStatus.Disbursed => "success",
+        InvestmentStatus.Completed => "success",
+        InvestmentStatus.Cancelled => "danger",
+        _ => "secondary"
+    };
+
+    private string GetAttentionReason(PersonListDto person)
+    {
+        if (person.CurrentSeason == Season.Crisis) return "In crisis - needs immediate support";
+        if (person.StabilityScore < 40) return "Low stability score";
+        return "Requires follow-up";
+    }
+
+    private double GetCategoryPercentage(InvestmentSummaryByCategory cat)
+    {
+        return _maxCategoryAmount > 0 ? (double)cat.TotalAmount / (double)_maxCategoryAmount * 100 : 0;
+    }
+
+    private void ExportReport()
+    {
+        // Export functionality
+    }
+}

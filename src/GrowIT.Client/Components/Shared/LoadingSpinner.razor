@@ -1,0 +1,34 @@
+@namespace GrowIT.Client.Components.Shared
+
+<div class="loading-container @(FullPage ? "loading-fullpage" : "") @(Overlay ? "loading-overlay" : "")">
+    <div class="loading-spinner @SizeClass">
+        <svg viewBox="0 0 50 50">
+            <circle cx="25" cy="25" r="20" fill="none" stroke-width="4" />
+        </svg>
+    </div>
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <p class="loading-message">@Message</p>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public LoadingSize Size { get; set; } = LoadingSize.Medium;
+    [Parameter] public bool FullPage { get; set; }
+    [Parameter] public bool Overlay { get; set; }
+
+    private string SizeClass => Size switch
+    {
+        LoadingSize.Small => "loading-sm",
+        LoadingSize.Large => "loading-lg",
+        _ => ""
+    };
+
+    public enum LoadingSize
+    {
+        Small,
+        Medium,
+        Large
+    }
+}

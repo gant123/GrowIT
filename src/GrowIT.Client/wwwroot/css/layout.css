@@ -1,0 +1,683 @@
+/* ========================================
+   GROWIT LAYOUT SYSTEM
+   Enterprise Dashboard Layout
+   ======================================== */
+
+/* ========================================
+   APP SHELL
+   ======================================== */
+.growit-app {
+    display: flex;
+    min-height: 100vh;
+    background: var(--growit-bg-primary);
+}
+
+/* ========================================
+   SIDEBAR
+   ======================================== */
+.growit-sidebar {
+    width: var(--sidebar-width);
+    min-width: var(--sidebar-width);
+    background: var(--growit-bg-secondary);
+    border-right: 1px solid var(--growit-border);
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 100;
+    transition: width var(--transition-normal);
+}
+
+/* Sidebar Brand */
+.sidebar-brand {
+    height: var(--topbar-height);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--growit-border);
+}
+
+.brand-logo {
+    height: 36px;
+    width: auto;
+    transition: opacity var(--transition-fast);
+}
+
+.brand-logo:hover {
+    opacity: 0.9;
+}
+
+/* Sidebar Navigation */
+.sidebar-nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 12px;
+}
+
+.nav-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.nav-section {
+    margin-bottom: 24px;
+}
+
+.nav-section-title {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--growit-text-muted);
+    padding: 8px 16px;
+    margin-bottom: 4px;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    color: var(--growit-text-secondary);
+    text-decoration: none;
+    border-radius: var(--radius-md);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+    position: relative;
+}
+
+.nav-link:hover {
+    background: var(--growit-bg-card-hover);
+    color: var(--growit-text-primary);
+}
+
+.nav-link.active {
+    background: rgba(34, 197, 94, 0.1);
+    color: var(--growit-green);
+}
+
+.nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 24px;
+    background: var(--growit-green);
+    border-radius: 0 3px 3px 0;
+}
+
+.nav-link .nav-icon {
+    font-size: 1.125rem;
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.nav-link .nav-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.nav-link .nav-badge {
+    margin-left: auto;
+    padding: 2px 8px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    background: var(--growit-danger);
+    color: white;
+    border-radius: var(--radius-full);
+}
+
+.nav-divider {
+    height: 1px;
+    background: var(--growit-border);
+    margin: 16px 8px;
+}
+
+/* Sidebar Footer */
+.sidebar-footer {
+    padding: 16px;
+    border-top: 1px solid var(--growit-border);
+}
+
+.sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--growit-bg-primary);
+    border-radius: var(--radius-md);
+}
+
+.sidebar-user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, var(--growit-green), var(--growit-blue));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: white;
+}
+
+.sidebar-user-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.sidebar-user-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--growit-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-user-role {
+    font-size: 0.75rem;
+    color: var(--growit-text-muted);
+}
+
+/* ========================================
+   MAIN CONTENT AREA
+   ======================================== */
+.growit-main {
+    flex: 1;
+    margin-left: var(--sidebar-width);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    transition: margin-left var(--transition-normal);
+}
+
+/* ========================================
+   TOP BAR
+   ======================================== */
+.growit-topbar {
+    height: var(--topbar-height);
+    background: var(--growit-bg-secondary);
+    border-bottom: 1px solid var(--growit-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+
+.topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+/* Fiscal Selector */
+.fiscal-selector {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--growit-bg-primary);
+    border: 1px solid var(--growit-border);
+    border-radius: var(--radius-md);
+    padding: 8px 14px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.fiscal-selector:hover {
+    border-color: var(--growit-green);
+    box-shadow: 0 0 0 3px var(--growit-green-glow);
+}
+
+.fiscal-icon {
+    color: var(--growit-green);
+}
+
+.fiscal-text {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--growit-text-primary);
+}
+
+.fiscal-arrow {
+    color: var(--growit-text-muted);
+    font-size: 0.75rem;
+}
+
+/* Search Box in Topbar */
+.topbar-search {
+    width: 360px;
+}
+
+.topbar-search .search-box input {
+    background: var(--growit-bg-primary);
+}
+
+.topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* Theme Toggle */
+.theme-toggle {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--growit-border);
+    border-radius: var(--radius-md);
+    color: var(--growit-text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.theme-toggle:hover {
+    background: var(--growit-bg-card-hover);
+    color: var(--growit-text-primary);
+    border-color: var(--growit-text-muted);
+}
+
+/* Notifications Bell */
+.notifications-btn {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--growit-border);
+    border-radius: var(--radius-md);
+    color: var(--growit-text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.notifications-btn:hover {
+    background: var(--growit-bg-card-hover);
+    color: var(--growit-text-primary);
+}
+
+.notifications-btn .badge-count {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    background: var(--growit-danger);
+    color: white;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Plant Seed Button */
+.btn-plant-seed {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: linear-gradient(135deg, var(--growit-green), var(--growit-green-dark));
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow: 0 2px 8px var(--growit-green-glow);
+}
+
+.btn-plant-seed:hover {
+    background: linear-gradient(135deg, var(--growit-green-light), var(--growit-green));
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px var(--growit-green-glow);
+}
+
+.btn-plant-seed .oi {
+    font-size: 0.875rem;
+}
+
+/* User Area */
+.user-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(135deg, var(--growit-green), var(--growit-blue));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: transform var(--transition-fast);
+}
+
+.user-avatar:hover {
+    transform: scale(1.05);
+}
+
+.btn-logout {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--growit-border);
+    border-radius: var(--radius-md);
+    color: var(--growit-text-muted);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-logout:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: var(--growit-danger);
+    color: var(--growit-danger);
+}
+
+.btn-login-link {
+    padding: 10px 20px;
+    border: 1px solid var(--growit-green);
+    border-radius: var(--radius-md);
+    color: var(--growit-green);
+    font-weight: 600;
+    transition: all var(--transition-fast);
+}
+
+.btn-login-link:hover {
+    background: var(--growit-green);
+    color: white;
+}
+
+/* ========================================
+   CONTENT AREA
+   ======================================== */
+.growit-content {
+    flex: 1;
+    padding: 24px;
+    background: var(--growit-bg-primary);
+    overflow-y: auto;
+}
+
+/* Content Container */
+.content-container {
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+/* ========================================
+   RESPONSIVE LAYOUT
+   ======================================== */
+@media (max-width: 1200px) {
+    .topbar-search {
+        width: 280px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .growit-sidebar {
+        width: var(--sidebar-collapsed-width);
+        min-width: var(--sidebar-collapsed-width);
+    }
+    
+    .growit-main {
+        margin-left: var(--sidebar-collapsed-width);
+    }
+    
+    .sidebar-brand {
+        padding: 0 12px;
+    }
+    
+    .brand-logo {
+        height: 28px;
+    }
+    
+    .nav-link {
+        justify-content: center;
+        padding: 12px;
+    }
+    
+    .nav-link .nav-text,
+    .nav-link .nav-badge,
+    .nav-section-title {
+        display: none;
+    }
+    
+    .nav-link .nav-icon {
+        font-size: 1.25rem;
+    }
+    
+    .sidebar-footer {
+        padding: 12px;
+    }
+    
+    .sidebar-user {
+        justify-content: center;
+        padding: 8px;
+    }
+    
+    .sidebar-user-info {
+        display: none;
+    }
+    
+    .topbar-search {
+        width: 200px;
+    }
+}
+
+@media (max-width: 768px) {
+    .growit-sidebar {
+        display: none;
+    }
+    
+    .growit-main {
+        margin-left: 0;
+    }
+    
+    .growit-topbar {
+        padding: 0 16px;
+    }
+    
+    .topbar-search {
+        display: none;
+    }
+    
+    .fiscal-selector {
+        display: none;
+    }
+    
+    .btn-plant-seed span:last-child {
+        display: none;
+    }
+    
+    .growit-content {
+        padding: 16px;
+    }
+}
+
+/* ========================================
+   MOBILE NAVIGATION (Optional)
+   ======================================== */
+.mobile-nav-toggle {
+    display: none;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--growit-border);
+    border-radius: var(--radius-md);
+    color: var(--growit-text-secondary);
+    cursor: pointer;
+}
+
+@media (max-width: 768px) {
+    .mobile-nav-toggle {
+        display: flex;
+    }
+}
+
+/* ========================================
+   SIDEBAR OVERLAY (Mobile)
+   ======================================== */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 99;
+}
+
+.sidebar-overlay.active {
+    display: block;
+}
+
+/* Expanded sidebar on mobile */
+.growit-sidebar.expanded {
+    display: flex;
+    width: var(--sidebar-width);
+    z-index: 101;
+}
+
+/* ========================================
+   BREADCRUMBS
+   ======================================== */
+.breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.875rem;
+    margin-bottom: 16px;
+}
+
+.breadcrumb-item {
+    color: var(--growit-text-muted);
+}
+
+.breadcrumb-item a {
+    color: var(--growit-text-muted);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+.breadcrumb-item a:hover {
+    color: var(--growit-text-primary);
+}
+
+.breadcrumb-separator {
+    color: var(--growit-text-dim);
+}
+
+.breadcrumb-item.active {
+    color: var(--growit-text-primary);
+    font-weight: 500;
+}
+
+/* ========================================
+   PAGE ACTIONS BAR
+   ======================================== */
+.page-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.page-header-wrapper {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+/* ========================================
+   GRID LAYOUTS
+   ======================================== */
+.grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+}
+
+@media (max-width: 1200px) {
+    .grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ========================================
+   SECTION STYLING
+   ======================================== */
+.section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+}
+
+.section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--growit-heading-color);
+    margin: 0;
+}
+
+.section-action {
+    font-size: 0.875rem;
+    color: var(--growit-green);
+    cursor: pointer;
+    transition: color var(--transition-fast);
+}
+
+.section-action:hover {
+    color: var(--growit-green-light);
+}
