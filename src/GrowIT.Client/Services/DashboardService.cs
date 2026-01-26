@@ -1,68 +1,36 @@
-using GrowIT.Client.Models;
+using System.Net.Http.Json;
+using GrowIT.Shared.DTOs;   // <--- Added this
+using GrowIT.Shared.Enums;  // <--- Added this
 
 namespace GrowIT.Client.Services;
 
-/// <summary>
-/// Service for dashboard metrics and aggregated data.
-/// </summary>
 public interface IDashboardService
 {
-    Task<ImpactDashboardDto> GetDashboardDataAsync(string fiscalYear);
-    Task<List<InvestmentListDto>> GetRecentInvestmentsAsync(int count = 5);
-    Task<List<PersonListDto>> GetPeopleNeedingAttentionAsync(int count = 5);
-    Task<List<ImprintListDto>> GetRecentImprintsAsync(int count = 5);
-    Task<List<InvestmentSummaryByCategory>> GetInvestmentsByCategoryAsync(string fiscalYear);
-    Task<SeasonDistribution> GetSeasonDistributionAsync();
-}
-
-public class SeasonDistribution
-{
-    public int Crisis { get; set; }
-    public int Planting { get; set; }
-    public int Growing { get; set; }
-    public int Harvest { get; set; }
-    public int Total => Crisis + Planting + Growing + Harvest;
+    Task<DashboardStatsDto> GetStatsAsync();
+    Task<List<InvestmentListDto>> GetRecentInvestmentsAsync();
+    Task<InvestmentSummaryByCategory> GetInvestmentTrendsAsync();
 }
 
 public class DashboardService : BaseApiService, IDashboardService
 {
-    private const string BaseEndpoint = "/api/dashboard";
+    public DashboardService(HttpClient http) : base(http) { }
 
-    public DashboardService(HttpClient httpClient) : base(httpClient) { }
-
-    public async Task<ImpactDashboardDto> GetDashboardDataAsync(string fiscalYear)
+    public async Task<DashboardStatsDto> GetStatsAsync()
     {
-        return await GetAsync<ImpactDashboardDto>($"{BaseEndpoint}?fiscalYear={fiscalYear}") 
-            ?? new ImpactDashboardDto();
+        return await _http.GetFromJsonAsync<DashboardStatsDto>("api/dashboard") 
+               ?? new DashboardStatsDto();
     }
 
-    public async Task<List<InvestmentListDto>> GetRecentInvestmentsAsync(int count = 5)
+    public async Task<List<InvestmentListDto>> GetRecentInvestmentsAsync()
     {
-        return await GetAsync<List<InvestmentListDto>>($"{BaseEndpoint}/recent-investments?count={count}") 
-            ?? new List<InvestmentListDto>();
+        // Re-using the investment endpoint with page size 5 sorted by date
+        var result = await _http.GetFromJsonAsync<PaginatedResult<InvestmentListDto>>("api/investments?pageSize=5&sortBy=Date&sortDescending=true");
+        return result?.Items ?? new List<InvestmentListDto>();
     }
 
-    public async Task<List<PersonListDto>> GetPeopleNeedingAttentionAsync(int count = 5)
+    public async Task<InvestmentSummaryByCategory> GetInvestmentTrendsAsync()
     {
-        return await GetAsync<List<PersonListDto>>($"{BaseEndpoint}/needs-attention?count={count}") 
-            ?? new List<PersonListDto>();
-    }
-
-    public async Task<List<ImprintListDto>> GetRecentImprintsAsync(int count = 5)
-    {
-        return await GetAsync<List<ImprintListDto>>($"{BaseEndpoint}/recent-imprints?count={count}") 
-            ?? new List<ImprintListDto>();
-    }
-
-    public async Task<List<InvestmentSummaryByCategory>> GetInvestmentsByCategoryAsync(string fiscalYear)
-    {
-        return await GetAsync<List<InvestmentSummaryByCategory>>($"{BaseEndpoint}/investments-by-category?fiscalYear={fiscalYear}") 
-            ?? new List<InvestmentSummaryByCategory>();
-    }
-
-    public async Task<SeasonDistribution> GetSeasonDistributionAsync()
-    {
-        return await GetAsync<SeasonDistribution>($"{BaseEndpoint}/season-distribution") 
-            ?? new SeasonDistribution();
+        return await _http.GetFromJsonAsync<InvestmentSummaryByCategory>("api/investments/summary/category") 
+               ?? new InvestmentSummaryByCategory();
     }
 }

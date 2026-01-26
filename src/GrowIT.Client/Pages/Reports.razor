@@ -1,96 +1,98 @@
-@page "/reports"
-@using GrowIT.Client.Models
+@page "/imprints"
+@using GrowIT.Shared.DTOs
+@using GrowIT.Shared.Enums
+@inject NavigationManager Navigation
 
-<PageTitle>Reports - grow.IT</PageTitle>
+<PageTitle>Imprints - grow.IT</PageTitle>
 
-<div class="page-reports container-fluid mt-4">
-    <div class="mb-4">
-        <h1 class="h3 fw-bold">Reports</h1>
-        <p class="text-muted">Generate compliance and impact reports.</p>
+<div class="page-imprints container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 fw-bold">Imprints</h1>
+        <button class="btn btn-primary" @onclick="OpenNewImprint">Record Imprint</button>
     </div>
 
     <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="card h-100 shadow-sm border-0 report-card" @onclick='() => GenerateReport("impact")' style="cursor:pointer">
-                <div class="card-body text-center py-4">
-                    <div class="mb-3 text-primary"><span class="oi oi-graph fs-2"></span></div>
-                    <h5 class="card-title">Impact Summary</h5>
-                    <p class="card-text small text-muted">Outcomes vs Investment</p>
-                </div>
-            </div>
+        <div class="col-md-4">
+            <input type="text" class="form-control" placeholder="Search..." @bind="_searchQuery" @bind:event="oninput" />
         </div>
         <div class="col-md-3">
-            <div class="card h-100 shadow-sm border-0 report-card" @onclick='() => GenerateReport("financial")' style="cursor:pointer">
-                <div class="card-body text-center py-4">
-                    <div class="mb-3 text-success"><span class="oi oi-dollar fs-2"></span></div>
-                    <h5 class="card-title">Financial Report</h5>
-                    <p class="card-text small text-muted">Spending by Fund/Category</p>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card h-100 shadow-sm border-0 report-card" @onclick='() => GenerateReport("demographics")' style="cursor:pointer">
-                <div class="card-body text-center py-4">
-                    <div class="mb-3 text-warning"><span class="oi oi-people fs-2"></span></div>
-                    <h5 class="card-title">Demographics</h5>
-                    <p class="card-text small text-muted">Households & Members</p>
-                </div>
-            </div>
+            <select class="form-select" @bind="_categoryFilter">
+                <option value="">All Categories</option>
+                @foreach(var cat in Enum.GetNames(typeof(ImprintCategory)))
+                {
+                    <option value="@cat">@cat</option>
+                }
+            </select>
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white py-3">
-            <h6 class="mb-0 fw-bold">Recent Reports</h6>
-        </div>
-        <div class="card-body p-0">
-            <div class="list-group list-group-flush">
-                @foreach (var report in _recentReports)
-                {
-                    <div class="list-group-item d-flex justify-content-between align-items-center py-3">
-                        <div>
-                            <div class="fw-bold">@report.Name</div>
-                            <div class="small text-muted">Generated @report.GeneratedAt.ToShortDateString()</div>
-                        </div>
-                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => DownloadReport(report.Id)">
-                            <span class="oi oi-data-transfer-download me-1"></span> Download @report.Format.ToUpper()
-                        </button>
-                    </div>
-                }
+    <div class="list-group">
+        @foreach (var imprint in FilteredImprints)
+        {
+            <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                <div>
+                    <h5 class="mb-1">@imprint.Title</h5>
+                    <small class="text-muted">@imprint.PersonName • @imprint.Date.ToString("MMM d, yyyy")</small>
+                </div>
+                <div class="text-end">
+                    <span class="badge bg-secondary mb-2">@imprint.Category</span>
+                    <br/>
+                    @if (imprint.IsVerified) 
+                    {
+                        <span class="text-success small"><span class="oi oi-check"></span> Verified</span>
+                    }
+                </div>
             </div>
-        </div>
+        }
+        @if (!FilteredImprints.Any())
+        {
+            <div class="p-4 text-center text-muted">No imprints found.</div>
+        }
     </div>
 </div>
 
 @code {
-    private List<RecentReport> _recentReports = new();
+    private List<ImprintListDto> _allImprints = new();
+    private string _searchQuery = "";
+    private string _categoryFilter = "";
 
     protected override void OnInitialized()
     {
         // Mock data
-        _recentReports = new List<RecentReport>
+        _allImprints = new List<ImprintListDto>
         {
-            new() { Id = Guid.NewGuid(), Name = "Impact Summary Q1", Format = "pdf", GeneratedAt = DateTime.Now.AddDays(-1) },
-            new() { Id = Guid.NewGuid(), Name = "Financial Audit 2025", Format = "xlsx", GeneratedAt = DateTime.Now.AddDays(-5) }
+            new() { 
+                Id = Guid.NewGuid(), 
+                PersonName = "Angela Davis", 
+                Title = "Secured Full-Time Employment", 
+                Category = ImprintCategory.FinancialStability, 
+                Date = DateTime.Now.AddDays(-2),
+                IsVerified = true
+            }
         };
     }
 
-    private void GenerateReport(string reportType)
+    private IEnumerable<ImprintListDto> FilteredImprints
     {
-        // Logic to trigger backend report generation
-        Console.WriteLine($"Generating {reportType} report...");
+        get
+        {
+            var query = _allImprints.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(_searchQuery))
+            {
+                query = query.Where(i => 
+                    (i.Title?.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (i.PersonName?.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase) ?? false));
+            }
+
+            if (!string.IsNullOrEmpty(_categoryFilter) && Enum.TryParse<ImprintCategory>(_categoryFilter, out var cat))
+            {
+                query = query.Where(i => i.Category == cat);
+            }
+
+            return query;
+        }
     }
 
-    private void DownloadReport(Guid id)
-    {
-        // Logic to download
-    }
-
-    public class RecentReport
-    {
-        public Guid Id { get; set; }
-        public string Name { get; set; } = "";
-        public string Format { get; set; } = "";
-        public DateTime GeneratedAt { get; set; }
-    }
+    private void OpenNewImprint() => Navigation.NavigateTo("/imprints/new");
 }

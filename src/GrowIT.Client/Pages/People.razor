@@ -1,16 +1,16 @@
 @page "/people"
+@using GrowIT.Client.Services
 @using GrowIT.Shared.DTOs
-@using GrowIT.Shared.Enums
-@inject HttpClient Http
+@inject IClientService ClientService
 @inject NavigationManager Navigation
 
 <PageTitle>People - grow.IT</PageTitle>
 
-<div class="page-people container-fluid mt-4">
+<div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h3 fw-bold text-dark">People Directory</h1>
-            <p class="text-muted">Manage individuals and families.</p>
+            <p class="text-muted">Manage active households and profiles.</p>
         </div>
         <button class="btn btn-primary" @onclick="OpenAddPerson">
             <span class="oi oi-plus me-2"></span>Add Person
@@ -20,9 +20,10 @@
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body p-3">
             <div class="input-group">
-                <span class="input-group-text bg-white"><span class="oi oi-magnifying-glass"></span></span>
-                <input type="text" class="form-control border-start-0" placeholder="Search people..." 
-                       @bind="_searchQuery" @bind:event="oninput" @onkeyup="HandleSearch" />
+                <span class="input-group-text bg-white border-end-0"><span class="oi oi-magnifying-glass text-muted"></span></span>
+                <input type="text" class="form-control border-start-0 ps-0" 
+                       placeholder="Search by name, email or phone..." 
+                       @bind="SearchQuery" @bind:event="oninput" />
             </div>
         </div>
     </div>
@@ -31,6 +32,7 @@
     {
         <div class="text-center py-5">
             <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Loading directory...</p>
         </div>
     }
     else
@@ -39,20 +41,20 @@
             <table class="table table-hover mb-0 align-middle">
                 <thead class="bg-light">
                     <tr>
-                        <th class="ps-4">Name</th>
+                        <th class="ps-4" role="button" @onclick='() => Sort("Name")'>Name <span class="oi oi-sort-ascending small"></span></th>
                         <th>Phase</th>
-                        <th>Stability</th>
+                        <th role="button" @onclick='() => Sort("Score")'>Stability <span class="oi oi-sort-ascending small"></span></th>
                         <th>Contact</th>
                         <th class="text-end pe-4">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var person in _people)
+                    @foreach (var person in FilteredPeople)
                     {
                         <tr @onclick="() => ViewPerson(person.Id)" style="cursor: pointer;">
                             <td class="ps-4">
                                 <div class="d-flex align-items-center gap-3">
-                                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-light fw-bold text-primary" 
+                                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary fw-bold small" 
                                          style="width: 40px; height: 40px;">
                                         @GetInitials(person.Name)
                                     </div>
@@ -63,20 +65,20 @@
                                 </div>
                             </td>
                             <td>
-                                <span class="badge bg-opacity-10 text-dark border @GetPhaseColor(person.LifePhase)">
+                                <span class="badge rounded-pill fw-normal px-3 @GetPhaseClass(person.LifePhase)">
                                     @person.LifePhase
                                 </span>
                             </td>
                             <td>
-                                <div class="d-flex align-items-center gap-2" style="width: 120px;">
+                                <div class="d-flex align-items-center gap-2" style="max-width: 150px;">
                                     <span class="small fw-bold">@person.StabilityScore</span>
                                     <div class="progress flex-grow-1" style="height: 6px;">
-                                        <div class="progress-bar @(person.StabilityScore < 5 ? "bg-danger" : "bg-success")" 
+                                        <div class="progress-bar @GetScoreColor(person.StabilityScore)" 
                                              style="width: @(person.StabilityScore * 10)%"></div>
                                     </div>
                                 </div>
                             </td>
-                            <td>@person.Phone</td>
+                            <td class="text-muted small">@person.Phone</td>
                             <td class="text-end pe-4">
                                 <button class="btn btn-sm btn-outline-secondary">View</button>
                             </td>
@@ -85,32 +87,48 @@
                 </tbody>
             </table>
         </div>
+        <div class="mt-2 text-muted small text-end">
+            Showing @FilteredPeople.Count() of @_allPeople.Count records
+        </div>
     }
 </div>
 
 @code {
-    // Switched from undefined PersonListDto to standard ClientDto
-    private List<ClientDto> _people = new();
-    private string _searchQuery = "";
-    private bool _isLoading = false;
+    private List<ClientDto> _allPeople = new();
+    private bool _isLoading = true;
+    private string SearchQuery { get; set; } = "";
+    private string _sortBy = "Name";
+    private bool _sortDesc = false;
+
+    // Client-side filtering logic
+    private IEnumerable<ClientDto> FilteredPeople
+    {
+        get
+        {
+            var query = _allPeople.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(SearchQuery))
+            {
+                query = query.Where(p => 
+                    (p.Name?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (p.Email?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (p.Phone?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ?? false)
+                );
+            }
+
+            return _sortBy switch
+            {
+                "Score" => _sortDesc ? query.OrderByDescending(p => p.StabilityScore) : query.OrderBy(p => p.StabilityScore),
+                _ => _sortDesc ? query.OrderByDescending(p => p.Name) : query.OrderBy(p => p.Name)
+            };
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadData();
-    }
-
-    private async Task LoadData()
-    {
-        _isLoading = true;
-        try 
+        try
         {
-            // Simple fetch for now - in production use full search endpoint
-            _people = await Http.GetFromJsonAsync<List<ClientDto>>("api/clients") ?? new();
-            
-            if (!string.IsNullOrEmpty(_searchQuery))
-            {
-                _people = _people.Where(p => p.Name.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase)).ToList();
-            }
+            _allPeople = await ClientService.GetAllClientsAsync();
         }
         catch (Exception ex)
         {
@@ -122,26 +140,33 @@
         }
     }
 
-    private async Task HandleSearch(KeyboardEventArgs e)
+    private void Sort(string column)
     {
-        if (e.Key == "Enter") await LoadData();
+        if (_sortBy == column) _sortDesc = !_sortDesc;
+        else
+        {
+            _sortBy = column;
+            _sortDesc = false;
+        }
     }
 
-    private void ViewPerson(Guid id) => Navigation.NavigateTo($"/clients/{id}");
-    private void OpenAddPerson() => Navigation.NavigateTo("/clients/create"); // Updated route
+    private void ViewPerson(Guid id) => Navigation.NavigateTo($"/clients/{id}"); // Point to new Client Detail route
+    private void OpenAddPerson() => Navigation.NavigateTo("/clients/create");
 
     private string GetInitials(string name)
     {
         if (string.IsNullOrEmpty(name)) return "?";
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        return parts.Length > 1 ? $"{parts[0][0]}{parts[^1][0]}".ToUpper() : name[0].ToString().ToUpper();
+        return parts.Length > 1 ? $"{parts[0][0]}{parts[1][0]}".ToUpper() : name[0].ToString().ToUpper();
     }
 
-    private string GetPhaseColor(string phase) => phase?.ToLower() switch
+    private string GetPhaseClass(string phase) => phase?.ToLower() switch
     {
-        "crisis" => "bg-danger text-danger",
-        "stability" => "bg-warning text-warning",
-        "growth" => "bg-success text-success",
-        _ => "bg-secondary"
+        "crisis" => "bg-danger text-danger bg-opacity-10 border border-danger-subtle",
+        "stable" => "bg-warning text-warning bg-opacity-10 border border-warning-subtle",
+        "thriving" => "bg-success text-success bg-opacity-10 border border-success-subtle",
+        _ => "bg-secondary text-secondary bg-opacity-10"
     };
+
+    private string GetScoreColor(int score) => score < 4 ? "bg-danger" : (score < 7 ? "bg-warning" : "bg-success");
 }

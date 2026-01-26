@@ -1,4 +1,5 @@
 namespace GrowIT.Shared.DTOs;
+using GrowIT.Shared.Enums;
 using System.ComponentModel.DataAnnotations;
 public class CreateInvestmentRequest
 {

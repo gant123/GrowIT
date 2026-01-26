@@ -1,342 +1,112 @@
 @page "/imprints"
-@using GrowIT.Client.Models
-@using GrowIT.Shared.Enums 
 @using GrowIT.Shared.DTOs
+@using GrowIT.Shared.Enums
 @inject NavigationManager Navigation
 
 <PageTitle>Imprints - grow.IT</PageTitle>
 
-<div class="page-imprints">
-    <div class="page-header">
-        <div class="page-header-content">
-            <h1 class="page-title">Imprints</h1>
-            <p class="page-subtitle">Document outcomes and measure the impact of your investments.</p>
-        </div>
-        <div class="page-header-actions">
-            <button class="btn btn-secondary" @onclick="ExportImprints">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                Export Report
-            </button>
-            <button class="btn btn-primary" @onclick="OpenNewImprint">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                Record Imprint
-            </button>
-        </div>
+<div class="page-imprints container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h3 fw-bold">Imprints</h1>
+        <button class="btn btn-primary" @onclick="OpenNewImprint">Record Imprint</button>
     </div>
 
-    <div class="impact-summary">
-        <div class="impact-card">
-            <div class="impact-number">@_totalImprints</div>
-            <div class="impact-label">Total Imprints</div>
-            <div class="impact-detail">this fiscal year</div>
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <input type="text" class="form-control" placeholder="Search..." @bind="_searchQuery" @bind:event="oninput" />
         </div>
-        <div class="impact-card verified">
-            <div class="impact-number">@_verifiedCount</div>
-            <div class="impact-label">Verified</div>
-            <div class="impact-detail">@(_totalImprints > 0 ? ((_verifiedCount * 100) / _totalImprints) : 0)% verification rate</div>
-        </div>
-        <div class="impact-card">
-            <div class="impact-number">@_uniquePeople</div>
-            <div class="impact-label">People Impacted</div>
-            <div class="impact-detail">with documented outcomes</div>
-        </div>
-        <div class="impact-card highlight">
-            <div class="impact-number">@_categoriesCount</div>
-            <div class="impact-label">Categories</div>
-            <div class="impact-detail">of positive change</div>
-        </div>
-    </div>
-
-    <div class="category-pills">
-        <button class="category-pill @(_categoryFilter == "" ? "active" : "")" @onclick='() => SetCategoryFilter("")'>
-            All Categories
-        </button>
-        @foreach (var cat in _topCategories)
-        {
-            <button class="category-pill @(_categoryFilter == cat.Key ? "active" : "")" @onclick="() => SetCategoryFilter(cat.Key)">
-                @cat.Key
-                <span class="pill-count">@cat.Value</span>
-            </button>
-        }
-    </div>
-
-    <div class="toolbar">
-        <div class="search-box">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
-                <circle cx="11" cy="11" r="8"/>
-                <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input type="text" placeholder="Search imprints..." @bind="_searchQuery" @bind:event="oninput" @bind:after="ApplyFilters" />
-        </div>
-        
-        <div class="toolbar-filters">
-            <select class="filter-select" @bind="_typeFilter" @bind:after="ApplyFilters">
-                <option value="">All Types</option>
-                <option value="DirectOutcome">Direct Outcome</option>
-                <option value="Progress">Progress</option>
-                <option value="Maintenance">Maintenance</option>
-            </select>
-            
-            <select class="filter-select" @bind="_verifiedFilter" @bind:after="ApplyFilters">
-                <option value="">All Status</option>
-                <option value="verified">Verified</option>
-                <option value="unverified">Pending Verification</option>
+        <div class="col-md-3">
+            <select class="form-select" @bind="_categoryFilter">
+                <option value="">All Categories</option>
+                @foreach(var cat in Enum.GetNames(typeof(ImprintCategory)))
+                {
+                    <option value="@cat">@cat</option>
+                }
             </select>
         </div>
     </div>
 
-    <div class="imprints-timeline">
-        @{
-            var groupedImprints = _filteredImprints.GroupBy(i => i.Date.Date).OrderByDescending(g => g.Key);
-        }
-        @foreach (var group in groupedImprints)
+    <div class="list-group">
+        @foreach (var imprint in FilteredImprints)
         {
-            <div class="timeline-group">
-                <div class="timeline-date">
-                    <span class="date-day">@group.Key.ToString("MMM d")</span>
-                    <span class="date-year">@group.Key.ToString("yyyy")</span>
+            <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                <div>
+                    <h5 class="mb-1">@imprint.Title</h5>
+                    <small class="text-muted">@imprint.PersonName • @imprint.Date.ToString("MMM d, yyyy")</small>
                 </div>
-                <div class="timeline-items">
-                    @foreach (var imprint in group)
+                <div class="text-end">
+                    <span class="badge bg-secondary mb-2">@imprint.Category</span>
+                    <br/>
+                    @if (imprint.IsVerified) 
                     {
-                        <div class="imprint-card" @onclick="() => ViewImprint(imprint.Id)">
-                            <div class="imprint-indicator type-@imprint.Type.ToString().ToLower()"></div>
-                            <div class="imprint-content">
-                                <div class="imprint-header">
-                                    <h3 class="imprint-title">@imprint.Title</h3>
-                                    @if (imprint.IsVerified)
-                                    {
-                                        <span class="verified-badge" title="Verified Outcome">
-                                            <svg viewBox="0 0 24 24" fill="currentColor">
-                                                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                                            </svg>
-                                            Verified
-                                        </span>
-                                    }
-                                </div>
-                                
-                                <div class="imprint-person">
-                                    <div class="avatar avatar-xs">
-                                        <span>@GetInitials(imprint.PersonName)</span>
-                                    </div>
-                                    <span class="person-name">@imprint.PersonName</span>
-                                </div>
-                                
-                                <div class="imprint-meta">
-                                    <span class="imprint-category">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                                            <polyline points="22 4 12 14.01 9 11.01"/>
-                                        </svg>
-                                        @FormatEnumName(imprint.Category.ToString())
-                                    </span>
-                                    <span class="imprint-type">
-                                        @FormatEnumName(imprint.Type.ToString())
-                                    </span>
-                                </div>
-                                
-                                @if (imprint.QuantitativeValue.HasValue)
-                                {
-                                    <div class="imprint-quantitative">
-                                        <span class="quant-value">@imprint.QuantitativeValue.Value.ToString("N0")</span>
-                                        <span class="quant-unit">@imprint.QuantitativeUnit</span>
-                                    </div>
-                                }
-                            </div>
-                            
-                            <div class="imprint-actions" @onclick:stopPropagation="true">
-                                <button class="btn-icon-only" title="View details" @onclick="() => ViewImprint(imprint.Id)">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                        <circle cx="12" cy="12" r="3"/>
-                                    </svg>
-                                </button>
-                                @if (!imprint.IsVerified)
-                                {
-                                    <button class="btn-icon-only success" title="Verify" @onclick="() => VerifyImprint(imprint.Id)">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <polyline points="20 6 9 17 4 12"/>
-                                        </svg>
-                                    </button>
-                                }
-                                <button class="btn-icon-only" title="Edit" @onclick="() => EditImprint(imprint.Id)">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                    </svg>
-                                </button>
-                            </div>
-                        </div>
+                        <span class="text-success small"><span class="oi oi-check"></span> Verified</span>
                     }
                 </div>
             </div>
         }
+        @if (!FilteredImprints.Any())
+        {
+            <div class="p-4 text-center text-muted">No imprints found.</div>
+        }
     </div>
-
-    @if (!_filteredImprints.Any())
-    {
-        <div class="empty-state-large">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="empty-icon">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                <polyline points="22 4 12 14.01 9 11.01"/>
-            </svg>
-            <h3>No imprints found</h3>
-            <p>Start documenting outcomes to track the impact of your investments.</p>
-            <button class="btn btn-primary" @onclick="OpenNewImprint">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                Record Imprint
-            </button>
-        </div>
-    }
-
-    @if (_filteredImprints.Count >= _pageSize && _hasMore)
-    {
-        <div class="load-more">
-            <button class="btn btn-secondary" @onclick="LoadMore">
-                Load More
-            </button>
-        </div>
-    }
 </div>
 
 @code {
     private List<ImprintListDto> _allImprints = new();
-    private List<ImprintListDto> _filteredImprints = new();
-    private Dictionary<string, int> _topCategories = new();
-    
     private string _searchQuery = "";
     private string _categoryFilter = "";
-    private string _typeFilter = "";
-    private string _verifiedFilter = "";
-    
-    private int _totalImprints;
-    private int _verifiedCount;
-    private int _uniquePeople;
-    private int _categoriesCount;
-    
-    private int _pageSize = 20;
-    private bool _hasMore = true;
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
-        await LoadImprints();
-        CalculateSummary();
-        ApplyFilters();
-    }
-
-    private async Task LoadImprints()
-    {
-        // Mock Data for UI Testing
+        // Mock data
         _allImprints = new List<ImprintListDto>
         {
-            new() { Id = Guid.NewGuid(), PersonName = "Angela Davis", Title = "Secured Full-Time Employment", Category = ImprintCategory.FinancialStability, Type = ImprintType.DirectOutcome, Date = DateTime.Now.AddDays(-1), IsVerified = true, QuantitativeValue = 42000, QuantitativeUnit = "annual salary" },
-            new() { Id = Guid.NewGuid(), PersonName = "Thomas Brown", Title = "Completed GED Program", Category = ImprintCategory.EducationalAttainment, Type = ImprintType.DirectOutcome, Date = DateTime.Now.AddDays(-2), IsVerified = true },
-            new() { Id = Guid.NewGuid(), PersonName = "Jessica Lee", Title = "Moved to Permanent Housing", Category = ImprintCategory.HousingStability, Type = ImprintType.DirectOutcome, Date = DateTime.Now.AddDays(-3), IsVerified = false }
+            new() { 
+                Id = Guid.NewGuid(), 
+                PersonName = "Angela Davis", 
+                Title = "Secured Full-Time Employment", 
+                Category = ImprintCategory.FinancialStability, // Uses Shared Enum
+                Date = DateTime.Now.AddDays(-2),
+                IsVerified = true
+            }
         };
-        await Task.CompletedTask;
     }
 
-    private void CalculateSummary()
+    private IEnumerable<ImprintListDto> FilteredImprints
     {
-        _totalImprints = _allImprints.Count;
-        _verifiedCount = _allImprints.Count(i => i.IsVerified);
-        _uniquePeople = _allImprints.Select(i => i.PersonId).Distinct().Count();
-        _categoriesCount = _allImprints.Select(i => i.Category).Distinct().Count();
-        _topCategories = _allImprints
-            .GroupBy(i => FormatEnumName(i.Category.ToString()))
-            .OrderByDescending(g => g.Count())
-            .Take(5)
-            .ToDictionary(g => g.Key, g => g.Count());
-    }
-
-    private void ApplyFilters()
-    {
-        var filtered = _allImprints.AsEnumerable();
-
-        if (!string.IsNullOrWhiteSpace(_searchQuery))
+        get
         {
-            var query = _searchQuery.ToLower();
-            filtered = filtered.Where(i => 
-                i.Title.ToLower().Contains(query) ||
-                i.PersonName.ToLower().Contains(query));
+            var query = _allImprints.AsEnumerable();
+
+            if (!string.IsNullOrWhiteSpace(_searchQuery))
+            {
+                query = query.Where(i => 
+                    (i.Title?.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (i.PersonName?.Contains(_searchQuery, StringComparison.OrdinalIgnoreCase) ?? false));
+            }
+
+            if (!string.IsNullOrEmpty(_categoryFilter) && Enum.TryParse<ImprintCategory>(_categoryFilter, out var cat))
+            {
+                query = query.Where(i => i.Category == cat);
+            }
+
+            return query;
         }
-
-        if (!string.IsNullOrEmpty(_categoryFilter))
-        {
-            filtered = filtered.Where(i => FormatEnumName(i.Category.ToString()) == _categoryFilter);
-        }
-
-        if (!string.IsNullOrEmpty(_typeFilter) && Enum.TryParse<ImprintType>(_typeFilter, out var type))
-        {
-            filtered = filtered.Where(i => i.Type == type);
-        }
-
-        if (!string.IsNullOrEmpty(_verifiedFilter))
-        {
-            filtered = _verifiedFilter == "verified" 
-                ? filtered.Where(i => i.IsVerified) 
-                : filtered.Where(i => !i.IsVerified);
-        }
-
-        _filteredImprints = filtered.OrderByDescending(i => i.Date).Take(_pageSize).ToList();
     }
 
-    private void SetCategoryFilter(string category)
-    {
-        _categoryFilter = category;
-        ApplyFilters();
-    }
-
-    private string GetInitials(string name)
-    {
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length >= 2) return $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant();
-        return name.Length >= 2 ? name.Substring(0, 2).ToUpperInvariant() : name.ToUpperInvariant();
-    }
-
-    private string FormatEnumName(string enumValue)
-    {
-        return System.Text.RegularExpressions.Regex.Replace(enumValue, "(\\B[A-Z])", " $1");
-    }
-
-    private void LoadMore()
-    {
-        _pageSize += 20;
-        ApplyFilters();
-        _hasMore = _filteredImprints.Count >= _pageSize;
-    }
-
-    private void ViewImprint(Guid id) => Navigation.NavigateTo($"/imprints/{id}");
-    private void EditImprint(Guid id) => Navigation.NavigateTo($"/imprints/{id}/edit");
-    private void VerifyImprint(Guid id) { /* Verify logic */ }
-    private void OpenNewImprint() { /* Open modal */ }
-    private void ExportImprints() { /* Export */ }
+    private void OpenNewImprint() => Navigation.NavigateTo("/imprints/new");
     
-    // Supporting DTOs locally if missing
-    public enum ImprintCategory { HousingStability, FinancialStability, EducationalAttainment, EmploymentStability, SkillDevelopment, MentalHealth, FamilyWellbeing }
-    public enum ImprintType { DirectOutcome, Progress, Maintenance, Prevention, Improvement, Story }
-    
+    // Supporting DTO if not in Shared (but it should be)
+    // If ImprintListDto is missing in shared, uncomment below:
+    /*
     public class ImprintListDto
     {
         public Guid Id { get; set; }
-        public Guid PersonId { get; set; }
         public string PersonName { get; set; } = "";
         public string Title { get; set; } = "";
         public ImprintCategory Category { get; set; }
-        public ImprintType Type { get; set; }
         public DateTime Date { get; set; }
         public bool IsVerified { get; set; }
-        public decimal? QuantitativeValue { get; set; }
-        public string? QuantitativeUnit { get; set; }
     }
+    */
 }

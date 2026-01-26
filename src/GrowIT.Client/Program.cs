@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using GrowIT.Client.Auth;
 using Syncfusion.Blazor;
 using Syncfusion.Licensing;
-
+using GrowIT.Client.Services;
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 var config = builder.Configuration;
 var syncfusionKey = config["SyncfusionLicense"];
@@ -30,12 +30,15 @@ builder.Services.AddAuthorizationCore();
 
 // 3. The Security Guard: Uses our Custom provider to check the token
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
-
+builder.Services.AddScoped<IClientService, ClientService>(); // New!
+builder.Services.AddScoped<IInvestmentService, InvestmentService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
 // 4. API Connection: Points specifically to your Backend API
 //    Make sure this matches the port your API is running on (likely 5286 or 5000)
 builder.Services.AddScoped(sp => new HttpClient 
 { 
     BaseAddress = new Uri("http://localhost:5286") 
 });
+
 builder.Services.AddSyncfusionBlazor();
 await builder.Build().RunAsync();

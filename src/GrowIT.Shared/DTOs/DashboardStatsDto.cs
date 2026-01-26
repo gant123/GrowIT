@@ -2,6 +2,13 @@ namespace GrowIT.Shared.DTOs;
 
 public class DashboardStatsDto
 {
+    public int TotalClients { get; set; }
+    public decimal TotalInvested { get; set; }
+    public int TotalMilestones { get; set; }
+    
+    // Optional: Add other stats if needed later
+    public int ActivePlans { get; set; }
+    public int PendingInvestments { get; set; }
     // Top Row KPIs
     public decimal TotalInvestedYtd { get; set; }
     public int HouseholdsServedYtd { get; set; }
