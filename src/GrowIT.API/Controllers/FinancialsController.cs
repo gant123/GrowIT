@@ -85,9 +85,19 @@ public class FinancialsController : ControllerBase
     }
 
     [HttpGet("programs")]
-    public async Task<IActionResult> GetPrograms()
+    public async Task<ActionResult<List<ProgramDto>>> GetPrograms()
     {
-        return Ok(await _context.Programs.ToListAsync());
+        var programs = await _context.Programs
+            .Select(p => new ProgramDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+                DefaultUnitCost = p.DefaultUnitCost
+            })
+            .ToListAsync();
+
+        return Ok(programs);
     }
 
     [HttpPut("funds/{id}")]

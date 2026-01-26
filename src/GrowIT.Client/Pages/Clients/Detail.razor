@@ -1,5 +1,6 @@
-@* @page "/clients/{Id:guid}"
+@page "/clients/{Id:guid}"
 @using GrowIT.Shared.DTOs
+@using GrowIT.Shared.Enums
 @inject HttpClient Http
 @attribute [Authorize]
 
@@ -147,11 +148,11 @@
         }
     }
 
-    private string GetPhaseColor(string phase) => phase switch
+    private string GetPhaseColor(LifePhase phase) => phase switch
     {
-        "Crisis" => "bg-danger",
-        "Stable" => "bg-warning text-dark",
-        "Thriving" => "bg-success",
+        LifePhase.Crisis => "bg-danger",
+        LifePhase.Stable => "bg-warning text-dark",
+        LifePhase.Thriving => "bg-success",
         _ => "bg-secondary"
     };
-} *@
+}

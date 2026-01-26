@@ -1,5 +1,6 @@
 @page "/clients"
 @using GrowIT.Shared.DTOs
+@using GrowIT.Shared.Enums
 @using Syncfusion.Blazor.Grids
 @using GrowIT.Client.Shared 
 @inject HttpClient Http
@@ -137,11 +138,11 @@
         return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
     }
 
-    private string GetPhaseColor(string phase) => phase?.ToLower() switch
+    private string GetPhaseColor(LifePhase phase) => phase switch
     {
-        "crisis" => "danger",
-        "stability" => "warning",
-        "growth" => "success",
+        LifePhase.Crisis => "danger",
+        LifePhase.Stable => "warning",
+        LifePhase.Thriving => "success",
         _ => "secondary"
     };
 }

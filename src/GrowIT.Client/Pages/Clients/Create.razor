@@ -31,10 +31,21 @@
                 <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--growit-border);">
                     <h3 style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--growit-text-secondary); margin: 0 0 16px 0;">Basic Information</h3>
                     
-                    <div class="form-group-growit">
-                        <label>Name / Organization <span style="color: var(--growit-danger);">*</span></label>
-                        <InputText @bind-Value="clientRequest.Name" class="form-input-growit" placeholder="e.g. John Smith or Smith Family" />
-                        <ValidationMessage For="@(() => clientRequest.Name)" />
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group-growit">
+                                <label>First Name <span style="color: var(--growit-danger);">*</span></label>
+                                <InputText @bind-Value="clientRequest.FirstName" class="form-input-growit" placeholder="e.g. John" />
+                                <ValidationMessage For="@(() => clientRequest.FirstName)" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group-growit">
+                                <label>Last Name <span style="color: var(--growit-danger);">*</span></label>
+                                <InputText @bind-Value="clientRequest.LastName" class="form-input-growit" placeholder="e.g. Smith" />
+                                <ValidationMessage For="@(() => clientRequest.LastName)" />
+                            </div>
+                        </div>
                     </div>
 
                     <div class="row">
