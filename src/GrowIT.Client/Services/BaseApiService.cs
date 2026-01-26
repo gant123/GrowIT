@@ -5,15 +5,16 @@ namespace GrowIT.Client.Services;
 
 /// <summary>
 /// Base API service providing common HTTP operations.
+/// All services inherit from this to communicate with GrowIT.API.
 /// </summary>
 public abstract class BaseApiService
 {
-    protected readonly HttpClient _httpClient;
+    protected readonly HttpClient _http;
     protected readonly JsonSerializerOptions _jsonOptions;
 
-    protected BaseApiService(HttpClient httpClient)
+    protected BaseApiService(HttpClient http)
     {
-        _httpClient = httpClient;
+        _http = http;
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true,
@@ -23,55 +24,49 @@ public abstract class BaseApiService
 
     protected async Task<T?> GetAsync<T>(string endpoint)
     {
-        try
-        {
-            return await _httpClient.GetFromJsonAsync<T>(endpoint, _jsonOptions);
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new ApiException($"Failed to GET {endpoint}", ex);
-        }
+        var response = await _http.GetAsync(endpoint);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<T>(_jsonOptions);
     }
 
     protected async Task<TResponse?> PostAsync<TRequest, TResponse>(string endpoint, TRequest data)
     {
-        try
-        {
-            var response = await _httpClient.PostAsJsonAsync(endpoint, data, _jsonOptions);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<TResponse>(_jsonOptions);
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new ApiException($"Failed to POST {endpoint}", ex);
-        }
+        var response = await _http.PostAsJsonAsync(endpoint, data, _jsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<TResponse>(_jsonOptions);
+    }
+
+    protected async Task PostAsync<TRequest>(string endpoint, TRequest data)
+    {
+        var response = await _http.PostAsJsonAsync(endpoint, data, _jsonOptions);
+        response.EnsureSuccessStatusCode();
     }
 
     protected async Task<TResponse?> PutAsync<TRequest, TResponse>(string endpoint, TRequest data)
     {
-        try
-        {
-            var response = await _httpClient.PutAsJsonAsync(endpoint, data, _jsonOptions);
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<TResponse>(_jsonOptions);
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new ApiException($"Failed to PUT {endpoint}", ex);
-        }
+        var response = await _http.PutAsJsonAsync(endpoint, data, _jsonOptions);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<TResponse>(_jsonOptions);
+    }
+
+    protected async Task PutAsync<TRequest>(string endpoint, TRequest data)
+    {
+        var response = await _http.PutAsJsonAsync(endpoint, data, _jsonOptions);
+        response.EnsureSuccessStatusCode();
+    }
+
+    protected async Task<TResponse?> PatchAsync<TRequest, TResponse>(string endpoint, TRequest data)
+    {
+        var content = JsonContent.Create(data, options: _jsonOptions);
+        var response = await _http.PatchAsync(endpoint, content);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<TResponse>(_jsonOptions);
     }
 
     protected async Task DeleteAsync(string endpoint)
     {
-        try
-        {
-            var response = await _httpClient.DeleteAsync(endpoint);
-            response.EnsureSuccessStatusCode();
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new ApiException($"Failed to DELETE {endpoint}", ex);
-        }
+        var response = await _http.DeleteAsync(endpoint);
+        response.EnsureSuccessStatusCode();
     }
 }
 
@@ -80,31 +75,9 @@ public abstract class BaseApiService
 /// </summary>
 public class ApiException : Exception
 {
+    public int StatusCode { get; }
+    
     public ApiException(string message) : base(message) { }
+    public ApiException(string message, int statusCode) : base(message) => StatusCode = statusCode;
     public ApiException(string message, Exception inner) : base(message, inner) { }
-}
-
-/// <summary>
-/// Standard API response wrapper.
-/// </summary>
-public class ApiResponse<T>
-{
-    public bool Success { get; set; }
-    public T? Data { get; set; }
-    public string? Message { get; set; }
-    public List<string> Errors { get; set; } = new();
-}
-
-/// <summary>
-/// Paginated response wrapper.
-/// </summary>
-public class PaginatedResponse<T>
-{
-    public List<T> Items { get; set; } = new();
-    public int TotalCount { get; set; }
-    public int PageNumber { get; set; }
-    public int PageSize { get; set; }
-    public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
-    public bool HasPrevious => PageNumber > 1;
-    public bool HasNext => PageNumber < TotalPages;
 }

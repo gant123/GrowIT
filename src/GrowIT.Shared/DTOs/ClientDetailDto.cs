@@ -1,3 +1,4 @@
+using GrowIT.Shared.Enums;
 namespace GrowIT.Shared.DTOs;
 
 public class ClientDetailDto
@@ -7,7 +8,7 @@ public class ClientDetailDto
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string FullName => $"{FirstName} {LastName}".Trim();
-    public string LifePhase { get; set; } = "Crisis"; // Crisis, Stable, Thriving
+    public LifePhase LifePhase { get; set; } = LifePhase.Crisis; // Crisis, Stable, Thriving
     public int StabilityScore { get; set; } // 1-10
 
     // --- Contact & Demographics ---
@@ -15,7 +16,7 @@ public class ClientDetailDto
     public string Phone { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;
     public int HouseholdCount { get; set; }
-    public string EmploymentStatus { get; set; } = string.Empty;
+    public EmploymentStatus EmploymentStatus { get; set; }
 
     // --- Financial Summary ---
     public decimal TotalInvestment { get; set; }
@@ -27,6 +28,7 @@ public class ClientDetailDto
     // *** NEW: The Family List ***
     public List<FamilyMemberDto> HouseholdMembers { get; set; } = new();
 }
+
 
 // *** NEW: Helper Class for the Kids ***
 public class FamilyMemberDto

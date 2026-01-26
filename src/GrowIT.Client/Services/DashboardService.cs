@@ -1,36 +1,34 @@
-using System.Net.Http.Json;
-using GrowIT.Shared.DTOs;   // <--- Added this
-using GrowIT.Shared.Enums;  // <--- Added this
+using GrowIT.Shared.DTOs;
 
 namespace GrowIT.Client.Services;
 
+/// <summary>
+/// Service for dashboard metrics and aggregated data.
+/// Uses DashboardStatsDto from GrowIT.Shared.DTOs.
+/// Calls GET api/dashboard endpoint.
+/// </summary>
 public interface IDashboardService
 {
     Task<DashboardStatsDto> GetStatsAsync();
-    Task<List<InvestmentListDto>> GetRecentInvestmentsAsync();
-    Task<InvestmentSummaryByCategory> GetInvestmentTrendsAsync();
 }
 
 public class DashboardService : BaseApiService, IDashboardService
 {
+    private const string BaseEndpoint = "api/dashboard";
+
     public DashboardService(HttpClient http) : base(http) { }
 
+    /// <summary>
+    /// Gets the main dashboard stats from api/dashboard endpoint.
+    /// Returns DashboardStatsDto with:
+    /// - TotalInvestedYtd, HouseholdsServedYtd, ActiveCases, FundsAvailable
+    /// - MonthlyTrends (List of MonthlyMetric)
+    /// - RecentActivity (List of ActivityItem)
+    /// - PendingFollowUps (List of TaskItem)
+    /// </summary>
     public async Task<DashboardStatsDto> GetStatsAsync()
     {
-        return await _http.GetFromJsonAsync<DashboardStatsDto>("api/dashboard") 
-               ?? new DashboardStatsDto();
-    }
-
-    public async Task<List<InvestmentListDto>> GetRecentInvestmentsAsync()
-    {
-        // Re-using the investment endpoint with page size 5 sorted by date
-        var result = await _http.GetFromJsonAsync<PaginatedResult<InvestmentListDto>>("api/investments?pageSize=5&sortBy=Date&sortDescending=true");
-        return result?.Items ?? new List<InvestmentListDto>();
-    }
-
-    public async Task<InvestmentSummaryByCategory> GetInvestmentTrendsAsync()
-    {
-        return await _http.GetFromJsonAsync<InvestmentSummaryByCategory>("api/investments/summary/category") 
-               ?? new InvestmentSummaryByCategory();
+        return await GetAsync<DashboardStatsDto>(BaseEndpoint) 
+            ?? new DashboardStatsDto();
     }
 }

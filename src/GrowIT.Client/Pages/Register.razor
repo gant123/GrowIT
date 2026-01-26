@@ -7,6 +7,7 @@
 <div class="auth-page">
     <div class="auth-container">
         <div class="auth-card register-card">
+            <!-- Logo -->
             <div class="auth-logo">
                 <a href="/welcome">
                     <svg class="brand-icon" viewBox="0 0 32 32" fill="none">
@@ -24,166 +25,390 @@
                 </a>
             </div>
 
+            <!-- Header -->
             <div class="auth-header">
                 <h1>Create your account</h1>
-                <p>Start managing your community impact today.</p>
+                <p>Start your 14-day free trial. No credit card required.</p>
             </div>
 
+            <!-- Progress Steps -->
+            <div class="register-steps">
+                <div class="step @(_currentStep >= 1 ? "active" : "") @(_currentStep > 1 ? "completed" : "")">
+                    <div class="step-number">
+                        @if (_currentStep > 1)
+                        {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        }
+                        else
+                        {
+                            <span>1</span>
+                        }
+                    </div>
+                    <span class="step-label">Account</span>
+                </div>
+                <div class="step-line @(_currentStep > 1 ? "active" : "")"></div>
+                <div class="step @(_currentStep >= 2 ? "active" : "") @(_currentStep > 2 ? "completed" : "")">
+                    <div class="step-number">
+                        @if (_currentStep > 2)
+                        {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        }
+                        else
+                        {
+                            <span>2</span>
+                        }
+                    </div>
+                    <span class="step-label">Organization</span>
+                </div>
+                <div class="step-line @(_currentStep > 2 ? "active" : "")"></div>
+                <div class="step @(_currentStep >= 3 ? "active" : "")">
+                    <div class="step-number"><span>3</span></div>
+                    <span class="step-label">Setup</span>
+                </div>
+            </div>
+
+            <!-- Error Alert -->
             @if (!string.IsNullOrEmpty(_errorMessage))
             {
-                <div class="alert alert-danger">
+                <div class="auth-alert error">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/>
-                        <line x1="12" y1="8" x2="12" y2="12"/>
-                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        <line x1="15" y1="9" x2="9" y2="15"/>
+                        <line x1="9" y1="9" x2="15" y2="15"/>
                     </svg>
-                    @_errorMessage
+                    <span>@_errorMessage</span>
                 </div>
             }
 
-            <div class="steps-indicator">
-                <div class="step @(_currentStep >= 1 ? "active" : "")">
-                    <div class="step-circle">1</div>
-                    <span>Account</span>
-                </div>
-                <div class="step-line @(_currentStep >= 2 ? "active" : "")"></div>
-                <div class="step @(_currentStep >= 2 ? "active" : "")">
-                    <div class="step-circle">2</div>
-                    <span>Details</span>
-                </div>
-                <div class="step-line @(_currentStep >= 3 ? "active" : "")"></div>
-                <div class="step @(_currentStep >= 3 ? "active" : "")">
-                    <div class="step-circle">3</div>
-                    <span>Confirm</span>
-                </div>
-            </div>
-
-            <div class="auth-form">
-                @if (_currentStep == 1)
-                {
-                    <div class="form-group">
-                        <label>Email Address</label>
-                        <div class="input-wrapper">
-                            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                                <polyline points="22,6 12,13 2,6"/>
-                            </svg>
-                            <input type="email" class="form-control" placeholder="name@organization.org" @bind="_email" />
+            <!-- Step 1: Account Info -->
+            @if (_currentStep == 1)
+            {
+                <form class="auth-form" @onsubmit="GoToStep2" @onsubmit:preventDefault>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="firstName">First name</label>
+                            <input type="text" 
+                                   id="firstName" 
+                                   @bind="_firstName" 
+                                   placeholder="John"
+                                   autocomplete="given-name"
+                                   required />
+                        </div>
+                        <div class="form-group">
+                            <label for="lastName">Last name</label>
+                            <input type="text" 
+                                   id="lastName" 
+                                   @bind="_lastName" 
+                                   placeholder="Smith"
+                                   autocomplete="family-name"
+                                   required />
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label>Password</label>
+                        <label for="email">Work email</label>
+                        <input type="email" 
+                               id="email" 
+                               @bind="_email" 
+                               placeholder="you@nonprofit.org"
+                               autocomplete="email"
+                               required />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
                         <div class="input-wrapper">
-                            <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                            </svg>
-                            <input type="@(_showPassword ? "text" : "password")" class="form-control" placeholder="Create a strong password" 
-                                   @bind="_password" @oninput="UpdatePasswordStrength" />
-                            <button type="button" class="password-toggle" @onclick="TogglePassword">
+                            <input type="@(_showPassword ? "text" : "password")" 
+                                   id="password" 
+                                   @bind="_password" 
+                                   @oninput="CheckPasswordStrength"
+                                   placeholder="Create a strong password"
+                                   autocomplete="new-password"
+                                   minlength="8"
+                                   required />
+                            <button type="button" class="password-toggle" @onclick="() => _showPassword = !_showPassword">
                                 @if (_showPassword)
                                 {
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"/></svg>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                                        <line x1="1" y1="1" x2="23" y2="23"/>
+                                    </svg>
                                 }
                                 else
                                 {
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                        <circle cx="12" cy="12" r="3"/>
+                                    </svg>
                                 }
                             </button>
                         </div>
-                        @if (!string.IsNullOrEmpty(_password))
-                        {
-                            <div class="password-strength">
-                                <div class="strength-bar">
-                                    <div class="strength-fill @_passwordStrengthClass" style="width: @(_passwordStrength)%"></div>
-                                </div>
-                                <span class="strength-text @_passwordStrengthClass">@_passwordStrengthText</span>
+                        <div class="password-strength">
+                            <div class="strength-bar">
+                                <div class="strength-fill @_passwordStrengthClass" style="width: @_passwordStrength%"></div>
                             </div>
-                        }
+                            <span class="strength-text">@_passwordStrengthText</span>
+                        </div>
                     </div>
 
-                    <button class="btn-auth" @onclick="GoToStep2">
+                    <button type="submit" class="btn btn-primary btn-block btn-lg">
                         Continue
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="5" y1="12" x2="19" y2="12"/>
                             <polyline points="12 5 19 12 12 19"/>
                         </svg>
                     </button>
+                </form>
 
-                    <div class="auth-divider">
-                        <span>or register with</span>
-                    </div>
+                <!-- Divider -->
+                <div class="auth-divider">
+                    <span>or sign up with</span>
+                </div>
 
-                    <div class="social-auth">
-                        <button class="btn-social" @onclick="SignupWithGoogle">
-                            <svg viewBox="0 0 24 24" width="20" height="20">
-                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                            </svg>
-                            Google
-                        </button>
-                        <button class="btn-social" @onclick="SignupWithMicrosoft">
-                            <svg viewBox="0 0 23 23" width="20" height="20">
-                                <path fill="#f3f3f3" d="M0 0h23v23H0z"/>
-                                <path fill="#f35325" d="M1 1h10v10H1z"/>
-                                <path fill="#81bc06" d="M12 1h10v10H1z"/>
-                                <path fill="#05a6f0" d="M1 12h10v10H1z"/>
-                                <path fill="#ffba08" d="M12 12h10v10H1z"/>
-                            </svg>
-                            Microsoft
-                        </button>
-                    </div>
-                }
-                else if (_currentStep == 2)
-                {
+                <!-- Social Signup -->
+                <div class="social-buttons">
+                    <button type="button" class="btn btn-social" @onclick="SignupWithGoogle">
+                        <svg viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        Google
+                    </button>
+                    <button type="button" class="btn btn-social" @onclick="SignupWithMicrosoft">
+                        <svg viewBox="0 0 24 24">
+                            <path fill="#F25022" d="M1 1h10v10H1z"/>
+                            <path fill="#00A4EF" d="M1 13h10v10H1z"/>
+                            <path fill="#7FBA00" d="M13 1h10v10H13z"/>
+                            <path fill="#FFB900" d="M13 13h10v10H13z"/>
+                        </svg>
+                        Microsoft
+                    </button>
+                </div>
+            }
+
+            <!-- Step 2: Organization Info -->
+            @if (_currentStep == 2)
+            {
+                <form class="auth-form" @onsubmit="GoToStep3" @onsubmit:preventDefault>
                     <div class="form-group">
-                        <label>Full Name</label>
-                        <input type="text" class="form-control" placeholder="John Doe" @bind="_fullName" />
+                        <label for="orgName">Organization name</label>
+                        <input type="text" 
+                               id="orgName" 
+                               @bind="_organizationName" 
+                               placeholder="Community Hope Network"
+                               required />
                     </div>
+
                     <div class="form-group">
-                        <label>Organization Name</label>
-                        <input type="text" class="form-control" placeholder="Community Helpers Inc." @bind="_orgName" />
-                    </div>
-                    
-                    <div class="step-actions">
-                        <button class="btn-back" @onclick="() => _currentStep = 1">Back</button>
-                        <button class="btn-auth" @onclick="GoToStep3">Next</button>
-                    </div>
-                }
-                else if (_currentStep == 3)
-                {
-                    <div class="confirmation-summary">
-                        <p><strong>Email:</strong> @_email</p>
-                        <p><strong>Name:</strong> @_fullName</p>
-                        <p><strong>Org:</strong> @_orgName</p>
+                        <label for="orgType">Organization type</label>
+                        <select id="orgType" @bind="_organizationType" required>
+                            <option value="">Select type...</option>
+                            <option value="501c3">501(c)(3) Nonprofit</option>
+                            <option value="church">Church/Religious Organization</option>
+                            <option value="government">Government Agency</option>
+                            <option value="school">Educational Institution</option>
+                            <option value="other">Other</option>
+                        </select>
                     </div>
 
-                    <div class="form-check mb-4">
-                        <input type="checkbox" id="terms" @bind="_agreeToTerms" />
-                        <label for="terms">I agree to the <a href="#">Terms of Service</a></label>
+                    <div class="form-group">
+                        <label for="orgSize">How many people do you serve annually?</label>
+                        <select id="orgSize" @bind="_organizationSize" required>
+                            <option value="">Select range...</option>
+                            <option value="1-50">1-50</option>
+                            <option value="51-200">51-200</option>
+                            <option value="201-500">201-500</option>
+                            <option value="501-1000">501-1,000</option>
+                            <option value="1000+">1,000+</option>
+                        </select>
                     </div>
 
-                    <div class="step-actions">
-                        <button class="btn-back" @onclick="() => _currentStep = 2">Back</button>
-                        <button class="btn-auth" @onclick="CompleteRegistration" disabled="@_isLoading">
+                    <div class="form-group">
+                        <label for="role">Your role</label>
+                        <select id="role" @bind="_role" required>
+                            <option value="">Select role...</option>
+                            <option value="executive">Executive Director / CEO</option>
+                            <option value="program">Program Director / Manager</option>
+                            <option value="case">Case Manager</option>
+                            <option value="admin">Administrator</option>
+                            <option value="volunteer">Volunteer Coordinator</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-ghost" @onclick="() => _currentStep = 1">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="19" y1="12" x2="5" y2="12"/>
+                                <polyline points="12 19 5 12 12 5"/>
+                            </svg>
+                            Back
+                        </button>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            Continue
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="5" y1="12" x2="19" y2="12"/>
+                                <polyline points="12 5 19 12 12 19"/>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+            }
+
+            <!-- Step 3: Final Setup -->
+            @if (_currentStep == 3)
+            {
+                <form class="auth-form" @onsubmit="CompleteRegistration" @onsubmit:preventDefault>
+                    <div class="setup-options">
+                        <h3>What would you like to track?</h3>
+                        <p class="setup-hint">Select all that apply. You can change these later.</p>
+                        
+                        <div class="checkbox-cards">
+                            <label class="checkbox-card @(_trackPeople ? "selected" : "")">
+                                <input type="checkbox" @bind="_trackPeople" />
+                                <div class="card-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                        <circle cx="9" cy="7" r="4"/>
+                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                    </svg>
+                                </div>
+                                <span class="card-label">People / Clients</span>
+                                <span class="card-desc">Track individuals and families you serve</span>
+                            </label>
+                            
+                            <label class="checkbox-card @(_trackInvestments ? "selected" : "")">
+                                <input type="checkbox" @bind="_trackInvestments" />
+                                <div class="card-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="12" y1="1" x2="12" y2="23"/>
+                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                                    </svg>
+                                </div>
+                                <span class="card-label">Financial Assistance</span>
+                                <span class="card-desc">Track investments, grants, and disbursements</span>
+                            </label>
+                            
+                            <label class="checkbox-card @(_trackOutcomes ? "selected" : "")">
+                                <input type="checkbox" @bind="_trackOutcomes" />
+                                <div class="card-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                                        <polyline points="22 4 12 14.01 9 11.01"/>
+                                    </svg>
+                                </div>
+                                <span class="card-label">Outcomes / Impact</span>
+                                <span class="card-desc">Document and measure your impact</span>
+                            </label>
+                            
+                            <label class="checkbox-card @(_trackPrograms ? "selected" : "")">
+                                <input type="checkbox" @bind="_trackPrograms" />
+                                <div class="card-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                        <line x1="3" y1="9" x2="21" y2="9"/>
+                                        <line x1="9" y1="21" x2="9" y2="9"/>
+                                    </svg>
+                                </div>
+                                <span class="card-label">Programs / Services</span>
+                                <span class="card-desc">Organize by program or service type</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" @bind="_agreeToTerms" required />
+                            <span class="checkbox-custom"></span>
+                            <span>I agree to the <a href="/terms" target="_blank">Terms of Service</a> and <a href="/privacy" target="_blank">Privacy Policy</a></span>
+                        </label>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" @bind="_subscribeToUpdates" />
+                            <span class="checkbox-custom"></span>
+                            <span>Send me tips and product updates (optional)</span>
+                        </label>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-ghost" @onclick="() => _currentStep = 2">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="19" y1="12" x2="5" y2="12"/>
+                                <polyline points="12 19 5 12 12 5"/>
+                            </svg>
+                            Back
+                        </button>
+                        <button type="submit" class="btn btn-primary btn-lg" disabled="@_isLoading">
                             @if (_isLoading)
                             {
-                                <span class="spinner"></span>
+                                <span class="btn-spinner"></span>
+                                <span>Creating account...</span>
                             }
                             else
                             {
                                 <span>Create Account</span>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
                             }
                         </button>
                     </div>
-                }
-            </div>
+                </form>
+            }
 
+            <!-- Footer -->
             <div class="auth-footer">
                 <p>Already have an account? <a href="/login">Sign in</a></p>
+            </div>
+        </div>
+
+        <!-- Side Content -->
+        <div class="auth-side register-side">
+            <div class="auth-side-content">
+                <h2>Why nonprofits choose grow.IT</h2>
+                <ul class="benefits-list">
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span><strong>Save 10+ hours/month</strong> on reporting</span>
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span><strong>Increase funding</strong> with better impact data</span>
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span><strong>Track every dollar</strong> from intake to outcome</span>
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span><strong>Designed for nonprofits</strong> not adapted from CRM</span>
+                    </li>
+                </ul>
+                
+                <div class="trial-badge">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="8" r="7"/>
+                        <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+                    </svg>
+                    <span>14-day free trial<br/>No credit card required</span>
+                </div>
             </div>
         </div>
     </div>
@@ -191,48 +416,63 @@
 
 @code {
     private int _currentStep = 1;
+    
+    // Step 1
+    private string _firstName = "";
+    private string _lastName = "";
     private string _email = "";
     private string _password = "";
-    private string _fullName = "";
-    private string _orgName = "";
     private bool _showPassword = false;
-    private bool _agreeToTerms = false;
-    private bool _isLoading = false;
-    private string? _errorMessage;
-    
-    // Password Strength Variables
     private int _passwordStrength = 0;
     private string _passwordStrengthClass = "";
     private string _passwordStrengthText = "";
+    
+    // Step 2
+    private string _organizationName = "";
+    private string _organizationType = "";
+    private string _organizationSize = "";
+    private string _role = "";
+    
+    // Step 3
+    private bool _trackPeople = true;
+    private bool _trackInvestments = true;
+    private bool _trackOutcomes = true;
+    private bool _trackPrograms = false;
+    private bool _agreeToTerms = false;
+    private bool _subscribeToUpdates = false;
+    
+    private bool _isLoading = false;
+    private string? _errorMessage;
 
-    private void TogglePassword()
+    private void CheckPasswordStrength(ChangeEventArgs e)
     {
-        _showPassword = !_showPassword;
-    }
-
-    private void UpdatePasswordStrength(ChangeEventArgs e)
-    {
-        _password = e.Value?.ToString() ?? "";
-        // Simple mock strength calculation
-        _passwordStrength = Math.Min(_password.Length * 10, 100);
+        var password = e.Value?.ToString() ?? "";
+        _password = password;
         
-        if (_passwordStrength < 30) {
-            _passwordStrengthClass = "weak";
-            _passwordStrengthText = "Weak";
-        } else if (_passwordStrength < 70) {
-            _passwordStrengthClass = "fair";
-            _passwordStrengthText = "Fair";
-        } else {
-            _passwordStrengthClass = "strong";
-            _passwordStrengthText = "Strong";
-        }
+        var score = 0;
+        if (password.Length >= 8) score += 25;
+        if (password.Length >= 12) score += 15;
+        if (System.Text.RegularExpressions.Regex.IsMatch(password, @"[A-Z]")) score += 20;
+        if (System.Text.RegularExpressions.Regex.IsMatch(password, @"[a-z]")) score += 10;
+        if (System.Text.RegularExpressions.Regex.IsMatch(password, @"[0-9]")) score += 15;
+        if (System.Text.RegularExpressions.Regex.IsMatch(password, @"[^a-zA-Z0-9]")) score += 15;
+        
+        _passwordStrength = Math.Min(score, 100);
+        
+        (_passwordStrengthClass, _passwordStrengthText) = _passwordStrength switch
+        {
+            < 30 => ("weak", "Weak"),
+            < 60 => ("fair", "Fair"),
+            < 80 => ("good", "Good"),
+            _ => ("strong", "Strong")
+        };
     }
 
     private void GoToStep2()
     {
-        if (string.IsNullOrWhiteSpace(_email) || string.IsNullOrWhiteSpace(_password))
+        if (_password.Length < 8)
         {
-            _errorMessage = "Please fill in all fields.";
+            _errorMessage = "Password must be at least 8 characters.";
             return;
         }
         _errorMessage = null;
@@ -241,11 +481,6 @@
 
     private void GoToStep3()
     {
-        if (string.IsNullOrWhiteSpace(_fullName) || string.IsNullOrWhiteSpace(_orgName))
-        {
-            _errorMessage = "Please fill in all fields.";
-            return;
-        }
         _errorMessage = null;
         _currentStep = 3;
     }
@@ -254,17 +489,38 @@
     {
         if (!_agreeToTerms)
         {
-            _errorMessage = "You must agree to the terms.";
+            _errorMessage = "Please agree to the Terms of Service and Privacy Policy.";
             return;
         }
 
+        _errorMessage = null;
         _isLoading = true;
-        // Mock API delay
-        await Task.Delay(1000);
-        _isLoading = false;
-        Navigation.NavigateTo("/");
+
+        try
+        {
+            // Simulate API call
+            await Task.Delay(2000);
+            
+            // In production, this would create the account
+            Navigation.NavigateTo("/");
+        }
+        catch (Exception)
+        {
+            _errorMessage = "An error occurred. Please try again later.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
-    private void SignupWithGoogle() { /* Mock Logic */ }
-    private void SignupWithMicrosoft() { /* Mock Logic */ }
+    private void SignupWithGoogle()
+    {
+        // OAuth with Google
+    }
+
+    private void SignupWithMicrosoft()
+    {
+        // OAuth with Microsoft
+    }
 }

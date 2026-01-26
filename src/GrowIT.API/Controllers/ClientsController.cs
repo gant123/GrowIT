@@ -82,9 +82,9 @@ public class ClientsController : ControllerBase
             Phone = client.Phone,
             Address = client.Address,
             StabilityScore = client.StabilityScore,
-            LifePhase = client.LifePhase.ToString(),
+            LifePhase = client.LifePhase,
             HouseholdCount = client.HouseholdCount,
-            EmploymentStatus = client.EmploymentStatus.ToString(),
+            EmploymentStatus = client.EmploymentStatus,
             TotalInvestment = investments.Sum(x => x.Amount),
             LastInvestmentDate = investments.OrderByDescending(i => i.CreatedAt).FirstOrDefault()?.CreatedAt,
             
@@ -96,7 +96,7 @@ public class ClientsController : ControllerBase
                 Id = f.Id,
                 Name = $"{f.FirstName} {f.LastName}",
                 Relationship = f.Relationship,
-                Age = f.Age,
+                Age = f.DateOfBirth.HasValue ? (int)((DateTime.Now - f.DateOfBirth.Value).TotalDays / 365.25) : 0,
                 School = f.SchoolOrEmployer
             }).ToList()
         };
@@ -109,8 +109,8 @@ public class ClientsController : ControllerBase
     {
         var newClient = new Client
         {
-            FirstName = request.Name,
-            LastName = "",
+            FirstName = request.FirstName,
+            LastName = request.LastName,
             Email = request.Email ?? "",
             Phone = request.Phone ?? "",
             HouseholdCount = request.HouseholdCount,
@@ -136,7 +136,7 @@ public class ClientsController : ControllerBase
                 Email = c.Email,
                 Phone = c.Phone,
                 StabilityScore = c.StabilityScore,
-                LifePhase = c.LifePhase.ToString()
+                LifePhase = c.LifePhase
             })
             .ToListAsync();
 
@@ -223,7 +223,7 @@ public class ClientsController : ControllerBase
             Id = member.Id,
             Name = $"{member.FirstName} {member.LastName}",
             Relationship = member.Relationship,
-            Age = member.Age,
+            Age = member.DateOfBirth.HasValue ? (int)((DateTime.Now - member.DateOfBirth.Value).TotalDays / 365.25) : 0,
             DateOfBirth = member.DateOfBirth,
             School = member.SchoolOrEmployer,
             Notes = member.Notes,

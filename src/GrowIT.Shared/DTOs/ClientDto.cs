@@ -1,3 +1,5 @@
+using GrowIT.Shared.Enums;
+
 namespace GrowIT.Shared.DTOs;
 
 public class ClientDto
@@ -8,6 +10,6 @@ public class ClientDto
     public string Phone { get; set; } = string.Empty;
     
     // Helpful extra info for the grid
-    public string LifePhase { get; set; } = string.Empty; 
+    public LifePhase LifePhase { get; set; }
     public int StabilityScore { get; set; }
 }
