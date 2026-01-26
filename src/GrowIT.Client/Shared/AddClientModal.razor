@@ -1,0 +1,107 @@
+@using GrowIT.Shared.DTOs
+@using GrowIT.Shared.Enums 
+@inject HttpClient Http
+
+@if (Show)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 1200;" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
+                <div class="modal-header border-bottom" style="border-color: var(--growit-border);">
+                    <h5 class="modal-title fw-bold">
+                        <span class="oi oi-person me-2 text-primary"></span>New Case File
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <EditForm Model="@request" OnValidSubmit="HandleSubmit">
+                        <DataAnnotationsValidator />
+                        
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">Full Name</label>
+                            <InputText @bind-Value="request.Name" class="form-control" placeholder="e.g. Robert Gant" style="@ThemeInputStyle" />
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">Email</label>
+                                <InputText @bind-Value="request.Email" class="form-control" placeholder="name@example.com" style="@ThemeInputStyle" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-bold text-muted">Phone</label>
+                                <InputText @bind-Value="request.Phone" class="form-control" placeholder="(555) 123-4567" style="@ThemeInputStyle" />
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-4">
+                                <label class="form-label small fw-bold text-muted">Household Size</label>
+                                <InputNumber @bind-Value="request.HouseholdCount" class="form-control" style="@ThemeInputStyle" />
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small fw-bold text-muted">Stability (1-10)</label>
+                                <InputSelect @bind-Value="request.StabilityScore" class="form-select" style="@ThemeInputStyle">
+                                    @for (int i = 1; i <= 10; i++)
+                                    {
+                                        <option value="@i">@i</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label small fw-bold text-muted">Life Phase</label>
+                                <InputSelect @bind-Value="request.LifePhase" class="form-select" style="@ThemeInputStyle">
+                                    <option value="@LifePhase.Crisis">Crisis</option>
+                                    <option value="@LifePhase.Stable">Stable</option>
+                                    <option value="@LifePhase.Thriving">Thriving</option>
+                                </InputSelect>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 border-top pt-3" style="border-color: var(--growit-border);">
+                            <button type="button" class="btn btn-outline-secondary" @onclick="Close">Cancel</button>
+                            <button type="submit" class="btn btn-primary fw-bold">
+                                <span class="oi oi-check me-2"></span>Create Profile
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Show { get; set; }
+    [Parameter] public EventCallback<bool> ShowChanged { get; set; }
+    [Parameter] public EventCallback OnClientAdded { get; set; }
+
+    private CreateClientRequest request = new();
+    private string ThemeInputStyle => "background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border: 1px solid var(--growit-border);";
+
+    protected override void OnParametersSet()
+    {
+        if (Show && string.IsNullOrEmpty(request.Name))
+        {
+            // Reset form with correct defaults
+            request = new CreateClientRequest 
+            { 
+                HouseholdCount = 1, 
+                StabilityScore = 5, 
+                LifePhase = LifePhase.Crisis // <--- FIXED: Use Enum, not string
+            };
+        }
+    }
+
+    private async Task HandleSubmit()
+    {
+        var response = await Http.PostAsJsonAsync("api/clients", request);
+        if (response.IsSuccessStatusCode)
+        {
+            request = new CreateClientRequest(); 
+            await OnClientAdded.InvokeAsync();
+            await Close();
+        }
+    }
+
+    private async Task Close() => await ShowChanged.InvokeAsync(false);
+}

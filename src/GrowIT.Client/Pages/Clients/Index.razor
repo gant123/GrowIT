@@ -1,122 +1,120 @@
 @page "/clients"
 @using GrowIT.Shared.DTOs
 @using Syncfusion.Blazor.Grids
+@using GrowIT.Client.Shared 
 @inject HttpClient Http
-@inject NavigationManager NavManager
-@attribute [Authorize]
+@inject NavigationManager Nav
 
 <div class="container-fluid mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h1 class="h3 mb-0 text-gray-800">Client Directory</h1>
-            <p class="text-muted small mb-0">Search and manage growth plans.</p>
+            <h1 class="h3 fw-bold" style="color: var(--growit-heading-color);">Case Files</h1>
+            <p class="text-muted">Manage all active households and profiles.</p>
         </div>
-        <a href="clients/create" class="btn btn-success shadow-sm">
-            <span class="oi oi-plus me-2"></span> Add New Client
-        </a>
+        <button class="btn btn-primary fw-bold shadow-sm" @onclick="OpenCreateModal">
+            <span class="oi oi-plus me-2"></span>New Client
+        </button>
     </div>
 
-    <div class="card shadow mb-4">
-        <div class="card-body">
-            @if (clients == null)
-            {
-                <div class="text-center py-5">
-                    <div class="spinner-border text-primary" role="status"></div>
-                    <p class="mt-2 text-muted">Loading directory...</p>
-                </div>
-            }
-            else
-            {
-                <SfGrid DataSource="@clients" AllowPaging="true" AllowSorting="true" AllowFiltering="true" Toolbar="@(new List<string>() { "Search", "ExcelExport", "PdfExport" })">
-                    <GridPageSettings PageSize="15"></GridPageSettings>
+    @if (clients == null)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Loading directory...</p>
+        </div>
+    }
+    else
+    {
+        <div class="card border-0 shadow-sm" style="background-color: var(--growit-bg-card);">
+            <div class="card-body p-0">
+                <SfGrid DataSource="@clients" 
+                        AllowPaging="true" 
+                        AllowSorting="true" 
+                        AllowFiltering="true" 
+                        Toolbar="@(new List<string>() { "Search" })"
+                        Height="100%">
+                    
+                    <GridPageSettings PageSize="10"></GridPageSettings>
                     <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Menu"></GridFilterSettings>
                     
-                    <GridEvents OnRecordClick="RecordClickHandler" TValue="ClientDto"></GridEvents>
-
                     <GridColumns>
-                        <GridColumn Field=@nameof(ClientDto.Name) HeaderText="Name" Width="220">
+                        <GridColumn HeaderText="Client Name" Width="240">
                             <Template>
                                 @{
                                     var client = (context as ClientDto);
-                                    if (client != null)
-                                    {
-                                        <div class="d-flex align-items-center cursor-pointer">
-                                            <div class="rounded-circle bg-light d-flex align-items-center justify-content-center me-3 text-uppercase" 
-                                                 style="width: 40px; height: 40px; font-weight: bold; color: var(--grow-green); border: 1px solid #e3e6f0;">
-                                                @(client.Name.Length > 0 ? client.Name.Substring(0, 1) : "?")
-                                            </div>
-                                            <div>
-                                                <div class="fw-bold text-dark">@client.Name</div>
-                                                <div class="small text-muted">@client.Email</div>
-                                            </div>
+                                    <div class="d-flex align-items-center gap-3" style="cursor: pointer;" @onclick="() => NavigateToClient(client.Id)">
+                                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold small shadow-sm" 
+                                             style="width: 38px; height: 38px; background-color: var(--growit-blue); min-width: 38px;">
+                                            @GetInitials(client.Name)
                                         </div>
-                                    }
+                                        <div class="overflow-hidden">
+                                            <div class="fw-bold text-primary text-truncate">@client.Name</div>
+                                            <div class="small text-muted text-truncate">@client.Email</div>
+                                        </div>
+                                    </div>
+                                }
+                            </Template>
+                        </GridColumn>
+
+                        <GridColumn Field=@nameof(ClientDto.LifePhase) HeaderText="Life Phase" Width="140" TextAlign="TextAlign.Center">
+                            <Template>
+                                @{
+                                    var phase = (context as ClientDto).LifePhase;
+                                    var color = GetPhaseColor(phase);
+                                    <span class="badge bg-@color bg-opacity-10 text-@color border border-@color-subtle px-3 py-2 rounded-pill">
+                                        @phase
+                                    </span>
+                                }
+                            </Template>
+                        </GridColumn>
+
+                        <GridColumn Field=@nameof(ClientDto.StabilityScore) HeaderText="Stability" Width="160" TextAlign="TextAlign.Center">
+                            <Template>
+                                @{
+                                    var score = (context as ClientDto).StabilityScore;
+                                    var width = score * 10; // Convert 0-10 to %
+                                    var barColor = score < 4 ? "bg-danger" : (score < 7 ? "bg-warning" : "bg-success");
+                                    
+                                    <div class="px-2">
+                                        <div class="d-flex justify-content-between small mb-1">
+                                            <span class="fw-bold text-muted">Score</span>
+                                            <span class="fw-bold">@score/10</span>
+                                        </div>
+                                        <div class="progress" style="height: 6px;">
+                                            <div class="progress-bar @barColor" role="progressbar" style="width: @width%"></div>
+                                        </div>
+                                    </div>
                                 }
                             </Template>
                         </GridColumn>
 
                         <GridColumn Field=@nameof(ClientDto.Phone) HeaderText="Phone" Width="140"></GridColumn>
 
-                        <GridColumn Field=@nameof(ClientDto.StabilityScore) HeaderText="Stability" Width="150" TextAlign="TextAlign.Center">
+                        <GridColumn Width="100" TextAlign="TextAlign.Center">
                             <Template>
-                                @{
-                                    var clientData = (context as ClientDto);
-                                    if (clientData != null)
-                                    {
-                                        var score = clientData.StabilityScore;
-                                        <div class="d-flex align-items-center">
-                                            <span class="small me-2 fw-bold text-muted" style="width: 30px;">@score/10</span>
-                                            <div class="progress flex-grow-1" style="height: 6px;">
-                                                <div class="progress-bar @GetScoreColor(score)" role="progressbar" 
-                                                     style="width: @(score * 10)%" 
-                                                     aria-valuenow="@score" aria-valuemin="0" aria-valuemax="10">
-                                                </div>
-                                            </div>
-                                        </div>
-                                    }
-                                }
-                            </Template>
-                        </GridColumn>
-
-                        <GridColumn Field=@nameof(ClientDto.LifePhase) HeaderText="Phase" Width="130" TextAlign="TextAlign.Center">
-                            <Template>
-                                @{
-                                    var phaseClient = (context as ClientDto);
-                                    if (phaseClient != null)
-                                    {
-                                        <span class="badge rounded-pill @GetPhaseBadge(phaseClient.LifePhase) px-3">
-                                            @phaseClient.LifePhase
-                                        </span>
-                                    }
-                                }
-                            </Template>
-                        </GridColumn>
-
-                        <GridColumn HeaderText="" Width="100" TextAlign="TextAlign.Center">
-                            <Template>
-                                @{
-                                    var actionClient = (context as ClientDto);
-                                    if (actionClient != null)
-                                    {
-                                        <button class="btn btn-sm btn-outline-primary rounded-pill" 
-                                                @onclick="() => NavigateToDetail(actionClient.Id)">
-                                            View
-                                        </button>
-                                    }
-                                }
+                                <button class="btn btn-sm btn-light border shadow-sm text-muted" 
+                                        @onclick="() => NavigateToClient((context as ClientDto).Id)">
+                                    View File
+                                </button>
                             </Template>
                         </GridColumn>
                     </GridColumns>
                 </SfGrid>
-            }
+            </div>
         </div>
-    </div>
+    }
+    
+    <AddClientModal @bind-Show="showCreateModal" OnClientAdded="LoadClients" />
+
 </div>
 
 @code {
     private List<ClientDto>? clients;
+    private bool showCreateModal = false;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync() => await LoadClients();
+
+    private async Task LoadClients()
     {
         try
         {
@@ -128,35 +126,22 @@
         }
     }
 
-    private void NavigateToDetail(Guid id)
+    private void NavigateToClient(Guid id) => Nav.NavigateTo($"clients/{id}");
+    private void OpenCreateModal() => showCreateModal = true;
+
+    private string GetInitials(string name)
     {
-        NavManager.NavigateTo($"clients/{id}");
+        if (string.IsNullOrEmpty(name)) return "?";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1) return parts[0].Substring(0, 1).ToUpper();
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
     }
 
-    private void RecordClickHandler(RecordClickEventArgs<ClientDto> args)
+    private string GetPhaseColor(string phase) => phase?.ToLower() switch
     {
-        NavigateToDetail(args.RowData.Id);
-    }
-
-    // --- Helper Methods for UI Logic ---
-
-    private string GetScoreColor(int score) 
-    {
-        if (score < 4) return "bg-danger";
-        if (score < 7) return "bg-warning";
-        return "bg-success";
-    }
-
-    private string GetPhaseBadge(string phase) 
-    {
-        if (string.IsNullOrEmpty(phase)) return "bg-secondary";
-        
-        return phase switch
-        {
-            "Crisis" => "bg-danger",
-            "Stable" => "bg-warning text-dark",
-            "Thriving" => "bg-success",
-            _ => "bg-secondary"
-        };
-    }
+        "crisis" => "danger",
+        "stability" => "warning",
+        "growth" => "success",
+        _ => "secondary"
+    };
 }
