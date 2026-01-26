@@ -1,550 +1,161 @@
 @page "/investments"
 @page "/investments/new"
 @using GrowIT.Client.Models
+@using GrowIT.Client.Services
+@using GrowIT.Shared.DTOs
+@using GrowIT.Shared.Enums 
+@inject IInvestmentService InvestmentService
 @inject NavigationManager Navigation
 
 <PageTitle>Investments - grow.IT</PageTitle>
 
 <div class="page-investments">
-    <!-- Page Header -->
-    <div class="page-header">
-        <div class="page-header-content">
-            <h1 class="page-title">Investments</h1>
-            <p class="page-subtitle">Track and manage support investments for your community.</p>
+    <div class="filters-bar d-flex gap-3 mb-3">
+        <div class="filter-group search-group flex-grow-1">
+            <input type="text" class="form-control" placeholder="Search..." @bind="_searchQuery" @bind:event="oninput" @onkeyup="HandleSearch" />
         </div>
-        <div class="page-header-actions">
-            <button class="btn btn-secondary" @onclick="ExportInvestments">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                Export
-            </button>
-            <button class="btn btn-primary" @onclick="OpenNewInvestment">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                New Investment
-            </button>
-        </div>
-    </div>
-
-    <!-- Summary Cards -->
-    <div class="summary-cards">
-        <div class="summary-card">
-            <div class="summary-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="1" x2="12" y2="23"/>
-                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                </svg>
-            </div>
-            <div class="summary-content">
-                <div class="summary-value">@_summaryData.TotalAmount.ToString("C0")</div>
-                <div class="summary-label">Total This Year</div>
-            </div>
-        </div>
-        
-        <div class="summary-card">
-            <div class="summary-icon pending">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10"/>
-                    <polyline points="12 6 12 12 16 14"/>
-                </svg>
-            </div>
-            <div class="summary-content">
-                <div class="summary-value">@_summaryData.PendingCount</div>
-                <div class="summary-label">Pending Approval</div>
-            </div>
-        </div>
-        
-        <div class="summary-card">
-            <div class="summary-icon success">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                    <polyline points="22 4 12 14.01 9 11.01"/>
-                </svg>
-            </div>
-            <div class="summary-content">
-                <div class="summary-value">@_summaryData.CompletedCount</div>
-                <div class="summary-label">Completed</div>
-            </div>
-        </div>
-        
-        <div class="summary-card">
-            <div class="summary-icon info">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                </svg>
-            </div>
-            <div class="summary-content">
-                <div class="summary-value">@_summaryData.UniquePeople</div>
-                <div class="summary-label">People Helped</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Filters -->
-    <div class="filters-bar">
         <div class="filter-group">
-            <label class="filter-label">Status</label>
-            <select class="filter-select" @bind="_statusFilter" @bind:after="ApplyFilters">
+            <select class="form-select" @bind="_statusFilter" @bind:after="LoadData">
                 <option value="">All Statuses</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="disbursed">Disbursed</option>
-                <option value="completed">Completed</option>
-            </select>
-        </div>
-        
-        <div class="filter-group">
-            <label class="filter-label">Category</label>
-            <select class="filter-select" @bind="_categoryFilter" @bind:after="ApplyFilters">
-                <option value="">All Categories</option>
-                @foreach (var cat in Enum.GetValues<InvestmentCategory>())
+                @foreach (var status in Enum.GetValues<GrowIT.Shared.Enums.InvestmentStatus>())
                 {
-                    <option value="@cat">@cat</option>
+                    <option value="@status">@status</option>
                 }
             </select>
-        </div>
-        
-        <div class="filter-group">
-            <label class="filter-label">Funding Source</label>
-            <select class="filter-select" @bind="_fundingFilter" @bind:after="ApplyFilters">
-                <option value="">All Sources</option>
-                @foreach (var source in _fundingSources)
-                {
-                    <option value="@source">@source</option>
-                }
-            </select>
-        </div>
-        
-        <div class="filter-group date-range">
-            <label class="filter-label">Date Range</label>
-            <div class="date-inputs">
-                <input type="date" class="filter-input" @bind="_dateFrom" @bind:after="ApplyFilters" />
-                <span class="date-separator">to</span>
-                <input type="date" class="filter-input" @bind="_dateTo" @bind:after="ApplyFilters" />
-            </div>
-        </div>
-        
-        <div class="filter-group search-group">
-            <div class="search-box">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
-                    <circle cx="11" cy="11" r="8"/>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-                </svg>
-                <input type="text" placeholder="Search..." @bind="_searchQuery" @bind:event="oninput" @bind:after="ApplyFilters" />
-            </div>
         </div>
     </div>
 
-    <!-- Active Filters Display -->
-    @if (HasActiveFilters())
-    {
-        <div class="active-filters">
-            <span class="active-filters-label">Active filters:</span>
-            @if (!string.IsNullOrEmpty(_statusFilter))
-            {
-                <span class="filter-chip">
-                    Status: @_statusFilter
-                    <button @onclick="() => { _statusFilter = string.Empty; ApplyFilters(); }">×</button>
-                </span>
-            }
-            @if (!string.IsNullOrEmpty(_categoryFilter))
-            {
-                <span class="filter-chip">
-                    Category: @_categoryFilter
-                    <button @onclick="() => { _categoryFilter = string.Empty; ApplyFilters(); }">×</button>
-                </span>
-            }
-            @if (!string.IsNullOrEmpty(_fundingFilter))
-            {
-                <span class="filter-chip">
-                    Source: @_fundingFilter
-                    <button @onclick="() => { _fundingFilter = string.Empty; ApplyFilters(); }">×</button>
-                </span>
-            }
-            <button class="btn-link" @onclick="ClearAllFilters">Clear all</button>
-        </div>
-    }
-
-    <!-- Data Table -->
-    <div class="data-table-container">
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th class="col-checkbox">
-                        <input type="checkbox" @bind="_selectAll" @onclick="ToggleSelectAll" />
-                    </th>
-                    <th class="sortable" @onclick="() => SetSort("date")">
-                        Date
-                        <SortIcon Column="date" CurrentSort="@_sortBy" />
-                    </th>
-                    <th class="sortable" @onclick="() => SetSort("person")">
-                        Person
-                        <SortIcon Column="person" CurrentSort="@_sortBy" />
-                    </th>
-                    <th>Purpose</th>
-                    <th>Category</th>
-                    <th class="sortable col-amount" @onclick="() => SetSort("amount")">
-                        Amount
-                        <SortIcon Column="amount" CurrentSort="@_sortBy" />
-                    </th>
-                    <th>Source</th>
-                    <th>Status</th>
-                    <th class="col-actions">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (_filteredInvestments.Any())
-                {
-                    @foreach (var inv in _filteredInvestments)
+    <div class="data-table-container mt-3">
+        @if (_isLoading)
+        {
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p class="mt-2 text-muted">Loading investments...</p>
+            </div>
+        }
+        else
+        {
+            <table class="table table-hover align-middle shadow-sm bg-white rounded">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="sortable" style="cursor: pointer;" @onclick='async () => await SetSort("Date")'>
+                            Date @RenderSortIcon("Date")
+                        </th>
+                        <th class="sortable" style="cursor: pointer;" @onclick='async () => await SetSort("PersonName")'>
+                            Person @RenderSortIcon("PersonName")
+                        </th>
+                        <th>Purpose</th>
+                        <th>Category</th>
+                        <th class="sortable text-end" style="cursor: pointer;" @onclick='async () => await SetSort("Amount")'>
+                            Amount @RenderSortIcon("Amount")
+                        </th>
+                        <th>Status</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var inv in _investments)
                     {
-                        <tr class="@(_selectedIds.Contains(inv.Id) ? "selected" : "")" @onclick="() => ViewInvestment(inv.Id)">
-                            <td class="col-checkbox" @onclick:stopPropagation="true">
-                                <input type="checkbox" checked="@_selectedIds.Contains(inv.Id)" @onchange="() => ToggleSelect(inv.Id)" />
-                            </td>
-                            <td class="col-date">
-                                <div class="date-cell">
-                                    <span class="date-primary">@inv.Date.ToString("MMM d")</span>
-                                    <span class="date-secondary">@inv.Date.ToString("yyyy")</span>
-                                </div>
-                            </td>
+                        <tr>
+                            <td>@inv.Date.ToString("MMM d, yyyy")</td>
+                            <td class="fw-bold text-primary">@inv.PersonName</td>
+                            <td>@inv.Purpose</td>
+                            <td><span class="badge bg-secondary">@inv.Category</span></td>
+                            <td class="text-end fw-bold">@inv.Amount.ToString("C0")</td>
                             <td>
-                                <div class="person-cell">
-                                    <div class="avatar avatar-sm">
-                                        <span>@GetInitials(inv.PersonName)</span>
-                                    </div>
-                                    <span class="person-name">@inv.PersonName</span>
-                                </div>
+                                <span class="badge @GetStatusBadge(inv.Status)">@inv.Status</span>
                             </td>
-                            <td class="col-purpose">
-                                <span class="purpose-text" title="@inv.Purpose">@inv.Purpose</span>
-                            </td>
-                            <td>
-                                <span class="category-badge category-@inv.Category.ToString().ToLower()">
-                                    @inv.Category
-                                </span>
-                            </td>
-                            <td class="col-amount">
-                                <span class="amount">@inv.Amount.ToString("C0")</span>
-                            </td>
-                            <td>
-                                <span class="source-text">@(inv.FundingSource ?? "General Fund")</span>
-                            </td>
-                            <td>
-                                <span class="status-badge status-@inv.Status.ToString().ToLower()">
-                                    @inv.Status
-                                </span>
-                            </td>
-                            <td class="col-actions" @onclick:stopPropagation="true">
-                                <div class="action-buttons">
-                                    <button class="btn-icon-only" title="View details" @onclick="() => ViewInvestment(inv.Id)">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                                            <circle cx="12" cy="12" r="3"/>
-                                        </svg>
-                                    </button>
-                                    @if (inv.Status == InvestmentStatus.Pending)
-                                    {
-                                        <button class="btn-icon-only success" title="Approve" @onclick="() => ApproveInvestment(inv.Id)">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                                <polyline points="20 6 9 17 4 12"/>
-                                            </svg>
-                                        </button>
-                                    }
-                                    <button class="btn-icon-only" title="Edit" @onclick="() => EditInvestment(inv.Id)">
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                        </svg>
-                                    </button>
-                                </div>
+                            <td class="text-end">
+                                <button class="btn btn-sm btn-light" @onclick="() => EditInvestment(inv.Id)">Edit</button>
                             </td>
                         </tr>
                     }
-                }
-                else
-                {
-                    <tr>
-                        <td colspan="9">
-                            <div class="empty-state">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="empty-icon">
-                                    <line x1="12" y1="1" x2="12" y2="23"/>
-                                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                                </svg>
-                                <h3>No investments found</h3>
-                                <p>Try adjusting your filters or create a new investment.</p>
-                                <button class="btn btn-primary" @onclick="OpenNewInvestment">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-                                        <line x1="12" y1="5" x2="12" y2="19"/>
-                                        <line x1="5" y1="12" x2="19" y2="12"/>
-                                    </svg>
-                                    New Investment
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+            
+            <div class="d-flex justify-content-between align-items-center mt-3 px-2">
+                <span class="text-muted small">Page @_currentPage</span>
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary me-2" disabled="@(_currentPage == 1)" @onclick="PreviousPage">Previous</button>
+                    <button class="btn btn-sm btn-outline-secondary" disabled="@(!_hasMore)" @onclick="NextPage">Next</button>
+                </div>
+            </div>
+        }
     </div>
-
-    <!-- Bulk Actions -->
-    @if (_selectedIds.Any())
-    {
-        <div class="bulk-actions-bar">
-            <span class="selected-count">@_selectedIds.Count selected</span>
-            <div class="bulk-buttons">
-                <button class="btn btn-secondary btn-sm" @onclick="BulkApprove">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-                        <polyline points="20 6 9 17 4 12"/>
-                    </svg>
-                    Approve Selected
-                </button>
-                <button class="btn btn-secondary btn-sm" @onclick="BulkExport">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                        <polyline points="7 10 12 15 17 10"/>
-                        <line x1="12" y1="15" x2="12" y2="3"/>
-                    </svg>
-                    Export Selected
-                </button>
-            </div>
-        </div>
-    }
-
-    <!-- Pagination -->
-    @if (_totalPages > 1)
-    {
-        <div class="pagination">
-            <div class="pagination-info">
-                Showing @((_currentPage - 1) * _pageSize + 1) - @(Math.Min(_currentPage * _pageSize, _filteredInvestments.Count)) of @_filteredInvestments.Count
-            </div>
-            <div class="pagination-controls">
-                <button class="pagination-btn" disabled="@(_currentPage == 1)" @onclick="PreviousPage">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="15 18 9 12 15 6"/>
-                    </svg>
-                </button>
-                
-                @for (int i = 1; i <= _totalPages; i++)
-                {
-                    var page = i;
-                    <button class="pagination-page @(page == _currentPage ? "active" : "")" @onclick="() => GoToPage(page)">
-                        @page
-                    </button>
-                }
-                
-                <button class="pagination-btn" disabled="@(_currentPage == _totalPages)" @onclick="NextPage">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="9 18 15 12 9 6"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
-    }
 </div>
 
 @code {
-    // Data
-    private List<InvestmentListDto> _allInvestments = new();
-    private List<InvestmentListDto> _filteredInvestments = new();
-    private HashSet<Guid> _selectedIds = new();
-    private List<string> _fundingSources = new() { "General Fund", "Community Grant", "Emergency Fund", "CDBG", "United Way" };
-    
-    // Filters
+    private List<InvestmentListDto> _investments = new();
+    private bool _isLoading = false;
     private string _searchQuery = "";
-    private string _statusFilter = "";
-    private string _categoryFilter = "";
-    private string _fundingFilter = "";
-    private DateTime? _dateFrom;
-    private DateTime? _dateTo;
+    private string _statusFilter = ""; // Added filter binding
     
     // Sorting & Pagination
-    private string _sortBy = "date-desc";
-    private bool _selectAll = false;
+    private string _sortBy = "Date";
+    private bool _sortDescending = true;
     private int _currentPage = 1;
-    private int _pageSize = 20;
-    private int _totalPages => (int)Math.Ceiling((double)_filteredInvestments.Count / _pageSize);
+    private int _pageSize = 20; // This caused the warning before
+    private bool _hasMore = true; // Track if we have more pages
+    
+    private InvestmentQueryParams _queryParams = new();
 
-    // Summary
-    private InvestmentSummary _summaryData = new();
+    protected override async Task OnInitializedAsync() => await LoadData();
 
-    private class InvestmentSummary
+    private async Task LoadData()
     {
-        public decimal TotalAmount { get; set; }
-        public int PendingCount { get; set; }
-        public int CompletedCount { get; set; }
-        public int UniquePeople { get; set; }
-    }
-
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadInvestments();
-        CalculateSummary();
-        ApplyFilters();
-    }
-
-    private async Task LoadInvestments()
-    {
-        _allInvestments = new List<InvestmentListDto>
+        _isLoading = true;
+        try
         {
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Maria Santos", Amount = 450, Purpose = "Utility Assistance - Electric Bill", Category = InvestmentCategory.Utilities, Date = DateTime.Now.AddDays(-1), Status = InvestmentStatus.Completed, FundingSource = "General Fund", FiscalYear = "FY24-25" },
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "James Wilson", Amount = 1200, Purpose = "Security Deposit - Apartment", Category = InvestmentCategory.Housing, Date = DateTime.Now.AddDays(-2), Status = InvestmentStatus.Approved, FundingSource = "Community Grant", FiscalYear = "FY24-25" },
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Sarah Johnson", Amount = 85, Purpose = "Weekly Food Box", Category = InvestmentCategory.Food, Date = DateTime.Now.AddDays(-3), Status = InvestmentStatus.Completed, FundingSource = "United Way", FiscalYear = "FY24-25" },
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Michael Chen", Amount = 350, Purpose = "Car Repair - Brakes", Category = InvestmentCategory.Transportation, Date = DateTime.Now.AddDays(-4), Status = InvestmentStatus.Pending, FundingSource = "Emergency Fund", FiscalYear = "FY24-25" },
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Robert Thompson", Amount = 275, Purpose = "Prescription Medications", Category = InvestmentCategory.Prescriptions, Date = DateTime.Now.AddDays(-5), Status = InvestmentStatus.Disbursed, FundingSource = "General Fund", FiscalYear = "FY24-25" },
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Linda Martinez", Amount = 800, Purpose = "Past Due Rent", Category = InvestmentCategory.Housing, Date = DateTime.Now.AddDays(-7), Status = InvestmentStatus.Completed, FundingSource = "CDBG", FiscalYear = "FY24-25" },
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "David Kim", Amount = 150, Purpose = "Work Clothing", Category = InvestmentCategory.Clothing, Date = DateTime.Now.AddDays(-8), Status = InvestmentStatus.Completed, FundingSource = "General Fund", FiscalYear = "FY24-25" },
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Angela Davis", Amount = 500, Purpose = "GED Testing Fees", Category = InvestmentCategory.Education, Date = DateTime.Now.AddDays(-10), Status = InvestmentStatus.Completed, FundingSource = "Community Grant", FiscalYear = "FY24-25" },
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Thomas Brown", Amount = 225, Purpose = "Gas Card for Job Search", Category = InvestmentCategory.Transportation, Date = DateTime.Now.AddDays(-12), Status = InvestmentStatus.Pending, FundingSource = "General Fund", FiscalYear = "FY24-25" },
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Jessica Lee", Amount = 650, Purpose = "First Month Rent", Category = InvestmentCategory.Housing, Date = DateTime.Now.AddDays(-14), Status = InvestmentStatus.Approved, FundingSource = "Emergency Fund", FiscalYear = "FY24-25" }
-        };
-    }
+            _queryParams.PageNumber = _currentPage;
+            _queryParams.PageSize = _pageSize; // Fixed: Now using the _pageSize variable
+            _queryParams.SearchTerm = _searchQuery;
+            _queryParams.SortBy = _sortBy;
+            _queryParams.SortDescending = _sortDescending;
+            
+            if (!string.IsNullOrEmpty(_statusFilter) && Enum.TryParse<GrowIT.Shared.Enums.InvestmentStatus>(_statusFilter, out var status))
+            {
+                _queryParams.Status = status;
+            }
+            else 
+            {
+                _queryParams.Status = null;
+            }
 
-    private void CalculateSummary()
-    {
-        _summaryData = new InvestmentSummary
-        {
-            TotalAmount = _allInvestments.Sum(i => i.Amount),
-            PendingCount = _allInvestments.Count(i => i.Status == InvestmentStatus.Pending),
-            CompletedCount = _allInvestments.Count(i => i.Status == InvestmentStatus.Completed),
-            UniquePeople = _allInvestments.Select(i => i.PersonId).Distinct().Count()
-        };
-    }
-
-    private void ApplyFilters()
-    {
-        var filtered = _allInvestments.AsEnumerable();
-
-        if (!string.IsNullOrWhiteSpace(_searchQuery))
-        {
-            var query = _searchQuery.ToLower();
-            filtered = filtered.Where(i => 
-                i.PersonName.ToLower().Contains(query) ||
-                i.Purpose.ToLower().Contains(query) ||
-                (i.FundingSource?.ToLower().Contains(query) ?? false));
+            var response = await InvestmentService.GetInvestmentsAsync(_queryParams);
+            _investments = response.Items ?? new List<InvestmentListDto>();
+            _hasMore = _investments.Count == _pageSize; // Simple check for pagination
         }
-
-        if (!string.IsNullOrEmpty(_statusFilter) && Enum.TryParse<InvestmentStatus>(_statusFilter, true, out var status))
-        {
-            filtered = filtered.Where(i => i.Status == status);
-        }
-
-        if (!string.IsNullOrEmpty(_categoryFilter) && Enum.TryParse<InvestmentCategory>(_categoryFilter, true, out var category))
-        {
-            filtered = filtered.Where(i => i.Category == category);
-        }
-
-        if (!string.IsNullOrEmpty(_fundingFilter))
-        {
-            filtered = filtered.Where(i => i.FundingSource == _fundingFilter);
-        }
-
-        if (_dateFrom.HasValue)
-        {
-            filtered = filtered.Where(i => i.Date >= _dateFrom.Value);
-        }
-
-        if (_dateTo.HasValue)
-        {
-            filtered = filtered.Where(i => i.Date <= _dateTo.Value);
-        }
-
-        // Apply sort
-        filtered = _sortBy switch
-        {
-            "date" => filtered.OrderBy(i => i.Date),
-            "date-desc" => filtered.OrderByDescending(i => i.Date),
-            "person" => filtered.OrderBy(i => i.PersonName),
-            "person-desc" => filtered.OrderByDescending(i => i.PersonName),
-            "amount" => filtered.OrderBy(i => i.Amount),
-            "amount-desc" => filtered.OrderByDescending(i => i.Amount),
-            _ => filtered.OrderByDescending(i => i.Date)
-        };
-
-        _filteredInvestments = filtered.ToList();
-        _currentPage = 1;
+        catch (Exception ex) { Console.WriteLine($"Error: {ex.Message}"); }
+        finally { _isLoading = false; }
     }
 
-    private bool HasActiveFilters() =>
-        !string.IsNullOrEmpty(_statusFilter) ||
-        !string.IsNullOrEmpty(_categoryFilter) ||
-        !string.IsNullOrEmpty(_fundingFilter) ||
-        _dateFrom.HasValue ||
-        _dateTo.HasValue;
+    private async Task HandleSearch(KeyboardEventArgs e) { if (e.Key == "Enter") await LoadData(); }
 
-    private void ClearAllFilters()
+    private async Task SetSort(string column)
     {
-        _searchQuery = "";
-        _statusFilter = "";
-        _categoryFilter = "";
-        _fundingFilter = "";
-        _dateFrom = null;
-        _dateTo = null;
-        ApplyFilters();
+        if (_sortBy == column) _sortDescending = !_sortDescending;
+        else { _sortBy = column; _sortDescending = true; }
+        await LoadData();
     }
 
-    private void SetSort(string column)
+    private async Task PreviousPage() { if (_currentPage > 1) { _currentPage--; await LoadData(); } }
+    private async Task NextPage() { _currentPage++; await LoadData(); }
+
+    private RenderFragment RenderSortIcon(string column) => builder =>
     {
-        if (_sortBy == column)
-            _sortBy = column + "-desc";
-        else if (_sortBy == column + "-desc")
-            _sortBy = column;
-        else
-            _sortBy = column;
-        
-        ApplyFilters();
-    }
+        if (_sortBy != column) return;
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", $"oi oi-caret-{(_sortDescending ? "bottom" : "top")} ms-1 small text-muted");
+        builder.CloseElement();
+    };
 
-    private string GetInitials(string name)
+    private string GetStatusBadge(GrowIT.Shared.Enums.InvestmentStatus status) => status switch
     {
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length >= 2)
-            return $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant();
-        return name.Length >= 2 ? name.Substring(0, 2).ToUpperInvariant() : name.ToUpperInvariant();
-    }
+        GrowIT.Shared.Enums.InvestmentStatus.Approved => "bg-success",
+        GrowIT.Shared.Enums.InvestmentStatus.Pending => "bg-warning text-dark",
+        GrowIT.Shared.Enums.InvestmentStatus.Rejected => "bg-danger",
+        _ => "bg-secondary"
+    };
 
-    private void ToggleSelectAll()
-    {
-        if (_selectAll)
-            _selectedIds.Clear();
-        else
-            _selectedIds = _filteredInvestments.Select(i => i.Id).ToHashSet();
-        _selectAll = !_selectAll;
-    }
-
-    private void ToggleSelect(Guid id)
-    {
-        if (_selectedIds.Contains(id))
-            _selectedIds.Remove(id);
-        else
-            _selectedIds.Add(id);
-        _selectAll = _selectedIds.Count == _filteredInvestments.Count;
-    }
-
-    private void ViewInvestment(Guid id) => Navigation.NavigateTo($"/investments/{id}");
     private void EditInvestment(Guid id) => Navigation.NavigateTo($"/investments/{id}/edit");
-    private void ApproveInvestment(Guid id) { /* Approve logic */ }
-    private void OpenNewInvestment() { /* Open modal */ }
-    private void ExportInvestments() { /* Export */ }
-    private void BulkApprove() { /* Bulk approve */ }
-    private void BulkExport() { /* Bulk export */ }
-
-    private void PreviousPage() { if (_currentPage > 1) _currentPage--; }
-    private void NextPage() { if (_currentPage < _totalPages) _currentPage++; }
-    private void GoToPage(int page) { _currentPage = page; }
-}
-
-@* Sort Icon Component *@
-@code {
-    private RenderFragment<(string Column, string CurrentSort)> SortIcon => context => 
-        @<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" 
-             class="sort-icon @(context.CurrentSort.StartsWith(context.Column) ? "active" : "") @(context.CurrentSort == context.Column + "-desc" ? "desc" : "")">
-            <polyline points="18 15 12 9 6 15"/>
-        </svg>;
 }

@@ -1,11 +1,12 @@
 @page "/imprints"
 @using GrowIT.Client.Models
+@using GrowIT.Shared.Enums 
+@using GrowIT.Shared.DTOs
 @inject NavigationManager Navigation
 
 <PageTitle>Imprints - grow.IT</PageTitle>
 
 <div class="page-imprints">
-    <!-- Page Header -->
     <div class="page-header">
         <div class="page-header-content">
             <h1 class="page-title">Imprints</h1>
@@ -30,7 +31,6 @@
         </div>
     </div>
 
-    <!-- Impact Summary -->
     <div class="impact-summary">
         <div class="impact-card">
             <div class="impact-number">@_totalImprints</div>
@@ -54,9 +54,8 @@
         </div>
     </div>
 
-    <!-- Category Filter Pills -->
     <div class="category-pills">
-        <button class="category-pill @(_categoryFilter == "" ? "active" : "")" @onclick="() => SetCategoryFilter("")">
+        <button class="category-pill @(_categoryFilter == "" ? "active" : "")" @onclick='() => SetCategoryFilter("")'>
             All Categories
         </button>
         @foreach (var cat in _topCategories)
@@ -68,7 +67,6 @@
         }
     </div>
 
-    <!-- Search and Filters -->
     <div class="toolbar">
         <div class="search-box">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
@@ -81,10 +79,9 @@
         <div class="toolbar-filters">
             <select class="filter-select" @bind="_typeFilter" @bind:after="ApplyFilters">
                 <option value="">All Types</option>
-                @foreach (var type in Enum.GetValues<ImprintType>())
-                {
-                    <option value="@type">@FormatEnumName(type.ToString())</option>
-                }
+                <option value="DirectOutcome">Direct Outcome</option>
+                <option value="Progress">Progress</option>
+                <option value="Maintenance">Maintenance</option>
             </select>
             
             <select class="filter-select" @bind="_verifiedFilter" @bind:after="ApplyFilters">
@@ -95,7 +92,6 @@
         </div>
     </div>
 
-    <!-- Imprints Timeline -->
     <div class="imprints-timeline">
         @{
             var groupedImprints = _filteredImprints.GroupBy(i => i.Date.Date).OrderByDescending(g => g.Key);
@@ -184,7 +180,6 @@
         }
     </div>
 
-    <!-- Empty State -->
     @if (!_filteredImprints.Any())
     {
         <div class="empty-state-large">
@@ -204,7 +199,6 @@
         </div>
     }
 
-    <!-- Load More -->
     @if (_filteredImprints.Count >= _pageSize && _hasMore)
     {
         <div class="load-more">
@@ -242,19 +236,14 @@
 
     private async Task LoadImprints()
     {
+        // Mock Data for UI Testing
         _allImprints = new List<ImprintListDto>
         {
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Angela Davis", Title = "Secured Full-Time Employment", Category = ImprintCategory.EmploymentStability, Type = ImprintType.DirectOutcome, Date = DateTime.Now.AddDays(-1), IsVerified = true, QuantitativeValue = 42000, QuantitativeUnit = "annual salary" },
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Thomas Brown", Title = "Completed GED Program", Category = ImprintCategory.EducationalAttainment, Type = ImprintType.DirectOutcome, Date = DateTime.Now.AddDays(-2), IsVerified = true },
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Jessica Lee", Title = "Moved to Permanent Housing", Category = ImprintCategory.HousingStability, Type = ImprintType.DirectOutcome, Date = DateTime.Now.AddDays(-3), IsVerified = false },
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Maria Santos", Title = "Maintained Housing for 6 Months", Category = ImprintCategory.HousingStability, Type = ImprintType.Maintenance, Date = DateTime.Now.AddDays(-5), IsVerified = true, QuantitativeValue = 6, QuantitativeUnit = "months" },
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "James Wilson", Title = "Completed Job Training Certificate", Category = ImprintCategory.SkillDevelopment, Type = ImprintType.Progress, Date = DateTime.Now.AddDays(-7), IsVerified = true },
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "David Kim", Title = "Credit Score Improved", Category = ImprintCategory.FinancialStability, Type = ImprintType.Improvement, Date = DateTime.Now.AddDays(-7), IsVerified = true, QuantitativeValue = 85, QuantitativeUnit = "points" },
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Linda Martinez", Title = "Eviction Prevented", Category = ImprintCategory.HousingStability, Type = ImprintType.Prevention, Date = DateTime.Now.AddDays(-10), IsVerified = true },
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Sarah Johnson", Title = "Started Emergency Savings", Category = ImprintCategory.FinancialStability, Type = ImprintType.Progress, Date = DateTime.Now.AddDays(-12), IsVerified = false, QuantitativeValue = 500, QuantitativeUnit = "saved" },
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Michael Chen", Title = "Connected with Mental Health Services", Category = ImprintCategory.MentalHealth, Type = ImprintType.Progress, Date = DateTime.Now.AddDays(-14), IsVerified = true },
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Robert Thompson", Title = "Family Reunification Success Story", Category = ImprintCategory.FamilyWellbeing, Type = ImprintType.Story, Date = DateTime.Now.AddDays(-15), IsVerified = true }
+            new() { Id = Guid.NewGuid(), PersonName = "Angela Davis", Title = "Secured Full-Time Employment", Category = ImprintCategory.FinancialStability, Type = ImprintType.DirectOutcome, Date = DateTime.Now.AddDays(-1), IsVerified = true, QuantitativeValue = 42000, QuantitativeUnit = "annual salary" },
+            new() { Id = Guid.NewGuid(), PersonName = "Thomas Brown", Title = "Completed GED Program", Category = ImprintCategory.EducationalAttainment, Type = ImprintType.DirectOutcome, Date = DateTime.Now.AddDays(-2), IsVerified = true },
+            new() { Id = Guid.NewGuid(), PersonName = "Jessica Lee", Title = "Moved to Permanent Housing", Category = ImprintCategory.HousingStability, Type = ImprintType.DirectOutcome, Date = DateTime.Now.AddDays(-3), IsVerified = false }
         };
+        await Task.CompletedTask;
     }
 
     private void CalculateSummary()
@@ -263,7 +252,6 @@
         _verifiedCount = _allImprints.Count(i => i.IsVerified);
         _uniquePeople = _allImprints.Select(i => i.PersonId).Distinct().Count();
         _categoriesCount = _allImprints.Select(i => i.Category).Distinct().Count();
-        
         _topCategories = _allImprints
             .GroupBy(i => FormatEnumName(i.Category.ToString()))
             .OrderByDescending(g => g.Count())
@@ -312,14 +300,12 @@
     private string GetInitials(string name)
     {
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length >= 2)
-            return $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant();
+        if (parts.Length >= 2) return $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant();
         return name.Length >= 2 ? name.Substring(0, 2).ToUpperInvariant() : name.ToUpperInvariant();
     }
 
     private string FormatEnumName(string enumValue)
     {
-        // Convert PascalCase to Title Case with spaces
         return System.Text.RegularExpressions.Regex.Replace(enumValue, "(\\B[A-Z])", " $1");
     }
 
@@ -335,4 +321,22 @@
     private void VerifyImprint(Guid id) { /* Verify logic */ }
     private void OpenNewImprint() { /* Open modal */ }
     private void ExportImprints() { /* Export */ }
+    
+    // Supporting DTOs locally if missing
+    public enum ImprintCategory { HousingStability, FinancialStability, EducationalAttainment, EmploymentStability, SkillDevelopment, MentalHealth, FamilyWellbeing }
+    public enum ImprintType { DirectOutcome, Progress, Maintenance, Prevention, Improvement, Story }
+    
+    public class ImprintListDto
+    {
+        public Guid Id { get; set; }
+        public Guid PersonId { get; set; }
+        public string PersonName { get; set; } = "";
+        public string Title { get; set; } = "";
+        public ImprintCategory Category { get; set; }
+        public ImprintType Type { get; set; }
+        public DateTime Date { get; set; }
+        public bool IsVerified { get; set; }
+        public decimal? QuantitativeValue { get; set; }
+        public string? QuantitativeUnit { get; set; }
+    }
 }

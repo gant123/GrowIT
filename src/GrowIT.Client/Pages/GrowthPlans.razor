@@ -1,11 +1,12 @@
 @page "/growth-plans"
 @using GrowIT.Client.Models
+@using GrowIT.Shared.DTOs
+@using GrowIT.Shared.Enums
 @inject NavigationManager Navigation
 
 <PageTitle>Growth Plans - grow.IT</PageTitle>
 
 <div class="page-growth-plans">
-    <!-- Page Header -->
     <div class="page-header">
         <div class="page-header-content">
             <h1 class="page-title">Growth Plans</h1>
@@ -22,27 +23,25 @@
         </div>
     </div>
 
-    <!-- Status Tabs -->
     <div class="status-tabs">
-        <button class="status-tab @(_statusFilter == "" ? "active" : "")" @onclick="() => SetStatusFilter("")">
+        <button class="status-tab @(_statusFilter == "" ? "active" : "")" @onclick='() => SetStatusFilter("")'>
             All Plans
             <span class="tab-count">@_allPlans.Count</span>
         </button>
-        <button class="status-tab @(_statusFilter == "active" ? "active" : "")" @onclick="() => SetStatusFilter("active")">
+        <button class="status-tab @(_statusFilter == "active" ? "active" : "")" @onclick='() => SetStatusFilter("active")'>
             Active
             <span class="tab-count">@_allPlans.Count(p => p.Status == GrowthPlanStatus.Active)</span>
         </button>
-        <button class="status-tab @(_statusFilter == "onhold" ? "active" : "")" @onclick="() => SetStatusFilter("onhold")">
+        <button class="status-tab @(_statusFilter == "onhold" ? "active" : "")" @onclick='() => SetStatusFilter("onhold")'>
             On Hold
             <span class="tab-count">@_allPlans.Count(p => p.Status == GrowthPlanStatus.OnHold)</span>
         </button>
-        <button class="status-tab @(_statusFilter == "completed" ? "active" : "")" @onclick="() => SetStatusFilter("completed")">
+        <button class="status-tab @(_statusFilter == "completed" ? "active" : "")" @onclick='() => SetStatusFilter("completed")'>
             Completed
             <span class="tab-count">@_allPlans.Count(p => p.Status == GrowthPlanStatus.Completed || p.Status == GrowthPlanStatus.Graduated)</span>
         </button>
     </div>
 
-    <!-- Search & Filters -->
     <div class="toolbar">
         <div class="search-box">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="search-icon">
@@ -55,10 +54,10 @@
         <div class="toolbar-filters">
             <select class="filter-select" @bind="_seasonFilter" @bind:after="ApplyFilters">
                 <option value="">All Seasons</option>
-                <option value="crisis">Crisis</option>
-                <option value="planting">Planting</option>
-                <option value="growing">Growing</option>
-                <option value="harvest">Harvest</option>
+                <option value="Crisis">Crisis</option>
+                <option value="Planting">Planting</option>
+                <option value="Growing">Growing</option>
+                <option value="Harvest">Harvest</option>
             </select>
             
             <select class="filter-select" @bind="_assigneeFilter" @bind:after="ApplyFilters">
@@ -71,12 +70,10 @@
         </div>
     </div>
 
-    <!-- Plans Grid -->
     <div class="plans-grid">
         @foreach (var plan in _filteredPlans)
         {
             <div class="plan-card" @onclick="() => ViewPlan(plan.Id)">
-                <!-- Card Header -->
                 <div class="plan-card-header">
                     <div class="plan-person">
                         <div class="avatar avatar-sm">
@@ -92,7 +89,6 @@
                     </span>
                 </div>
 
-                <!-- Progress Section -->
                 <div class="plan-progress">
                     <div class="progress-header">
                         <span class="progress-label">Progress</span>
@@ -104,7 +100,6 @@
                     <div class="progress-percentage">@plan.ProgressPercentage.ToString("F0")% complete</div>
                 </div>
 
-                <!-- Plan Details -->
                 <div class="plan-details">
                     <div class="plan-detail">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="detail-icon">
@@ -137,7 +132,6 @@
                     }
                 </div>
 
-                <!-- Card Footer -->
                 <div class="plan-card-footer">
                     <span class="plan-status status-@plan.Status.ToString().ToLower()">
                         @plan.Status
@@ -161,7 +155,6 @@
         }
     </div>
 
-    <!-- Empty State -->
     @if (!_filteredPlans.Any())
     {
         <div class="empty-state-large">
@@ -200,17 +193,20 @@
 
     private async Task LoadPlans()
     {
+        // Mock data
         _allPlans = new List<GrowthPlanListDto>
         {
             new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Maria Santos", Title = "Housing Stability Plan", Season = Season.Growing, Status = GrowthPlanStatus.Active, StartDate = DateTime.Now.AddMonths(-3), TargetEndDate = DateTime.Now.AddMonths(3), CompletedGoals = 4, TotalGoals = 6, ProgressPercentage = 67, AssignedToUserName = "John Doe" },
             new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "James Wilson", Title = "Employment Development", Season = Season.Planting, Status = GrowthPlanStatus.Active, StartDate = DateTime.Now.AddMonths(-1), TargetEndDate = DateTime.Now.AddMonths(5), CompletedGoals = 1, TotalGoals = 5, ProgressPercentage = 20, AssignedToUserName = "Jane Smith" },
             new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Sarah Johnson", Title = "Financial Independence", Season = Season.Harvest, Status = GrowthPlanStatus.Completed, StartDate = DateTime.Now.AddYears(-1), TargetEndDate = DateTime.Now.AddMonths(-1), CompletedGoals = 8, TotalGoals = 8, ProgressPercentage = 100, AssignedToUserName = "John Doe" },
-            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Michael Chen", Title = "Crisis Stabilization", Season = Season.Crisis, Status = GrowthPlanStatus.Active, StartDate = DateTime.Now.AddWeeks(-2), CompletedGoals = 0, TotalGoals = 4, ProgressPercentage = 0, AssignedToUserName = "Mike Johnson" },
+            // FIXED: .AddWeeks(-2) -> .AddDays(-14)
+            new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Michael Chen", Title = "Crisis Stabilization", Season = Season.Crisis, Status = GrowthPlanStatus.Active, StartDate = DateTime.Now.AddDays(-14), CompletedGoals = 0, TotalGoals = 4, ProgressPercentage = 0, AssignedToUserName = "Mike Johnson" },
             new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Robert Thompson", Title = "Emergency Support", Season = Season.Crisis, Status = GrowthPlanStatus.Active, StartDate = DateTime.Now.AddDays(-5), CompletedGoals = 1, TotalGoals = 3, ProgressPercentage = 33, AssignedToUserName = "Jane Smith" },
             new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Linda Martinez", Title = "Senior Support Plan", Season = Season.Planting, Status = GrowthPlanStatus.OnHold, StartDate = DateTime.Now.AddMonths(-2), TargetEndDate = DateTime.Now.AddMonths(4), CompletedGoals = 2, TotalGoals = 5, ProgressPercentage = 40, AssignedToUserName = "John Doe" },
             new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "David Kim", Title = "Career Advancement", Season = Season.Growing, Status = GrowthPlanStatus.Active, StartDate = DateTime.Now.AddMonths(-4), TargetEndDate = DateTime.Now.AddMonths(2), CompletedGoals = 5, TotalGoals = 7, ProgressPercentage = 71, AssignedToUserName = "Mike Johnson" },
             new() { Id = Guid.NewGuid(), PersonId = Guid.NewGuid(), PersonName = "Angela Davis", Title = "Community Reintegration", Season = Season.Harvest, Status = GrowthPlanStatus.Graduated, StartDate = DateTime.Now.AddYears(-2), CompletedGoals = 10, TotalGoals = 10, ProgressPercentage = 100, AssignedToUserName = "Jane Smith" }
         };
+        await Task.CompletedTask;
     }
 
     private void ApplyFilters()
@@ -257,6 +253,7 @@
 
     private string GetInitials(string name)
     {
+        if (string.IsNullOrEmpty(name)) return "?";
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length >= 2)
             return $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant();
@@ -265,5 +262,5 @@
 
     private void ViewPlan(Guid id) => Navigation.NavigateTo($"/growth-plans/{id}");
     private void EditPlan(Guid id) => Navigation.NavigateTo($"/growth-plans/{id}/edit");
-    private void OpenNewPlan() { /* Open modal */ }
+    private void OpenNewPlan() { /* Open modal logic */ }
 }

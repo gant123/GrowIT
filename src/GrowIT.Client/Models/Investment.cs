@@ -1,5 +1,5 @@
 namespace GrowIT.Client.Models;
-
+using GrowIT.Shared.Enums;
 /// <summary>
 /// Represents an Investment - resources given to support a person's growth.
 /// In grow.IT terminology, these are "investments" not "handouts" - 
@@ -52,7 +52,7 @@ public class Investment
     public string? CreatedBy { get; set; }
     public string? ApprovedBy { get; set; }
     public DateTime? ApprovedAt { get; set; }
-    public InvestmentStatus Status { get; set; } = InvestmentStatus.Pending;
+   public InvestmentStatus Status { get; set; } = InvestmentStatus.Pending;
     public string? Notes { get; set; }
     
     // Attachments/Documentation

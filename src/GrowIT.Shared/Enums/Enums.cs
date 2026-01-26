@@ -49,3 +49,4 @@ public enum AuditSeverity { Low, Medium, High, Critical }
 public enum IncidentStatus { Open, InProgress, Resolved, Closed }
 public enum ChangeRequestStatus { Submitted, Approved, Rejected, Implemented }
 public enum InvestmentOutcome { Improved, Maintained, Regressed, Unknown }  // Improved, Maintained, Regressed, Unknown
+public enum InvestmentStatus { Pending, Approved, Rejected, Paid, Cancelled }
