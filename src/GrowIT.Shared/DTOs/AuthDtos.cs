@@ -19,7 +19,17 @@ public class RegisterRequest
 
     [Required]
     public string Password { get; set; } = string.Empty;
-  
+
+    // Organization Details (from Step 2)
+    public string OrganizationType { get; set; } = string.Empty;
+    public string OrganizationSize { get; set; } = string.Empty;
+    public string Role { get; set; } = string.Empty;
+
+    // Initial Setup Preferences (from Step 3)
+    public bool TrackPeople { get; set; } = false;
+    public bool TrackInvestments { get; set; } = false;
+    public bool TrackOutcomes { get; set; } = false;
+    public bool TrackPrograms { get; set; } = false;
 }
 
 public class LoginRequest

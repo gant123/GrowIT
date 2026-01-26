@@ -93,7 +93,7 @@
                             <label for="firstName">First name</label>
                             <input type="text" 
                                    id="firstName" 
-                                   @bind="_firstName" 
+                                   @bind="_registerRequest.FirstName" 
                                    placeholder="John"
                                    autocomplete="given-name"
                                    required />
@@ -102,7 +102,7 @@
                             <label for="lastName">Last name</label>
                             <input type="text" 
                                    id="lastName" 
-                                   @bind="_lastName" 
+                                   @bind="_registerRequest.LastName" 
                                    placeholder="Smith"
                                    autocomplete="family-name"
                                    required />
@@ -113,7 +113,7 @@
                         <label for="email">Work email</label>
                         <input type="email" 
                                id="email" 
-                               @bind="_email" 
+                               @bind="_registerRequest.Email" 
                                placeholder="you@nonprofit.org"
                                autocomplete="email"
                                required />
@@ -124,7 +124,7 @@
                         <div class="input-wrapper">
                             <input type="@(_showPassword ? "text" : "password")" 
                                    id="password" 
-                                   @bind="_password" 
+                                   @bind="_registerRequest.Password" 
                                    @oninput="CheckPasswordStrength"
                                    placeholder="Create a strong password"
                                    autocomplete="new-password"
@@ -200,14 +200,14 @@
                         <label for="orgName">Organization name</label>
                         <input type="text" 
                                id="orgName" 
-                               @bind="_organizationName" 
+                               @bind="_registerRequest.OrganizationName" 
                                placeholder="Community Hope Network"
                                required />
                     </div>
 
                     <div class="form-group">
                         <label for="orgType">Organization type</label>
-                        <select id="orgType" @bind="_organizationType" required>
+                        <select id="orgType" @bind="_registerRequest.OrganizationType" required>
                             <option value="">Select type...</option>
                             <option value="501c3">501(c)(3) Nonprofit</option>
                             <option value="church">Church/Religious Organization</option>
@@ -219,7 +219,7 @@
 
                     <div class="form-group">
                         <label for="orgSize">How many people do you serve annually?</label>
-                        <select id="orgSize" @bind="_organizationSize" required>
+                        <select id="orgSize" @bind="_registerRequest.OrganizationSize" required>
                             <option value="">Select range...</option>
                             <option value="1-50">1-50</option>
                             <option value="51-200">51-200</option>
@@ -231,7 +231,7 @@
 
                     <div class="form-group">
                         <label for="role">Your role</label>
-                        <select id="role" @bind="_role" required>
+                        <select id="role" @bind="_registerRequest.Role" required>
                             <option value="">Select role...</option>
                             <option value="executive">Executive Director / CEO</option>
                             <option value="program">Program Director / Manager</option>
@@ -271,7 +271,7 @@
                         
                         <div class="checkbox-cards">
                             <label class="checkbox-card @(_trackPeople ? "selected" : "")">
-                                <input type="checkbox" @bind="_trackPeople" />
+                                <input type="checkbox" @bind="_registerRequest.TrackPeople" />
                                 <div class="card-icon">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -285,7 +285,7 @@
                             </label>
                             
                             <label class="checkbox-card @(_trackInvestments ? "selected" : "")">
-                                <input type="checkbox" @bind="_trackInvestments" />
+                                <input type="checkbox" @bind="_registerRequest.TrackInvestments" />
                                 <div class="card-icon">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <line x1="12" y1="1" x2="12" y2="23"/>
@@ -297,7 +297,7 @@
                             </label>
                             
                             <label class="checkbox-card @(_trackOutcomes ? "selected" : "")">
-                                <input type="checkbox" @bind="_trackOutcomes" />
+                                <input type="checkbox" @bind="_registerRequest.TrackOutcomes" />
                                 <div class="card-icon">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
@@ -309,7 +309,7 @@
                             </label>
                             
                             <label class="checkbox-card @(_trackPrograms ? "selected" : "")">
-                                <input type="checkbox" @bind="_trackPrograms" />
+                                <input type="checkbox" @bind="_registerRequest.TrackPrograms" />
                                 <div class="card-icon">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
@@ -415,29 +415,19 @@
 </div>
 
 @code {
+    [Inject] private HttpClient Http { get; set; }
+    [Inject] private NavigationManager Navigation { get; set; }
+
     private int _currentStep = 1;
+    private RegisterRequest _registerRequest = new();
     
-    // Step 1
-    private string _firstName = "";
-    private string _lastName = "";
-    private string _email = "";
-    private string _password = "";
+    // UI state for password input
     private bool _showPassword = false;
     private int _passwordStrength = 0;
     private string _passwordStrengthClass = "";
     private string _passwordStrengthText = "";
     
-    // Step 2
-    private string _organizationName = "";
-    private string _organizationType = "";
-    private string _organizationSize = "";
-    private string _role = "";
-    
-    // Step 3
-    private bool _trackPeople = true;
-    private bool _trackInvestments = true;
-    private bool _trackOutcomes = true;
-    private bool _trackPrograms = false;
+    // Step 3 specific flags
     private bool _agreeToTerms = false;
     private bool _subscribeToUpdates = false;
     
@@ -447,7 +437,7 @@
     private void CheckPasswordStrength(ChangeEventArgs e)
     {
         var password = e.Value?.ToString() ?? "";
-        _password = password;
+        _registerRequest.Password = password; // Bind to the DTO property
         
         var score = 0;
         if (password.Length >= 8) score += 25;
@@ -470,7 +460,14 @@
 
     private void GoToStep2()
     {
-        if (_password.Length < 8)
+        if (string.IsNullOrWhiteSpace(_registerRequest.FirstName) || string.IsNullOrWhiteSpace(_registerRequest.LastName) ||
+            string.IsNullOrWhiteSpace(_registerRequest.Email) || string.IsNullOrWhiteSpace(_registerRequest.Password))
+        {
+            _errorMessage = "All fields in Step 1 are required.";
+            return;
+        }
+
+        if (_registerRequest.Password.Length < 8)
         {
             _errorMessage = "Password must be at least 8 characters.";
             return;
@@ -481,6 +478,12 @@
 
     private void GoToStep3()
     {
+        if (string.IsNullOrWhiteSpace(_registerRequest.OrganizationName) || string.IsNullOrWhiteSpace(_registerRequest.OrganizationType) ||
+            string.IsNullOrWhiteSpace(_registerRequest.OrganizationSize) || string.IsNullOrWhiteSpace(_registerRequest.Role))
+        {
+            _errorMessage = "All fields in Step 2 are required.";
+            return;
+        }
         _errorMessage = null;
         _currentStep = 3;
     }
@@ -498,15 +501,27 @@
 
         try
         {
-            // Simulate API call
-            await Task.Delay(2000);
+            // Set initial tracking preferences from UI
+            _registerRequest.TrackPeople = _trackPeople;
+            _registerRequest.TrackInvestments = _trackInvestments;
+            _registerRequest.TrackOutcomes = _trackOutcomes;
+            _registerRequest.TrackPrograms = _trackPrograms;
+
+            var response = await Http.PostAsJsonAsync("api/auth/register", _registerRequest);
             
-            // In production, this would create the account
-            Navigation.NavigateTo("/");
+            if (response.IsSuccessStatusCode)
+            {
+                Navigation.NavigateTo("/login"); // Redirect to login page after successful registration
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                _errorMessage = $"Registration failed: {errorContent}";
+            }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            _errorMessage = "An error occurred. Please try again later.";
+            _errorMessage = $"An error occurred: {ex.Message}";
         }
         finally
         {
@@ -516,11 +531,11 @@
 
     private void SignupWithGoogle()
     {
-        // OAuth with Google
+        _errorMessage = "Google signup not yet implemented.";
     }
 
     private void SignupWithMicrosoft()
     {
-        // OAuth with Microsoft
+        _errorMessage = "Microsoft signup not yet implemented.";
     }
 }
