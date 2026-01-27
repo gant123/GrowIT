@@ -1,5 +1,5 @@
 @page "/reports"
-@using GrowIT.Client.Models
+@using GrowIT.Shared.DTOs
 
 <PageTitle>Reports - grow.IT</PageTitle>
 
@@ -16,7 +16,7 @@
     <div class="report-section">
         <h2 class="section-title">Quick Reports</h2>
         <div class="report-cards">
-            <div class="report-card" @onclick="() => GenerateReport("impact-summary")">
+            <div class="report-card" @onclick='() => GenerateReport("impact-summary")'>
                 <div class="report-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>

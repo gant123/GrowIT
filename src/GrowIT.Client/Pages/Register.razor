@@ -416,77 +416,28 @@
 
 @code {
     [Inject] private HttpClient Http { get; set; }
-    [Inject] private NavigationManager Navigation { get; set; }
+    // Navigation is already injected at the top of the file
 
     private int _currentStep = 1;
     private RegisterRequest _registerRequest = new();
     
-    // UI state for password input
     private bool _showPassword = false;
     private int _passwordStrength = 0;
     private string _passwordStrengthClass = "";
     private string _passwordStrengthText = "";
-    
-    // Step 3 specific flags
+
+    // Added missing UI flags for Step 3 checkboxes
+    private bool _trackPeople = false;
+    private bool _trackInvestments = false;
+    private bool _trackOutcomes = false;
+    private bool _trackPrograms = false;
+
     private bool _agreeToTerms = false;
     private bool _subscribeToUpdates = false;
-    
     private bool _isLoading = false;
     private string? _errorMessage;
 
-    private void CheckPasswordStrength(ChangeEventArgs e)
-    {
-        var password = e.Value?.ToString() ?? "";
-        _registerRequest.Password = password; // Bind to the DTO property
-        
-        var score = 0;
-        if (password.Length >= 8) score += 25;
-        if (password.Length >= 12) score += 15;
-        if (System.Text.RegularExpressions.Regex.IsMatch(password, @"[A-Z]")) score += 20;
-        if (System.Text.RegularExpressions.Regex.IsMatch(password, @"[a-z]")) score += 10;
-        if (System.Text.RegularExpressions.Regex.IsMatch(password, @"[0-9]")) score += 15;
-        if (System.Text.RegularExpressions.Regex.IsMatch(password, @"[^a-zA-Z0-9]")) score += 15;
-        
-        _passwordStrength = Math.Min(score, 100);
-        
-        (_passwordStrengthClass, _passwordStrengthText) = _passwordStrength switch
-        {
-            < 30 => ("weak", "Weak"),
-            < 60 => ("fair", "Fair"),
-            < 80 => ("good", "Good"),
-            _ => ("strong", "Strong")
-        };
-    }
-
-    private void GoToStep2()
-    {
-        if (string.IsNullOrWhiteSpace(_registerRequest.FirstName) || string.IsNullOrWhiteSpace(_registerRequest.LastName) ||
-            string.IsNullOrWhiteSpace(_registerRequest.Email) || string.IsNullOrWhiteSpace(_registerRequest.Password))
-        {
-            _errorMessage = "All fields in Step 1 are required.";
-            return;
-        }
-
-        if (_registerRequest.Password.Length < 8)
-        {
-            _errorMessage = "Password must be at least 8 characters.";
-            return;
-        }
-        _errorMessage = null;
-        _currentStep = 2;
-    }
-
-    private void GoToStep3()
-    {
-        if (string.IsNullOrWhiteSpace(_registerRequest.OrganizationName) || string.IsNullOrWhiteSpace(_registerRequest.OrganizationType) ||
-            string.IsNullOrWhiteSpace(_registerRequest.OrganizationSize) || string.IsNullOrWhiteSpace(_registerRequest.Role))
-        {
-            _errorMessage = "All fields in Step 2 are required.";
-            return;
-        }
-        _errorMessage = null;
-        _currentStep = 3;
-    }
+    // ... (Keep your CheckPasswordStrength, GoToStep2, and GoToStep3 methods)
 
     private async Task CompleteRegistration()
     {
@@ -498,20 +449,18 @@
 
         _errorMessage = null;
         _isLoading = true;
-
         try
         {
-            // Set initial tracking preferences from UI
+            // Map the UI flags to the DTO before sending to the API
             _registerRequest.TrackPeople = _trackPeople;
             _registerRequest.TrackInvestments = _trackInvestments;
             _registerRequest.TrackOutcomes = _trackOutcomes;
             _registerRequest.TrackPrograms = _trackPrograms;
 
             var response = await Http.PostAsJsonAsync("api/auth/register", _registerRequest);
-            
             if (response.IsSuccessStatusCode)
             {
-                Navigation.NavigateTo("/login"); // Redirect to login page after successful registration
+                Navigation.NavigateTo("/login");
             }
             else
             {
@@ -529,13 +478,6 @@
         }
     }
 
-    private void SignupWithGoogle()
-    {
-        _errorMessage = "Google signup not yet implemented.";
-    }
-
-    private void SignupWithMicrosoft()
-    {
-        _errorMessage = "Microsoft signup not yet implemented.";
-    }
+    private void SignupWithGoogle() => _errorMessage = "Google signup not yet implemented.";
+    private void SignupWithMicrosoft() => _errorMessage = "Microsoft signup not yet implemented.";
 }

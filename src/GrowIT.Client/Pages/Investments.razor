@@ -102,12 +102,12 @@
         finally { _isLoading = false; }
     }
 
-    private async Task Approve(Guid id)
-    {
-        await InvestmentService.ApproveInvestmentAsync(id);
-        await OnInitializedAsync(); 
-    }
-
+ private async Task Approve(Guid id)
+{
+    // Ensure you provide the required 'approvedBy' parameter
+    await InvestmentService.ApproveInvestmentAsync(id, "Current User"); 
+    await OnInitializedAsync(); 
+}
     // FIXED: Fully qualified name
     private string GetBadge(GrowIT.Shared.Enums.InvestmentStatus status) => status switch
     {

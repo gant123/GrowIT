@@ -17,10 +17,14 @@
                     <EditForm Model="@request" OnValidSubmit="HandleSubmit">
                         <DataAnnotationsValidator />
                         
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold text-muted">Full Name</label>
-                            <InputText @bind-Value="request.Name" class="form-control" placeholder="e.g. Robert Gant" style="@ThemeInputStyle" />
-                        </div>
+                       <div class="mb-3">
+    <label class="form-label small fw-bold text-muted">First Name</label>
+    <InputText @bind-Value="request.FirstName" class="form-control" placeholder="e.g. Robert" style="@ThemeInputStyle" />
+</div>
+<div class="mb-3">
+    <label class="form-label small fw-bold text-muted">Last Name</label>
+    <InputText @bind-Value="request.LastName" class="form-control" placeholder="e.g. Gant" style="@ThemeInputStyle" />
+</div>
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
@@ -78,20 +82,19 @@
     private CreateClientRequest request = new();
     private string ThemeInputStyle => "background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border: 1px solid var(--growit-border);";
 
-    protected override void OnParametersSet()
+protected override void OnParametersSet()
     {
-        if (Show && string.IsNullOrEmpty(request.Name))
+        // Check for FirstName instead of Name
+        if (Show && string.IsNullOrEmpty(request.FirstName))
         {
-            // Reset form with correct defaults
             request = new CreateClientRequest 
             { 
                 HouseholdCount = 1, 
                 StabilityScore = 5, 
-                LifePhase = LifePhase.Crisis // <--- FIXED: Use Enum, not string
+                LifePhase = LifePhase.Crisis 
             };
         }
     }
-
     private async Task HandleSubmit()
     {
         var response = await Http.PostAsJsonAsync("api/clients", request);
