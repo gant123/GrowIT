@@ -48,4 +48,203 @@ public enum FeatureAccessLevel { Free, Pro, Enterprise }
 public enum AuditSeverity { Low, Medium, High, Critical }
 public enum IncidentStatus { Open, InProgress, Resolved, Closed }
 public enum ChangeRequestStatus { Submitted, Approved, Rejected, Implemented }
-public enum InvestmentStatus { Pending, Approved, Rejected, Paid, Cancelled }
+
+// Investment-related Enums
+public enum InvestmentStatus
+{
+    Draft,
+    Pending,
+    Approved,
+    Disbursed,
+    Completed,
+    Cancelled,
+    Returned
+}
+
+public enum InvestmentCategory
+{
+    // Basic Needs
+    Food,
+    Housing,
+    Utilities,
+    Transportation,
+    Clothing,
+    
+    // Healthcare
+    Medical,
+    Dental,
+    Vision,
+    MentalHealth,
+    Prescriptions,
+    
+    // Education & Employment
+    Education,
+    JobTraining,
+    Childcare,
+    
+    // Financial
+    DebtRelief,
+    EmergencyFund,
+    
+    // Other
+    Legal,
+    Technology,
+    Household,
+    Other
+}
+
+public enum CommitmentStatus
+{
+    NotRequired,
+    Pending,
+    InProgress,
+    Completed,
+    Partial,
+    Waived
+}
+
+public enum DocumentType
+{
+    Receipt,
+    Invoice,
+    Application,
+    Approval,
+    Commitment,
+    Photo,
+    Other
+}
+
+// Imprint-related Enums
+public enum ImprintCategory
+{
+    // Stability Outcomes
+    HousingStability,
+    FinancialStability,
+    EmploymentStability,
+    FoodSecurity,
+    
+    // Health Outcomes
+    PhysicalHealth,
+    MentalHealth,
+    HealthcareAccess,
+    
+    // Education Outcomes
+    EducationalAttainment,
+    SkillDevelopment,
+    Certification,
+    
+    // Family Outcomes
+    FamilyWellbeing,
+    ChildWelfare,
+    ParentingSkills,
+    
+    // Community Integration
+    SocialConnection,
+    CommunityEngagement,
+    CivicParticipation,
+    
+    // Self-Sufficiency
+    Independence,
+    GoalAchievement,
+    LifeSkills,
+    
+    Other
+}
+
+public enum ImprintType
+{
+    /// <summary>Direct measurable outcome (job obtained, debt paid)</summary>
+    DirectOutcome,
+    
+    /// <summary>Progress toward a goal (completed training, saved money)</summary>
+    Progress,
+    
+    /// <summary>Maintained stability (remained housed, kept job)</summary>
+    Maintenance,
+    
+    /// <summary>Improvement in conditions (income increased, credit improved)</summary>
+    Improvement,
+    
+    /// <summary>Prevented negative outcome (eviction prevented, avoided crisis)</summary>
+    Prevention,
+    
+    /// <summary>Story/testimony capturing qualitative impact</summary>
+    Story
+}
+
+// Growth Plan-related Enums
+public enum GrowthPlanStatus
+{
+    Draft,
+    Active,
+    OnHold,
+    Completed,
+    Graduated,
+    Closed
+}
+
+public enum GoalCategory
+{
+    Housing,
+    Employment,
+    Education,
+    Financial,
+    Health,
+    Family,
+    Legal,
+    Transportation,
+    SocialSupport,
+    LifeSkills,
+    Other
+}
+
+public enum GoalPriority
+{
+    Low,
+    Medium,
+    High,
+    Critical
+}
+
+public enum NoteType
+{
+    General,
+    ContactLog,
+    Progress,
+    Concern,
+    Achievement
+}
+
+public enum Season
+{
+    /// <summary>Crisis Season - Immediate stabilization needed (red)</summary>
+    Crisis = 0,
+    
+    /// <summary>Planting Season - Building foundation and resources (yellow/amber)</summary>
+    Planting = 1,
+    
+    /// <summary>Growing Season - Developing independence (blue)</summary>
+    Growing = 2,
+    
+    /// <summary>Harvest Season - Thriving and potentially giving back (green)</summary>
+    Harvest = 3
+}
+
+public enum ContactPreference
+{
+    Phone,
+    Email,
+    Text,
+    Mail
+}
+
+public enum HousingStatus
+{
+    Own,
+    Rent,
+    Transitional,
+    Homeless,
+    WithFamily,
+    Shelter,
+    Unknown
+}

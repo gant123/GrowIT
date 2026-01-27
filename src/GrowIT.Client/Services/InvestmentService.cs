@@ -1,4 +1,5 @@
 using GrowIT.Shared.DTOs;
+using GrowIT.Shared.Enums;
 
 namespace GrowIT.Client.Services;
 

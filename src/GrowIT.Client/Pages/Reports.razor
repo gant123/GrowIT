@@ -16,7 +16,7 @@
     <div class="report-section">
         <h2 class="section-title">Quick Reports</h2>
         <div class="report-cards">
-            <div class="report-card" @onclick='() => GenerateReport("impact-summary")'>
+            <div class="report-card" @onclick=@(() => GenerateReport("impact-summary"))>
                 <div class="report-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
@@ -34,7 +34,7 @@
                 </div>
             </div>
 
-            <div class="report-card" @onclick="() => GenerateReport("investment-detail")">
+            <div class="report-card" @onclick=@(() => GenerateReport("investment-detail"))>
                 <div class="report-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="1" x2="12" y2="23"/>
@@ -52,7 +52,7 @@
                 </div>
             </div>
 
-            <div class="report-card" @onclick="() => GenerateReport("outcomes-by-category")">
+            <div class="report-card" @onclick=@(() => GenerateReport("outcomes-by-category"))>
                 <div class="report-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
@@ -70,7 +70,7 @@
                 </div>
             </div>
 
-            <div class="report-card" @onclick="() => GenerateReport("funding-utilization")">
+            <div class="report-card" @onclick=@(() => GenerateReport("funding-utilization"))>
                 <div class="report-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
@@ -88,7 +88,7 @@
                 </div>
             </div>
 
-            <div class="report-card" @onclick="() => GenerateReport("season-progression")">
+            <div class="report-card" @onclick=@(() => GenerateReport("season-progression"))>
                 <div class="report-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
@@ -106,7 +106,7 @@
                 </div>
             </div>
 
-            <div class="report-card" @onclick="() => GenerateReport("demographic-breakdown")">
+            <div class="report-card" @onclick=@(() => GenerateReport("demographic-breakdown"))>
                 <div class="report-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
@@ -296,22 +296,6 @@
     
     // Scheduled reports
     private List<ScheduledReport> _scheduledReports = new();
-
-    private class RecentReport
-    {
-        public Guid Id { get; set; }
-        public string Name { get; set; } = "";
-        public string Format { get; set; } = "";
-        public DateTime GeneratedAt { get; set; }
-    }
-
-    private class ScheduledReport
-    {
-        public Guid Id { get; set; }
-        public string Name { get; set; } = "";
-        public string Frequency { get; set; } = "";
-        public DateTime NextRun { get; set; }
-    }
 
     protected override void OnInitialized()
     {
