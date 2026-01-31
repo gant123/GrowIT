@@ -25,6 +25,11 @@ public class TokenService
             new Claim("tenantId", tenantId.ToString()) // Crucial for Multi-tenancy!
         };
 
+        if (!string.IsNullOrEmpty(user.Role))
+        {
+            claims.Add(new Claim(ClaimTypes.Role, user.Role));
+        }
+
         // 2. Create the Security Key (We will add this to appsettings.json next)
         var jwtKey = _config["Jwt:Key"] ?? "ThisIsMySuperSecretKeyForGrowITLocalDevelopment123!";
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));

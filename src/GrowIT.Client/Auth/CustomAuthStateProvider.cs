@@ -64,7 +64,43 @@ public Task MarkUserAsLoggedOut()
         var jsonBytes = ParseBase64WithoutPadding(payload);
         var keyValuePairs = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonBytes);
 
-        return keyValuePairs.Select(kvp => new Claim(kvp.Key, kvp.Value.ToString()));
+        if (keyValuePairs == null) return Enumerable.Empty<Claim>();
+
+        var claims = new List<Claim>();
+
+        foreach (var kvp in keyValuePairs)
+        {
+            var key = kvp.Key;
+            var value = kvp.Value.ToString();
+
+            // Map standard JWT claim keys to ClaimTypes if necessary
+            // In JWT, 'role' is often just 'role' or the full URI
+            if (key == "role" || key == ClaimTypes.Role)
+            {
+                if (value?.StartsWith("[") == true)
+                {
+                    var roles = JsonSerializer.Deserialize<string[]>(value);
+                    if (roles != null)
+                    {
+                        claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
+                    }
+                }
+                else
+                {
+                    claims.Add(new Claim(ClaimTypes.Role, value ?? string.Empty));
+                }
+            }
+            else if (key == "unique_name" || key == "sub")
+            {
+                claims.Add(new Claim(ClaimTypes.Name, value ?? string.Empty));
+            }
+            else
+            {
+                claims.Add(new Claim(key, value ?? string.Empty));
+            }
+        }
+
+        return claims;
     }
 
     private byte[] ParseBase64WithoutPadding(string base64)

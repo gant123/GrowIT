@@ -4,6 +4,7 @@ using GrowIT.API.Services;
 using GrowIT.Core.Interfaces;
 using GrowIT.Infrastructure.Data;
 using GrowIT.Infrastructure.Data.Interceptors; // Added for AuditInterceptor
+using GrowIT.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -22,6 +23,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentTenantService, CurrentTenantService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>(); // NEW: Needed for Audit
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 // B. Register the Interceptor itself
 builder.Services.AddScoped<AuditInterceptor>(); 

@@ -13,6 +13,9 @@ public class User : IMustHaveTenant
     public string PasswordHash { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty; // Added to store initial user role
     
+    public string? PasswordResetToken { get; set; }
+    public DateTime? ResetTokenExpires { get; set; }
+    
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }
 

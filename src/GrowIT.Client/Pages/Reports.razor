@@ -1,5 +1,5 @@
 @page "/reports"
-@attribute [Authorize]
+@attribute [Authorize(Roles = "Admin,Manager")]
 @using GrowIT.Shared.DTOs
 
 <PageTitle>Reports - grow.IT</PageTitle>
