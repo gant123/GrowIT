@@ -6,23 +6,20 @@
 
 <PageTitle>People - grow.IT</PageTitle>
 
-<div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 fw-bold text-dark">People Directory</h1>
-            <p class="text-muted">Manage active households and profiles.</p>
-        </div>
-        <button class="btn btn-primary" @onclick="OpenAddPerson">
-            <span class="oi oi-plus me-2"></span>Add Person
-        </button>
-    </div>
+<div class="dashboard fade-in mt-4">
+    <PageHeader Title="People Directory" Subtitle="Manage active households and profiles.">
+        <Actions>
+            <button class="btn-growit btn-primary-growit" @onclick="OpenAddPerson">
+                <span class="oi oi-plus me-2"></span>Add Person
+            </button>
+        </Actions>
+    </PageHeader>
 
-    <div class="card border-0 shadow-sm mb-4">
+    <div class="card-growit mb-4">
         <div class="card-body p-3">
-            <div class="input-group">
-                <span class="input-group-text bg-white border-end-0"><span class="oi oi-magnifying-glass text-muted"></span></span>
-                <input type="text" class="form-control border-start-0 ps-0" 
-                       placeholder="Search by name, email or phone..." 
+            <div class="search-box">
+                <span class="oi oi-magnifying-glass search-icon"></span>
+                <input type="text" placeholder="Search by name, email or phone..." 
                        @bind="SearchQuery" @bind:event="oninput" />
             </div>
         </div>
@@ -30,64 +27,64 @@
 
     @if (_isLoading)
     {
-        <div class="text-center py-5">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p class="mt-2 text-muted">Loading directory...</p>
+        <div class="loading-state">
+            <div class="spinner-growit"></div>
+            <p class="loading-state-text">Loading directory...</p>
         </div>
     }
     else
     {
-        <div class="table-responsive bg-white rounded shadow-sm">
-            <table class="table table-hover mb-0 align-middle">
-                <thead class="bg-light">
-                    <tr>
-                        <th class="ps-4" role="button" @onclick='() => Sort("Name")'>Name <span class="oi oi-sort-ascending small"></span></th>
-                        <th>Phase</th>
-                        <th role="button" @onclick='() => Sort("Score")'>Stability <span class="oi oi-sort-ascending small"></span></th>
-                        <th>Contact</th>
-                        <th class="text-end pe-4">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var person in FilteredPeople)
-                    {
-                        <tr @onclick="() => ViewPerson(person.Id)" style="cursor: pointer;">
-                            <td class="ps-4">
-                                <div class="d-flex align-items-center gap-3">
-                                    <div class="rounded-circle d-flex align-items-center justify-content-center bg-primary bg-opacity-10 text-primary fw-bold small" 
-                                         style="width: 40px; height: 40px;">
-                                        @GetInitials(person.Name)
-                                    </div>
-                                    <div>
-                                        <div class="fw-bold text-dark">@person.Name</div>
-                                        <div class="small text-muted">@person.Email</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                <span class="badge rounded-pill fw-normal px-3 @GetPhaseClass(person.LifePhase.ToString())">
-                                    @person.LifePhase
-                                </span>
-                            </td>
-                            <td>
-                                <div class="d-flex align-items-center gap-2" style="max-width: 150px;">
-                                    <span class="small fw-bold">@person.StabilityScore</span>
-                                    <div class="progress flex-grow-1" style="height: 6px;">
-                                        <div class="progress-bar @GetScoreColor(person.StabilityScore)" 
-                                             style="width: @(person.StabilityScore * 10)%"></div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="text-muted small">@person.Phone</td>
-                            <td class="text-end pe-4">
-                                <button class="btn btn-sm btn-outline-secondary">View</button>
-                            </td>
+        <div class="card-growit">
+            <div class="table-responsive">
+                <table class="table-growit">
+                    <thead>
+                        <tr>
+                            <th class="ps-4 cursor-pointer" @onclick='() => Sort("Name")'>Name <span class="oi oi-sort-ascending small"></span></th>
+                            <th>Phase</th>
+                            <th class="cursor-pointer" @onclick='() => Sort("Score")'>Stability <span class="oi oi-sort-ascending small"></span></th>
+                            <th>Contact</th>
+                            <th class="text-end pe-4">Actions</th>
                         </tr>
-                    }
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        @foreach (var person in FilteredPeople)
+                        {
+                            <tr @onclick="() => ViewPerson(person.Id)" class="cursor-pointer">
+                                <td class="ps-4">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="avatar-growit avatar-md">
+                                            @GetInitials(person.Name)
+                                        </div>
+                                        <div>
+                                            <div class="fw-600">@person.Name</div>
+                                            <div class="small text-muted">@person.Email</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge-growit @GetPhaseClass(person.LifePhase.ToString())">
+                                        @person.LifePhase
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="stability-indicator" style="max-width: 150px;">
+                                        <span class="small fw-700">@person.StabilityScore</span>
+                                        <div class="stability-bar">
+                                            <div class="stability-fill" style="width: @($"{person.StabilityScore * 10}%")"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="text-muted small">@person.Phone</td>
+                                <td class="text-end pe-4">
+                                    <button class="btn-growit btn-ghost-growit btn-sm">View</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
         </div>
-        <div class="mt-2 text-muted small text-end">
+        <div class="mt-3 text-muted small text-end">
             Showing @FilteredPeople.Count() of @_allPeople.Count records
         </div>
     }
@@ -162,10 +159,10 @@
 
     private string GetPhaseClass(string phase) => phase?.ToLower() switch
     {
-        "crisis" => "bg-danger text-danger bg-opacity-10 border border-danger-subtle",
-        "stable" => "bg-warning text-warning bg-opacity-10 border border-warning-subtle",
-        "thriving" => "bg-success text-success bg-opacity-10 border border-success-subtle",
-        _ => "bg-secondary text-secondary bg-opacity-10"
+        "crisis" => "badge-phase-crisis",
+        "stable" => "badge-phase-stable",
+        "thriving" => "badge-phase-thriving",
+        _ => "badge-neutral"
     };
 
     private string GetScoreColor(int score) => score < 4 ? "bg-danger" : (score < 7 ? "bg-warning" : "bg-success");

@@ -1,18 +1,17 @@
 @page "/programs"
+@attribute [Authorize]
 @using GrowIT.Shared.DTOs
 @using GrowIT.Client.Shared
 @inject HttpClient Http
 
 <div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-0 fw-bold" style="color: var(--growit-heading-color)">Programs & Services</h1>
-            <p class="small mb-0 opacity-75" style="color: var(--growit-text-secondary)">Define the types of assistance you offer.</p>
-        </div>
-        <button class="btn btn-primary shadow-sm" @onclick="() => showCreateModal = true">
-            <span class="oi oi-plus me-2"></span>Add Program
-        </button>
-    </div>
+    <PageHeader Title="Programs & Services" Subtitle="Define the types of assistance you offer.">
+        <Actions>
+            <button class="btn btn-primary shadow-sm" @onclick="() => showCreateModal = true">
+                <span class="oi oi-plus me-2"></span>Add Program
+            </button>
+        </Actions>
+    </PageHeader>
 
     @if (programs == null)
     {
@@ -20,12 +19,10 @@
     }
     else if (!programs.Any())
     {
-        <div class="kpi-card text-center py-5">
-            <span class="oi oi-list fs-1 opacity-25 mb-3 d-block"></span>
-            <h5 class="fw-bold">No Programs Defined</h5>
-            <p class="small opacity-75 mb-4">Create services like "Utility Assistance" or "Food Pantry" to track your impact.</p>
+        <KpiCard Label="Programs" Value="No Programs Defined" Icon="oi-list" Class="text-center py-5">
+            <p class="small text-secondary mb-4" style="color: var(--growit-text-secondary) !important;">Create services like "Utility Assistance" or "Food Pantry" to track your impact.</p>
             <button class="btn btn-outline-primary" @onclick="() => showCreateModal = true">Create First Program</button>
-        </div>
+        </KpiCard>
     }
     else
     {
@@ -33,10 +30,9 @@
             @foreach (var p in programs)
             {
                 <div class="col-md-4 mb-4">
-                    <div class="kpi-card h-100 border-start border-4 border-primary p-4">
-                        <h5 class="fw-bold text-primary mb-2">@p.Name</h5>
-                        <p class="opacity-75 small mb-0">@p.Description</p>
-                    </div>
+                    <KpiCard Label="Program" Value="@p.Name" Icon="oi-tag" Color="primary" Class="h-100">
+                        <p class="text-secondary small mb-0 mt-2" style="color: var(--growit-text-secondary) !important;">@p.Description</p>
+                    </KpiCard>
                 </div>
             }
         </div>
@@ -54,12 +50,12 @@
                 </div>
                 <div class="modal-body p-4">
                     <div class="mb-3">
-                        <label class="form-label small fw-bold opacity-75">Program Name</label>
-                        <input @bind="newProgram.Name" class="form-control" style="@InputStyle" placeholder="e.g. Utility Assistance" />
+                        <label class="form-label small fw-bold text-muted text-uppercase" style="color: var(--growit-text-muted) !important;">Program Name</label>
+                        <input @bind="newProgram.Name" class="form-control" style="background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border-color: var(--growit-border);" placeholder="e.g. Utility Assistance" />
                     </div>
                     <div class="mb-3">
-                        <label class="form-label small fw-bold opacity-75">Description</label>
-                        <textarea @bind="newProgram.Description" class="form-control" rows="3" style="@InputStyle" placeholder="What does this service provide?"></textarea>
+                        <label class="form-label small fw-bold text-muted text-uppercase" style="color: var(--growit-text-muted) !important;">Description</label>
+                        <textarea @bind="newProgram.Description" class="form-control" rows="3" style="background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border-color: var(--growit-border);" placeholder="What does this service provide?"></textarea>
                     </div>
                     <button class="btn btn-primary w-100 fw-bold" @onclick="CreateProgram">Save Program</button>
                 </div>

@@ -397,6 +397,9 @@ namespace GrowIT.Infrastructure.Migrations
                     b.Property<decimal>("SnapshotUnitCost")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uuid");
 
@@ -657,8 +660,28 @@ namespace GrowIT.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("OrganizationSize")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("OrganizationType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<int>("SubscriptionPlan")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("TrackInvestments")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("TrackOutcomes")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("TrackPeople")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("TrackPrograms")
+                        .HasColumnType("boolean");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -690,6 +713,10 @@ namespace GrowIT.Infrastructure.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Role")
                         .IsRequired()
                         .HasColumnType("text");
 

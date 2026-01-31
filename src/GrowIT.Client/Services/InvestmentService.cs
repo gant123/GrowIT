@@ -11,33 +11,29 @@ public interface IInvestmentService
 {
     Task<PaginatedResult<InvestmentListDto>> GetInvestmentsAsync(InvestmentQueryParams query);
     Task<InvestmentDetailDto?> GetInvestmentAsync(Guid id);
-    Task<InvestmentDetailDto> CreateInvestmentAsync(InvestmentCreateDto dto);
-    Task<InvestmentDetailDto> UpdateInvestmentAsync(Guid id, InvestmentUpdateDto dto);
+    Task<Guid> CreateInvestmentAsync(CreateInvestmentRequest request);
     Task DeleteInvestmentAsync(Guid id);
-    Task<InvestmentDetailDto> ApproveInvestmentAsync(Guid id, string approvedBy);
-    Task<InvestmentDetailDto> DisburseInvestmentAsync(Guid id);
-    Task<List<InvestmentSummaryByCategory>> GetSummaryByCategoryAsync(string fiscalYear);
-    Task<List<InvestmentSummaryByFundingSource>> GetSummaryByFundingSourceAsync(string fiscalYear);
+    Task ApproveInvestmentAsync(Guid id, string approvedBy);
+    Task DisburseInvestmentAsync(Guid id);
+    Task ReassignInvestmentAsync(Guid id, ReassignRequest request);
 }
 
 /// <summary>
 /// Query parameters for filtering investments.
-/// Uses InvestmentStatus and InvestmentCategory from GrowIT.Shared.DTOs.
 /// </summary>
 public class InvestmentQueryParams
 {
     public Guid? PersonId { get; set; }
-    public string? FiscalYear { get; set; }
     public InvestmentStatus? Status { get; set; }
-    public InvestmentCategory? Category { get; set; }
-    public string? FundingSource { get; set; }
-    public DateTime? DateFrom { get; set; }
-    public DateTime? DateTo { get; set; }
     public string? SearchTerm { get; set; }
-    public string? SortBy { get; set; }
-    public bool SortDescending { get; set; } = true;
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 20;
+}
+
+public class ReassignRequest
+{
+    public Guid? NewFamilyMemberId { get; set; }
+    public string ReassignReason { get; set; } = string.Empty;
 }
 
 public class InvestmentService : BaseApiService, IInvestmentService
@@ -58,16 +54,10 @@ public class InvestmentService : BaseApiService, IInvestmentService
         return await GetAsync<InvestmentDetailDto>($"{BaseEndpoint}/{id}");
     }
 
-    public async Task<InvestmentDetailDto> CreateInvestmentAsync(InvestmentCreateDto dto)
+    public async Task<Guid> CreateInvestmentAsync(CreateInvestmentRequest request)
     {
-        return await PostAsync<InvestmentCreateDto, InvestmentDetailDto>(BaseEndpoint, dto) 
-            ?? throw new ApiException("Failed to create investment");
-    }
-
-    public async Task<InvestmentDetailDto> UpdateInvestmentAsync(Guid id, InvestmentUpdateDto dto)
-    {
-        return await PutAsync<InvestmentUpdateDto, InvestmentDetailDto>($"{BaseEndpoint}/{id}", dto) 
-            ?? throw new ApiException("Failed to update investment");
+        var result = await PostAsync<CreateInvestmentRequest, InvestmentCreateResponse>(BaseEndpoint, request);
+        return result?.InvestmentId ?? Guid.Empty;
     }
 
     public async Task DeleteInvestmentAsync(Guid id)
@@ -75,28 +65,19 @@ public class InvestmentService : BaseApiService, IInvestmentService
         await DeleteAsync($"{BaseEndpoint}/{id}");
     }
 
-    public async Task<InvestmentDetailDto> ApproveInvestmentAsync(Guid id, string approvedBy)
+    public async Task ApproveInvestmentAsync(Guid id, string approvedBy)
     {
-        return await PostAsync<object, InvestmentDetailDto>($"{BaseEndpoint}/{id}/approve", new { approvedBy }) 
-            ?? throw new ApiException("Failed to approve investment");
+        await PostAsync($"{BaseEndpoint}/{id}/approve", new { approvedBy });
     }
 
-    public async Task<InvestmentDetailDto> DisburseInvestmentAsync(Guid id)
+    public async Task DisburseInvestmentAsync(Guid id)
     {
-        return await PostAsync<object, InvestmentDetailDto>($"{BaseEndpoint}/{id}/disburse", new { }) 
-            ?? throw new ApiException("Failed to disburse investment");
+        await PostAsync($"{BaseEndpoint}/{id}/disburse", new { });
     }
 
-    public async Task<List<InvestmentSummaryByCategory>> GetSummaryByCategoryAsync(string fiscalYear)
+    public async Task ReassignInvestmentAsync(Guid id, ReassignRequest request)
     {
-        return await GetAsync<List<InvestmentSummaryByCategory>>($"{BaseEndpoint}/summary/category?fiscalYear={fiscalYear}") 
-            ?? new List<InvestmentSummaryByCategory>();
-    }
-
-    public async Task<List<InvestmentSummaryByFundingSource>> GetSummaryByFundingSourceAsync(string fiscalYear)
-    {
-        return await GetAsync<List<InvestmentSummaryByFundingSource>>($"{BaseEndpoint}/summary/funding-source?fiscalYear={fiscalYear}") 
-            ?? new List<InvestmentSummaryByFundingSource>();
+        await PatchAsync<ReassignRequest, object>($"{BaseEndpoint}/{id}/reassign", request);
     }
 
     private static string BuildQueryString(InvestmentQueryParams query)
@@ -105,28 +86,16 @@ public class InvestmentService : BaseApiService, IInvestmentService
         
         if (query.PersonId.HasValue)
             parts.Add($"personId={query.PersonId}");
-        if (!string.IsNullOrEmpty(query.FiscalYear))
-            parts.Add($"fiscalYear={query.FiscalYear}");
         if (query.Status.HasValue)
             parts.Add($"status={query.Status}");
-        if (query.Category.HasValue)
-            parts.Add($"category={query.Category}");
-        if (!string.IsNullOrEmpty(query.FundingSource))
-            parts.Add($"fundingSource={Uri.EscapeDataString(query.FundingSource)}");
-        if (query.DateFrom.HasValue)
-            parts.Add($"dateFrom={query.DateFrom:yyyy-MM-dd}");
-        if (query.DateTo.HasValue)
-            parts.Add($"dateTo={query.DateTo:yyyy-MM-dd}");
         if (!string.IsNullOrEmpty(query.SearchTerm))
-            parts.Add($"search={Uri.EscapeDataString(query.SearchTerm)}");
-        if (!string.IsNullOrEmpty(query.SortBy))
-            parts.Add($"sortBy={query.SortBy}");
-        if (query.SortDescending)
-            parts.Add("sortDesc=true");
+            parts.Add($"searchTerm={Uri.EscapeDataString(query.SearchTerm)}");
         
-        parts.Add($"page={query.PageNumber}");
+        parts.Add($"pageNumber={query.PageNumber}");
         parts.Add($"pageSize={query.PageSize}");
         
         return string.Join("&", parts);
     }
+
+    private class InvestmentCreateResponse { public Guid InvestmentId { get; set; } }
 }

@@ -1,4 +1,5 @@
-@page "/test/clients/{Id:guid}"
+@page "/clients/{Id:guid}"
+@attribute [Authorize]
 @using GrowIT.Shared.DTOs
 @using GrowIT.Client.Shared 
 @inject HttpClient Http
@@ -13,59 +14,18 @@
 }
 else
 {
-    <div class="container-fluid mt-4">
-        <div class="card border-0 shadow-sm mb-4" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
-            <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div class="d-flex align-items-center gap-4">
-                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" 
-                             style="width: 80px; height: 80px; background-color: var(--growit-green); font-size: 2rem;">
-                            @GetInitials(client.FullName)
-                        </div>
-                        
-                        <div>
-                            <h1 class="h3 mb-1 fw-bold" style="color: var(--growit-heading-color)">@client.FullName</h1>
-                            <div class="d-flex gap-2 mb-2">
-                                <span class="badge px-3 py-1 border" 
-                                      style="background-color: rgba(59, 130, 246, 0.1); color: var(--growit-blue); border-color: rgba(59, 130, 246, 0.2);">
-                                    Phase: @client.LifePhase
-                                </span>
-                                <span class="badge px-3 py-1 border" 
-                                      style="background-color: rgba(245, 158, 11, 0.1); color: var(--growit-warning); border-color: rgba(245, 158, 11, 0.2);">
-                                    Stability: @client.StabilityScore/10
-                                </span>
-                            </div>
-                            <div class="small opacity-75">
-                                <span class="me-3"><span class="oi oi-people me-1"></span>Family of @(client.HouseholdMembers.Count + 1)</span> 
-                                <span class="me-3"><span class="oi oi-briefcase me-1"></span>@client.EmploymentStatus</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="d-flex gap-2">
-                         <a href="clients" class="btn btn-outline-secondary" style="color: var(--growit-text-primary); border-color: var(--growit-border);">Back</a>
-                         <button class="btn text-white fw-bold" style="background-color: var(--growit-success);" @onclick="OpenEditClientModal">
-                             <span class="oi oi-pencil me-2"></span>Edit Profile
-                         </button>
-                    </div>
-                </div>
-            </div>
-            <div class="card-footer py-3 border-top" style="background-color: var(--growit-bg-primary); border-color: var(--growit-border);">
-                <div class="row text-center text-md-start">
-                    <div class="col-md-4 mb-2 mb-md-0">
-                        <span class="oi oi-phone me-2 text-muted"></span>@client.Phone
-                    </div>
-                    <div class="col-md-4 mb-2 mb-md-0">
-                        <span class="oi oi-envelope-closed me-2 text-muted"></span>@client.Email
-                    </div>
-                    <div class="col-md-4">
-                        <span class="oi oi-map-marker me-2 text-muted"></span>@client.Address
-                    </div>
-                </div>
-            </div>
-        </div>
+    <PageHeader Title="@client.FullName" Subtitle="Case File & Household Impact Analysis">
+        <Actions>
+            <a href="clients" class="btn-growit btn-secondary-growit">
+                <span class="oi oi-arrow-left me-1"></span> Back
+            </a>
+            <button class="btn-growit btn-primary-growit" @onclick="OpenEditClientModal">
+                <span class="oi oi-pencil me-2"></span>Edit Profile
+            </button>
+        </Actions>
+    </PageHeader>
 
-        <div class="row g-4">
+    <div class="row g-4">
             <div class="col-lg-4">
                 <div class="card border-0 shadow-sm mb-4" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
                     <div class="card-header bg-transparent fw-bold py-3" style="border-color: var(--growit-border);">
@@ -74,15 +34,15 @@ else
                     <div class="card-body">
                         <div class="text-center py-4">
                             <div class="display-4 fw-bold text-success mb-1">@client.TotalInvestment.ToString("C0")</div>
-                            <div class="small text-muted text-uppercase">Total Invested Lifetime</div>
+                            <div class="small text-muted text-uppercase" style="color: var(--growit-text-muted) !important;">Total Invested Lifetime</div>
                         </div>
                         <hr style="color: var(--growit-border);" />
                         <div class="d-flex justify-content-between py-2">
-                            <span class="opacity-75">Last Investment</span>
+                            <span class="text-secondary" style="color: var(--growit-text-secondary) !important;">Last Investment</span>
                             <span class="fw-bold">@(client.LastInvestmentDate?.ToString("MMM dd, yyyy") ?? "Never")</span>
                         </div>
                         <div class="d-flex justify-content-between py-2">
-                            <span class="opacity-75">Seeds Planted</span>
+                            <span class="text-secondary" style="color: var(--growit-text-secondary) !important;">Seeds Planted</span>
                             <span class="fw-bold">@client.Timeline.Count(t => t.Type == "Investment")</span>
                         </div>
                     </div>
@@ -106,11 +66,11 @@ else
                                             <div class="d-flex align-items-center gap-3">
                                                 <div class="rounded-circle d-flex align-items-center justify-content-center border" 
                                                      style="width: 36px; height: 36px; background-color: var(--growit-bg-primary); border-color: var(--growit-border);">
-                                                    <span class="oi @GetRelationshipIcon(member.Relationship) small opacity-50"></span>
+                                                    <span class="oi @GetRelationshipIcon(member.Relationship) small text-secondary" style="color: var(--growit-text-secondary) !important;"></span>
                                                 </div>
                                                 <div>
                                                     <div class="fw-bold text-sm">@member.Name</div>
-                                                    <div class="small opacity-75" style="font-size: 0.8rem;">
+                                                    <div class="small text-secondary" style="font-size: 0.8rem; color: var(--growit-text-secondary) !important;">
                                                         @member.Relationship • @member.Age yrs
                                                     </div>
                                                 </div>
@@ -162,7 +122,7 @@ else
                                             <div class="d-flex justify-content-between align-items-start">
                                                 <h6 class="fw-bold mb-1">@item.Title</h6>
                                                 <div>
-                                                    <small class="text-muted">@item.Date.ToString("MMM dd, yyyy")</small>
+                                                    <small class="text-muted" style="color: var(--growit-text-muted) !important;">@item.Date.ToString("MMM dd, yyyy")</small>
                                                     @if (item.Type == "Investment")
                                                     {
                                                         <button class="btn btn-sm btn-link text-info p-0 ms-2" @onclick="() => OpenReassignModal(item.Id)">
@@ -171,7 +131,7 @@ else
                                                     }
                                                 </div>
                                             </div>
-                                            <p class="mb-1 opacity-75 small">@item.Description</p>
+                                            <p class="mb-1 text-secondary small" style="color: var(--growit-text-secondary) !important;">@item.Description</p>
                                             
                                             @if (item.Amount.HasValue && item.Amount > 0)
                                             {
@@ -207,7 +167,6 @@ else
                                  InvestmentId="selectedInvestmentId"
                                  Members="client.HouseholdMembers"
                                  OnChanged="ReloadProfile" />
-    </div>
 }
 
 @code {

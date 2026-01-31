@@ -1,5 +1,19 @@
 @page "/welcome"
 @layout PublicLayout
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated ?? false)
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+}
 
 <PageTitle>grow.IT - Nonprofit Impact Management</PageTitle>
 
@@ -9,31 +23,31 @@
         <div class="hero-content">
             <div class="hero-badge">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/>
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                 </svg>
-                Built for Nonprofit Founders
+                Enterprise-Grade Impact Management
             </div>
             <h1 class="hero-title">
-                Transform Service into 
-                <span class="highlight">Measurable Impact</span>
+                Scale Your Mission with 
+                <span class="highlight">Intelligence & Clarity</span>
             </h1>
             <p class="hero-subtitle">
-                grow.IT helps nonprofits track investments, document outcomes, and demonstrate 
-                real impact to funders—so you can focus on what matters most: changing lives.
+                The comprehensive platform for nonprofits to track complex investments, 
+                verify multi-dimensional outcomes, and deliver boardroom-ready impact reports.
             </p>
             <div class="hero-actions">
                 <a href="/register" class="btn btn-primary btn-lg">
-                    Start Free Trial
+                    Start Your Journey
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="5" y1="12" x2="19" y2="12"/>
                         <polyline points="12 5 19 12 12 19"/>
                     </svg>
                 </a>
                 <a href="/login" class="btn btn-outline btn-lg">
-                    Sign In
+                    Sign In to Dashboard
                 </a>
             </div>
-            <p class="hero-note">No credit card required • 14-day free trial • Cancel anytime</p>
+            <p class="hero-note">Empowering community-driven change • Secure & Compliant</p>
         </div>
         <div class="hero-visual">
             <div class="dashboard-preview">
@@ -73,13 +87,13 @@
 
     <!-- Trusted By -->
     <section class="trusted-by">
-        <p class="trusted-label">Trusted by nonprofits serving communities nationwide</p>
+        <p class="trusted-label">Empowering large-scale organizations across the sector</p>
         <div class="trusted-logos">
-            <span class="logo-placeholder">Community Action</span>
-            <span class="logo-placeholder">Hope Foundation</span>
-            <span class="logo-placeholder">United Services</span>
-            <span class="logo-placeholder">Family First</span>
-            <span class="logo-placeholder">Grace Network</span>
+            <span class="logo-placeholder">Global Relief Alliance</span>
+            <span class="logo-placeholder">Metropolitan Urban League</span>
+            <span class="logo-placeholder">National Wellness Initiative</span>
+            <span class="logo-placeholder">State Educational Fund</span>
+            <span class="logo-placeholder">Coastal Environmental Group</span>
         </div>
     </section>
 
@@ -97,8 +111,8 @@
                         <polyline points="14 2 14 8 20 8"/>
                     </svg>
                 </div>
-                <h3>Scattered Data</h3>
-                <p>Client info in spreadsheets, receipts in folders, outcomes in your head. Finding what you need takes hours.</p>
+                <h3>Fragmented Data Silos</h3>
+                <p>Critical data trapped in disparate spreadsheets and legacy systems. Breaking down silos to create a unified source of truth takes immense effort.</p>
             </div>
             <div class="problem-card">
                 <div class="problem-icon">
@@ -107,8 +121,8 @@
                         <polyline points="12 6 12 12 16 14"/>
                     </svg>
                 </div>
-                <h3>Grant Reporting Stress</h3>
-                <p>Deadline approaching and you're scrambling to compile data that should've been tracked all along.</p>
+                <h3>Compliance & Audit Risk</h3>
+                <p>Scrambling for documentation during audits or high-stakes grant cycles. Manual reporting is prone to error and lacks the rigor enterprises require.</p>
             </div>
             <div class="problem-card">
                 <div class="problem-icon">
@@ -118,8 +132,8 @@
                         <line x1="12" y1="17" x2="12.01" y2="17"/>
                     </svg>
                 </div>
-                <h3>Impact Invisible</h3>
-                <p>You know you're making a difference, but you can't show funders the full picture of your impact.</p>
+                <h3>The "Impact Gap"</h3>
+                <p>Performing significant work but lacking the sophisticated tools to aggregate outcomes at scale and demonstrate true ROI to major donors.</p>
             </div>
         </div>
     </section>
@@ -282,62 +296,61 @@
         <div class="pricing-grid">
             <div class="pricing-card">
                 <div class="pricing-header">
-                    <h3>Starter</h3>
-                    <p class="pricing-desc">For small nonprofits getting started</p>
+                    <h3>Professional</h3>
+                    <p class="pricing-desc">For established nonprofits requiring robust tracking</p>
                 </div>
                 <div class="pricing-price">
-                    <span class="price-amount">$0</span>
+                    <span class="price-amount">$99</span>
                     <span class="price-period">/month</span>
                 </div>
                 <ul class="pricing-features">
-                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Up to 50 people</li>
-                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Unlimited investments</li>
-                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Basic reports</li>
-                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> 1 user</li>
-                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Email support</li>
+                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Up to 1,000 People Served</li>
+                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Unlimited Investments & Imprints</li>
+                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Advanced Reporting Suite</li>
+                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> 10 User Seats Included</li>
+                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Priority Email Support</li>
                 </ul>
-                <a href="/register" class="btn btn-outline btn-block">Get Started Free</a>
+                <a href="/register?plan=pro" class="btn btn-outline btn-block">Start 14-Day Trial</a>
             </div>
             
             <div class="pricing-card featured">
-                <div class="pricing-badge">Most Popular</div>
+                <div class="pricing-badge">Recommended</div>
                 <div class="pricing-header">
-                    <h3>Growth</h3>
-                    <p class="pricing-desc">For growing organizations</p>
+                    <h3>Enterprise</h3>
+                    <p class="pricing-desc">Full-scale impact management for large institutions</p>
                 </div>
                 <div class="pricing-price">
-                    <span class="price-amount">$49</span>
+                    <span class="price-amount">$299</span>
                     <span class="price-period">/month</span>
                 </div>
                 <ul class="pricing-features">
-                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Up to 500 people</li>
-                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Unlimited investments</li>
-                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Advanced reports</li>
-                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> 5 users</li>
-                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Priority support</li>
-                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Custom branding</li>
+                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Unlimited People Served</li>
+                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Multi-Program Management</li>
+                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Custom Impact Dashboards</li>
+                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Unlimited User Seats</li>
+                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Dedicated Success Manager</li>
+                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> White-Label Reporting</li>
                 </ul>
-                <a href="/register?plan=growth" class="btn btn-primary btn-block">Start Free Trial</a>
+                <a href="/register?plan=enterprise" class="btn btn-primary btn-block">Get Started Enterprise</a>
             </div>
             
             <div class="pricing-card">
                 <div class="pricing-header">
-                    <h3>Enterprise</h3>
-                    <p class="pricing-desc">For large organizations</p>
+                    <h3>Custom Solutions</h3>
+                    <p class="pricing-desc">For governments and international NGOs</p>
                 </div>
                 <div class="pricing-price">
-                    <span class="price-amount">Custom</span>
+                    <span class="price-amount">Quote</span>
                 </div>
                 <ul class="pricing-features">
-                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Unlimited people</li>
-                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Unlimited investments</li>
-                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Custom reports</li>
-                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Unlimited users</li>
-                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Dedicated support</li>
-                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> API access</li>
-                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> SSO & compliance</li>
+                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Unlimited Entities & Programs</li>
+                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Advanced Security & Compliance</li>
+                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Full API & Integration Access</li>
+                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> Single Sign-On (SSO)</li>
+                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> On-Premise Deployment Options</li>
+                    <li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg> 24/7 Phone & Technical Support</li>
                 </ul>
-                <a href="/contact" class="btn btn-outline btn-block">Contact Sales</a>
+                <a href="/contact" class="btn btn-outline btn-block">Consult Our Team</a>
             </div>
         </div>
     </section>
@@ -364,21 +377,10 @@
     <footer class="landing-footer">
         <div class="footer-content">
             <div class="footer-brand">
-                <a href="/" class="footer-logo">
-                    <svg class="brand-icon" viewBox="0 0 32 32" fill="none">
-                        <circle cx="16" cy="16" r="14" fill="url(#footerGradient)"/>
-                        <path d="M16 8c0 4-2 6-2 10s2 6 2 6M12 14c2-2 6-2 8 0M10 18c3-2 9-2 12 0" 
-                              stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-                        <defs>
-                            <linearGradient id="footerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stop-color="#22c55e"/>
-                                <stop offset="100%" stop-color="#16a34a"/>
-                            </linearGradient>
-                        </defs>
-                    </svg>
-                    <span>grow<span class="highlight">.IT</span></span>
+                <a href="/welcome" class="footer-logo">
+                    <img src="images/logo-@(_currentTheme).png" alt="GrowIT" class="brand-logo" />
                 </a>
-                <p>Empowering nonprofits to measure and demonstrate their impact.</p>
+                <p>Enterprise-grade impact management for large-scale social impact.</p>
             </div>
             
             <div class="footer-links">
@@ -430,5 +432,14 @@
 </div>
 
 @code {
-    
+    private string _currentTheme = "light";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _currentTheme = await JS.InvokeAsync<string>("blazorInterop.getTheme");
+            StateHasChanged();
+        }
+    }
 }

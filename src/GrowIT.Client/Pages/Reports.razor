@@ -1,16 +1,12 @@
 @page "/reports"
+@attribute [Authorize]
 @using GrowIT.Shared.DTOs
 
 <PageTitle>Reports - grow.IT</PageTitle>
 
 <div class="page-reports">
     <!-- Page Header -->
-    <div class="page-header">
-        <div class="page-header-content">
-            <h1 class="page-title">Reports</h1>
-            <p class="page-subtitle">Generate reports for grant compliance and impact measurement.</p>
-        </div>
-    </div>
+    <PageHeader Title="Reports" Subtitle="Generate reports for grant compliance and impact measurement." />
 
     <!-- Report Templates -->
     <div class="report-section">

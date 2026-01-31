@@ -21,6 +21,7 @@ public class DashboardService : BaseApiService, IDashboardService
     /// <summary>
     /// Gets the main dashboard stats from api/dashboard endpoint.
     /// Returns DashboardStatsDto with:
+    /// - TotalClients, TotalInvested, TotalMilestones
     /// - TotalInvestedYtd, HouseholdsServedYtd, ActiveCases, FundsAvailable
     /// - MonthlyTrends (List of MonthlyMetric)
     /// - RecentActivity (List of ActivityItem)

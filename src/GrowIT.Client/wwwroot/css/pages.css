@@ -23,12 +23,12 @@
 .page-title {
     font-size: 1.75rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: var(--growit-heading-color);
     margin: 0 0 var(--space-1) 0;
 }
 
 .page-subtitle {
-    color: var(--text-secondary);
+    color: var(--growit-text-muted);
     margin: 0;
     font-size: 0.9375rem;
 }
@@ -66,36 +66,6 @@
     }
 }
 
-.kpi-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-lg);
-    padding: var(--space-5);
-    position: relative;
-    overflow: hidden;
-    transition: var(--transition-base);
-}
-
-.kpi-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--growit-green), var(--color-primary));
-    opacity: 0;
-    transition: opacity 0.2s;
-}
-
-.kpi-card:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
-}
-
-.kpi-card:hover::before {
-    opacity: 1;
-}
 
 .kpi-header {
     display: flex;

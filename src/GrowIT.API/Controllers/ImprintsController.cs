@@ -1,5 +1,6 @@
 using GrowIT.Core.Entities;
 using GrowIT.Infrastructure.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using GrowIT.Core.Interfaces;
@@ -8,6 +9,7 @@ using GrowIT.Shared.Enums;
 
 namespace GrowIT.API.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class ImprintsController : ControllerBase

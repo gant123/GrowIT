@@ -6,18 +6,7 @@
     <header class="public-header">
         <div class="header-content">
             <a href="/welcome" class="header-brand">
-                <svg class="brand-icon" viewBox="0 0 32 32" fill="none">
-                    <circle cx="16" cy="16" r="14" fill="url(#headerGradient)"/>
-                    <path d="M16 8c0 4-2 6-2 10s2 6 2 6M12 14c2-2 6-2 8 0M10 18c3-2 9-2 12 0" 
-                          stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-                    <defs>
-                        <linearGradient id="headerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stop-color="#22c55e"/>
-                            <stop offset="100%" stop-color="#16a34a"/>
-                        </linearGradient>
-                    </defs>
-                </svg>
-                <span class="brand-text">grow<span class="brand-highlight">.IT</span></span>
+                <img src="images/logo-@(_currentTheme).png" alt="GrowIT" class="brand-logo" />
             </a>
             
             <nav class="header-nav">
@@ -111,15 +100,18 @@
     private async Task ToggleTheme()
     {
         _currentTheme = await JS.InvokeAsync<string>("blazorInterop.toggleTheme");
+        StateHasChanged();
     }
 
     private void ToggleMobileMenu()
     {
         _mobileMenuOpen = !_mobileMenuOpen;
+        StateHasChanged();
     }
 
     private void CloseMobileMenu()
     {
         _mobileMenuOpen = false;
+        StateHasChanged();
     }
 }

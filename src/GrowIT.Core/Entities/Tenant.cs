@@ -9,6 +9,16 @@ public class Tenant
     public string Address { get; set; } = string.Empty;
     public string ContactEmail { get; set; } = string.Empty;
     public SubscriptionPlanType SubscriptionPlan { get; set; } = SubscriptionPlanType.Free;
+
+    // Organization Details
+    public string OrganizationType { get; set; } = string.Empty;
+    public string OrganizationSize { get; set; } = string.Empty;
+
+    // Feature Flags / Preferences
+    public bool TrackPeople { get; set; }
+    public bool TrackInvestments { get; set; }
+    public bool TrackOutcomes { get; set; }
+    public bool TrackPrograms { get; set; }
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }

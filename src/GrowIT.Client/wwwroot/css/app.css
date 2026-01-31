@@ -7,24 +7,36 @@
    CSS CUSTOM PROPERTIES (LIGHT THEME DEFAULT)
    ======================================== */
 :root {
-    /* Brand Colors */
-    --growit-green: #22c55e;
-    --growit-green-light: #4ade80;
-    --growit-green-dark: #16a34a;
-    --growit-green-glow: rgba(34, 197, 94, 0.2);
+    /* Enterprise Palette */
+    --brand-primary: #0f172a;       /* Deep Slate/Indigo */
+    --brand-primary-light: #1e293b;
+    --brand-primary-dark: #020617;
     
-    --growit-blue: #3b82f6;
-    --growit-blue-light: #60a5fa;
-    --growit-blue-dark: #2563eb;
+    --brand-accent: #059669;        /* Refined Emerald Green */
+    --brand-accent-light: #10b981;
+    --brand-accent-dark: #047857;
+    --brand-accent-glow: rgba(16, 185, 129, 0.15);
     
-    /* Semantic Colors */
-    --growit-success: #22c55e;
+    --growit-green: var(--brand-accent);
+    --growit-green-light: var(--brand-accent-light);
+    --growit-green-dark: var(--brand-accent-dark);
+    --growit-green-glow: var(--brand-accent-glow);
+    
+    --growit-blue: #2563eb;
+    --growit-blue-light: #3b82f6;
+    --growit-blue-dark: #1d4ed8;
+
+    --growit-primary: var(--brand-primary);
+    --growit-primary-dark: var(--brand-primary-dark);
+    
+    /* Semantic Colors - Enterprise Standard */
+    --growit-success: #10b981;
     --growit-warning: #f59e0b;
     --growit-danger: #ef4444;
-    --growit-info: #06b6d4;
+    --growit-info: #0ea5e9;
     
-    /* Light Theme Colors */
-    --growit-bg-primary: #f8fafc;
+    /* Light Theme Surface Colors */
+    --growit-bg-primary: #f8fafc;    /* Very light slate */
     --growit-bg-secondary: #ffffff;
     --growit-bg-card: #ffffff;
     --growit-bg-card-hover: #f1f5f9;
@@ -32,21 +44,21 @@
     
     --growit-text-primary: #0f172a;
     --growit-text-secondary: #475569;
-    --growit-text-muted: #94a3b8;
-    --growit-text-dim: #cbd5e1;
+    --growit-text-muted: #64748b;
+    --growit-text-dim: #94a3b8;
     
     --growit-border: #e2e8f0;
     --growit-border-light: #f1f5f9;
-    --growit-border-focus: var(--growit-green);
+    --growit-border-focus: var(--brand-accent);
     
     --growit-heading-color: #0f172a;
     
-    /* Shadows */
-    --growit-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --growit-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-    --growit-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-    --growit-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-    --growit-shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    /* Shadows - More subtle for Enterprise */
+    --growit-shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
+    --growit-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.1), 0 1px 2px -1px rgba(15, 23, 42, 0.1);
+    --growit-shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.1), 0 2px 4px -2px rgba(15, 23, 42, 0.1);
+    --growit-shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.1), 0 4px 6px -4px rgba(15, 23, 42, 0.1);
+    --growit-shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
     
     /* Typography */
     --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -71,30 +83,43 @@
     --radius-full: 9999px;
 }
 
+.opacity-75 {
+    opacity: 0.75 !important;
+}
+
+[data-theme="dark"] .opacity-75 {
+    opacity: 0.9 !important;
+}
+
+[data-theme="dark"] .text-muted,
+[data-theme="dark"] .text-secondary {
+    opacity: 1 !important;
+}
+
 /* ========================================
    DARK THEME
    ======================================== */
 [data-theme="dark"] {
-    --growit-bg-primary: #0f172a;
-    --growit-bg-secondary: #1e293b;
-    --growit-bg-card: #1e293b;
-    --growit-bg-card-hover: #334155;
-    --growit-bg-input: #0f172a;
+    --growit-bg-primary: #020617;    /* Deepest Slate */
+    --growit-bg-secondary: #0f172a;  /* Deep Slate */
+    --growit-bg-card: #0f172a;
+    --growit-bg-card-hover: #1e293b;
+    --growit-bg-input: #020617;
     
-    --growit-text-primary: #f1f5f9;
-    --growit-text-secondary: #cbd5e1;
-    --growit-text-muted: #64748b;
-    --growit-text-dim: #475569;
+    --growit-text-primary: #f8fafc;
+    --growit-text-secondary: #e2e8f0; /* Increased contrast for dark mode */
+    --growit-text-muted: #cbd5e1;     /* Increased contrast for dark mode */
+    --growit-text-dim: #94a3b8;       /* Increased contrast for dark mode */
     
-    --growit-border: #334155;
-    --growit-border-light: #1e293b;
+    --growit-border: #1e293b;
+    --growit-border-light: #0f172a;
     
     --growit-heading-color: #f8fafc;
     
-    --growit-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-    --growit-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.4), 0 1px 2px -1px rgba(0, 0, 0, 0.3);
-    --growit-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
-    --growit-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+    --growit-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
+    --growit-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5), 0 1px 2px -1px rgba(0, 0, 0, 0.4);
+    --growit-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
+    --growit-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
 }
 
 /* ========================================
@@ -222,66 +247,98 @@ a:hover {
     background: var(--growit-bg-card);
     border: 1px solid var(--growit-border);
     border-radius: var(--radius-lg);
-    padding: 20px 24px;
+    padding: 24px;
     transition: all var(--transition-normal);
     position: relative;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    box-shadow: var(--growit-shadow-sm);
 }
 
 .kpi-card:hover {
-    border-color: var(--growit-green);
-    box-shadow: var(--growit-shadow-md);
-    transform: translateY(-2px);
+    border-color: var(--growit-border);
+    box-shadow: var(--growit-shadow-lg);
+    transform: translateY(-4px);
 }
 
-.kpi-card::before {
+/* Glass effect for Enterprise look */
+.kpi-card::after {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, var(--growit-green), var(--growit-blue));
-    opacity: 0;
-    transition: opacity var(--transition-normal);
+    top: -50%;
+    right: -50%;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 70%);
+    transform: rotate(30deg);
+    pointer-events: none;
 }
 
-.kpi-card:hover::before {
-    opacity: 1;
+[data-theme="dark"] .kpi-card::after {
+    background: radial-gradient(circle, rgba(255,255,255,0.01) 0%, rgba(255,255,255,0) 70%);
 }
+
+.kpi-card .kpi-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    font-size: 1.25rem;
+    transition: all var(--transition-normal);
+}
+
+.kpi-card:hover .kpi-icon-wrapper {
+    transform: scale(1.1);
+}
+
+.kpi-card.success .kpi-icon-wrapper { background: rgba(16, 185, 129, 0.1); color: var(--growit-success); }
+.kpi-card.warning .kpi-icon-wrapper { background: rgba(245, 158, 11, 0.1); color: var(--growit-warning); }
+.kpi-card.danger .kpi-icon-wrapper { background: rgba(239, 68, 68, 0.1); color: var(--growit-danger); }
+.kpi-card.info .kpi-icon-wrapper { background: rgba(14, 165, 233, 0.1); color: var(--growit-info); }
+.kpi-card.primary .kpi-icon-wrapper { background: rgba(37, 99, 235, 0.1); color: var(--growit-blue); }
 
 .kpi-label {
-    font-size: 0.75rem;
+    font-size: 0.8125rem;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--growit-text-muted);
-    margin-bottom: 8px;
+    color: var(--growit-text-secondary);
+    margin-bottom: 4px;
 }
 
 .kpi-value {
-    font-size: 2rem;
-    font-weight: 700;
+    font-size: 1.875rem;
+    font-weight: 800;
     color: var(--growit-heading-color);
     line-height: 1.2;
+    letter-spacing: -0.02em;
 }
 
-.kpi-value.success { color: var(--growit-success); }
-.kpi-value.warning { color: var(--growit-warning); }
-.kpi-value.danger { color: var(--growit-danger); }
-.kpi-value.info { color: var(--growit-info); }
-
-.kpi-change {
-    display: inline-flex;
+.kpi-trend {
+    display: flex;
     align-items: center;
-    gap: 4px;
-    font-size: 0.8125rem;
+    gap: 6px;
+    font-size: 0.75rem;
     font-weight: 600;
-    margin-top: 8px;
+    margin-top: 12px;
 }
 
-.kpi-change.positive { color: var(--growit-success); }
-.kpi-change.negative { color: var(--growit-danger); }
+.kpi-trend.up { color: var(--growit-success); }
+.kpi-trend.down { color: var(--growit-danger); }
+.kpi-trend.neutral { color: var(--growit-text-muted); }
+
+.kpi-card .kpi-sparkline {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    opacity: 0.2;
+    pointer-events: none;
+}
 
 /* ========================================
    FORM ELEMENTS
@@ -375,15 +432,14 @@ a:hover {
 }
 
 .btn-primary-growit {
-    background: linear-gradient(135deg, var(--growit-green), var(--growit-green-dark));
+    background: var(--brand-primary);
     color: white;
-    box-shadow: 0 2px 8px var(--growit-green-glow);
 }
 
 .btn-primary-growit:hover:not(:disabled) {
-    background: linear-gradient(135deg, var(--growit-green-light), var(--growit-green));
+    background: var(--brand-primary-light);
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px var(--growit-green-glow);
+    box-shadow: var(--growit-shadow-md);
 }
 
 .btn-secondary-growit {
@@ -399,12 +455,12 @@ a:hover {
 
 .btn-outline-growit {
     background: transparent;
-    color: var(--growit-green);
-    border: 1px solid var(--growit-green);
+    color: var(--brand-primary);
+    border: 1px solid var(--brand-primary);
 }
 
 .btn-outline-growit:hover:not(:disabled) {
-    background: var(--growit-green);
+    background: var(--brand-primary);
     color: white;
 }
 
@@ -655,7 +711,7 @@ a:hover {
     font-weight: 600;
     text-transform: uppercase;
     border-radius: var(--radius-lg);
-    background: linear-gradient(135deg, var(--growit-green), var(--growit-blue));
+    background: var(--brand-primary);
     color: white;
 }
 

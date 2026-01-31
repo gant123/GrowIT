@@ -1,5 +1,6 @@
 using GrowIT.Shared.DTOs;
 using GrowIT.Infrastructure.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using GrowIT.Core.Interfaces;
@@ -11,6 +12,7 @@ using GrowIT.API.Validators;
 
 namespace GrowIT.API.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class FinancialsController : ControllerBase

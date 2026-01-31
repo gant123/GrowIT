@@ -6,17 +6,13 @@
 <PageTitle>Growth Plans - grow.IT</PageTitle>
 
 <div class="page-growth-plans">
-    <div class="page-header">
-        <div class="page-header-content">
-            <h1 class="page-title">Growth Plans</h1>
-            <p class="page-subtitle">Track progress and goals for people in your community.</p>
-        </div>
-        <div class="page-header-actions">
+    <PageHeader Title="Growth Plans" Subtitle="Track progress and goals for people in your community.">
+        <Actions>
             <button class="btn btn-primary" @onclick="OpenNewPlan">
                 <span class="oi oi-plus me-2"></span>New Growth Plan
             </button>
-        </div>
-    </div>
+        </Actions>
+    </PageHeader>
 
     <div class="row mb-4">
         <div class="col-md-6">
@@ -42,7 +38,7 @@
                         <h6 class="card-subtitle mb-2 text-muted">@plan.PersonName</h6>
                         
                         <div class="progress mt-3" style="height: 10px;">
-                            <div class="progress-bar bg-success" style="width: @plan.ProgressPercentage%"></div>
+                            <div class="progress-bar bg-success" style="width: @($"{plan.ProgressPercentage}%")"></div>
                         </div>
                         <small class="text-muted">@plan.ProgressPercentage.ToString("F0")% Complete</small>
                         

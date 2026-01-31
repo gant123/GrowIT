@@ -1,8 +1,10 @@
-@* @page "/register"
+@page "/register"
 @layout PublicLayout
 @using GrowIT.Shared.DTOs
+@using GrowIT.Client.Services
 @inject NavigationManager Navigation
-@inject HttpClient Http
+@inject IAuthService AuthService
+@inject IJSRuntime JS
 
 <PageTitle>Create Account - grow.IT</PageTitle>
 
@@ -12,25 +14,14 @@
             <!-- Logo -->
             <div class="auth-logo">
                 <a href="/welcome">
-                    <svg class="brand-icon" viewBox="0 0 32 32" fill="none">
-                        <circle cx="16" cy="16" r="14" fill="url(#regGradient)"/>
-                        <path d="M16 8c0 4-2 6-2 10s2 6 2 6M12 14c2-2 6-2 8 0M10 18c3-2 9-2 12 0" 
-                              stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-                        <defs>
-                            <linearGradient id="regGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stop-color="#22c55e"/>
-                                <stop offset="100%" stop-color="#16a34a"/>
-                            </linearGradient>
-                        </defs>
-                    </svg>
-                    <span class="brand-text">grow<span class="brand-highlight">.IT</span></span>
+                    <img src="images/logo-@(_currentTheme).png" alt="GrowIT" class="brand-logo" />
                 </a>
             </div>
 
             <!-- Header -->
             <div class="auth-header">
-                <h1>Create your account</h1>
-                <p>Start your 14-day free trial. No credit card required.</p>
+                <h1>Establish Your Organization</h1>
+                <p>Deploy grow.IT for your institution. Professional-grade impact tracking begins here.</p>
             </div>
 
             <!-- Progress Steps -->
@@ -89,7 +80,7 @@
             <!-- Step 1: Account Info -->
             @if (_currentStep == 1)
             {
-                <form class="auth-form" @onsubmit="GoToStep2" @onsubmit:preventDefault>
+                <form class="auth-form" @onsubmit="GoToStep2">
                     <div class="form-row">
                         <div class="form-group">
                             <label for="firstName">First name</label>
@@ -126,8 +117,8 @@
                         <div class="input-wrapper">
                             <input type="@(_showPassword ? "text" : "password")" 
                                    id="password" 
-                                   @bind="_registerRequest.Password" 
-                                   @oninput="CheckPasswordStrength"
+                                   value="@_registerRequest.Password"
+                                   @oninput="OnPasswordInput"
                                    placeholder="Create a strong password"
                                    autocomplete="new-password"
                                    minlength="8"
@@ -151,14 +142,14 @@
                         </div>
                         <div class="password-strength">
                             <div class="strength-bar">
-                             <div class="strength-fill @_passwordStrengthClass" style="@($"width: {_passwordStrength}%")"></div>
+                             <div class="strength-fill @_passwordStrengthClass" style="width: @($"{_passwordStrength}%")"></div>
 
                             </div>
                             <span class="strength-text">@_passwordStrengthText</span>
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary btn-block btn-lg">
+                    <button type="submit" class="btn btn-primary btn-block">
                         Continue
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="5" y1="12" x2="19" y2="12"/>
@@ -198,7 +189,7 @@
             <!-- Step 2: Organization Info -->
             @if (_currentStep == 2)
             {
-                <form class="auth-form" @onsubmit="GoToStep3" @onsubmit:preventDefault>
+                <form class="auth-form" @onsubmit="GoToStep3">
                     <div class="form-group">
                         <label for="orgName">Organization name</label>
                         <input type="text" 
@@ -253,7 +244,7 @@
                             </svg>
                             Back
                         </button>
-                        <button type="submit" class="btn btn-primary btn-lg">
+                        <button type="submit" class="btn btn-primary">
                             Continue
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="5" y1="12" x2="19" y2="12"/>
@@ -267,7 +258,7 @@
             <!-- Step 3: Final Setup -->
             @if (_currentStep == 3)
             {
-                <form class="auth-form" @onsubmit="CompleteRegistration" @onsubmit:preventDefault>
+                <form class="auth-form" @onsubmit="CompleteRegistration">
                     <div class="setup-options">
                         <h3>What would you like to track?</h3>
                         <p class="setup-hint">Select all that apply. You can change these later.</p>
@@ -350,7 +341,7 @@
                             </svg>
                             Back
                         </button>
-                        <button type="submit" class="btn btn-primary btn-lg" disabled="@_isLoading">
+                        <button type="submit" class="btn btn-primary" disabled="@_isLoading">
                             @if (_isLoading)
                             {
                                 <span class="btn-spinner"></span>
@@ -377,7 +368,9 @@
         <!-- Side Content -->
         <div class="auth-side register-side">
             <div class="auth-side-content">
-                <h2>Why nonprofits choose grow.IT</h2>
+                <h2>Ready to grow your impact?</h2>
+                <p class="side-intro">Join hundreds of organizations using GrowIT to measure what matters.</p>
+                
                 <ul class="benefits-list">
                     <li>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -419,6 +412,16 @@
 
 
 @code {
+    private string _currentTheme = "light";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _currentTheme = await JS.InvokeAsync<string>("blazorInterop.getTheme");
+            StateHasChanged();
+        }
+    }
 
 
     private int _currentStep = 1;
@@ -439,11 +442,15 @@
     private bool _isLoading = false;
     private string? _errorMessage;
 
-    private void CheckPasswordStrength(ChangeEventArgs e)
+    private void OnPasswordInput(ChangeEventArgs e)
     {
         var password = e.Value?.ToString() ?? "";
         _registerRequest.Password = password;
-        
+        CheckPasswordStrengthInternal(password);
+    }
+
+    private void CheckPasswordStrengthInternal(string password)
+    {
         var score = 0;
         if (password.Length >= 8) score += 25;
         if (password.Length >= 12) score += 15;
@@ -454,13 +461,33 @@
         
         _passwordStrength = Math.Min(score, 100);
         
-        (_passwordStrengthClass, _passwordStrengthText) = _passwordStrength switch
+        if (_passwordStrength < 30)
         {
-            < 30 => ("weak", "Weak"),
-            < 60 => ("fair", "Fair"),
-            < 80 => ("good", "Good"),
-            _ => ("strong", "Strong")
-        };
+            _passwordStrengthClass = "weak";
+            _passwordStrengthText = "Weak";
+        }
+        else if (_passwordStrength < 60)
+        {
+            _passwordStrengthClass = "fair";
+            _passwordStrengthText = "Fair";
+        }
+        else if (_passwordStrength < 80)
+        {
+            _passwordStrengthClass = "good";
+            _passwordStrengthText = "Good";
+        }
+        else
+        {
+            _passwordStrengthClass = "strong";
+            _passwordStrengthText = "Strong";
+        }
+    }
+
+    private void CheckPasswordStrength(ChangeEventArgs e)
+    {
+        var password = e.Value?.ToString() ?? "";
+        _registerRequest.Password = password;
+        CheckPasswordStrengthInternal(password);
     }
 
     private void GoToStep2()
@@ -510,15 +537,14 @@
             _registerRequest.TrackOutcomes = _trackOutcomes;
             _registerRequest.TrackPrograms = _trackPrograms;
 
-            var response = await Http.PostAsJsonAsync("api/auth/register", _registerRequest);
-            if (response.IsSuccessStatusCode)
+            var result = await AuthService.Register(_registerRequest);
+            if (result != null)
             {
-                Navigation.NavigateTo("/login");
+                Navigation.NavigateTo("/");
             }
             else
             {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                _errorMessage = $"Registration failed: {errorContent}";
+                _errorMessage = "Registration failed. Please check your details and try again.";
             }
         }
         catch (Exception ex)
@@ -530,4 +556,13 @@
             _isLoading = false;
         }
     }
-} *@
+    private void SignupWithGoogle()
+    {
+        // OAuth with Google
+    }
+
+    private void SignupWithMicrosoft()
+    {
+        // OAuth with Microsoft
+    }
+}

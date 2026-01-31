@@ -10,6 +10,8 @@ public interface IClientService
     Task<Guid> CreateClientAsync(CreateClientRequest request);
     Task AddFamilyMemberAsync(Guid clientId, CreateFamilyMemberRequest request);
     Task<FamilyMemberProfileDto> GetMemberProfileAsync(Guid memberId);
+    Task UpdateFamilyMemberAsync(Guid memberId, CreateFamilyMemberRequest request);
+    Task DeleteFamilyMemberAsync(Guid memberId);
 }
 
 public class ClientService : BaseApiService, IClientService
@@ -20,41 +22,46 @@ public class ClientService : BaseApiService, IClientService
 
     public async Task<List<ClientDto>> GetAllClientsAsync()
     {
-        // Your controller returns ActionResult<List<ClientDto>> on GET api/clients
-        return await _http.GetFromJsonAsync<List<ClientDto>>(Endpoint) 
+        return await GetAsync<List<ClientDto>>(Endpoint) 
                ?? new List<ClientDto>();
     }
 
     public async Task<ClientDetailDto> GetClientDetailAsync(Guid id)
     {
-        // GET api/clients/{id}
-        return await _http.GetFromJsonAsync<ClientDetailDto>($"{Endpoint}/{id}")
+        return await GetAsync<ClientDetailDto>($"{Endpoint}/{id}")
                ?? throw new Exception("Client not found");
     }
 
     public async Task<Guid> CreateClientAsync(CreateClientRequest request)
     {
         // POST api/clients
-        var response = await _http.PostAsJsonAsync(Endpoint, request);
-        response.EnsureSuccessStatusCode();
-        
-        // Assuming your API returns { Message = "...", ClientId = "..." }
-        var result = await response.Content.ReadFromJsonAsync<CreateResponse>();
+        var result = await PostAsync<CreateClientRequest, CreateResponse>(Endpoint, request);
         return result?.ClientId ?? Guid.Empty;
     }
 
     public async Task AddFamilyMemberAsync(Guid clientId, CreateFamilyMemberRequest request)
     {
         // POST api/clients/{id}/members
-        var response = await _http.PostAsJsonAsync($"{Endpoint}/{clientId}/members", request);
-        response.EnsureSuccessStatusCode();
+        await PostAsync($"{Endpoint}/{clientId}/members", request);
     }
 
     public async Task<FamilyMemberProfileDto> GetMemberProfileAsync(Guid memberId)
     {
         // GET api/clients/members/{memberId}
-        return await _http.GetFromJsonAsync<FamilyMemberProfileDto>($"{Endpoint}/members/{memberId}")
+        return await GetAsync<FamilyMemberProfileDto>($"{Endpoint}/members/{memberId}")
                ?? throw new Exception("Member not found");
+    }
+
+    public async Task UpdateFamilyMemberAsync(Guid memberId, CreateFamilyMemberRequest request)
+    {
+        // PUT api/clients/members/{memberId}
+        await PutAsync($"{Endpoint}/members/{memberId}", request);
+    }
+
+    public async Task DeleteFamilyMemberAsync(Guid memberId)
+    {
+        // DELETE api/clients/members/{memberId}
+        await DeleteAsync($"{Endpoint}/members/{memberId}");
     }
 
     // Helper class to catch the anonymous object return { ClientId = ... }

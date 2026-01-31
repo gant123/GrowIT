@@ -1,5 +1,6 @@
 using GrowIT.Core.Entities;
 using GrowIT.Infrastructure.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using GrowIT.Shared.DTOs;
@@ -8,6 +9,7 @@ using System.Globalization;
 
 namespace GrowIT.API.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/[controller]")]
 public class DashboardController : ControllerBase
@@ -24,14 +26,14 @@ public class DashboardController : ControllerBase
     {
         var currentYear = DateTime.UtcNow.Year;
 
-        // 1. KPI: Total Invested YTD
+        // 1. KPI: Total Invested YTD (Only Approved ones)
         var totalInvestedYtd = await _context.Investments
-            .Where(i => i.CreatedAt.Year == currentYear)
+            .Where(i => i.CreatedAt.Year == currentYear && i.Status == InvestmentStatus.Approved)
             .SumAsync(i => i.Amount);
 
-        // 2. KPI: Households Served YTD (Unique Clients)
+        // 2. KPI: Households Served YTD (Unique Clients with Approved Investments)
         var householdsServed = await _context.Investments
-            .Where(i => i.CreatedAt.Year == currentYear)
+            .Where(i => i.CreatedAt.Year == currentYear && i.Status == InvestmentStatus.Approved)
             .Select(i => i.ClientId)
             .Distinct()
             .CountAsync();
@@ -42,34 +44,47 @@ public class DashboardController : ControllerBase
         // 4. KPI: Funds Available
         var fundsAvailable = await _context.Funds.SumAsync(f => f.AvailableAmount);
 
-        // 5. CHART: Monthly Trends (Group by Month)
-        // Note: For Postgres, we pull data first then group in memory to keep it simple 
-        // (or use specialized SQL DateTrunc if dataset is huge)
+        // 5. Total Lifetime Stats (Filling missing DTO fields)
+        var totalLifetimeInvested = await _context.Investments
+            .Where(i => i.Status == InvestmentStatus.Approved)
+            .SumAsync(i => i.Amount);
+        var totalMilestones = await _context.Imprints.CountAsync();
+
+        // 6. CHART: Monthly Trends (Group by Month)
         var rawInvestments = await _context.Investments
-            .Where(i => i.CreatedAt.Year == currentYear)
+            .Where(i => i.CreatedAt.Year == currentYear && i.Status == InvestmentStatus.Approved)
             .Select(i => new { i.CreatedAt, i.Amount })
             .ToListAsync();
 
         var monthlyTrends = rawInvestments
             .GroupBy(i => i.CreatedAt.Month)
-            .Select(g => new MonthlyMetric
+            .Select(g => new
             {
-                Month = CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(g.Key),
-                Amount = g.Sum(x => x.Amount)
+                MonthIndex = g.Key,
+                Metric = new MonthlyMetric
+                {
+                    Month = CultureInfo.InvariantCulture.DateTimeFormat.GetAbbreviatedMonthName(g.Key),
+                    Amount = g.Sum(x => x.Amount)
+                }
             })
+            .OrderBy(m => m.MonthIndex)
+            .Select(m => m.Metric)
             .ToList();
 
-        // 6. FEED: Recent Activity (Merge Money & Milestones)
+        // Ensure all months are represented if needed, or just return what we have.
+        // For now, returning what we have is consistent with previous implementation.
+
+        // 7. FEED: Recent Activity (Merge Money & Milestones)
         var recentInvestments = await _context.Investments
             .Include(i => i.Client)
             .OrderByDescending(i => i.CreatedAt)
-            .Take(5)
+            .Take(10)
             .ToListAsync();
 
         var recentImprints = await _context.Imprints
             .Include(i => i.Client)
             .OrderByDescending(i => i.DateOccurred)
-            .Take(5)
+            .Take(10)
             .ToListAsync();
 
         var activityFeed = new List<ActivityItem>();
@@ -78,7 +93,7 @@ public class DashboardController : ControllerBase
         activityFeed.AddRange(recentInvestments.Select(i => new ActivityItem
         {
             Id = i.Id,
-            Description = $"Planted ${i.Amount:N0} seed for {i.Client?.FirstName}",
+            Description = $"Planted ${i.Amount:N0} seed for {i.Client?.FirstName ?? "Unknown"}",
             Date = i.CreatedAt,
             Icon = "oi-dollar",
             Color = "text-success"
@@ -88,19 +103,18 @@ public class DashboardController : ControllerBase
         activityFeed.AddRange(recentImprints.Select(m => new ActivityItem
         {
             Id = m.Id,
-            Description = $"Harvest: {m.Title} ({m.Client?.FirstName})",
+            Description = $"Harvest: {m.Title} ({m.Client?.FirstName ?? "Unknown"})",
             Date = m.DateOccurred,
             Icon = "oi-flag",
             Color = m.Outcome == ImpactOutcome.Improved ? "text-primary" : "text-warning"
         }));
 
-        // 7. TASKS: Pending Follow-Ups
-        // Find imprints that have a FollowupDate set for the future (or recently past)
+        // 8. TASKS: Pending Follow-Ups
         var followUps = await _context.Imprints
             .Include(i => i.Client)
-            .Where(i => i.FollowupDate != null && i.FollowupDate >= DateTime.UtcNow.AddDays(-7)) // Show items due soon or missed last week
+            .Where(i => i.FollowupDate != null && i.FollowupDate >= DateTime.UtcNow.AddDays(-7))
             .OrderBy(i => i.FollowupDate)
-            .Take(5)
+            .Take(10)
             .Select(i => new TaskItem
             {
                 ClientId = i.ClientId,
@@ -112,6 +126,9 @@ public class DashboardController : ControllerBase
 
         return Ok(new DashboardStatsDto
         {
+            TotalClients = activeCases,
+            TotalInvested = totalLifetimeInvested,
+            TotalMilestones = totalMilestones,
             TotalInvestedYtd = totalInvestedYtd,
             HouseholdsServedYtd = householdsServed,
             ActiveCases = activeCases,

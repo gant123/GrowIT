@@ -62,10 +62,10 @@ public class AuditInterceptor : SaveChangesInterceptor
             {
                 Id = Guid.NewGuid(),
                 TenantId = tenantId ?? Guid.Empty,
-                UserId = (Guid)userId,
+                UserId = userId ?? Guid.Empty,
                 ActionType = actionType,
                 TableName = entry.Metadata.GetTableName() ?? entry.Entity.GetType().Name,
-                RecordId = (Guid)GetPrimaryKey(entry), 
+                RecordId = GetPrimaryKey(entry) ?? Guid.Empty, 
                 PreviousData = oldValues,
                 NewData = newValues,
                 CreatedAt = DateTime.UtcNow

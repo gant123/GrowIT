@@ -6,13 +6,13 @@
 @inject NavigationManager NavManager
 
 <div style="max-width: 640px; margin: 0 auto;">
-    <div class="mb-4">
-        <a href="clients" style="color: var(--growit-text-secondary); text-decoration: none; font-size: 13px;">
-            <span class="oi oi-arrow-left me-1"></span> Back to Clients
-        </a>
-        <h1 class="page-title mt-2">Add New Client</h1>
-        <p class="page-subtitle">Register a new individual or family into the system</p>
-    </div>
+    <PageHeader Title="Add New Client" Subtitle="Register a new individual or family into the system">
+        <Actions>
+            <a href="clients" class="btn-growit btn-secondary-growit">
+                <span class="oi oi-arrow-left me-1"></span> Back to Directory
+            </a>
+        </Actions>
+    </PageHeader>
 
     <div class="card-growit">
         <div class="card-body">
@@ -80,7 +80,7 @@
                                 <label>Stability Score (1-10)</label>
                                 <InputNumber @bind-Value="clientRequest.StabilityScore" class="form-input-growit" min="1" max="10" />
                                 <div style="margin-top: 8px; height: 6px; background-color: var(--growit-border); border-radius: 3px; overflow: hidden;">
-                                    <div style="height: 100%; width: @(clientRequest.StabilityScore * 10)%; background: linear-gradient(90deg, var(--growit-danger), var(--growit-warning), var(--growit-green)); border-radius: 3px; transition: width 0.2s ease;"></div>
+                                    <div style="height: 100%; width: @($"{clientRequest.StabilityScore * 10}%"); background: linear-gradient(90deg, var(--growit-danger), var(--growit-warning), var(--growit-green)); border-radius: 3px; transition: width 0.2s ease;"></div>
                                 </div>
                             </div>
                         </div>

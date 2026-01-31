@@ -14,48 +14,32 @@
 }
 else
 {
-    <div class="container-fluid mt-4">
-        <div class="card border-0 shadow-sm mb-4" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
-            <div class="card-body p-4">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center gap-4">
-                        <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm" 
-                             style="width: 70px; height: 70px; background-color: var(--growit-blue); font-size: 1.5rem;">
-                            @profile.Name.Substring(0, 1)
-                        </div>
-                        <div>
-                            <h1 class="h3 mb-1 fw-bold">@profile.Name</h1>
-                            <div class="small opacity-75">
-                                <span class="badge bg-info bg-opacity-10 text-info border border-info-subtle me-2">@profile.Relationship</span>
-                                <span>@profile.Age years old • @profile.School</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-sm btn-outline-warning" @onclick="ToggleEdit">
-                            <span class="oi oi-pencil me-1"></span>Edit
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger" @onclick="ConfirmDelete">
-                            <span class="oi oi-trash me-1"></span>Delete
-                        </button>
-                        <button class="btn btn-outline-secondary" @onclick="GoBack">Back to Family</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <PageHeader Title="@profile.Name" Subtitle="@($"{profile.Relationship} Profile • {profile.Age} years old")">
+        <Actions>
+            <button class="btn-growit btn-secondary-growit" @onclick="GoBack">
+                <span class="oi oi-arrow-left me-1"></span> Back
+            </button>
+            <button class="btn-growit btn-secondary-growit" @onclick="ToggleEdit">
+                <span class="oi oi-pencil me-1"></span>Edit
+            </button>
+            <button class="btn-growit btn-danger-growit" @onclick="ConfirmDelete">
+                <span class="oi oi-trash me-1"></span>Delete
+            </button>
+        </Actions>
+    </PageHeader>
 
-        <div class="row g-4">
+    <div class="row g-4">
             <div class="col-lg-4">
                 <div class="card border-0 shadow-sm mb-4" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
                     <div class="card-header bg-transparent fw-bold py-3">Individual Impact</div>
                     <div class="card-body">
                         <div class="text-center py-3">
                             <div class="display-5 fw-bold text-info">@profile.TotalInvested.ToString("C0")</div>
-                            <div class="small text-muted text-uppercase">Allocated to @profile.Name</div>
+                            <div class="small text-muted text-uppercase" style="color: var(--growit-text-muted) !important;">Allocated to @profile.Name</div>
                         </div>
                         <hr style="border-color: var(--growit-border);" />
                         <div class="mb-3">
-                            <label class="small fw-bold text-muted text-uppercase d-block mb-1">Confidential Notes</label>
+                            <label class="small fw-bold text-muted text-uppercase d-block mb-1" style="color: var(--growit-text-muted) !important;">Confidential Notes</label>
                             <p class="small p-3 rounded" style="background-color: var(--growit-bg-primary);">
                                 @(string.IsNullOrEmpty(profile.Notes) ? "No specific notes for this member." : profile.Notes)
                             </p>
@@ -81,7 +65,7 @@ else
                                             <div class="d-flex justify-content-between">
                                                 <h6 class="fw-bold mb-1">@item.Title</h6>
                                                 <div>
-                                                    <small class="text-muted">@item.Date.ToShortDateString()</small>
+                                                    <small class="text-muted" style="color: var(--growit-text-muted) !important;">@item.Date.ToShortDateString()</small>
                                                     @if (item.Type == "Investment")
                                                     {
                                                         <button class="btn btn-sm btn-link text-info p-0 ms-2" @onclick="() => OpenReassignModal(item.Id)">
@@ -90,7 +74,7 @@ else
                                                     }
                                                 </div>
                                             </div>
-                                            <p class="small mb-2 opacity-75">@item.Description</p>
+                                            <p class="small mb-2 text-secondary" style="color: var(--growit-text-secondary) !important;">@item.Description</p>
                                             @if (item.Amount.HasValue)
                                             {
                                                 <span class="badge bg-info bg-opacity-10 text-info fw-bold border border-info-subtle">@item.Amount.Value.ToString("C2")</span>
@@ -112,7 +96,6 @@ else
         <ReassignInvestmentModal @bind-Show="showReassignModal" 
                                  InvestmentId="selectedInvestmentId"
                                  OnChanged="LoadProfile" />
-    </div>
 }
 
 @code {

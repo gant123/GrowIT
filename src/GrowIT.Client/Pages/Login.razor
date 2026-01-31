@@ -1,6 +1,10 @@
 @page "/login"
 @layout PublicLayout
+@using GrowIT.Client.Services
+@using GrowIT.Shared.DTOs
+@inject IAuthService AuthService
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 
 <PageTitle>Sign In - grow.IT</PageTitle>
 
@@ -9,40 +13,30 @@
         <div class="auth-card">
             <div class="auth-logo">
                 <a href="/welcome">
-                    <svg class="brand-icon" viewBox="0 0 32 32" fill="none">
-                        <circle cx="16" cy="16" r="14" fill="url(#authGradient)"/>
-                        <path d="M16 8c0 4-2 6-2 10s2 6 2 6M12 14c2-2 6-2 8 0M10 18c3-2 9-2 12 0" 
-                              stroke="white" stroke-width="1.5" stroke-linecap="round"/>
-                        <defs>
-                            <linearGradient id="authGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stop-color="#22c55e"/>
-                                <stop offset="100%" stop-color="#16a34a"/>
-                            </linearGradient>
-                        </defs>
-                    </svg>
-                    <span class="brand-text">grow<span class="brand-highlight">.IT</span></span>
+                    <img src="images/logo-@(_currentTheme).png" alt="GrowIT" class="brand-logo" />
                 </a>
             </div>
 
             <div class="auth-header">
-                <h1>Welcome back</h1>
-                <p>Sign in to continue to your dashboard.</p>
+                <h1>Enterprise Login</h1>
+                <p>Access your organization's impact dashboard.</p>
             </div>
 
             @if (!string.IsNullOrEmpty(_errorMessage))
             {
-                <div class="alert alert-danger">
+                <div class="auth-alert error">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/>
-                        <line x1="12" y1="8" x2="12" y2="12"/>
-                        <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        <line x1="15" y1="9" x2="9" y2="15"/>
+                        <line x1="9" y1="9" x2="15" y2="15"/>
                     </svg>
-                    @_errorMessage
+                    <span>@_errorMessage</span>
                 </div>
             }
 
             <div class="auth-form">
-                <div class="form-group">
+                <form @onsubmit="HandleLogin" @onsubmit:preventDefault>
+                    <div class="form-group">
                     <label for="email">Email Address</label>
                     <div class="input-wrapper">
                         <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -50,7 +44,7 @@
                             <polyline points="22,6 12,13 2,6"/>
                         </svg>
                         <input type="email" id="email" class="form-control" placeholder="name@organization.org" 
-                               @bind="_email" @bind:event="oninput" />
+                               @bind="_email" @bind:event="oninput" autocomplete="username" required />
                     </div>
                 </div>
 
@@ -65,7 +59,7 @@
                             <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                         </svg>
                         <input type="@(_showPassword ? "text" : "password")" id="password" class="form-control" placeholder="Enter your password" 
-                               @bind="_password" @bind:event="oninput" />
+                               @bind="_password" @bind:event="oninput" autocomplete="current-password" required />
                         <button type="button" class="password-toggle" @onclick="TogglePassword">
                             @if (_showPassword)
                             {
@@ -84,10 +78,11 @@
                     <label for="remember">Remember me for 30 days</label>
                 </div>
 
-                <button class="btn-auth" @onclick="HandleLogin" disabled="@_isLoading">
+                <button type="submit" class="btn btn-primary btn-block" disabled="@_isLoading">
                     @if (_isLoading)
                     {
-                        <span class="spinner"></span>
+                        <span class="btn-spinner"></span>
+                        <span>Signing in...</span>
                     }
                     else
                     {
@@ -98,13 +93,14 @@
                         </svg>
                     }
                 </button>
+                </form>
 
                 <div class="auth-divider">
                     <span>or continue with</span>
                 </div>
 
-                <div class="social-auth">
-                    <button class="btn-social" @onclick="LoginWithGoogle">
+                <div class="social-buttons">
+                    <button type="button" class="btn-social" @onclick="LoginWithGoogle">
                         <svg viewBox="0 0 24 24" width="20" height="20">
                             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -113,7 +109,7 @@
                         </svg>
                         Google
                     </button>
-                    <button class="btn-social" @onclick="LoginWithMicrosoft">
+                    <button type="button" class="btn-social" @onclick="LoginWithMicrosoft">
                         <svg viewBox="0 0 23 23" width="20" height="20">
                             <path fill="#f3f3f3" d="M0 0h23v23H0z"/>
                             <path fill="#f35325" d="M1 1h10v10H1z"/>
@@ -127,13 +123,54 @@
             </div>
 
             <div class="auth-footer">
-                <p>Don't have an account? <a href="/register">Create account</a></p>
-                <div class="testimonial">
-                    <div class="quote">"grow.IT has completely transformed how we track our impact. It's essential for our mission."</div>
-                    <div>
-                        <span class="author-name">Jennifer Davis</span>
-                        <span class="author-role">Program Director, Helping Hands</span>
+                <p>Don't have an organization account? <a href="/register">Request access</a></p>
+                <div class="trust-footer">
+                    <div class="trust-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                        256-bit Encryption
                     </div>
+                    <div class="trust-item">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        </svg>
+                        SOC2 Compliant
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Side Content -->
+        <div class="auth-side login-side">
+            <div class="auth-side-content">
+                <h2>Welcome back to GrowIT</h2>
+                <p class="side-intro">Access your enterprise dashboard and continue your mission.</p>
+                
+                <ul class="benefits-list">
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span><strong>Real-time insights</strong> into program performance</span>
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span><strong>Secure collaboration</strong> across your entire team</span>
+                    </li>
+                    <li>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                        <span><strong>Automated reporting</strong> for donors and stakeholders</span>
+                    </li>
+                </ul>
+
+                <div class="auth-quote">
+                    <p>"GrowIT has transformed how we measure our success. We can now prove our impact in seconds, not weeks."</p>
+                    <cite>— Sarah Chen, Director of Hope Works</cite>
                 </div>
             </div>
         </div>
@@ -141,12 +178,22 @@
 </div>
 
 @code {
+    private string _currentTheme = "light";
     private string _email = "";
     private string _password = "";
     private bool _rememberMe = false;
     private bool _showPassword = false;
     private bool _isLoading = false;
     private string? _errorMessage;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _currentTheme = await JS.InvokeAsync<string>("blazorInterop.getTheme");
+            StateHasChanged();
+        }
+    }
 
     private void TogglePassword()
     {
@@ -160,11 +207,16 @@
 
         try
         {
-            // Simulate API call
-            await Task.Delay(1500);
+            if (string.IsNullOrWhiteSpace(_email) || string.IsNullOrWhiteSpace(_password))
+            {
+                _errorMessage = "Please enter both email and password.";
+                return;
+            }
 
-            // In production, this would call an auth service
-            if (_email == "demo@growit.app" && _password == "demo123")
+            var request = new LoginRequest { Email = _email, Password = _password };
+            var result = await AuthService.Login(request);
+
+            if (result != null)
             {
                 Navigation.NavigateTo("/");
             }
@@ -173,9 +225,9 @@
                 _errorMessage = "Invalid email or password. Please try again.";
             }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            _errorMessage = "An error occurred. Please try again later.";
+            _errorMessage = $"An error occurred: {ex.Message}";
         }
         finally
         {

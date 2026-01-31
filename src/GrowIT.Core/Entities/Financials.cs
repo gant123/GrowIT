@@ -43,6 +43,7 @@ public class Investment : IMustHaveTenant
     
     public Guid CreatedBy { get; set; } 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public InvestmentStatus Status { get; set; } = InvestmentStatus.Pending;
     public Guid? FamilyMemberId { get; set; } // Nullable because some things (like Rent) are for the whole family
     public FamilyMember? FamilyMember { get; set; }
 }
