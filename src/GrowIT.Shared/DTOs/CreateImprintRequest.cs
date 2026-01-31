@@ -16,6 +16,9 @@ public class CreateImprintRequest
     public string Title { get; set; } = string.Empty; // The Headline: "Got a Job", "Passed Math"
 
     [Required]
+    public ImprintCategory Category { get; set; }
+
+    [Required]
     public ImpactOutcome Outcome { get; set; } // Improved, Stable, Regressed
 
     public DateTime DateOccurred { get; set; } = DateTime.UtcNow; // When did it happen?

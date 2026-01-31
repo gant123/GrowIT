@@ -6,19 +6,19 @@
 @inject IDashboardService DashboardService
 @inject NavigationManager Nav
 
-<PageTitle>GrowIT - Executive Dashboard</PageTitle>
+<PageTitle>grow.IT - Impact Dashboard</PageTitle>
 
 @if (stats == null)
 {
     <div class="loading-state">
         <div class="spinner-growit"></div>
-        <p class="loading-state-text">Loading platform data...</p>
+        <p class="loading-state-text">Loading impact data...</p>
     </div>
 }
 else
 {
     <div class="dashboard fade-in">
-        <PageHeader Title="Enterprise Dashboard" Subtitle="Platform Performance & Impact Analysis">
+        <PageHeader Title="Return on Impact" Subtitle="Translating service into sustainability.">
             <Actions>
                 <button class="btn-growit btn-secondary-growit" @onclick="Refresh">
                     <span class="oi oi-reload me-1"></span> Refresh Data
@@ -27,19 +27,19 @@ else
         </PageHeader>
 
         <div class="grid-4 mb-4">
-            <KpiCard Label="Capital Deployed YTD" 
+            <KpiCard Label="Direct Impact (YTD)" 
                      Value="@stats.TotalInvestedYtd.ToString("C0")" 
-                     Icon="oi-dollar" 
+                     Icon="oi-heart" 
                      Color="success" 
-                     TrendText="Direct Assistance" 
+                     TrendText="Capital Deployed" 
                      TrendIcon="oi-arrow-top" 
                      TrendDirection="up" />
             
-            <KpiCard Label="Beneficiary Households" 
+            <KpiCard Label="Families Served" 
                      Value="@stats.HouseholdsServedYtd.ToString()" 
                      Icon="oi-people" 
                      Color="info" 
-                     TrendText="Unique Families Served" />
+                     TrendText="Unique Households" />
 
             <KpiCard Label="Active Case Files" 
                      Value="@stats.ActiveCases.ToString()" 
@@ -47,20 +47,20 @@ else
                      Color="warning" 
                      TrendText="Managed Profiles" />
             
-            <KpiCard Label="Available Liquidity" 
+            <KpiCard Label="Funds Available" 
                      Value="@stats.FundsAvailable.ToString("C0")" 
                      Icon="oi-briefcase" 
                      Color="primary" 
-                     TrendText="Operating Budget" />
+                     TrendText="Capacity to Serve" />
         </div>
 
         <div class="card-growit mb-4">
             <div class="card-header">
-                <h3 class="section-title">Investment & Impact Trends</h3>
+                <h3 class="section-title">"The Harvest" - Growth Trends</h3>
                 <div class="chart-legend">
                     <div class="legend-item impact">
                         <span class="legend-dot"></span>
-                        <span>Monthly Disbursements</span>
+                        <span>Monthly Impact Value</span>
                     </div>
                 </div>
             </div>
@@ -146,7 +146,7 @@ else
 
             <div class="card-growit">
                 <div class="card-header">
-                    <h3 class="section-title">Operational Activity Feed</h3>
+                    <h3 class="section-title">"The Soil" - Recent Activity</h3>
                 </div>
                 <div class="card-body p-0">
                     <div class="activity-list">

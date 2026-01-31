@@ -77,6 +77,8 @@ public class FinancialsController : ControllerBase
             Name = request.Name,
             Description = request.Description ?? string.Empty, // Handle nulls safely
             DefaultUnitCost = request.DefaultUnitCost,
+            CapacityLimit = request.CapacityLimit,
+            CapacityPeriod = request.CapacityPeriod,
             TenantId = _tenantService.TenantId ?? Guid.Empty
         };
 
@@ -95,7 +97,9 @@ public class FinancialsController : ControllerBase
                 Id = p.Id,
                 Name = p.Name,
                 Description = p.Description,
-                DefaultUnitCost = p.DefaultUnitCost
+                DefaultUnitCost = p.DefaultUnitCost,
+                CapacityLimit = p.CapacityLimit,
+                CapacityPeriod = p.CapacityPeriod
             })
             .ToListAsync();
 

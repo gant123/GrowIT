@@ -1,16 +1,17 @@
 @page "/reports"
 @attribute [Authorize(Roles = "Admin,Manager")]
 @using GrowIT.Shared.DTOs
+@inject HttpClient Http
 
 <PageTitle>Reports - grow.IT</PageTitle>
 
 <div class="page-reports">
     <!-- Page Header -->
-    <PageHeader Title="Reports" Subtitle="Generate reports for grant compliance and impact measurement." />
+    <PageHeader Title="Reports" Subtitle="Translating service into verifiable financial intelligence." />
 
     <!-- Report Templates -->
     <div class="report-section">
-        <h2 class="section-title">Quick Reports</h2>
+        <h2 class="section-title">Return on Impact</h2>
         <div class="report-cards">
             <div class="report-card" @onclick=@(() => GenerateReport("impact-summary"))>
                 <div class="report-icon">
@@ -20,8 +21,8 @@
                     </svg>
                 </div>
                 <div class="report-content">
-                    <h3 class="report-title">Impact Summary</h3>
-                    <p class="report-desc">Overview of people served, investments made, and outcomes documented.</p>
+                    <h3 class="report-title">Seed to Harvest Summary</h3>
+                    <p class="report-desc">Overview of families served, capital deployed, and verified outcomes.</p>
                 </div>
                 <div class="report-action">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -38,8 +39,8 @@
                     </svg>
                 </div>
                 <div class="report-content">
-                    <h3 class="report-title">Investment Detail</h3>
-                    <p class="report-desc">Complete breakdown of all investments by category, source, and recipient.</p>
+                    <h3 class="report-title">Financial Intelligence Detail</h3>
+                    <p class="report-desc">Complete breakdown of all service costs and model repeatability.</p>
                 </div>
                 <div class="report-action">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -197,33 +198,44 @@
     <div class="report-section">
         <h2 class="section-title">Recent Reports</h2>
         <div class="recent-reports-list">
-            @foreach (var report in _recentReports)
+            @if (_isLoadingRecent)
             {
-                <div class="recent-report-item">
-                    <div class="report-file-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                            <polyline points="14 2 14 8 20 8"/>
-                            <line x1="16" y1="13" x2="8" y2="13"/>
-                            <line x1="16" y1="17" x2="8" y2="17"/>
-                            <polyline points="10 9 9 9 8 9"/>
-                        </svg>
-                    </div>
-                    <div class="report-file-info">
-                        <span class="report-file-name">@report.Name</span>
-                        <span class="report-file-meta">@report.GeneratedAt.ToString("MMM d, yyyy h:mm tt") • @report.Format.ToUpperInvariant()</span>
-                    </div>
-                    <div class="report-file-actions">
-                        <button class="btn btn-ghost btn-sm" @onclick="() => DownloadReport(report.Id)">
+                <div class="p-4 text-center text-muted">Loading recent reports...</div>
+            }
+            else if (_recentReports.Any())
+            {
+                @foreach (var report in _recentReports)
+                {
+                    <div class="recent-report-item">
+                        <div class="report-file-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10"/>
-                                <line x1="12" y1="15" x2="12" y2="3"/>
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <line x1="16" y1="13" x2="8" y2="13"/>
+                                <line x1="16" y1="17" x2="8" y2="17"/>
+                                <polyline points="10 9 9 9 8 9"/>
                             </svg>
-                            Download
-                        </button>
+                        </div>
+                        <div class="report-file-info">
+                            <span class="report-file-name">@report.Name</span>
+                            <span class="report-file-meta">@report.GeneratedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt") • @report.Format.ToUpperInvariant()</span>
+                        </div>
+                        <div class="report-file-actions">
+                            <button class="btn btn-ghost btn-sm" @onclick="() => DownloadReport(report.Id)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="7 10 12 15 17 10"/>
+                                    <line x1="12" y1="15" x2="12" y2="3"/>
+                                </svg>
+                                Download
+                            </button>
+                        </div>
                     </div>
-                </div>
+                }
+            }
+            else
+            {
+                <div class="p-4 text-center text-muted">No recent reports found.</div>
             }
         </div>
     </div>
@@ -234,14 +246,18 @@
         <p class="section-desc">Set up automatic reports to be generated and emailed on a schedule.</p>
         
         <div class="scheduled-reports">
-            @if (_scheduledReports.Any())
+            @if (_isLoadingScheduled)
+            {
+                <div class="p-4 text-center text-muted">Loading scheduled reports...</div>
+            }
+            else if (_scheduledReports.Any())
             {
                 @foreach (var scheduled in _scheduledReports)
                 {
                     <div class="scheduled-report-item">
                         <div class="scheduled-info">
                             <span class="scheduled-name">@scheduled.Name</span>
-                            <span class="scheduled-frequency">@scheduled.Frequency • Next: @scheduled.NextRun.ToString("MMM d")</span>
+                            <span class="scheduled-frequency">@scheduled.Frequency • Next: @scheduled.NextRun.ToLocalTime().ToString("MMM d")</span>
                         </div>
                         <div class="scheduled-actions">
                             <button class="btn-icon-only" title="Edit" @onclick="() => EditSchedule(scheduled.Id)">
@@ -289,25 +305,39 @@
 
     // Recent reports
     private List<RecentReport> _recentReports = new();
+    private bool _isLoadingRecent = true;
     
     // Scheduled reports
     private List<ScheduledReport> _scheduledReports = new();
+    private bool _isLoadingScheduled = true;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        _recentReports = new List<RecentReport>
+        try
         {
-            new() { Id = Guid.NewGuid(), Name = "Impact Summary FY24-25", Format = "pdf", GeneratedAt = DateTime.Now.AddDays(-1) },
-            new() { Id = Guid.NewGuid(), Name = "Investment Detail Q3", Format = "excel", GeneratedAt = DateTime.Now.AddDays(-3) },
-            new() { Id = Guid.NewGuid(), Name = "Outcomes by Category", Format = "pdf", GeneratedAt = DateTime.Now.AddDays(-7) },
-            new() { Id = Guid.NewGuid(), Name = "United Way Grant Report", Format = "pdf", GeneratedAt = DateTime.Now.AddDays(-14) }
-        };
+            _recentReports = await Http.GetFromJsonAsync<List<RecentReport>>("api/reports/recent") ?? new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading recent reports: {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingRecent = false;
+        }
 
-        _scheduledReports = new List<ScheduledReport>
+        try
         {
-            new() { Id = Guid.NewGuid(), Name = "Weekly Investment Summary", Frequency = "Weekly (Monday)", NextRun = DateTime.Now.AddDays(2) },
-            new() { Id = Guid.NewGuid(), Name = "Monthly Impact Report", Frequency = "Monthly (1st)", NextRun = DateTime.Now.AddDays(6) }
-        };
+            _scheduledReports = await Http.GetFromJsonAsync<List<ScheduledReport>>("api/reports/scheduled") ?? new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading scheduled reports: {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingScheduled = false;
+        }
     }
 
     private void GenerateReport(string reportType)

@@ -2,6 +2,7 @@
 @using GrowIT.Shared.DTOs
 @using GrowIT.Shared.Enums
 @inject NavigationManager Navigation
+@inject HttpClient Http
 
 <PageTitle>Imprints - grow.IT</PageTitle>
 
@@ -11,65 +12,76 @@
         <button class="btn btn-primary" @onclick="OpenNewImprint">Record Imprint</button>
     </div>
 
-    <div class="row g-3 mb-4">
-        <div class="col-md-4">
-            <input type="text" class="form-control" placeholder="Search..." @bind="_searchQuery" @bind:event="oninput" />
+    @if (_isLoading)
+    {
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 text-muted">Loading imprints...</p>
         </div>
-        <div class="col-md-3">
-            <select class="form-select" @bind="_categoryFilter">
-                <option value="">All Categories</option>
-                @foreach(var cat in Enum.GetNames(typeof(ImprintCategory)))
-                {
-                    <option value="@cat">@cat</option>
-                }
-            </select>
-        </div>
-    </div>
-
-    <div class="list-group">
-        @foreach (var imprint in FilteredImprints)
-        {
-            <div class="list-group-item d-flex justify-content-between align-items-center p-3">
-                <div>
-                    <h5 class="mb-1">@imprint.Title</h5>
-                    <small class="text-muted">@imprint.PersonName • @imprint.Date.ToString("MMM d, yyyy")</small>
-                </div>
-                <div class="text-end">
-                    <span class="badge bg-secondary mb-2">@imprint.Category</span>
-                    <br/>
-                    @if (imprint.IsVerified) 
-                    {
-                        <span class="text-success small"><span class="oi oi-check"></span> Verified</span>
-                    }
-                </div>
+    }
+    else
+    {
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <input type="text" class="form-control" placeholder="Search..." @bind="_searchQuery" @bind:event="oninput" />
             </div>
-        }
-        @if (!FilteredImprints.Any())
-        {
-            <div class="p-4 text-center text-muted">No imprints found.</div>
-        }
-    </div>
+            <div class="col-md-3">
+                <select class="form-select" @bind="_categoryFilter">
+                    <option value="">All Categories</option>
+                    @foreach (var cat in Enum.GetNames(typeof(ImprintCategory)))
+                    {
+                        <option value="@cat">@cat</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div class="list-group">
+            @foreach (var imprint in FilteredImprints)
+            {
+                <div class="list-group-item d-flex justify-content-between align-items-center p-3">
+                    <div>
+                        <h5 class="mb-1">@imprint.Title</h5>
+                        <small class="text-muted">@imprint.PersonName • @imprint.Date.ToLocalTime().ToString("MMM d, yyyy")</small>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-secondary mb-2">@imprint.Category</span>
+                        <br />
+                        @if (imprint.IsVerified)
+                        {
+                            <span class="text-success small"><span class="oi oi-check"></span> Verified</span>
+                        }
+                    </div>
+                </div>
+            }
+            @if (!FilteredImprints.Any())
+            {
+                <div class="p-4 text-center text-muted">No imprints found.</div>
+            }
+        </div>
+    }
 </div>
 
 @code {
     private List<ImprintListDto> _allImprints = new();
     private string _searchQuery = "";
     private string _categoryFilter = "";
+    private bool _isLoading = true;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        // Mock data
-        _allImprints = new List<ImprintListDto>
+        try
         {
-            new() { 
-                Id = Guid.NewGuid(), 
-                PersonName = "Angela Davis", 
-                Title = "Secured Full-Time Employment", 
-                Category = ImprintCategory.FinancialStability, // Uses Shared Enum
-                Date = DateTime.Now.AddDays(-2),
-                IsVerified = true
-            }
-        };
+            _allImprints = await Http.GetFromJsonAsync<List<ImprintListDto>>("api/imprints") ?? new();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading imprints: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
     }
 
     private IEnumerable<ImprintListDto> FilteredImprints

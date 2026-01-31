@@ -10,6 +10,10 @@ public class Program : IMustHaveTenant
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public decimal DefaultUnitCost { get; set; }
+    
+    // Capacity Awareness: Protect leaders from overextension
+    public int? CapacityLimit { get; set; } // Max units/families per period
+    public string? CapacityPeriod { get; set; } // "Monthly", "Weekly", "Annual"
 }
 
 public class Fund : IMustHaveTenant
@@ -66,6 +70,7 @@ public class Imprint : IMustHaveTenant
     // --- NEW: Milestone Data ---
     public string Title { get; set; } = string.Empty; // e.g. "Made Honor Roll"
     public DateTime DateOccurred { get; set; } = DateTime.UtcNow; 
+    public ImprintCategory Category { get; set; }
     public ImpactOutcome Outcome { get; set; } // Uses the Enum directly
     public string Notes { get; set; } = string.Empty;
     public DateTime? FollowupDate { get; set; }

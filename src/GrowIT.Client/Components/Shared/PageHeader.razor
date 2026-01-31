@@ -1,0 +1,22 @@
+@namespace GrowIT.Client.Components.Shared
+<div class="page-header-wrapper">
+    <div class="page-header-content">
+        <h1 class="page-title">@Title</h1>
+        @if (!string.IsNullOrEmpty(Subtitle))
+        {
+            <p class="page-subtitle">@Subtitle</p>
+        }
+    </div>
+    @if (Actions != null)
+    {
+        <div class="page-actions">
+            @Actions
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+}

@@ -69,7 +69,7 @@
 }
 
 .activity-icon.investment { background: rgba(16, 185, 129, 0.1); color: var(--growit-green); }
-.activity-icon.client { background: rgba(37, 99, 235, 0.1); color: var(--growit-blue); }
+.activity-icon.client { background: rgba(111, 186, 44, 0.1); color: var(--growit-green); }
 .activity-icon.fund { background: rgba(245, 158, 11, 0.1); color: var(--growit-warning); }
 
 .activity-content {

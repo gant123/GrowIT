@@ -2,6 +2,7 @@
 @using GrowIT.Shared.DTOs
 @using GrowIT.Client.Shared
 @inject HttpClient Http
+@inject ILogger<Funds> Logger
 
 <div class="container-fluid mt-4">
     <PageHeader Title="Financial Funds" Subtitle="Manage budget sources and track utilization.">
@@ -12,7 +13,14 @@
         </Actions>
     </PageHeader>
 
-    @if (funds == null)
+    @if (!string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
+            <div>@errorMessage</div>
+            <button class="btn btn-sm btn-outline-light" @onclick="ReloadFunds">Retry</button>
+        </div>
+    }
+    else if (funds == null)
     {
         <div class="text-center py-5">
             <div class="spinner-border text-success" role="status"></div>
@@ -31,30 +39,32 @@
     else
     {
         <div class="row">
-           @foreach (var fund in funds)
+            @foreach (var fund in funds)
             {
-                <div class="col-xl-4 col-md-6 mb-4">
-                    <KpiCard Label="@fund.Name" 
-                             Value="@fund.AvailableAmount.ToString("C0")" 
-                             Icon="oi-briefcase" 
-                             Color="success" 
+                var percent = GetPercent(fund);
+
+                <div class="col-xl-4 col-md-6 mb-4" @key="fund">
+                    <KpiCard Label="@fund.Name"
+                             Value="@fund.AvailableAmount.ToString("C0")"
+                             Icon="oi-briefcase"
+                             Color="success"
                              Class="h-100">
                         <div class="position-absolute top-0 end-0 p-2">
                             <button class="btn btn-sm btn-link" style="color: var(--growit-text-muted);" @onclick="() => EditFund(fund)" title="Edit Budget">
                                 <span class="oi oi-pencil"></span>
                             </button>
                         </div>
-                        
+
                         <div class="mt-2">
                             <div class="small fw-normal opacity-50 mb-2">Total Budget: @fund.TotalAmount.ToString("C0")</div>
                             <div class="d-flex justify-content-between small mb-1 opacity-75">
                                 <span>Utilization</span>
-                                <span>@GetPercent(fund)%</span>
+                                <span>@percent%</span>
                             </div>
                             <div class="progress" style="height: 6px; background-color: var(--growit-bg-primary);">
-                                <div class="progress-bar" role="progressbar" 
-                                     style="width: @($"{GetPercent(fund)}%"); background-color: var(--growit-success);" 
-                                     aria-valuenow="@GetPercent(fund)" aria-valuemin="0" aria-valuemax="100"></div>
+                                <div class="progress-bar" role="progressbar"
+                                     style="width: @($"{percent}%"); background-color: var(--growit-success);"
+                                     aria-valuenow="@percent" aria-valuemin="0" aria-valuemax="100"></div>
                             </div>
                         </div>
                     </KpiCard>
@@ -64,14 +74,15 @@
     }
 </div>
 
-<CreateFundModal @bind-Show="showCreateModal" 
-                 FundToEdit="selectedFund" 
+<CreateFundModal @bind-Show="showCreateModal"
+                 FundToEdit="selectedFund"
                  OnFundCreated="ReloadFunds" />
 
 @code {
     private List<FundDto>? funds;
-    private FundDto? selectedFund; 
-    private bool showCreateModal = false;
+    private FundDto? selectedFund;
+    private bool showCreateModal;
+    private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -82,11 +93,14 @@
     {
         try
         {
+            errorMessage = null;
             funds = await Http.GetFromJsonAsync<List<FundDto>>("api/financials/funds");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error: {ex.Message}");
+            Logger.LogError(ex, "Failed to load funds from api/financials/funds");
+            funds = [];
+            errorMessage = "Couldn't load funds. Please try again.";
         }
     }
 
@@ -102,10 +116,14 @@
         showCreateModal = true;
     }
 
-    private int GetPercent(FundDto f)
+    private static int GetPercent(FundDto f)
     {
-        if (f.TotalAmount == 0) return 0;
+        if (f.TotalAmount <= 0) return 0;
+
         var used = f.TotalAmount - f.AvailableAmount;
-        return (int)((used / f.TotalAmount) * 100);
+
+        // Ensure decimal math + clamp to keep UI sane even if inputs drift slightly.
+        var percent = (decimal)used / f.TotalAmount * 100m;
+        return (int)Math.Clamp(decimal.Round(percent, 0, MidpointRounding.AwayFromZero), 0m, 100m);
     }
 }

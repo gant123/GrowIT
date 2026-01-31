@@ -44,6 +44,7 @@ public class ImprintsController : ControllerBase
             InvestmentId = request.InvestmentId, // Optional: Can be null now!
             
             Title = request.Title,
+            Category = request.Category,
             Outcome = request.Outcome,
             Notes = request.Notes,
             
@@ -70,6 +71,26 @@ public class ImprintsController : ControllerBase
         var imprints = await _context.Imprints
             .Where(i => i.FamilyMemberId == memberId)
             .OrderByDescending(i => i.DateOccurred)
+            .ToListAsync();
+
+        return Ok(imprints);
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<List<ImprintListDto>>> GetAll()
+    {
+        var imprints = await _context.Imprints
+            .Include(i => i.Client)
+            .OrderByDescending(i => i.DateOccurred)
+            .Select(i => new ImprintListDto
+            {
+                Id = i.Id,
+                PersonName = i.Client != null ? (i.Client.FirstName + " " + i.Client.LastName) : "Unknown",
+                Title = i.Title,
+                Category = i.Category,
+                Date = i.DateOccurred,
+                IsVerified = true // For now, all recorded imprints are considered verified
+            })
             .ToListAsync();
 
         return Ok(imprints);

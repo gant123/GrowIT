@@ -10,4 +10,7 @@ public class CreateProgramRequest
     public string Description { get; set; } = string.Empty;
     
     public decimal DefaultUnitCost { get; set; } // e.g. $150.00
+
+    public int? CapacityLimit { get; set; }
+    public string? CapacityPeriod { get; set; } // "Monthly", "Weekly", "Annual"
 }

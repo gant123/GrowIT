@@ -1,0 +1,50 @@
+<div class="kpi-card @ColorClass @Class">
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <div class="kpi-icon-wrapper">
+            <span class="oi @Icon"></span>
+        </div>
+    }
+    <div class="kpi-label">@Label</div>
+    <div class="kpi-value">@Value</div>
+    @if (!string.IsNullOrEmpty(TrendText))
+    {
+        <div class="kpi-trend @TrendClass">
+            @if (!string.IsNullOrEmpty(TrendIcon))
+            {
+                <span class="oi @TrendIcon"></span>
+            }
+            @TrendText
+        </div>
+    }
+    @ChildContent
+</div>
+
+@code {
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public string Value { get; set; } = string.Empty;
+    [Parameter] public string Icon { get; set; } = string.Empty;
+    [Parameter] public string Color { get; set; } = "primary"; // primary, success, warning, danger, info
+    [Parameter] public string TrendText { get; set; } = string.Empty;
+    [Parameter] public string TrendIcon { get; set; } = string.Empty;
+    [Parameter] public string TrendDirection { get; set; } = "neutral"; // up, down, neutral
+    [Parameter] public string Class { get; set; } = string.Empty;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string ColorClass => Color.ToLower() switch
+    {
+        "success" => "success",
+        "warning" => "warning",
+        "danger" => "danger",
+        "info" => "info",
+        "primary" => "primary",
+        _ => "primary"
+    };
+
+    private string TrendClass => TrendDirection.ToLower() switch
+    {
+        "up" => "up",
+        "down" => "down",
+        _ => "neutral"
+    };
+}
