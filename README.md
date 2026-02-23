@@ -97,6 +97,77 @@ dotnet ef database update --project src/GrowIT.Infrastructure --startup-project 
 dotnet ef migrations add <MigrationName> --project src/GrowIT.Infrastructure --startup-project src/GrowIT.API
 ```
 
+## Docker Compose (Beta / Cloudflare Tunnel)
+
+This repository includes a container stack for:
+
+- `db` (PostgreSQL)
+- `api` (ASP.NET Core API)
+- `client` (Nginx serving the Blazor WebAssembly app, with `/api` reverse-proxied to the API container)
+- optional `cloudflared` service (profile-based)
+
+Files:
+
+- `docker-compose.yml`
+- `docker/api/Dockerfile`
+- `docker/client/Dockerfile`
+- `docker/nginx/growit-client.conf`
+- `.env.docker.example`
+
+## 1. Create your Docker env file
+
+```bash
+cp .env.docker.example .env
+```
+
+Update at minimum:
+
+- `POSTGRES_PASSWORD`
+- `JWT_KEY`
+- `CLIENT_URL` (set to `https://beta-growit.ganthome.cloud`)
+- SMTP settings (`EMAIL_*`) for real invite delivery
+
+## 2. Start the containers
+
+```bash
+docker compose up -d --build
+```
+
+Default container ports:
+
+- Client: `http://localhost:8080`
+- API: `http://localhost:5286`
+- Postgres: `localhost:5433`
+
+## 3. Apply EF migrations to the containerized database (from host)
+
+Use your normal EF command, but point the connection string at the Docker Postgres port:
+
+```bash
+ConnectionStrings__DefaultConnection="Host=localhost;Port=5433;Database=GrowIT;Username=postgres;Password=YOUR_PASSWORD" \
+dotnet ef database update --project src/GrowIT.Infrastructure --startup-project src/GrowIT.API
+```
+
+## 4. Cloudflare Tunnel (`beta-growit.ganthome.cloud`)
+
+Two options:
+
+- Run `cloudflared` on the host and point it to `http://localhost:8080`
+- Run the optional compose `cloudflared` service
+
+If using the compose service:
+
+```bash
+docker compose --profile tunnel up -d cloudflared
+```
+
+Set `CF_TUNNEL_TOKEN` in `.env`.
+
+In Cloudflare Tunnel, set the public hostname service target to:
+
+- `http://client:80` (if using compose `cloudflared`)
+- `http://localhost:8080` (if using host `cloudflared`)
+
 ## Testing
 
 Run API integration tests:

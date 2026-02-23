@@ -46,10 +46,34 @@ builder.Services.AddScoped<IRoleAccessService, RoleAccessService>();
 builder.Services.AddScoped<IFeedbackService, FeedbackService>();
 // 4. API Connection: Points specifically to your Backend API
 //    Make sure this matches the port your API is running on (likely 5286 or 5000)
-builder.Services.AddScoped(sp => new HttpClient 
-{ 
-    BaseAddress = new Uri("http://localhost:5286") 
+var apiBaseAddress = ResolveApiBaseAddress(builder);
+builder.Services.AddScoped(sp => new HttpClient
+{
+    BaseAddress = apiBaseAddress
 });
 
 builder.Services.AddSyncfusionBlazor();
 await builder.Build().RunAsync();
+
+static Uri ResolveApiBaseAddress(WebAssemblyHostBuilder builder)
+{
+    var configured = builder.Configuration["ApiBaseUrl"]?.Trim();
+    if (!string.IsNullOrWhiteSpace(configured))
+    {
+        if (Uri.TryCreate(configured, UriKind.Absolute, out var absolute))
+        {
+            return absolute;
+        }
+
+        return new Uri(new Uri(builder.HostEnvironment.BaseAddress), configured);
+    }
+
+    // Local dev fallback when running the WASM dev server without a reverse proxy.
+    if (builder.HostEnvironment.BaseAddress.Contains("localhost:5245", StringComparison.OrdinalIgnoreCase))
+    {
+        return new Uri("http://localhost:5286");
+    }
+
+    // Container/proxy fallback: same-origin (/api/* proxied by nginx).
+    return new Uri(builder.HostEnvironment.BaseAddress);
+}

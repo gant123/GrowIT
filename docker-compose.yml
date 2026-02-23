@@ -1,0 +1,78 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: growit-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-GrowIT}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - growit-postgres-data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+    container_name: growit-api
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB:-GrowIT};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
+      Jwt__Key: ${JWT_KEY:-ChangeMe-Set-A-Long-Random-Key-Before-Beta}
+      ClientUrl: ${CLIENT_URL:-https://beta-growit.ganthome.cloud}
+      Cors__AllowedOrigins__0: ${CLIENT_URL:-https://beta-growit.ganthome.cloud}
+      Cors__AllowedOrigins__1: http://localhost:${CLIENT_PORT:-8080}
+      Email__SmtpHost: ${EMAIL_SMTP_HOST:-}
+      Email__SmtpPort: ${EMAIL_SMTP_PORT:-587}
+      Email__UseSsl: ${EMAIL_USE_SSL:-true}
+      Email__SmtpUser: ${EMAIL_SMTP_USER:-}
+      Email__SmtpPass: ${EMAIL_SMTP_PASS:-}
+      Email__FromEmail: ${EMAIL_FROM_EMAIL:-noreply@growit.local}
+      Email__TimeoutMs: ${EMAIL_TIMEOUT_MS:-10000}
+      Email__DevFileFallbackEnabled: ${EMAIL_DEV_FILE_FALLBACK_ENABLED:-false}
+      Email__DevFileFallbackDirectory: /app/dev-emails
+      Reports__Scheduler__Enabled: ${REPORT_SCHEDULER_ENABLED:-true}
+      Reports__Scheduler__PollSeconds: ${REPORT_SCHEDULER_POLL_SECONDS:-60}
+      Reports__Scheduler__MaxSchedulesPerCycle: ${REPORT_SCHEDULER_MAX_PER_CYCLE:-20}
+      Reports__Scheduler__DefaultReportType: ${REPORT_SCHEDULER_DEFAULT_TYPE:-impact-summary}
+      Reports__Scheduler__DefaultFormat: ${REPORT_SCHEDULER_DEFAULT_FORMAT:-pdf}
+    ports:
+      - "${API_PORT:-5286}:8080"
+    volumes:
+      - growit-api-uploads:/app/wwwroot/uploads
+      - growit-api-dev-emails:/app/dev-emails
+
+  client:
+    build:
+      context: .
+      dockerfile: docker/client/Dockerfile
+    container_name: growit-client
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${CLIENT_PORT:-8080}:80"
+
+  # Optional: run Cloudflare Tunnel in the same compose network.
+  # Configure the public hostname in Cloudflare Tunnel to point to http://client:80
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: growit-cloudflared
+    restart: unless-stopped
+    depends_on:
+      - client
+    command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
+    profiles:
+      - tunnel
+
+volumes:
+  growit-postgres-data:
+  growit-api-uploads:
+  growit-api-dev-emails:
+

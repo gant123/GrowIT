@@ -1,0 +1,13 @@
+.git
+.gitignore
+**/bin
+**/obj
+**/.vs
+**/.vscode
+**/.DS_Store
+**/node_modules
+tests/**/TestResults
+src/GrowIT.API/dev-emails
+*.user
+*.suo
+
