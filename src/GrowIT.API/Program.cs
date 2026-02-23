@@ -10,11 +10,15 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.FileProviders;
+using QuestPDF.Infrastructure;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 
 // AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
 var builder = WebApplication.CreateBuilder(args);
+
+QuestPDF.Settings.License = LicenseType.Community;
 
 // ==========================================
 // 2. REGISTER SERVICES
@@ -27,6 +31,9 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>(); // NEW: N
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
+builder.Services.Configure<ReportSchedulerOptions>(builder.Configuration.GetSection("Reports:Scheduler"));
+builder.Services.AddSingleton<ReportSchedulerState>();
+builder.Services.AddHostedService<ScheduledReportRunnerService>();
 
 // B. Register the Interceptor itself
 builder.Services.AddScoped<AuditInterceptor>(); 
@@ -44,15 +51,22 @@ builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
 });
 
 builder.Services.AddControllers();
+builder.Services.AddHealthChecks();
 
 // D. CORS (The Bridge for Blazor)
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowBlazorOrigin", policy =>
     {
-        policy.WithOrigins("http://localhost:5245", "https://localhost:5001") 
+        var configuredOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+        var origins = configuredOrigins is { Length: > 0 }
+            ? configuredOrigins
+            : new[] { "http://localhost:5245", "https://localhost:5001" };
+
+        policy.WithOrigins(origins)
               .AllowAnyMethod()
-              .AllowAnyHeader();
+              .AllowAnyHeader()
+              .WithExposedHeaders("Content-Disposition");
     });
 });
 
@@ -117,6 +131,7 @@ app.UseAuthentication();
 app.UseAuthorization();           
 
 app.MapControllers();
+app.MapHealthChecks("/healthz");
 
 app.Run();
 

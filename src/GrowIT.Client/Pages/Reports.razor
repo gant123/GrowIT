@@ -199,6 +199,61 @@
     <!-- Recent Reports -->
     <div class="report-section">
         <h2 class="section-title">Recent Reports</h2>
+        <div class="card-growit mb-3">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-lg-3 col-md-6">
+                        <label class="form-label">Search</label>
+                        <input class="form-control" placeholder="Name, type, format..." @bind="_recentSearch" />
+                    </div>
+                    <div class="col-lg-2 col-md-6">
+                        <label class="form-label">Type</label>
+                        <select class="form-select" @bind="_recentReportTypeFilter">
+                            <option value="">All</option>
+                            <option value="impact-summary">Impact Summary</option>
+                            <option value="investment-detail">Investment Detail</option>
+                            <option value="outcomes-by-category">Outcomes by Category</option>
+                            <option value="funding-utilization">Funding Utilization</option>
+                            <option value="season-progression">Season Progression</option>
+                            <option value="demographic-breakdown">Demographic Breakdown</option>
+                            <option value="investments">Custom Investments</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4">
+                        <label class="form-label">Format</label>
+                        <select class="form-select" @bind="_recentFormatFilter">
+                            <option value="">All</option>
+                            <option value="pdf">PDF</option>
+                            <option value="excel">Excel</option>
+                            <option value="csv">CSV</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" @bind="_recentStatusFilter">
+                            <option value="">All</option>
+                            <option value="Generated">Generated</option>
+                            <option value="Failed">Failed</option>
+                            <option value="Queued">Queued</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-1 col-md-4">
+                        <label class="form-label">From</label>
+                        <input class="form-control" type="date" @bind="_recentDateFromFilter" />
+                    </div>
+                    <div class="col-lg-1 col-md-4">
+                        <label class="form-label">To</label>
+                        <input class="form-control" type="date" @bind="_recentDateToFilter" />
+                    </div>
+                    <div class="col-lg-1 col-md-8 d-flex align-items-end justify-content-end gap-2">
+                        <button class="btn btn-outline-secondary" @onclick="ClearRecentFilters" disabled="@_isLoadingRecent">Clear</button>
+                        <button class="btn btn-primary" @onclick="ApplyRecentFiltersAsync" disabled="@_isLoadingRecent">
+                            <i class="bi bi-funnel me-1"></i>Apply
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
         <div class="card-growit">
             @if (_isLoadingRecent)
             {
@@ -251,15 +306,61 @@
                                     <span class="badge-growit badge-neutral" style="color: var(--growit-text-secondary) !important;">@report.Format.ToUpperInvariant()</span>
                                 </Template>
                             </GridColumn>
-                            <GridColumn HeaderText="Actions" Width="140" AllowFiltering="false" AllowSorting="false" TextAlign="TextAlign.Right">
+                            <GridColumn Field=@nameof(RecentReport.Status) HeaderText="Status" Width="140" TextAlign="TextAlign.Center">
                                 <Template>
                                     @{
                                         var report = (context as RecentReport)!;
                                     }
-                                    <button class="btn btn-ghost btn-sm" @onclick="() => DownloadReport(report.Id)">
-                                        <i class="bi bi-download"></i>
-                                        Download
-                                    </button>
+                                    <span class="badge-growit @GetReportStatusBadgeClass(report.Status)">@report.Status</span>
+                                </Template>
+                            </GridColumn>
+                            <GridColumn HeaderText="Run Details" Width="190" AllowFiltering="false" AllowSorting="false">
+                                <Template>
+                                    @{
+                                        var report = (context as RecentReport)!;
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(report.ErrorMessage))
+                                    {
+                                        <div class="small text-danger" title="@report.ErrorMessage">
+                                            <i class="bi bi-exclamation-triangle me-1"></i>
+                                            Failed: @Truncate(report.ErrorMessage, 42)
+                                        </div>
+                                    }
+                                    else if (report.LastDownloadedAt.HasValue)
+                                    {
+                                        <div class="small text-muted" title="@FormatLocalTimestamp(report.LastDownloadedAt)">
+                                            <i class="bi bi-download me-1"></i>
+                                            Downloaded @report.LastDownloadedAt.Value.ToLocalTime().ToString("MMM d, h:mm tt")
+                                        </div>
+                                    }
+                                    else if (report.CompletedAt.HasValue)
+                                    {
+                                        <div class="small text-muted" title="@FormatLocalTimestamp(report.CompletedAt)">
+                                            <i class="bi bi-check2-circle me-1"></i>
+                                            Completed @report.CompletedAt.Value.ToLocalTime().ToString("MMM d, h:mm tt")
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="small text-muted">Pending run details</span>
+                                    }
+                                </Template>
+                            </GridColumn>
+                            <GridColumn HeaderText="Actions" Width="230" AllowFiltering="false" AllowSorting="false" TextAlign="TextAlign.Right">
+                                <Template>
+                                    @{
+                                        var report = (context as RecentReport)!;
+                                    }
+                                    <div class="d-flex justify-content-end gap-2">
+                                        <button class="btn btn-ghost btn-sm" @onclick="() => OpenReportDetailsAsync(report.Id)">
+                                            <i class="bi bi-card-text me-1"></i>
+                                            Details
+                                        </button>
+                                        <button class="btn btn-ghost btn-sm" @onclick="() => DownloadReport(report)" disabled="@(!CanDownloadReport(report))">
+                                            <i class="bi bi-download"></i>
+                                            Download
+                                        </button>
+                                    </div>
                                 </Template>
                             </GridColumn>
                         </GridColumns>
@@ -285,11 +386,30 @@
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-md-4">
+                        <div class="col-lg-3 col-md-6">
                             <label class="form-label">Name</label>
                             <input class="form-control" @bind="_scheduleForm.Name" placeholder="Weekly Impact Summary" />
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-lg-2 col-md-6">
+                            <label class="form-label">Report Type</label>
+                            <select class="form-select" @bind="_scheduleForm.ReportType">
+                                <option value="impact-summary">Impact Summary</option>
+                                <option value="investment-detail">Investment Detail</option>
+                                <option value="outcomes-by-category">Outcomes by Category</option>
+                                <option value="funding-utilization">Funding Utilization</option>
+                                <option value="season-progression">Season Progression</option>
+                                <option value="demographic-breakdown">Demographic Breakdown</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-2 col-md-4">
+                            <label class="form-label">Format</label>
+                            <select class="form-select" @bind="_scheduleForm.Format">
+                                <option value="pdf">PDF</option>
+                                <option value="excel">Excel</option>
+                                <option value="csv">CSV</option>
+                            </select>
+                        </div>
+                        <div class="col-lg-2 col-md-4">
                             <label class="form-label">Frequency</label>
                             <select class="form-select" @bind="_scheduleForm.Frequency">
                                 <option value="Daily">Daily</option>
@@ -297,11 +417,11 @@
                                 <option value="Monthly">Monthly</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-lg-2 col-md-4">
                             <label class="form-label">Next Run</label>
                             <input class="form-control" type="date" @bind="_scheduleForm.NextRunDate" />
                         </div>
-                        <div class="col-md-2 d-flex align-items-end justify-content-end gap-2">
+                        <div class="col-lg-1 col-md-12 d-flex align-items-end justify-content-end gap-2">
                             @if (_editingScheduleId.HasValue)
                             {
                                 <button class="btn btn-outline-secondary" @onclick="CancelScheduleEdit" disabled="@_isSavingSchedule">Cancel</button>
@@ -343,8 +463,24 @@
                             <GridTextWrapSettings WrapMode="WrapMode.Content"></GridTextWrapSettings>
                             <GridEvents TValue="ScheduledReport" OnToolbarClick="OnScheduledReportsToolbarClick"></GridEvents>
                             <GridColumns>
-                                <GridColumn Field=@nameof(ScheduledReport.Name) HeaderText="Schedule" Width="260" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
-                                <GridColumn Field=@nameof(ScheduledReport.Frequency) HeaderText="Frequency" Width="150" TextAlign="TextAlign.Center"></GridColumn>
+                                <GridColumn Field=@nameof(ScheduledReport.Name) HeaderText="Schedule" Width="220" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                <GridColumn Field=@nameof(ScheduledReport.ReportType) HeaderText="Type" Width="180" ClipMode="ClipMode.EllipsisWithTooltip">
+                                    <Template>
+                                        @{
+                                            var scheduled = (context as ScheduledReport)!;
+                                        }
+                                        <span class="small fw-semibold">@PrettyReportType(scheduled.ReportType)</span>
+                                    </Template>
+                                </GridColumn>
+                                <GridColumn Field=@nameof(ScheduledReport.Format) HeaderText="Format" Width="110" TextAlign="TextAlign.Center">
+                                    <Template>
+                                        @{
+                                            var scheduled = (context as ScheduledReport)!;
+                                        }
+                                        <span class="badge-growit badge-neutral" style="color: var(--growit-text-secondary) !important;">@scheduled.Format.ToUpperInvariant()</span>
+                                    </Template>
+                                </GridColumn>
+                                <GridColumn Field=@nameof(ScheduledReport.Frequency) HeaderText="Frequency" Width="130" TextAlign="TextAlign.Center"></GridColumn>
                                 <GridColumn Field=@nameof(ScheduledReport.NextRun) HeaderText="Next Run" Width="160">
                                     <Template>
                                         @{
@@ -385,6 +521,137 @@
     }
 </div>
 
+@if (_showReportDetailDrawer)
+{
+    <div class="growit-drawer-backdrop" @onclick="CloseReportDetails"></div>
+    <aside class="growit-report-drawer" role="dialog" aria-modal="true" aria-label="Report run details">
+        <div class="growit-report-drawer-header">
+            <div>
+                <div class="small text-muted text-uppercase fw-semibold">Report Run Details</div>
+                <h3 class="mb-1">@(_reportDetail?.Name ?? "Loading…")</h3>
+                @if (_reportDetail is not null)
+                {
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                        <span class="badge-growit @GetReportStatusBadgeClass(_reportDetail.Status)">@_reportDetail.Status</span>
+                        <span class="badge-growit badge-neutral">@_reportDetail.Format.ToUpperInvariant()</span>
+                        <span class="badge-growit badge-neutral">@_reportDetail.ReportType</span>
+                    </div>
+                }
+            </div>
+            <button type="button" class="btn-icon-only" title="Close details" @onclick="CloseReportDetails">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <div class="growit-report-drawer-body">
+            @if (_isLoadingReportDetail)
+            {
+                <div class="p-3 text-muted">Loading report run details...</div>
+            }
+            else if (!string.IsNullOrWhiteSpace(_reportDetailError))
+            {
+                <div class="alert alert-danger mb-0">@_reportDetailError</div>
+            }
+            else if (_reportDetail is not null)
+            {
+                <div class="growit-report-detail-section">
+                    <h4>Run Summary</h4>
+                    <div class="growit-report-detail-grid">
+                        <div><span>Generated</span><strong>@FormatLocalTimestamp(_reportDetail.GeneratedAt)</strong></div>
+                        <div><span>Completed</span><strong>@FormatLocalTimestamp(_reportDetail.CompletedAt)</strong></div>
+                        <div><span>Last Downloaded</span><strong>@FormatLocalTimestamp(_reportDetail.LastDownloadedAt)</strong></div>
+                        <div><span>Run Time</span><strong>@FormatDuration(_reportDetail.DurationMs)</strong></div>
+                        <div><span>Fiscal Year</span><strong>@DisplayValue(_reportDetail.FiscalYear)</strong></div>
+                        <div><span>Grouping</span><strong>@DisplayValue(_reportDetail.GroupBy)</strong></div>
+                        <div><span>Date From</span><strong>@FormatLocalDate(_reportDetail.DateFrom)</strong></div>
+                        <div><span>Date To</span><strong>@FormatLocalDate(_reportDetail.DateTo)</strong></div>
+                    </div>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(_reportDetail.ErrorMessage))
+                {
+                    <div class="growit-report-detail-section">
+                        <h4>Failure Details</h4>
+                        <pre class="growit-report-code growit-report-code-danger">@_reportDetail.ErrorMessage</pre>
+                    </div>
+                }
+
+                <div class="growit-report-detail-section">
+                    <h4>Run History</h4>
+                    @if (_reportDetail.Timeline?.Count > 0)
+                    {
+                        <div class="growit-report-timeline">
+                            @foreach (var evt in _reportDetail.Timeline.OrderByDescending(t => t.OccurredAt))
+                            {
+                                <div class="growit-report-timeline-item">
+                                    <div class="growit-report-timeline-dot @GetTimelineDotClass(evt.EventType)"></div>
+                                    <div class="growit-report-timeline-content">
+                                        <div class="d-flex justify-content-between gap-2 flex-wrap">
+                                            <strong>@evt.Label</strong>
+                                            <span class="small text-muted">@FormatLocalTimestamp(evt.OccurredAt)</span>
+                                        </div>
+                                        @if (!string.IsNullOrWhiteSpace(evt.Details))
+                                        {
+                                            <div class="small text-muted">@evt.Details</div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="small text-muted">No lifecycle events recorded.</div>
+                    }
+                </div>
+
+                <div class="growit-report-detail-section">
+                    <h4>Download History</h4>
+                    @if (_reportDetail.DownloadEvents?.Count > 0)
+                    {
+                        <div class="growit-report-downloads">
+                            @foreach (var download in _reportDetail.DownloadEvents)
+                            {
+                                <div class="growit-report-download-item">
+                                    <div class="growit-report-download-main">
+                                        <div class="fw-semibold text-truncate" title="@download.FileName">@download.FileName</div>
+                                        <div class="small text-muted">@download.ContentType</div>
+                                    </div>
+                                    <div class="growit-report-download-meta">
+                                        <div>@FormatLocalTimestamp(download.DownloadedAt)</div>
+                                        @if (!string.IsNullOrWhiteSpace(download.ClientIp))
+                                        {
+                                            <div class="small text-muted">IP: @download.ClientIp</div>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(download.UserAgent))
+                                        {
+                                            <div class="small text-muted" title="@download.UserAgent">UA: @Truncate(download.UserAgent, 56)</div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="small text-muted">No download events recorded yet.</div>
+                    }
+                </div>
+
+                <div class="growit-report-detail-section">
+                    <div class="d-flex justify-content-between align-items-center gap-2">
+                        <h4 class="mb-0">Request Payload</h4>
+                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="CopyReportPayloadAsync">
+                            <i class="bi bi-clipboard me-1"></i>Copy
+                        </button>
+                    </div>
+                    <pre class="growit-report-code">@_reportDetail.RequestPayloadJson</pre>
+                </div>
+            }
+        </div>
+    </aside>
+}
+
 @code {
     // Custom report builder
     private string _customReportType = "investments";
@@ -393,7 +660,18 @@
     private DateTime? _customDateTo;
     private string _customGroupBy = "none";
     private string _customFormat = "pdf";
-    private static readonly List<string> GridToolbarItems = ["Search", "ColumnChooser", "ExcelExport"];
+    private static readonly List<object> GridToolbarItems =
+    [
+        "Search",
+        "ColumnChooser",
+        new ItemModel
+        {
+            Id = "growit-excelexport",
+            Text = "Export Excel",
+            TooltipText = "Export grid to Excel",
+            PrefixIcon = "bi bi-file-earmark-excel growit-grid-toolbar-icon"
+        }
+    ];
     private bool _isGenerating;
     private bool _isSavingSchedule;
     private bool _isRefreshingAll;
@@ -412,6 +690,16 @@
     private SfGrid<ScheduledReport>? _scheduledReportsGrid;
     private bool _isLoadingScheduled = true;
     private bool _hasReportAccess = true;
+    private bool _showReportDetailDrawer;
+    private bool _isLoadingReportDetail;
+    private ReportRunDetailDto? _reportDetail;
+    private string? _reportDetailError;
+    private string _recentSearch = string.Empty;
+    private string _recentReportTypeFilter = string.Empty;
+    private string _recentFormatFilter = string.Empty;
+    private string _recentStatusFilter = string.Empty;
+    private DateTime? _recentDateFromFilter;
+    private DateTime? _recentDateToFilter;
 
     protected override async Task OnInitializedAsync()
     {
@@ -509,19 +797,66 @@
         }
     }
 
-    private async Task DownloadReport(Guid id)
+    private async Task DownloadReport(RecentReport report)
     {
         if (!_hasReportAccess) return;
+        if (!CanDownloadReport(report)) return;
         try
         {
-            // Trigger browser download by navigating to the file endpoint.
-            await JS.InvokeVoidAsync("window.open", $"api/reports/{id}/download", "_blank");
+            var file = await ReportService.DownloadReportAsync(report.Id);
+            await JS.InvokeVoidAsync(
+                "blazorInterop.downloadFile",
+                file.FileName,
+                file.ContentType,
+                Convert.ToBase64String(file.Content));
+            _pageMessage = $"Downloaded report: {file.FileName}";
+            _pageError = null;
+            report.LastDownloadedAt = DateTime.UtcNow;
+            report.Status = "Generated";
         }
         catch (Exception ex)
         {
             _pageError = ex.Message;
             Console.WriteLine($"Error downloading report: {ex.Message}");
         }
+    }
+
+    private async Task OpenReportDetailsAsync(Guid id)
+    {
+        _showReportDetailDrawer = true;
+        _isLoadingReportDetail = true;
+        _reportDetailError = null;
+        _reportDetail = null;
+
+        try
+        {
+            _reportDetail = await ReportService.GetReportRunDetailsAsync(id);
+            if (_reportDetail is null)
+            {
+                _reportDetailError = "Report run details were not found.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _reportDetailError = ex.Message;
+        }
+        finally
+        {
+            _isLoadingReportDetail = false;
+        }
+    }
+
+    private void CloseReportDetails()
+    {
+        _showReportDetailDrawer = false;
+    }
+
+    private async Task CopyReportPayloadAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_reportDetail?.RequestPayloadJson)) return;
+        await JS.InvokeVoidAsync("blazorInterop.copyToClipboard", _reportDetail.RequestPayloadJson);
+        _pageMessage = "Report request payload copied.";
+        _pageError = null;
     }
 
     private async Task SaveScheduleAsync()
@@ -549,6 +884,8 @@
                 var updated = await ReportService.UpdateScheduledReportAsync(_editingScheduleId.Value, new UpdateScheduledReportRequest
                 {
                     Name = _scheduleForm.Name.Trim(),
+                    ReportType = _scheduleForm.ReportType,
+                    Format = _scheduleForm.Format,
                     Frequency = _scheduleForm.Frequency.Trim(),
                     NextRun = nextRun
                 });
@@ -567,6 +904,8 @@
                 var created = await ReportService.CreateScheduledReportAsync(new CreateScheduledReportRequest
                 {
                     Name = _scheduleForm.Name.Trim(),
+                    ReportType = _scheduleForm.ReportType,
+                    Format = _scheduleForm.Format,
                     Frequency = _scheduleForm.Frequency.Trim(),
                     NextRun = nextRun
                 });
@@ -599,6 +938,8 @@
         _scheduleForm = new ReportScheduleForm
         {
             Name = existing.Name,
+            ReportType = string.IsNullOrWhiteSpace(existing.ReportType) ? "impact-summary" : existing.ReportType,
+            Format = string.IsNullOrWhiteSpace(existing.Format) ? "pdf" : existing.Format,
             Frequency = string.IsNullOrWhiteSpace(existing.Frequency) ? "Weekly" : existing.Frequency,
             NextRunDate = existing.NextRun.ToLocalTime().Date
         };
@@ -647,7 +988,7 @@
         {
             _isLoadingRecent = true;
             _isLoadingScheduled = true;
-            var recentTask = ReportService.GetRecentReportsAsync();
+            var recentTask = LoadRecentReportsAsync();
             var scheduledTask = ReportService.GetScheduledReportsAsync();
             await Task.WhenAll(recentTask, scheduledTask);
             _recentReports = await recentTask;
@@ -663,6 +1004,52 @@
             _isLoadingScheduled = false;
             _isRefreshingAll = false;
         }
+    }
+
+    private async Task<List<RecentReport>> LoadRecentReportsAsync()
+    {
+        var query = new RecentReportsQueryParams
+        {
+            Search = string.IsNullOrWhiteSpace(_recentSearch) ? null : _recentSearch.Trim(),
+            ReportType = string.IsNullOrWhiteSpace(_recentReportTypeFilter) ? null : _recentReportTypeFilter,
+            Format = string.IsNullOrWhiteSpace(_recentFormatFilter) ? null : _recentFormatFilter,
+            Status = string.IsNullOrWhiteSpace(_recentStatusFilter) ? null : _recentStatusFilter,
+            DateFrom = _recentDateFromFilter,
+            DateTo = _recentDateToFilter,
+            Take = 300
+        };
+
+        return await ReportService.GetRecentReportsAsync(query);
+    }
+
+    private async Task ApplyRecentFiltersAsync()
+    {
+        if (!_hasReportAccess) return;
+        _isLoadingRecent = true;
+        _pageError = null;
+        try
+        {
+            _recentReports = await LoadRecentReportsAsync();
+        }
+        catch (Exception ex)
+        {
+            _pageError = ex.Message;
+        }
+        finally
+        {
+            _isLoadingRecent = false;
+        }
+    }
+
+    private async Task ClearRecentFilters()
+    {
+        _recentSearch = string.Empty;
+        _recentReportTypeFilter = string.Empty;
+        _recentFormatFilter = string.Empty;
+        _recentStatusFilter = string.Empty;
+        _recentDateFromFilter = null;
+        _recentDateToFilter = null;
+        await ApplyRecentFiltersAsync();
     }
 
     private async Task OnRecentReportsToolbarClick(ClickEventArgs args)
@@ -683,15 +1070,73 @@
         }
     }
 
+    private static bool CanDownloadReport(RecentReport report) =>
+        string.Equals(report.Status, "Generated", StringComparison.OrdinalIgnoreCase);
+
+    private static string Truncate(string? value, int max)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        var text = value.Trim();
+        return text.Length <= max ? text : text[..Math.Max(0, max - 1)] + "…";
+    }
+
+    private static string GetReportStatusBadgeClass(string? status) => status?.Trim().ToLowerInvariant() switch
+    {
+        "generated" => "badge-success",
+        "failed" => "badge-danger",
+        "queued" => "badge-warning",
+        _ => "badge-neutral"
+    };
+
+    private static string FormatLocalTimestamp(DateTime? value) =>
+        value.HasValue ? value.Value.ToLocalTime().ToString("f") : string.Empty;
+
+    private static string FormatLocalTimestamp(DateTime value) =>
+        value.ToLocalTime().ToString("f");
+
+    private static string FormatLocalDate(DateTime? value) =>
+        value.HasValue ? value.Value.ToLocalTime().ToString("d") : "N/A";
+
+    private static string FormatDuration(long? durationMs)
+    {
+        if (!durationMs.HasValue) return "N/A";
+        var ts = TimeSpan.FromMilliseconds(Math.Max(0, durationMs.Value));
+        if (ts.TotalSeconds < 1) return $"{durationMs.Value} ms";
+        if (ts.TotalMinutes < 1) return $"{ts.TotalSeconds:F1} sec";
+        return $"{(int)ts.TotalMinutes}m {ts.Seconds}s";
+    }
+
+    private static string DisplayValue(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "N/A" : value;
+
+    private static string PrettyReportType(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return "Impact Summary";
+        var text = value.Replace("-", " ", StringComparison.Ordinal).Trim();
+        return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(text);
+    }
+
+    private static string GetTimelineDotClass(string? eventType) => eventType?.Trim().ToLowerInvariant() switch
+    {
+        "failed" => "danger",
+        "generated" => "success",
+        "downloaded" => "info",
+        _ => "neutral"
+    };
+
     private sealed class ReportScheduleForm
     {
         public string Name { get; set; } = string.Empty;
+        public string ReportType { get; set; } = "impact-summary";
+        public string Format { get; set; } = "pdf";
         public string Frequency { get; set; } = "Weekly";
         public DateTime NextRunDate { get; set; } = DateTime.Today.AddDays(7);
 
         public static ReportScheduleForm CreateDefault() => new()
         {
             Name = "Weekly Impact Summary",
+            ReportType = "impact-summary",
+            Format = "pdf",
             Frequency = "Weekly",
             NextRunDate = DateTime.Today.AddDays(7)
         };

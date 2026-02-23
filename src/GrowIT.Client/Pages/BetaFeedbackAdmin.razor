@@ -1,0 +1,349 @@
+@page "/beta-feedback-admin"
+@attribute [Authorize]
+@using GrowIT.Shared.DTOs
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Navigations
+@inject IFeedbackService FeedbackService
+@inject IRoleAccessService RoleAccessService
+
+<PageTitle>Feedback Review - grow.IT</PageTitle>
+
+<div class="page-feedback-admin">
+    <PageHeader Title="Beta Feedback Review" Subtitle="Review and triage tester-reported issues and product requests.">
+        <Actions>
+            @if (_hasAdminAccess)
+            {
+                <button class="btn-growit btn-secondary-growit" @onclick="LoadAsync" disabled="@_isLoading">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                </button>
+            }
+        </Actions>
+    </PageHeader>
+
+    @if (!_hasAdminAccess)
+    {
+        <div class="alert alert-warning">Feedback review is available to `Admin`, `Manager`, or `Owner` roles.</div>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <div class="alert alert-success">@_message</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <div class="alert alert-danger">@_error</div>
+        }
+
+        <div class="card-growit mb-3">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-lg-4">
+                        <label class="form-label">Search</label>
+                        <input class="form-control" @bind="_query.Search" placeholder="Title, message, page..." />
+                    </div>
+                    <div class="col-lg-2 col-md-4">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" @bind="_query.Status">
+                            <option value="">All</option>
+                            <option>Open</option>
+                            <option>In Review</option>
+                            <option>Planned</option>
+                            <option>Resolved</option>
+                            <option>Dismissed</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4">
+                        <label class="form-label">Category</label>
+                        <select class="form-select" @bind="_query.Category">
+                            <option value="">All</option>
+                            <option>Bug</option>
+                            <option>UX</option>
+                            <option>Feature Request</option>
+                            <option>Performance</option>
+                            <option>Data</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 col-md-4">
+                        <label class="form-label">Severity</label>
+                        <select class="form-select" @bind="_query.Severity">
+                            <option value="">All</option>
+                            <option>Low</option>
+                            <option>Medium</option>
+                            <option>High</option>
+                            <option>Critical</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-2 d-flex align-items-end justify-content-end gap-2">
+                        <button class="btn btn-outline-secondary" @onclick="ClearFiltersAsync">Clear</button>
+                        <button class="btn btn-primary" @onclick="LoadAsync" disabled="@_isLoading">Apply</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-growit">
+            @if (_isLoading)
+            {
+                <div class="card-body text-center text-muted py-4">Loading feedback...</div>
+            }
+            else if (_items.Count == 0)
+            {
+                <div class="card-body text-center text-muted py-4">No feedback found for the selected filters.</div>
+            }
+            else
+            {
+                <div class="card-body p-0">
+                    <SfGrid TValue="BetaFeedbackListItemDto"
+                            @ref="_grid"
+                            DataSource="@_items"
+                            AllowPaging="true"
+                            AllowSorting="true"
+                            AllowFiltering="true"
+                            AllowResizing="true"
+                            AllowTextWrap="true"
+                            AllowExcelExport="true"
+                            ShowColumnChooser="true"
+                            Toolbar="@GridToolbarItems"
+                            Height="420">
+                        <GridPageSettings PageSize="10"></GridPageSettings>
+                        <GridFilterSettings Type="FilterType.Excel"></GridFilterSettings>
+                        <GridTextWrapSettings WrapMode="WrapMode.Content"></GridTextWrapSettings>
+                        <GridEvents TValue="BetaFeedbackListItemDto" OnToolbarClick="OnToolbarClick"></GridEvents>
+                        <GridColumns>
+                            <GridColumn Field=@nameof(BetaFeedbackListItemDto.CreatedAt) HeaderText="Submitted" Width="165">
+                                <Template>
+                                    @{
+                                        var item = (context as BetaFeedbackListItemDto)!;
+                                    }
+                                    @item.CreatedAt.ToLocalTime().ToString("MMM d, h:mm tt")
+                                </Template>
+                            </GridColumn>
+                            <GridColumn HeaderText="Reporter" Width="220">
+                                <Template>
+                                    @{
+                                        var item = (context as BetaFeedbackListItemDto)!;
+                                    }
+                                    <div class="d-flex flex-column">
+                                        <span class="fw-semibold">@(!string.IsNullOrWhiteSpace(item.SubmittedByName) ? item.SubmittedByName : "Unknown")</span>
+                                        <span class="small text-muted">@item.SubmittedByEmail</span>
+                                    </div>
+                                </Template>
+                            </GridColumn>
+                            <GridColumn Field=@nameof(BetaFeedbackListItemDto.Status) HeaderText="Status" Width="130" TextAlign="TextAlign.Center">
+                                <Template>
+                                    @{
+                                        var item = (context as BetaFeedbackListItemDto)!;
+                                    }
+                                    <span class="badge-growit @GetStatusBadge(item.Status)">@item.Status</span>
+                                </Template>
+                            </GridColumn>
+                            <GridColumn Field=@nameof(BetaFeedbackListItemDto.Category) HeaderText="Category" Width="135" />
+                            <GridColumn Field=@nameof(BetaFeedbackListItemDto.Severity) HeaderText="Severity" Width="120" TextAlign="TextAlign.Center">
+                                <Template>
+                                    @{
+                                        var item = (context as BetaFeedbackListItemDto)!;
+                                    }
+                                    <span class="badge-growit @GetSeverityBadge(item.Severity)">@item.Severity</span>
+                                </Template>
+                            </GridColumn>
+                            <GridColumn Field=@nameof(BetaFeedbackListItemDto.Title) HeaderText="Title" Width="240" ClipMode="ClipMode.EllipsisWithTooltip" />
+                            <GridColumn HeaderText="Actions" Width="260" AllowSorting="false" AllowFiltering="false">
+                                <Template>
+                                    @{
+                                        var item = (context as BetaFeedbackListItemDto)!;
+                                    }
+                                    <div class="feedback-admin-actions">
+                                        <button class="btn btn-sm btn-outline-secondary" @onclick="() => OpenDetails(item)">Details</button>
+                                        <button class="btn btn-sm btn-outline-warning" @onclick='() => UpdateStatusAsync(item, "In Review")'>Review</button>
+                                        <button class="btn btn-sm btn-outline-success" @onclick='() => UpdateStatusAsync(item, "Resolved")'>Resolve</button>
+                                    </div>
+                                </Template>
+                            </GridColumn>
+                        </GridColumns>
+                    </SfGrid>
+                </div>
+            }
+        </div>
+
+        @if (_selected is not null)
+        {
+            <div class="card-growit mt-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="section-title mb-0">Feedback Details</h3>
+                    <button class="btn-icon-only" @onclick="@(() => _selected = null)"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6"><strong>Title:</strong> @_selected.Title</div>
+                        <div class="col-md-3"><strong>Category:</strong> @_selected.Category</div>
+                        <div class="col-md-3"><strong>Severity:</strong> @_selected.Severity</div>
+                        <div class="col-md-6"><strong>Status:</strong> @_selected.Status</div>
+                        <div class="col-md-6"><strong>Page:</strong> @(_selected.PageUrl ?? "-")</div>
+                        <div class="col-12">
+                            <label class="form-label">Message</label>
+                            <textarea class="form-control" rows="4" readonly>@_selected.Message</textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Update Status</label>
+                            <select class="form-select" @bind="_selectedStatus">
+                                <option>Open</option>
+                                <option>In Review</option>
+                                <option>Planned</option>
+                                <option>Resolved</option>
+                                <option>Dismissed</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Admin Notes</label>
+                            <input class="form-control" @bind="_selectedAdminNotes" placeholder="Optional triage note" />
+                        </div>
+                        <div class="col-12 d-flex justify-content-end">
+                            <button class="btn btn-primary" @onclick="SaveSelectedStatusAsync" disabled="@_isUpdatingStatus">Save Status</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private static readonly List<object> GridToolbarItems =
+    [
+        "Search",
+        "ColumnChooser",
+        new ItemModel
+        {
+            Id = "growit-excelexport",
+            Text = "Export Excel",
+            PrefixIcon = "bi bi-file-earmark-excel growit-grid-toolbar-icon"
+        }
+    ];
+
+    private BetaFeedbackQueryParams _query = new() { Take = 300 };
+    private List<BetaFeedbackListItemDto> _items = new();
+    private bool _hasAdminAccess = true;
+    private bool _isLoading = true;
+    private bool _isUpdatingStatus;
+    private string? _message;
+    private string? _error;
+    private BetaFeedbackListItemDto? _selected;
+    private string _selectedStatus = "Open";
+    private string? _selectedAdminNotes;
+    private SfGrid<BetaFeedbackListItemDto>? _grid;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var access = await RoleAccessService.GetAccessAsync();
+        _hasAdminAccess = access.CanManageAdminWorkspace;
+        if (!_hasAdminAccess)
+        {
+            _isLoading = false;
+            return;
+        }
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        if (!_hasAdminAccess) return;
+        _isLoading = true;
+        _error = null;
+        try
+        {
+            _items = (await FeedbackService.GetAdminAsync(_query))
+                .OrderByDescending(i => i.CreatedAt)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ClearFiltersAsync()
+    {
+        _query = new BetaFeedbackQueryParams { Take = 300 };
+        await LoadAsync();
+    }
+
+    private void OpenDetails(BetaFeedbackListItemDto item)
+    {
+        _selected = item;
+        _selectedStatus = item.Status;
+        _selectedAdminNotes = item.AdminNotes;
+    }
+
+    private async Task UpdateStatusAsync(BetaFeedbackListItemDto item, string status)
+    {
+        _selected = item;
+        _selectedStatus = status;
+        _selectedAdminNotes = item.AdminNotes;
+        await SaveSelectedStatusAsync();
+    }
+
+    private async Task SaveSelectedStatusAsync()
+    {
+        if (_selected is null) return;
+
+        _isUpdatingStatus = true;
+        _error = null;
+        _message = null;
+        try
+        {
+            var updated = await FeedbackService.UpdateStatusAsync(_selected.Id, new UpdateBetaFeedbackStatusRequest
+            {
+                Status = _selectedStatus,
+                AdminNotes = _selectedAdminNotes
+            });
+
+            if (updated is not null)
+            {
+                var index = _items.FindIndex(i => i.Id == updated.Id);
+                if (index >= 0) _items[index] = updated;
+                _selected = updated;
+                _message = $"Feedback status updated to {updated.Status}.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isUpdatingStatus = false;
+        }
+    }
+
+    private async Task OnToolbarClick(ClickEventArgs args)
+    {
+        if (_grid is null) return;
+        if (args.Item?.Id?.Contains("excelexport", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            await _grid.ExportToExcelAsync();
+        }
+    }
+
+    private static string GetStatusBadge(string? status) => status?.Trim().ToLowerInvariant() switch
+    {
+        "resolved" => "badge-success",
+        "planned" => "badge-info",
+        "in review" => "badge-warning",
+        "dismissed" => "badge-neutral",
+        _ => "badge-danger"
+    };
+
+    private static string GetSeverityBadge(string? severity) => severity?.Trim().ToLowerInvariant() switch
+    {
+        "critical" => "badge-danger",
+        "high" => "badge-warning",
+        "low" => "badge-neutral",
+        _ => "badge-info"
+    };
+}

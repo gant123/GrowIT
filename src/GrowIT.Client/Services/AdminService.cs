@@ -15,6 +15,7 @@ public interface IAdminService
     Task MarkInviteActivityReadAllAsync();
     Task<List<AdminAuditLogItemDto>> GetAuditLogsAsync(int take = 100, string? table = null, string? action = null);
     Task<EmailDiagnosticsDto> GetEmailDiagnosticsAsync();
+    Task<SystemDiagnosticsDto> GetSystemDiagnosticsAsync();
     Task<SendTestEmailResponse> SendTestEmailAsync(SendTestEmailRequest request);
     Task<SeedDemoDataResponseDto> SeedDemoDataAsync();
     Task<CreateOrganizationInviteResponse> CreateInviteAsync(CreateOrganizationInviteRequest request);
@@ -66,6 +67,9 @@ public class AdminService : BaseApiService, IAdminService
 
     public async Task<EmailDiagnosticsDto> GetEmailDiagnosticsAsync() =>
         (await GetAsync<EmailDiagnosticsDto>("api/admin/email-diagnostics"))!;
+
+    public async Task<SystemDiagnosticsDto> GetSystemDiagnosticsAsync() =>
+        (await GetAsync<SystemDiagnosticsDto>("api/admin/system-diagnostics"))!;
 
     public async Task<SendTestEmailResponse> SendTestEmailAsync(SendTestEmailRequest request) =>
         (await PostAsync<SendTestEmailRequest, SendTestEmailResponse>("api/admin/email-test", request))!;

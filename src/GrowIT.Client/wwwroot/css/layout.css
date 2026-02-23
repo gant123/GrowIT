@@ -1501,3 +1501,67 @@
 .section-action:hover {
     color: var(--growit-green-light);
 }
+.growit-system-banner {
+  margin: 0 1.5rem 1rem;
+  border-radius: 14px;
+  border: 1px solid rgba(39, 176, 98, 0.18);
+  background: linear-gradient(180deg, rgba(255, 247, 214, 0.95), rgba(255, 242, 198, 0.92));
+  color: #5f4a00;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+}
+
+.growit-system-banner-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.growit-system-banner-content i {
+  font-size: 1rem;
+  margin-top: 0.15rem;
+  color: #c98a00;
+}
+
+.growit-system-banner-title {
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.growit-system-banner-message {
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.growit-system-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .growit-system-banner {
+  background: linear-gradient(180deg, rgba(84, 63, 10, 0.95), rgba(66, 51, 8, 0.95));
+  border-color: rgba(201, 138, 0, 0.35);
+  color: #fde68a;
+}
+
+[data-theme="dark"] .growit-system-banner-content i {
+  color: #fbbf24;
+}
+
+@media (max-width: 991px) {
+  .growit-system-banner {
+    margin: 0 1rem 0.75rem;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .growit-system-banner-actions {
+    justify-content: flex-end;
+  }
+}

@@ -580,6 +580,71 @@
                         </div>
                     </div>
 
+                    <div class="system-diagnostics-card mb-4">
+                        <div class="email-diagnostics-header">
+                            <div>
+                                <h3>System Diagnostics</h3>
+                                <p>Beta readiness checks for database, migrations, storage, scheduler, and report health.</p>
+                            </div>
+                            <button class="btn btn-outline-secondary btn-sm"
+                                    disabled="@_isLoadingSystemDiagnostics"
+                                    @onclick="RefreshSystemDiagnosticsAsync">
+                                @if (_isLoadingSystemDiagnostics)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(_systemDiagnosticsError))
+                        {
+                            <div class="alert alert-danger py-2 mb-3">@_systemDiagnosticsError</div>
+                        }
+
+                        <div class="diag-item mb-3">
+                            <span>Overall Status</span>
+                            <strong>
+                                @if (_systemDiagnostics is null)
+                                {
+                                    <text>Loading...</text>
+                                }
+                                else
+                                {
+                                    <span class="badge-growit @GetDiagnosticBadgeClass(_systemDiagnostics.StatusSummary)">@_systemDiagnostics.StatusSummary</span>
+                                }
+                            </strong>
+                            @if (_systemDiagnostics is not null)
+                            {
+                                <div class="small text-muted mt-1">
+                                    Checked @FormatLocalTime(_systemDiagnostics.CheckedAtUtc) in @_systemDiagnostics.EnvironmentName
+                                </div>
+                            }
+                        </div>
+
+                        @if (_systemDiagnostics?.Checks?.Count > 0)
+                        {
+                            <div class="system-diagnostics-list">
+                                @foreach (var check in _systemDiagnostics.Checks)
+                                {
+                                    <div class="system-check-row">
+                                        <div class="system-check-main">
+                                            <div class="d-flex align-items-center gap-2 flex-wrap">
+                                                <strong>@check.Label</strong>
+                                                <span class="badge-growit @GetDiagnosticBadgeClass(check.Status)">@check.Status</span>
+                                            </div>
+                                            <div class="small text-muted">@check.Message</div>
+                                            @if (!string.IsNullOrWhiteSpace(check.Details))
+                                            {
+                                                <div class="small text-muted mt-1" title="@check.Details">@TruncateText(check.Details, 180)</div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+
                     <div class="security-grid">
                         <div class="security-card">
                             <div class="security-icon"><i class="bi bi-shield-lock"></i></div>
@@ -713,6 +778,7 @@
     private bool _isSeedingDemoData;
     private bool _isLoadingAuditLogs;
     private bool _isLoadingEmailDiagnostics;
+    private bool _isLoadingSystemDiagnostics;
     private bool _isSendingTestEmail;
     private bool _testEmailSucceeded;
     private bool _hasSettingsAccess = true;
@@ -728,10 +794,12 @@
     private string? _seedDataError;
     private string? _auditLogError;
     private string? _emailDiagnosticsError;
+    private string? _systemDiagnosticsError;
     private string? _testEmailMessage;
 
     private OrganizationSettingsDto? _organization;
     private EmailDiagnosticsDto? _emailDiagnostics;
+    private SystemDiagnosticsDto? _systemDiagnostics;
     private UpdateOrganizationSettingsRequest? _organizationEdit;
     private SfGrid<AdminUserListItemDto>? _usersGrid;
     private SfGrid<OrganizationInviteListItemDto>? _invitesGrid;
@@ -744,7 +812,18 @@
     private readonly HashSet<Guid> _busyUserIds = new();
     private readonly Dictionary<Guid, string> _roleDrafts = new();
     private SendTestEmailRequest _testEmailRequest = new();
-    private static readonly List<string> GridToolbarItems = ["Search", "ColumnChooser", "ExcelExport"];
+    private static readonly List<object> GridToolbarItems =
+    [
+        "Search",
+        "ColumnChooser",
+        new ItemModel
+        {
+            Id = "growit-excelexport",
+            Text = "Export Excel",
+            TooltipText = "Export grid to Excel",
+            PrefixIcon = "bi bi-file-earmark-excel growit-grid-toolbar-icon"
+        }
+    ];
     private static readonly string[] RoleOptions = ["Admin", "Manager", "Case Manager", "Analyst", "Member"];
     private string _auditTableFilter = "";
     private string _auditActionFilter = "";
@@ -784,7 +863,8 @@
             var inviteActivityTask = AdminService.GetInviteActivityAsync(30);
             var auditLogsTask = AdminService.GetAuditLogsAsync(100);
             var emailDiagnosticsTask = AdminService.GetEmailDiagnosticsAsync();
-            await Task.WhenAll(orgTask, usersTask, invitesTask, inviteActivityTask, auditLogsTask, emailDiagnosticsTask);
+            var systemDiagnosticsTask = AdminService.GetSystemDiagnosticsAsync();
+            await Task.WhenAll(orgTask, usersTask, invitesTask, inviteActivityTask, auditLogsTask, emailDiagnosticsTask, systemDiagnosticsTask);
 
             _organization = await orgTask;
             _organizationEdit = new UpdateOrganizationSettingsRequest
@@ -806,6 +886,7 @@
             _inviteActivity = await inviteActivityTask;
             _auditLogs = await auditLogsTask;
             _emailDiagnostics = await emailDiagnosticsTask;
+            _systemDiagnostics = await systemDiagnosticsTask;
         }
         catch (Exception ex)
         {
@@ -1134,6 +1215,24 @@
         }
     }
 
+    private async Task RefreshSystemDiagnosticsAsync()
+    {
+        _systemDiagnosticsError = null;
+        _isLoadingSystemDiagnostics = true;
+        try
+        {
+            _systemDiagnostics = await AdminService.GetSystemDiagnosticsAsync();
+        }
+        catch (Exception ex)
+        {
+            _systemDiagnosticsError = ex.Message;
+        }
+        finally
+        {
+            _isLoadingSystemDiagnostics = false;
+        }
+    }
+
     private async Task SendTestEmailAsync()
     {
         _emailDiagnosticsError = null;
@@ -1149,6 +1248,7 @@
                 : response.Message;
 
             await RefreshEmailDiagnosticsAsync();
+            await RefreshSystemDiagnosticsAsync();
         }
         catch (Exception ex)
         {
@@ -1198,5 +1298,23 @@
         _seedDataError = null;
         _auditLogError = null;
         _emailDiagnosticsError = null;
+        _systemDiagnosticsError = null;
+    }
+
+    private static string GetDiagnosticBadgeClass(string? status) => status?.Trim().ToLowerInvariant() switch
+    {
+        "healthy" => "badge-success",
+        "warning" => "badge-warning",
+        "unhealthy" => "badge-danger",
+        _ => "badge-neutral"
+    };
+
+    private static string FormatLocalTime(DateTime utc) => utc.ToLocalTime().ToString("MMM d, yyyy h:mm tt");
+
+    private static string TruncateText(string? value, int max)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+        var text = value.Trim();
+        return text.Length <= max ? text : text[..(max - 1)] + "…";
     }
 }

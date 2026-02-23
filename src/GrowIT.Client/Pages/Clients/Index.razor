@@ -250,7 +250,18 @@
     private string? _loadError;
     private string _searchText = string.Empty;
     private LifePhase? _phaseFilter;
-    private static readonly List<string> GridToolbarItems = ["Search", "ColumnChooser", "ExcelExport"];
+    private static readonly List<object> GridToolbarItems =
+    [
+        "Search",
+        "ColumnChooser",
+        new ItemModel
+        {
+            Id = "growit-excelexport",
+            Text = "Export Excel",
+            TooltipText = "Export grid to Excel",
+            PrefixIcon = "bi bi-file-earmark-excel growit-grid-toolbar-icon"
+        }
+    ];
 
     protected override async Task OnInitializedAsync() => await LoadClients();
 

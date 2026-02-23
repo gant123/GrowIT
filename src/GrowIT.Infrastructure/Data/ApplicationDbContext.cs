@@ -40,6 +40,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<Document> Documents { get; set; }
     public DbSet<AppTask> Tasks { get; set; } // Uses the 'AppTask' class we created
     public DbSet<Notification> Notifications { get; set; }
+    public DbSet<BetaFeedback> BetaFeedbacks { get; set; }
 
     // Domain: Financial Core & Impact
     public DbSet<Program> Programs { get; set; }
@@ -51,6 +52,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<BillingEvent> BillingEvents { get; set; }
     public DbSet<ReportRun> ReportRuns { get; set; }
+    public DbSet<ReportRunDownloadEvent> ReportRunDownloadEvents { get; set; }
     public DbSet<ReportSchedule> ReportSchedules { get; set; }
 
     // ========================================================================

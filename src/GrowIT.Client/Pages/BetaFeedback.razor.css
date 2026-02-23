@@ -1,0 +1,13 @@
+.page-beta-feedback .card-growit {
+    border-radius: 16px;
+}
+
+.page-beta-feedback textarea.form-control {
+    min-height: 140px;
+    resize: vertical;
+}
+
+.page-beta-feedback .badge-growit {
+    min-width: 88px;
+    justify-content: center;
+}

@@ -463,6 +463,29 @@
     padding: 1rem;
 }
 
+.system-diagnostics-card {
+    border: 1px solid var(--growit-border);
+    border-radius: 14px;
+    background: var(--growit-bg-card);
+    padding: 1rem;
+}
+
+.system-diagnostics-list {
+    display: grid;
+    gap: 10px;
+}
+
+.system-check-row {
+    border: 1px solid var(--growit-border);
+    background: var(--growit-bg-secondary);
+    border-radius: 10px;
+    padding: 10px 12px;
+}
+
+.system-check-main {
+    min-width: 0;
+}
+
 .email-diagnostics-header {
     display: flex;
     justify-content: space-between;

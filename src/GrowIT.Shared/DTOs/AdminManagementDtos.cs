@@ -141,6 +141,23 @@ public class SendTestEmailResponse
     public string? TargetEmail { get; set; }
 }
 
+public class SystemDiagnosticsDto
+{
+    public string EnvironmentName { get; set; } = string.Empty;
+    public DateTime CheckedAtUtc { get; set; }
+    public string StatusSummary { get; set; } = string.Empty;
+    public List<SystemDiagnosticCheckDto> Checks { get; set; } = new();
+}
+
+public class SystemDiagnosticCheckDto
+{
+    public string Key { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Status { get; set; } = "Unknown"; // Healthy, Warning, Unhealthy
+    public string Message { get; set; } = string.Empty;
+    public string? Details { get; set; }
+}
+
 public class InviteValidationDto
 {
     public bool IsValid { get; set; }

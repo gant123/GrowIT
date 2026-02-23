@@ -7,6 +7,7 @@
 @inject INotificationService NotificationService
 @inject IProfileService ProfileService
 @inject IRoleAccessService RoleAccessService
+@inject IAdminService AdminService
 
 <div class="growit-app" data-theme="@_currentTheme">
     <!-- Sidebar Overlay for Mobile -->
@@ -342,6 +343,17 @@
                                         <i class="bi bi-person-gear"></i>
                                         Profile & Security
                                     </NavLink>
+                                    <NavLink href="/beta-feedback" class="dropdown-item" @onclick="() => _userMenuOpen = false">
+                                        <i class="bi bi-chat-square-text"></i>
+                                        Beta Feedback
+                                    </NavLink>
+                                    @if (_canAccessAdminWorkspace)
+                                    {
+                                        <NavLink href="/beta-feedback-admin" class="dropdown-item" @onclick="() => _userMenuOpen = false">
+                                            <i class="bi bi-clipboard-data"></i>
+                                            Feedback Review
+                                        </NavLink>
+                                    }
                                     @if (_canAccessIntelligence)
                                     {
                                         <NavLink href="/reports" class="dropdown-item" @onclick="() => _userMenuOpen = false">
@@ -398,6 +410,30 @@
                 </div>
             </div>
         </header>
+
+        @if (_showSystemWarningBanner)
+        {
+            <div class="growit-system-banner warning" role="alert">
+                <div class="growit-system-banner-content">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <div>
+                        <div class="growit-system-banner-title">System Attention Required</div>
+                        <div class="growit-system-banner-message">@_systemWarningBannerMessage</div>
+                    </div>
+                </div>
+                <div class="growit-system-banner-actions">
+                    @if (_canAccessAdminWorkspace)
+                    {
+                        <button type="button" class="btn btn-sm btn-outline-secondary" @onclick="OpenSettingsFromBanner">
+                            Open Settings
+                        </button>
+                    }
+                    <button type="button" class="btn btn-sm btn-light" @onclick="DismissSystemWarningBanner">
+                        Dismiss
+                    </button>
+                </div>
+            </div>
+        }
         
         <!-- Page Content -->
         <div class="growit-content">
@@ -437,6 +473,10 @@
     private ElementReference _searchInput;
     private List<NotificationItemDto> _headerNotifications = [];
     private bool _isNotificationsLoading;
+    private bool _showSystemWarningBanner;
+    private string? _systemWarningBannerMessage;
+    private DateTime? _lastShellDiagnosticsCheckUtc;
+    private bool _shellDiagnosticsDismissed;
 
     private static readonly List<QuickNavItem> QuickNavItems =
     [
@@ -454,7 +494,9 @@
         new("/organization", "Organization", "Organization profile and setup", "System", "bi bi-building", "organization org"),
         new("/settings", "Settings", "System preferences and controls", "System", "bi bi-gear", "settings preferences"),
         new("/profile", "Profile", "Account profile and preferences", "System", "bi bi-person-gear", "profile account user"),
-        new("/notifications", "Notifications", "Alerts and updates", "System", "bi bi-bell", "notifications alerts")
+        new("/notifications", "Notifications", "Alerts and updates", "System", "bi bi-bell", "notifications alerts"),
+        new("/beta-feedback", "Beta Feedback", "Submit issues and product feedback", "System", "bi bi-chat-square-text", "beta feedback bug issue request"),
+        new("/beta-feedback-admin", "Feedback Review", "Review tester feedback submissions", "System", "bi bi-clipboard-data", "feedback admin triage")
     ];
 
     private class Breadcrumb
@@ -516,6 +558,7 @@
 
             await RefreshNotificationsAsync(silent: true);
             await RefreshProfileSummaryAsync();
+            await RefreshShellDiagnosticsBannerAsync();
         }
         else
         {
@@ -527,6 +570,10 @@
             _userOrganization = "Workspace";
             _userPhotoUrl = null;
             _profileSummaryLoaded = false;
+            _showSystemWarningBanner = false;
+            _systemWarningBannerMessage = null;
+            _lastShellDiagnosticsCheckUtc = null;
+            _shellDiagnosticsDismissed = false;
         }
     }
 
@@ -842,6 +889,10 @@
             return "/profile";
         if (normalized.Contains("notification"))
             return "/notifications";
+        if (normalized.Contains("feedback"))
+            return normalized.Contains("review") || normalized.Contains("triage")
+                ? "/beta-feedback-admin"
+                : "/beta-feedback";
 
         return null;
     }
@@ -905,6 +956,7 @@
             "/reports" => _canAccessIntelligence,
             "/insights" => _canAccessIntelligence,
             "/settings" => _canAccessAdminWorkspace,
+            "/beta-feedback-admin" => _canAccessAdminWorkspace,
             _ => true
         };
     }
@@ -946,6 +998,68 @@
         {
             _profileSummaryLoaded = true;
         }
+    }
+
+    private async Task RefreshShellDiagnosticsBannerAsync()
+    {
+        if (!_canAccessAdminWorkspace)
+        {
+            _showSystemWarningBanner = false;
+            _systemWarningBannerMessage = null;
+            return;
+        }
+
+        if (_lastShellDiagnosticsCheckUtc.HasValue && DateTime.UtcNow - _lastShellDiagnosticsCheckUtc.Value < TimeSpan.FromMinutes(5))
+        {
+            return;
+        }
+
+        try
+        {
+            var diagnostics = await AdminService.GetSystemDiagnosticsAsync();
+            _lastShellDiagnosticsCheckUtc = DateTime.UtcNow;
+            _shellDiagnosticsDismissed = false;
+
+            var migrationCheck = diagnostics.Checks.FirstOrDefault(c => c.Key == "migrations");
+            if (migrationCheck is not null && !string.Equals(migrationCheck.Status, "Healthy", StringComparison.OrdinalIgnoreCase))
+            {
+                _systemWarningBannerMessage = migrationCheck.Message;
+                _showSystemWarningBanner = true;
+                return;
+            }
+
+            var unhealthy = diagnostics.Checks.FirstOrDefault(c =>
+                string.Equals(c.Status, "Unhealthy", StringComparison.OrdinalIgnoreCase));
+
+            if (unhealthy is not null)
+            {
+                _systemWarningBannerMessage = $"{unhealthy.Label}: {unhealthy.Message}";
+                _showSystemWarningBanner = true;
+                return;
+            }
+
+            if (!_shellDiagnosticsDismissed)
+            {
+                _showSystemWarningBanner = false;
+                _systemWarningBannerMessage = null;
+            }
+        }
+        catch
+        {
+            // Keep shell stable if admin diagnostics endpoint is unavailable.
+        }
+    }
+
+    private void DismissSystemWarningBanner()
+    {
+        _showSystemWarningBanner = false;
+        _shellDiagnosticsDismissed = true;
+    }
+
+    private void OpenSettingsFromBanner()
+    {
+        _showSystemWarningBanner = false;
+        Navigation.NavigateTo("/settings");
     }
 
     public void Dispose()

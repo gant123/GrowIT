@@ -165,7 +165,18 @@
     private bool _canApproveServiceInvestments;
     private string SearchQuery { get; set; } = "";
     private string StatusFilter { get; set; } = "";
-    private static readonly List<string> GridToolbarItems = ["Search", "ColumnChooser", "ExcelExport"];
+    private static readonly List<object> GridToolbarItems =
+    [
+        "Search",
+        "ColumnChooser",
+        new ItemModel
+        {
+            Id = "growit-excelexport",
+            Text = "Export Excel",
+            TooltipText = "Export grid to Excel",
+            PrefixIcon = "bi bi-file-earmark-excel growit-grid-toolbar-icon"
+        }
+    ];
 
     private IEnumerable<InvestmentListDto> FilteredInvestments
     {

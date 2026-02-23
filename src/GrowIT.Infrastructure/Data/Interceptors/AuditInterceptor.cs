@@ -61,7 +61,7 @@ public class AuditInterceptor : SaveChangesInterceptor
             var audit = new AuditLog
             {
                 Id = Guid.NewGuid(),
-                TenantId = tenantId ?? Guid.Empty,
+                TenantId = tenantId ?? TryGetEntityTenantId(entry.Entity) ?? Guid.Empty,
                 UserId = userId ?? Guid.Empty,
                 ActionType = actionType,
                 TableName = entry.Metadata.GetTableName() ?? entry.Entity.GetType().Name,
@@ -93,5 +93,15 @@ public class AuditInterceptor : SaveChangesInterceptor
             return guidVal;
         }
         return null; 
+    }
+
+    private static Guid? TryGetEntityTenantId(object entity)
+    {
+        if (entity is IMustHaveTenant tenantEntity)
+        {
+            return tenantEntity.TenantId;
+        }
+
+        return null;
     }
 }

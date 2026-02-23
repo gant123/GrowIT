@@ -128,7 +128,18 @@
     private SfGrid<ClientDto>? _peopleGrid;
     private bool _isLoading = true;
     private string SearchQuery { get; set; } = "";
-    private static readonly List<string> GridToolbarItems = ["Search", "ColumnChooser", "ExcelExport"];
+    private static readonly List<object> GridToolbarItems =
+    [
+        "Search",
+        "ColumnChooser",
+        new ItemModel
+        {
+            Id = "growit-excelexport",
+            Text = "Export Excel",
+            TooltipText = "Export grid to Excel",
+            PrefixIcon = "bi bi-file-earmark-excel growit-grid-toolbar-icon"
+        }
+    ];
 
     // Client-side filtering logic
     private IEnumerable<ClientDto> FilteredPeople

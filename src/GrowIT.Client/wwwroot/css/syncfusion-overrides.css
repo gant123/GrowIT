@@ -114,14 +114,25 @@
     line-height: 1 !important;
 }
 
+.e-grid .e-toolbar .e-toolbar-item .e-tbar-btn .growit-grid-toolbar-icon.bi,
+.e-grid .e-toolbar .e-toolbar-item .e-tbar-btn .growit-grid-toolbar-icon.bi::before {
+    font-family: "bootstrap-icons" !important;
+    font-style: normal !important;
+    font-weight: 400 !important;
+}
+
+.e-grid .e-toolbar .e-toolbar-item .e-tbar-btn .growit-grid-toolbar-icon {
+    color: var(--growit-green) !important;
+    font-size: 15px !important;
+}
+
 .e-grid .e-toolbar .e-toolbar-item .e-tbar-btn .e-tbar-btn-text {
     display: inline !important;
     white-space: nowrap !important;
     font-weight: 600 !important;
 }
 
-/* The built-in Excel toolbar glyph reads like an "X" in our brand context.
-   Hide the icon and rely on the visible button label instead. */
+/* Guard in case any grid still uses the built-in Excel toolbar item. */
 .e-grid .e-toolbar .e-excelexport.e-icons,
 .e-grid .e-toolbar .e-excelexport.e-icons::before {
     display: none !important;

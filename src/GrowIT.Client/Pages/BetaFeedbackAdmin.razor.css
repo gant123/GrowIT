@@ -1,0 +1,9 @@
+.page-feedback-admin .feedback-admin-actions {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.page-feedback-admin textarea.form-control[readonly] {
+    background: rgba(148, 163, 184, 0.08);
+}

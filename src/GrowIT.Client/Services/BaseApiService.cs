@@ -76,7 +76,7 @@ public abstract class BaseApiService
         return await response.Content.ReadFromJsonAsync<TResponse>(_jsonOptions);
     }
 
-    private static async Task EnsureSuccessWithDetailsAsync(HttpResponseMessage response)
+    protected static async Task EnsureSuccessWithDetailsAsync(HttpResponseMessage response)
     {
         if (response.IsSuccessStatusCode)
         {

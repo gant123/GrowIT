@@ -1,12 +1,14 @@
 using System.Security.Cryptography;
 using GrowIT.Core.Entities;
 using GrowIT.Core.Interfaces;
+using GrowIT.API.Services;
 using GrowIT.Infrastructure.Data;
 using GrowIT.Shared.DTOs;
 using GrowIT.Shared.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace GrowIT.API.Controllers;
 
@@ -21,19 +23,28 @@ public class AdminController : ControllerBase
     private readonly ICurrentUserService _currentUserService;
     private readonly IEmailService _emailService;
     private readonly IConfiguration _config;
+    private readonly IWebHostEnvironment _environment;
+    private readonly IOptionsMonitor<ReportSchedulerOptions> _schedulerOptions;
+    private readonly ReportSchedulerState _schedulerState;
 
     public AdminController(
         ApplicationDbContext context,
         ICurrentTenantService tenantService,
         ICurrentUserService currentUserService,
         IEmailService emailService,
-        IConfiguration config)
+        IConfiguration config,
+        IWebHostEnvironment environment,
+        IOptionsMonitor<ReportSchedulerOptions> schedulerOptions,
+        ReportSchedulerState schedulerState)
     {
         _context = context;
         _tenantService = tenantService;
         _currentUserService = currentUserService;
         _emailService = emailService;
         _config = config;
+        _environment = environment;
+        _schedulerOptions = schedulerOptions;
+        _schedulerState = schedulerState;
     }
 
     [HttpGet("organization")]
@@ -499,6 +510,167 @@ public class AdminController : ControllerBase
     [HttpGet("email-diagnostics")]
     public ActionResult<EmailDiagnosticsDto> GetEmailDiagnostics()
     {
+        var diagnostics = BuildEmailDiagnosticsDto();
+        diagnostics.StatusSummary = BuildEmailDiagnosticsStatusSummary(diagnostics);
+        return Ok(diagnostics);
+    }
+
+    [HttpGet("system-diagnostics")]
+    public async Task<ActionResult<SystemDiagnosticsDto>> GetSystemDiagnostics()
+    {
+        var envName = _environment.EnvironmentName ?? "Unknown";
+        var now = DateTime.UtcNow;
+        var checks = new List<SystemDiagnosticCheckDto>();
+
+        // Database connectivity
+        try
+        {
+            var canConnect = await _context.Database.CanConnectAsync();
+            checks.Add(new SystemDiagnosticCheckDto
+            {
+                Key = "database",
+                Label = "Database Connectivity",
+                Status = canConnect ? "Healthy" : "Unhealthy",
+                Message = canConnect ? "Database connection succeeded." : "Database connection failed."
+            });
+        }
+        catch (Exception ex)
+        {
+            checks.Add(new SystemDiagnosticCheckDto
+            {
+                Key = "database",
+                Label = "Database Connectivity",
+                Status = "Unhealthy",
+                Message = "Database connectivity check failed.",
+                Details = ex.Message
+            });
+        }
+
+        // Pending migrations
+        try
+        {
+            var pending = (await _context.Database.GetPendingMigrationsAsync()).ToList();
+            checks.Add(new SystemDiagnosticCheckDto
+            {
+                Key = "migrations",
+                Label = "Pending Migrations",
+                Status = pending.Count == 0 ? "Healthy" : "Warning",
+                Message = pending.Count == 0
+                    ? "No pending migrations."
+                    : $"{pending.Count} pending migration(s).",
+                Details = pending.Count == 0 ? null : string.Join(", ", pending)
+            });
+        }
+        catch (Exception ex)
+        {
+            checks.Add(new SystemDiagnosticCheckDto
+            {
+                Key = "migrations",
+                Label = "Pending Migrations",
+                Status = "Warning",
+                Message = "Unable to evaluate pending migrations.",
+                Details = ex.Message
+            });
+        }
+
+        // File storage writability (profile photo path)
+        try
+        {
+            var root = string.IsNullOrWhiteSpace(_environment.WebRootPath)
+                ? Path.Combine(_environment.ContentRootPath, "wwwroot")
+                : _environment.WebRootPath;
+            var photoDir = Path.Combine(root, "uploads", "profile-photos");
+            Directory.CreateDirectory(photoDir);
+            var probe = Path.Combine(photoDir, $".probe-{Guid.NewGuid():N}.tmp");
+            await System.IO.File.WriteAllTextAsync(probe, "ok");
+            System.IO.File.Delete(probe);
+
+            checks.Add(new SystemDiagnosticCheckDto
+            {
+                Key = "storage",
+                Label = "File Storage",
+                Status = "Healthy",
+                Message = "Profile upload storage is writable.",
+                Details = photoDir
+            });
+        }
+        catch (Exception ex)
+        {
+            checks.Add(new SystemDiagnosticCheckDto
+            {
+                Key = "storage",
+                Label = "File Storage",
+                Status = "Unhealthy",
+                Message = "Profile upload storage is not writable.",
+                Details = ex.Message
+            });
+        }
+
+        // Email configuration readiness
+        var emailDiagnostics = BuildEmailDiagnosticsDto();
+        emailDiagnostics.StatusSummary = BuildEmailDiagnosticsStatusSummary(emailDiagnostics);
+        var emailStatus = emailDiagnostics.StatusSummary.Contains("not configured", StringComparison.OrdinalIgnoreCase)
+            || emailDiagnostics.StatusSummary.Contains("placeholders", StringComparison.OrdinalIgnoreCase)
+            ? "Warning"
+            : "Healthy";
+        checks.Add(new SystemDiagnosticCheckDto
+        {
+            Key = "email",
+            Label = "Email Delivery",
+            Status = emailStatus,
+            Message = emailDiagnostics.StatusSummary,
+            Details = $"Client URL: {emailDiagnostics.ClientUrl ?? "-"}"
+        });
+
+        // Scheduler state
+        var schedulerOptions = _schedulerOptions.CurrentValue;
+        _schedulerState.Enabled = schedulerOptions.Enabled;
+        var dueCount = await _context.ReportSchedules.CountAsync(s => s.IsActive && s.NextRun <= now);
+        checks.Add(new SystemDiagnosticCheckDto
+        {
+            Key = "report-scheduler",
+            Label = "Scheduled Report Runner",
+            Status = !schedulerOptions.Enabled
+                ? "Warning"
+                : string.IsNullOrWhiteSpace(_schedulerState.LastError) ? "Healthy" : "Warning",
+            Message = !schedulerOptions.Enabled
+                ? "Scheduler is disabled."
+                : _schedulerState.IsRunningCycle
+                    ? "Scheduler cycle is running."
+                    : "Scheduler is enabled.",
+            Details = $"Poll: {Math.Clamp(schedulerOptions.PollSeconds, 10, 3600)}s | Due schedules: {dueCount} | Last cycle: {FormatUtc(_schedulerState.LastCycleCompletedAtUtc)} | Last error: {_schedulerState.LastError ?? "None"}"
+        });
+
+        // Report run health (last 24h failures)
+        var since = now.AddHours(-24);
+        var recentFailures = await _context.ReportRuns.CountAsync(r => r.GeneratedAt >= since && r.Status == "Failed");
+        checks.Add(new SystemDiagnosticCheckDto
+        {
+            Key = "reports",
+            Label = "Report Run Health (24h)",
+            Status = recentFailures == 0 ? "Healthy" : "Warning",
+            Message = recentFailures == 0
+                ? "No failed report runs in the last 24 hours."
+                : $"{recentFailures} failed report run(s) in the last 24 hours."
+        });
+
+        var summaryStatus = checks.Any(c => c.Status == "Unhealthy")
+            ? "Unhealthy"
+            : checks.Any(c => c.Status == "Warning")
+                ? "Warning"
+                : "Healthy";
+
+        return Ok(new SystemDiagnosticsDto
+        {
+            EnvironmentName = envName,
+            CheckedAtUtc = now,
+            StatusSummary = summaryStatus,
+            Checks = checks
+        });
+    }
+
+    private EmailDiagnosticsDto BuildEmailDiagnosticsDto()
+    {
         var smtpHost = _config["Email:SmtpHost"]?.Trim();
         var smtpUser = _config["Email:SmtpUser"]?.Trim();
         var smtpPass = _config["Email:SmtpPass"];
@@ -508,7 +680,7 @@ public class AdminController : ControllerBase
         var hasPlaceholders = (smtpUser?.Contains("YOUR_", StringComparison.OrdinalIgnoreCase) ?? false)
             || (smtpPass?.Contains("YOUR_", StringComparison.OrdinalIgnoreCase) ?? false);
 
-        var diagnostics = new EmailDiagnosticsDto
+        return new EmailDiagnosticsDto
         {
             EnvironmentName = env,
             SmtpHost = smtpHost,
@@ -524,9 +696,6 @@ public class AdminController : ControllerBase
             DevFileFallbackDirectory = _config["Email:DevFileFallbackDirectory"],
             ClientUrl = _config["ClientUrl"]
         };
-
-        diagnostics.StatusSummary = BuildEmailDiagnosticsStatusSummary(diagnostics);
-        return Ok(diagnostics);
     }
 
     [HttpPost("email-test")]
@@ -675,6 +844,9 @@ public class AdminController : ControllerBase
             return "SMTP configured (development file fallback enabled)";
         return "SMTP configured";
     }
+
+    private static string FormatUtc(DateTime? value) =>
+        value.HasValue ? value.Value.ToString("u") : "Never";
 
     private static AdminUserListItemDto ToAdminUserListItem(User user) => new()
     {
