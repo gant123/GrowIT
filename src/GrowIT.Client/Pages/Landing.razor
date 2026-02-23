@@ -393,7 +393,8 @@
         <div class="footer-content">
             <div class="footer-brand">
                 <a href="/welcome" class="footer-logo">
-                    <img src="images/logo-@(_currentTheme).png" alt="GrowIT" class="brand-logo" />
+                    <img src="images/logo-@(_currentTheme == "dark" ? "light" : "dark").png" alt="GrowIT" class="brand-icon" />
+                    <span>grow<span class="highlight">.IT</span></span>
                 </a>
                 <p>Enterprise-grade impact management for large-scale social impact.</p>
             </div>

@@ -6,16 +6,39 @@
 /* ========================================
    GRID COMPONENT
    ======================================== */
+.e-grid .e-icons,
+.e-grid .e-icons::before,
+.e-grid .e-btn-icon.e-icons,
+.e-grid .e-btn-icon.e-icons::before,
+.e-grid .e-toolbar .e-icons,
+.e-grid .e-toolbar .e-icons::before,
+.e-grid .e-pager .e-icons,
+.e-grid .e-pager .e-icons::before,
+.e-grid .e-filtericon,
+.e-grid .e-filtericon::before {
+    font-family: "e-icons" !important;
+    font-style: normal !important;
+    font-weight: normal !important;
+    text-transform: none !important;
+    speak: none;
+}
+
 .e-grid {
     border: 1px solid var(--growit-border) !important;
     border-radius: var(--radius-lg) !important;
     overflow: hidden;
     background: var(--growit-bg-card) !important;
+    box-shadow: var(--growit-shadow-sm) !important;
 }
 
 .e-grid .e-gridheader {
     background: var(--growit-bg-primary) !important;
     border-bottom: 1px solid var(--growit-border) !important;
+}
+
+.e-grid .e-headercontent,
+.e-grid .e-content {
+    scrollbar-color: var(--growit-text-dim) transparent;
 }
 
 .e-grid .e-headercell {
@@ -27,6 +50,10 @@
     letter-spacing: 0.5px !important;
     border-color: var(--growit-border) !important;
     padding: 14px 16px !important;
+}
+
+.e-grid .e-headercelldiv {
+    font-weight: 700 !important;
 }
 
 .e-grid .e-rowcell {
@@ -56,11 +83,24 @@
     padding: 12px 16px !important;
 }
 
+.e-grid .e-toolbar .e-toolbar-items {
+    gap: 8px !important;
+    min-height: 42px !important;
+}
+
+.e-grid .e-toolbar .e-toolbar-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+}
+
 .e-grid .e-toolbar-items .e-toolbar-item .e-tbar-btn {
     background: var(--growit-bg-primary) !important;
     border: 1px solid var(--growit-border) !important;
     border-radius: var(--radius-md) !important;
     color: var(--growit-text-secondary) !important;
+    min-height: 34px !important;
 }
 
 .e-grid .e-toolbar-items .e-toolbar-item .e-tbar-btn:hover {
@@ -68,8 +108,52 @@
     color: var(--growit-text-primary) !important;
 }
 
+.e-grid .e-toolbar .e-toolbar-item .e-tbar-btn .e-btn-icon {
+    margin-right: 6px !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+}
+
+.e-grid .e-toolbar .e-toolbar-item .e-tbar-btn .e-tbar-btn-text {
+    display: inline !important;
+    white-space: nowrap !important;
+    font-weight: 600 !important;
+}
+
+/* The built-in Excel toolbar glyph reads like an "X" in our brand context.
+   Hide the icon and rely on the visible button label instead. */
+.e-grid .e-toolbar .e-excelexport.e-icons,
+.e-grid .e-toolbar .e-excelexport.e-icons::before {
+    display: none !important;
+    content: none !important;
+}
+
+.e-grid .e-toolbar .e-toolbar-item.e-search-wrapper .e-btn-icon,
+.e-grid .e-toolbar .e-toolbar-item .e-search-wrapper .e-btn-icon {
+    margin-right: 0 !important;
+}
+
+.e-grid .e-toolbar-items .e-toolbar-item .e-tbar-btn:focus-visible {
+    outline: none !important;
+    box-shadow: 0 0 0 3px var(--growit-green-glow) !important;
+    border-color: var(--growit-green) !important;
+}
+
+.e-grid .e-toolbar .e-search-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    min-width: min(100%, 320px) !important;
+    border-radius: var(--radius-md) !important;
+    overflow: hidden !important;
+}
+
+.e-grid .e-toolbar .e-search-wrapper .e-search {
+    width: 100% !important;
+}
+
 /* Grid Search */
-.e-grid .e-search .e-input {
+.e-grid .e-search .e-input,
+.e-grid .e-search-wrapper input.e-input {
     background: var(--growit-bg-input) !important;
     border: 1px solid var(--growit-border) !important;
     border-radius: var(--radius-md) !important;
@@ -82,11 +166,31 @@
     box-shadow: 0 0 0 3px var(--growit-green-glow) !important;
 }
 
+.e-grid .e-search-wrapper .e-search-icon,
+.e-grid .e-search-wrapper .e-sicon {
+    color: var(--growit-text-muted) !important;
+}
+
 /* Grid Pager */
 .e-grid .e-gridpager {
     background: var(--growit-bg-card) !important;
     border-top: 1px solid var(--growit-border) !important;
     padding: 12px 16px !important;
+}
+
+.e-grid .e-pager {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    flex-wrap: wrap !important;
+}
+
+.e-grid .e-pager .e-pagercontainer {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    flex-wrap: wrap !important;
 }
 
 .e-grid .e-pager .e-numericitem {
@@ -95,6 +199,30 @@
     border-radius: var(--radius-md) !important;
     color: var(--growit-text-secondary) !important;
     margin: 0 2px !important;
+}
+
+.e-grid .e-pager .e-nextprevitem,
+.e-grid .e-pager .e-first,
+.e-grid .e-pager .e-prev,
+.e-grid .e-pager .e-next,
+.e-grid .e-pager .e-last {
+    border: 1px solid var(--growit-border) !important;
+    border-radius: var(--radius-md) !important;
+    min-width: 32px !important;
+    height: 32px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: transparent !important;
+}
+
+.e-grid .e-pager .e-nextprevitem:hover,
+.e-grid .e-pager .e-first:hover,
+.e-grid .e-pager .e-prev:hover,
+.e-grid .e-pager .e-next:hover,
+.e-grid .e-pager .e-last:hover {
+    background: var(--growit-bg-card-hover) !important;
+    border-color: var(--growit-border) !important;
 }
 
 .e-grid .e-pager .e-numericitem:hover {
@@ -110,6 +238,27 @@
 
 .e-grid .e-pager .e-icons {
     color: var(--growit-text-muted) !important;
+    font-size: 14px !important;
+    line-height: 1 !important;
+}
+
+.e-grid .e-pager .e-parentmsgbar,
+.e-grid .e-pager .e-pagerdropdown,
+.e-grid .e-pager .e-pagesizes,
+.e-grid .e-pager .e-mfirst,
+.e-grid .e-pager .e-mprev,
+.e-grid .e-pager .e-mnext,
+.e-grid .e-pager .e-mlast {
+    color: var(--growit-text-secondary) !important;
+}
+
+.e-grid .e-pager .e-parentmsgbar {
+    font-size: 0.875rem !important;
+}
+
+.e-grid .e-pager .e-pagesizes .e-dropdownlist,
+.e-grid .e-pager .e-pagesizes .e-input-group {
+    border-radius: var(--radius-md) !important;
 }
 
 /* Grid Filter Menu */
@@ -118,6 +267,48 @@
     border: 1px solid var(--growit-border) !important;
     border-radius: var(--radius-lg) !important;
     box-shadow: var(--growit-shadow-lg) !important;
+}
+
+.e-excelfilter.e-dialog,
+.e-excelfilter .e-dialog {
+    background: var(--growit-bg-card) !important;
+    color: var(--growit-text-primary) !important;
+    border-radius: var(--radius-lg) !important;
+    border: 1px solid var(--growit-border) !important;
+    box-shadow: var(--growit-shadow-lg) !important;
+}
+
+.e-excelfilter .e-dlg-header-content,
+.e-filter-popup .e-dlg-header-content {
+    background: var(--growit-bg-primary) !important;
+    border-bottom: 1px solid var(--growit-border) !important;
+    color: var(--growit-text-primary) !important;
+}
+
+.e-excelfilter .e-dlg-content,
+.e-filter-popup .e-dlg-content {
+    background: var(--growit-bg-card) !important;
+    color: var(--growit-text-primary) !important;
+}
+
+.e-excelfilter .e-input,
+.e-excelfilter .e-input-group,
+.e-filter-popup .e-input,
+.e-filter-popup .e-input-group {
+    background: var(--growit-bg-input) !important;
+    color: var(--growit-text-primary) !important;
+    border-color: var(--growit-border) !important;
+    border-radius: var(--radius-md) !important;
+}
+
+.e-excelfilter .e-btn,
+.e-filter-popup .e-btn {
+    border-radius: var(--radius-md) !important;
+}
+
+.e-excelfilter .e-checkboxlist .e-list-item,
+.e-excelfilter .e-contextmenu .e-menu-item {
+    color: var(--growit-text-primary) !important;
 }
 
 /* Grid Checkbox */

@@ -57,9 +57,13 @@
 .brand-text {
     font-size: 1.25rem;
     font-weight: 800;
-    color: var(--growit-text-primary);
+    color: var(--growit-wordmark-grow);
     letter-spacing: -0.02em;
     transition: opacity var(--transition-normal);
+}
+
+.brand-text .brand-highlight {
+    color: var(--growit-wordmark-it);
 }
 
 .collapsed .brand-text {

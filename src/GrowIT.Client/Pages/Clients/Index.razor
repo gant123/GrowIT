@@ -3,6 +3,7 @@
 @using GrowIT.Shared.DTOs
 @using GrowIT.Shared.Enums
 @using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Navigations
 @using GrowIT.Client.Shared 
 @inject IClientService ClientService
 @inject NavigationManager Nav
@@ -130,18 +131,26 @@
                     </div>
                 </div>
                 <div class="card-body p-0">
-                    <SfGrid DataSource="@FilteredClients.ToList()" 
+                    <SfGrid TValue="ClientDto"
+                        @ref="_clientsGrid"
+                        DataSource="@FilteredClients.ToList()" 
                         AllowPaging="true" 
                         AllowSorting="true" 
                         AllowFiltering="true" 
                         AllowResizing="true"
+                        AllowExcelExport="true"
+                        AllowTextWrap="true"
+                        ShowColumnChooser="true"
+                        Toolbar="@GridToolbarItems"
                         Height="560">
 
                         <GridPageSettings PageSize="10"></GridPageSettings>
                         <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Menu"></GridFilterSettings>
+                        <GridTextWrapSettings WrapMode="WrapMode.Content"></GridTextWrapSettings>
+                        <GridEvents TValue="ClientDto" OnToolbarClick="OnClientsToolbarClick"></GridEvents>
 
                         <GridColumns>
-                            <GridColumn HeaderText="Client Name" Width="240">
+                            <GridColumn Field=@nameof(ClientDto.Name) HeaderText="Client Name" Width="260" ClipMode="ClipMode.EllipsisWithTooltip">
                                 <Template>
                                 @{
                                     var client = (context as ClientDto);
@@ -186,7 +195,7 @@
                             </Template>
                         </GridColumn>
 
-                        <GridColumn HeaderText="Contact" Width="180">
+                            <GridColumn HeaderText="Contact" Width="220">
                             <Template>
                                 @{
                                     var client = (context as ClientDto);
@@ -198,7 +207,7 @@
                             </Template>
                         </GridColumn>
 
-                        <GridColumn HeaderText="Readiness" Width="180">
+                            <GridColumn HeaderText="Readiness" Width="220">
                             <Template>
                                 @{
                                     var client = (context as ClientDto);
@@ -235,11 +244,13 @@
 
 @code {
     private List<ClientDto>? clients;
+    private SfGrid<ClientDto>? _clientsGrid;
     private bool showCreateModal = false;
     private bool _isLoading = true;
     private string? _loadError;
     private string _searchText = string.Empty;
     private LifePhase? _phaseFilter;
+    private static readonly List<string> GridToolbarItems = ["Search", "ColumnChooser", "ExcelExport"];
 
     protected override async Task OnInitializedAsync() => await LoadClients();
 
@@ -294,6 +305,15 @@
     private void NavigateToClient(Guid id) => Nav.NavigateTo($"clients/{id}");
     private void OpenCreateModal() => showCreateModal = true;
     private void SetPhaseFilter(LifePhase? phase) => _phaseFilter = phase;
+
+    private async Task OnClientsToolbarClick(ClickEventArgs args)
+    {
+        if (_clientsGrid is null) return;
+        if (args.Item?.Id?.Contains("excelexport", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            await _clientsGrid.ExportToExcelAsync();
+        }
+    }
 
     private string GetInitials(string name)
     {

@@ -3,6 +3,8 @@
 @using GrowIT.Client.Shared
 @using GrowIT.Shared.DTOs
 @using GrowIT.Shared.Enums
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Navigations
 @inject IInvestmentService InvestmentService
 @inject IRoleAccessService RoleAccessService
 @inject IJSRuntime JS
@@ -63,48 +65,81 @@
         }
 
         <div class="card-growit">
-            <div class="table-responsive">
-                <table class="table-growit">
-                    <thead>
-                        <tr>
-                            <th class="ps-4">Date</th>
-                            <th>Person</th>
-                            <th>Purpose</th>
-                            <th>Amount</th>
-                            <th>Status</th>
-                            <th class="text-end pe-4">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var inv in FilteredInvestments)
-                        {
-                            <tr>
-                                <td class="ps-4">@inv.Date.ToString("MMM d, yyyy")</td>
-                                <td class="fw-600 text-primary">@inv.PersonName</td>
-                                <td>@inv.Purpose</td>
-                                <td class="fw-700">@inv.Amount.ToString("C0")</td>
-                                <td>
-                                    <span class="badge-growit @GetBadge(inv.Status)">@inv.Status</span>
-                                </td>
-                                <td class="text-end pe-4">
+            <div class="card-body p-0">
+                <SfGrid TValue="InvestmentListDto"
+                        @ref="_investmentsGrid"
+                        DataSource="@FilteredInvestments.ToList()"
+                        AllowPaging="true"
+                        AllowSorting="true"
+                        AllowFiltering="true"
+                        AllowResizing="true"
+                        AllowExcelExport="true"
+                        AllowTextWrap="true"
+                        ShowColumnChooser="true"
+                        Toolbar="@GridToolbarItems"
+                        Height="560">
+                    <GridPageSettings PageSize="10"></GridPageSettings>
+                    <GridFilterSettings Type="FilterType.Menu"></GridFilterSettings>
+                    <GridTextWrapSettings WrapMode="WrapMode.Content"></GridTextWrapSettings>
+                    <GridEvents TValue="InvestmentListDto" OnToolbarClick="OnInvestmentsToolbarClick"></GridEvents>
+                    <GridColumns>
+                        <GridColumn Field=@nameof(InvestmentListDto.Date) HeaderText="Date" Width="140" TextAlign="TextAlign.Left">
+                            <Template>
+                                @{
+                                    var inv = (context as InvestmentListDto)!;
+                                }
+                                <span>@inv.Date.ToString("MMM d, yyyy")</span>
+                            </Template>
+                        </GridColumn>
+                        <GridColumn Field=@nameof(InvestmentListDto.PersonName) HeaderText="Person" Width="220" ClipMode="ClipMode.EllipsisWithTooltip">
+                            <Template>
+                                @{
+                                    var inv = (context as InvestmentListDto)!;
+                                }
+                                <span class="fw-600 text-primary">@inv.PersonName</span>
+                            </Template>
+                        </GridColumn>
+                        <GridColumn Field=@nameof(InvestmentListDto.Purpose) HeaderText="Purpose" Width="260" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                        <GridColumn Field=@nameof(InvestmentListDto.Amount) HeaderText="Amount" Width="140" TextAlign="TextAlign.Right">
+                            <Template>
+                                @{
+                                    var inv = (context as InvestmentListDto)!;
+                                }
+                                <span class="fw-700">@inv.Amount.ToString("C0")</span>
+                            </Template>
+                        </GridColumn>
+                        <GridColumn Field=@nameof(InvestmentListDto.Status) HeaderText="Status" Width="150" TextAlign="TextAlign.Center">
+                            <Template>
+                                @{
+                                    var inv = (context as InvestmentListDto)!;
+                                }
+                                <span class="badge-growit @GetBadge(inv.Status)">@inv.Status</span>
+                            </Template>
+                        </GridColumn>
+                        <GridColumn HeaderText="Actions" Width="280" AllowFiltering="false" AllowSorting="false" TextAlign="TextAlign.Right">
+                            <Template>
+                                @{
+                                    var inv = (context as InvestmentListDto)!;
+                                }
+                                <div class="d-flex justify-content-end gap-1">
                                     @if (_canApproveServiceInvestments && inv.Status == GrowIT.Shared.Enums.InvestmentStatus.Pending)
                                     {
-                                        <button class="btn-growit btn-primary-growit btn-sm me-1"
+                                        <button class="btn-growit btn-primary-growit btn-sm"
                                                 disabled="@(_busyInvestmentId == inv.Id)"
                                                 @onclick="() => Approve(inv.Id)">Approve</button>
                                     }
                                     @if (_canApproveServiceInvestments && inv.Status == GrowIT.Shared.Enums.InvestmentStatus.Approved)
                                     {
-                                        <button class="btn-growit btn-secondary-growit btn-sm me-1"
+                                        <button class="btn-growit btn-secondary-growit btn-sm"
                                                 disabled="@(_busyInvestmentId == inv.Id)"
                                                 @onclick="() => Disburse(inv.Id)">Disburse</button>
                                     }
                                     <button class="btn-growit btn-ghost-growit btn-sm" @onclick="() => OpenDetails(inv.Id)">Details</button>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                                </div>
+                            </Template>
+                        </GridColumn>
+                    </GridColumns>
+                </SfGrid>
             </div>
         </div>
     }
@@ -119,6 +154,7 @@
 
 @code {
     private List<InvestmentListDto> _investments = new();
+    private SfGrid<InvestmentListDto>? _investmentsGrid;
     private bool _isLoading = true;
     private bool showPlantSeedModal;
     private bool showInvestmentDetailModal;
@@ -129,6 +165,7 @@
     private bool _canApproveServiceInvestments;
     private string SearchQuery { get; set; } = "";
     private string StatusFilter { get; set; } = "";
+    private static readonly List<string> GridToolbarItems = ["Search", "ColumnChooser", "ExcelExport"];
 
     private IEnumerable<InvestmentListDto> FilteredInvestments
     {
@@ -218,6 +255,15 @@
     {
         selectedInvestmentId = id;
         showInvestmentDetailModal = true;
+    }
+
+    private async Task OnInvestmentsToolbarClick(ClickEventArgs args)
+    {
+        if (_investmentsGrid is null) return;
+        if (args.Item?.Id?.Contains("excelexport", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            await _investmentsGrid.ExportToExcelAsync();
+        }
     }
 
     // FIXED: Fully qualified name

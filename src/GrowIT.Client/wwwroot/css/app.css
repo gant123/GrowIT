@@ -8,23 +8,25 @@
    ======================================== */
 :root {
     /* Enterprise Palette */
-    --brand-primary: #0f172a;       /* Deep Slate/Indigo */
-    --brand-primary-light: #1e293b;
-    --brand-primary-dark: #020617;
+    --brand-primary: #32505A;       /* Logo blue */
+    --brand-primary-light: #486873;
+    --brand-primary-dark: #243a42;
     
-    --brand-accent: #059669;        /* Refined Emerald Green */
-    --brand-accent-light: #10b981;
-    --brand-accent-dark: #047857;
-    --brand-accent-glow: rgba(16, 185, 129, 0.15);
+    --brand-accent: #27B062;        /* Logo green */
+    --brand-accent-light: #45c379;
+    --brand-accent-dark: #1f8f4f;
+    --brand-accent-glow: rgba(39, 176, 98, 0.15);
     
     --growit-green: var(--brand-accent);
     --growit-green-light: var(--brand-accent-light);
     --growit-green-dark: var(--brand-accent-dark);
     --growit-green-glow: var(--brand-accent-glow);
     
-    --growit-blue: var(--brand-accent);
-    --growit-blue-light: var(--brand-accent-light);
-    --growit-blue-dark: var(--brand-accent-dark);
+    --growit-blue: var(--brand-primary);
+    --growit-blue-light: var(--brand-primary-light);
+    --growit-blue-dark: var(--brand-primary-dark);
+    --growit-wordmark-grow: #32505A;
+    --growit-wordmark-it: #27B062;
 
     --growit-primary: var(--brand-primary);
     --growit-primary-dark: var(--brand-primary-dark);
@@ -154,6 +156,8 @@
     --growit-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
     --bg-secondary: color-mix(in srgb, var(--growit-bg-card) 88%, white 12%);
     --bg-tertiary: color-mix(in srgb, var(--growit-bg-card) 60%, black 40%);
+    --growit-wordmark-grow: #e2e8f0;
+    --growit-wordmark-it: #27B062;
 }
 
 /* ========================================

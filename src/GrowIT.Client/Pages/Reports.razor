@@ -1,6 +1,8 @@
 @page "/reports"
 @attribute [Authorize]
 @using GrowIT.Shared.DTOs
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Navigations
 @inject IReportService ReportService
 @inject IRoleAccessService RoleAccessService
 @inject IJSRuntime JS
@@ -9,7 +11,20 @@
 
 <div class="page-reports">
     <!-- Page Header -->
-    <PageHeader Title="Funding Readiness Reports" Subtitle="Turn day-to-day service into verifiable financial intelligence and funder-ready evidence." />
+    <PageHeader Title="Funding Readiness Reports" Subtitle="Turn day-to-day service into verifiable financial intelligence and funder-ready evidence.">
+        <Actions>
+            @if (_hasReportAccess)
+            {
+                <button class="btn-growit btn-secondary-growit" @onclick="RefreshAllAsync" disabled="@_isRefreshingAll">
+                    @if (_isRefreshingAll)
+                    {
+                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                    }
+                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                </button>
+            }
+        </Actions>
+    </PageHeader>
 
     @if (!_hasReportAccess)
     {
@@ -19,12 +34,20 @@
     }
     else
     {
+    @if (!string.IsNullOrWhiteSpace(_pageMessage))
+    {
+        <div class="alert alert-success" role="alert">@_pageMessage</div>
+    }
+    @if (!string.IsNullOrWhiteSpace(_pageError))
+    {
+        <div class="alert alert-danger" role="alert">@_pageError</div>
+    }
 
     <!-- Report Templates -->
     <div class="report-section">
         <h2 class="section-title">Return on Impact</h2>
         <div class="report-cards">
-            <div class="report-card" @onclick=@(() => GenerateReport("impact-summary"))>
+            <div class="report-card @(_isGenerating ? "opacity-75" : "")" @onclick=@(() => GenerateReport("impact-summary"))>
                 <div class="report-icon">
                     <i class="bi bi-pie-chart"></i>
                 </div>
@@ -37,7 +60,7 @@
                 </div>
             </div>
 
-            <div class="report-card" @onclick=@(() => GenerateReport("investment-detail"))>
+            <div class="report-card @(_isGenerating ? "opacity-75" : "")" @onclick=@(() => GenerateReport("investment-detail"))>
                 <div class="report-icon">
                     <i class="bi bi-cash-stack"></i>
                 </div>
@@ -50,7 +73,7 @@
                 </div>
             </div>
 
-            <div class="report-card" @onclick=@(() => GenerateReport("outcomes-by-category"))>
+            <div class="report-card @(_isGenerating ? "opacity-75" : "")" @onclick=@(() => GenerateReport("outcomes-by-category"))>
                 <div class="report-icon">
                     <i class="bi bi-check2-circle"></i>
                 </div>
@@ -63,7 +86,7 @@
                 </div>
             </div>
 
-            <div class="report-card" @onclick=@(() => GenerateReport("funding-utilization"))>
+            <div class="report-card @(_isGenerating ? "opacity-75" : "")" @onclick=@(() => GenerateReport("funding-utilization"))>
                 <div class="report-icon">
                     <i class="bi bi-credit-card"></i>
                 </div>
@@ -76,7 +99,7 @@
                 </div>
             </div>
 
-            <div class="report-card" @onclick=@(() => GenerateReport("season-progression"))>
+            <div class="report-card @(_isGenerating ? "opacity-75" : "")" @onclick=@(() => GenerateReport("season-progression"))>
                 <div class="report-icon">
                     <i class="bi bi-graph-up-arrow"></i>
                 </div>
@@ -89,7 +112,7 @@
                 </div>
             </div>
 
-            <div class="report-card" @onclick=@(() => GenerateReport("demographic-breakdown"))>
+            <div class="report-card @(_isGenerating ? "opacity-75" : "")" @onclick=@(() => GenerateReport("demographic-breakdown"))>
                 <div class="report-icon">
                     <i class="bi bi-people"></i>
                 </div>
@@ -160,7 +183,11 @@
                 </div>
                 
                 <div class="builder-field builder-actions">
-                    <button class="btn btn-primary" @onclick="GenerateCustomReport">
+                    <button class="btn btn-primary" @onclick="GenerateCustomReport" disabled="@_isGenerating">
+                        @if (_isGenerating)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        }
                         <i class="bi bi-download me-2"></i>
                         Generate Report
                     </button>
@@ -172,31 +199,72 @@
     <!-- Recent Reports -->
     <div class="report-section">
         <h2 class="section-title">Recent Reports</h2>
-        <div class="recent-reports-list">
+        <div class="card-growit">
             @if (_isLoadingRecent)
             {
                 <div class="p-4 text-center text-muted">Loading recent reports...</div>
             }
             else if (_recentReports.Any())
             {
-                @foreach (var report in _recentReports)
-                {
-                    <div class="recent-report-item">
-                        <div class="report-file-icon">
-                            <i class="bi bi-file-earmark-text"></i>
-                        </div>
-                        <div class="report-file-info">
-                            <span class="report-file-name">@report.Name</span>
-                            <span class="report-file-meta">@report.GeneratedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt") • @report.Format.ToUpperInvariant()</span>
-                        </div>
-                        <div class="report-file-actions">
-                            <button class="btn btn-ghost btn-sm" @onclick="() => DownloadReport(report.Id)">
-                                <i class="bi bi-download"></i>
-                                Download
-                            </button>
-                        </div>
-                    </div>
-                }
+                <div class="card-body p-0">
+                    <SfGrid TValue="RecentReport"
+                            @ref="_recentReportsGrid"
+                            DataSource="@_recentReports.OrderByDescending(r => r.GeneratedAt).ToList()"
+                            AllowPaging="true"
+                            AllowSorting="true"
+                            AllowFiltering="true"
+                            AllowResizing="true"
+                            AllowExcelExport="true"
+                            AllowTextWrap="true"
+                            ShowColumnChooser="true"
+                            Toolbar="@GridToolbarItems"
+                            Height="360">
+                        <GridPageSettings PageSize="6"></GridPageSettings>
+                        <GridFilterSettings Type="FilterType.Menu"></GridFilterSettings>
+                        <GridTextWrapSettings WrapMode="WrapMode.Content"></GridTextWrapSettings>
+                        <GridEvents TValue="RecentReport" OnToolbarClick="OnRecentReportsToolbarClick"></GridEvents>
+                        <GridColumns>
+                            <GridColumn HeaderText="Report" Field=@nameof(RecentReport.Name) Width="280" ClipMode="ClipMode.EllipsisWithTooltip">
+                                <Template>
+                                    @{
+                                        var report = (context as RecentReport)!;
+                                    }
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-file-earmark-text text-muted"></i>
+                                        <span class="fw-600">@report.Name</span>
+                                    </div>
+                                </Template>
+                            </GridColumn>
+                            <GridColumn Field=@nameof(RecentReport.GeneratedAt) HeaderText="Generated" Width="190">
+                                <Template>
+                                    @{
+                                        var report = (context as RecentReport)!;
+                                    }
+                                    <span>@report.GeneratedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</span>
+                                </Template>
+                            </GridColumn>
+                            <GridColumn Field=@nameof(RecentReport.Format) HeaderText="Format" Width="120" TextAlign="TextAlign.Center">
+                                <Template>
+                                    @{
+                                        var report = (context as RecentReport)!;
+                                    }
+                                    <span class="badge-growit badge-neutral" style="color: var(--growit-text-secondary) !important;">@report.Format.ToUpperInvariant()</span>
+                                </Template>
+                            </GridColumn>
+                            <GridColumn HeaderText="Actions" Width="140" AllowFiltering="false" AllowSorting="false" TextAlign="TextAlign.Right">
+                                <Template>
+                                    @{
+                                        var report = (context as RecentReport)!;
+                                    }
+                                    <button class="btn btn-ghost btn-sm" @onclick="() => DownloadReport(report.Id)">
+                                        <i class="bi bi-download"></i>
+                                        Download
+                                    </button>
+                                </Template>
+                            </GridColumn>
+                        </GridColumns>
+                    </SfGrid>
+                </div>
             }
             else
             {
@@ -211,29 +279,99 @@
         <p class="section-desc">Set up automatic reports to be generated and emailed on a schedule.</p>
         
         <div class="scheduled-reports">
+            <div class="card-growit mb-3">
+                <div class="card-header">
+                    <h3 class="section-title mb-0">@(_editingScheduleId.HasValue ? "Edit Schedule" : "Create Schedule")</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Name</label>
+                            <input class="form-control" @bind="_scheduleForm.Name" placeholder="Weekly Impact Summary" />
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Frequency</label>
+                            <select class="form-select" @bind="_scheduleForm.Frequency">
+                                <option value="Daily">Daily</option>
+                                <option value="Weekly">Weekly</option>
+                                <option value="Monthly">Monthly</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Next Run</label>
+                            <input class="form-control" type="date" @bind="_scheduleForm.NextRunDate" />
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end justify-content-end gap-2">
+                            @if (_editingScheduleId.HasValue)
+                            {
+                                <button class="btn btn-outline-secondary" @onclick="CancelScheduleEdit" disabled="@_isSavingSchedule">Cancel</button>
+                            }
+                            <button class="btn btn-primary" @onclick="SaveScheduleAsync" disabled="@_isSavingSchedule">
+                                @if (_isSavingSchedule)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                <span>@(_editingScheduleId.HasValue ? "Save" : "Create")</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             @if (_isLoadingScheduled)
             {
                 <div class="p-4 text-center text-muted">Loading scheduled reports...</div>
             }
             else if (_scheduledReports.Any())
             {
-                @foreach (var scheduled in _scheduledReports)
-                {
-                    <div class="scheduled-report-item">
-                        <div class="scheduled-info">
-                            <span class="scheduled-name">@scheduled.Name</span>
-                            <span class="scheduled-frequency">@scheduled.Frequency • Next: @scheduled.NextRun.ToLocalTime().ToString("MMM d")</span>
-                        </div>
-                        <div class="scheduled-actions">
-                            <button class="btn-icon-only" title="Edit" @onclick="() => EditSchedule(scheduled.Id)">
-                                <i class="bi bi-pencil-square"></i>
-                            </button>
-                            <button class="btn-icon-only danger" title="Delete" @onclick="() => DeleteSchedule(scheduled.Id)">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
+                <div class="card-growit mb-3">
+                    <div class="card-body p-0">
+                        <SfGrid TValue="ScheduledReport"
+                                @ref="_scheduledReportsGrid"
+                                DataSource="@_scheduledReports.OrderBy(s => s.NextRun).ToList()"
+                                AllowPaging="true"
+                                AllowSorting="true"
+                                AllowFiltering="true"
+                                AllowResizing="true"
+                                AllowExcelExport="true"
+                                AllowTextWrap="true"
+                                ShowColumnChooser="true"
+                                Toolbar="@GridToolbarItems"
+                                Height="340">
+                            <GridPageSettings PageSize="6"></GridPageSettings>
+                            <GridFilterSettings Type="FilterType.Menu"></GridFilterSettings>
+                            <GridTextWrapSettings WrapMode="WrapMode.Content"></GridTextWrapSettings>
+                            <GridEvents TValue="ScheduledReport" OnToolbarClick="OnScheduledReportsToolbarClick"></GridEvents>
+                            <GridColumns>
+                                <GridColumn Field=@nameof(ScheduledReport.Name) HeaderText="Schedule" Width="260" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                <GridColumn Field=@nameof(ScheduledReport.Frequency) HeaderText="Frequency" Width="150" TextAlign="TextAlign.Center"></GridColumn>
+                                <GridColumn Field=@nameof(ScheduledReport.NextRun) HeaderText="Next Run" Width="160">
+                                    <Template>
+                                        @{
+                                            var scheduled = (context as ScheduledReport)!;
+                                        }
+                                        <span>@scheduled.NextRun.ToLocalTime().ToString("MMM d, yyyy")</span>
+                                    </Template>
+                                </GridColumn>
+                                <GridColumn HeaderText="Actions" Width="140" AllowFiltering="false" AllowSorting="false" TextAlign="TextAlign.Center">
+                                    <Template>
+                                        @{
+                                            var scheduled = (context as ScheduledReport)!;
+                                        }
+                                        <div class="d-flex justify-content-center gap-1">
+                                            <button class="btn-icon-only" title="Edit" @onclick="() => EditSchedule(scheduled.Id)">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
+                                            <button class="btn-icon-only danger" title="Delete" @onclick="() => DeleteSchedule(scheduled.Id)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </Template>
+                                </GridColumn>
+                            </GridColumns>
+                        </SfGrid>
                     </div>
-                }
+                </div>
             }
             else
             {
@@ -241,11 +379,6 @@
                     <p>No scheduled reports yet.</p>
                 </div>
             }
-            
-            <button class="btn btn-secondary" @onclick="AddScheduledReport">
-                <i class="bi bi-plus-lg me-2"></i>
-                Add Scheduled Report
-            </button>
         </div>
     </div>
 
@@ -260,13 +393,23 @@
     private DateTime? _customDateTo;
     private string _customGroupBy = "none";
     private string _customFormat = "pdf";
+    private static readonly List<string> GridToolbarItems = ["Search", "ColumnChooser", "ExcelExport"];
+    private bool _isGenerating;
+    private bool _isSavingSchedule;
+    private bool _isRefreshingAll;
+    private string? _pageMessage;
+    private string? _pageError;
+    private Guid? _editingScheduleId;
+    private ReportScheduleForm _scheduleForm = ReportScheduleForm.CreateDefault();
 
     // Recent reports
     private List<RecentReport> _recentReports = new();
+    private SfGrid<RecentReport>? _recentReportsGrid;
     private bool _isLoadingRecent = true;
     
     // Scheduled reports
     private List<ScheduledReport> _scheduledReports = new();
+    private SfGrid<ScheduledReport>? _scheduledReportsGrid;
     private bool _isLoadingScheduled = true;
     private bool _hasReportAccess = true;
 
@@ -281,37 +424,16 @@
             _isLoadingScheduled = false;
             return;
         }
-
-        try
-        {
-            _recentReports = await ReportService.GetRecentReportsAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading recent reports: {ex.Message}");
-        }
-        finally
-        {
-            _isLoadingRecent = false;
-        }
-
-        try
-        {
-            _scheduledReports = await ReportService.GetScheduledReportsAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading scheduled reports: {ex.Message}");
-        }
-        finally
-        {
-            _isLoadingScheduled = false;
-        }
+        await RefreshAllAsync();
     }
 
     private async Task GenerateReport(string reportType)
     {
         if (!_hasReportAccess) return;
+        if (_isGenerating) return;
+        _pageError = null;
+        _pageMessage = null;
+        _isGenerating = true;
         try
         {
             var payload = new GenerateReportRequest
@@ -327,17 +449,33 @@
                 _recentReports = _recentReports
                     .OrderByDescending(r => r.GeneratedAt)
                     .ToList();
+                _pageMessage = $"Generated report: {created.Name}";
             }
         }
         catch (Exception ex)
         {
+            _pageError = ex.Message;
             Console.WriteLine($"Error generating report: {ex.Message}");
+        }
+        finally
+        {
+            _isGenerating = false;
         }
     }
 
     private async Task GenerateCustomReport()
     {
         if (!_hasReportAccess) return;
+        if (_isGenerating) return;
+        if (_customDateFrom.HasValue && _customDateTo.HasValue && _customDateFrom > _customDateTo)
+        {
+            _pageError = "Custom report date range is invalid. Start date must be on or before end date.";
+            _pageMessage = null;
+            return;
+        }
+        _pageError = null;
+        _pageMessage = null;
+        _isGenerating = true;
         try
         {
             var payload = new GenerateReportRequest
@@ -357,11 +495,17 @@
                 _recentReports = _recentReports
                     .OrderByDescending(r => r.GeneratedAt)
                     .ToList();
+                _pageMessage = $"Generated custom report: {created.Name}";
             }
         }
         catch (Exception ex)
         {
+            _pageError = ex.Message;
             Console.WriteLine($"Error generating custom report: {ex.Message}");
+        }
+        finally
+        {
+            _isGenerating = false;
         }
     }
 
@@ -375,32 +519,74 @@
         }
         catch (Exception ex)
         {
+            _pageError = ex.Message;
             Console.WriteLine($"Error downloading report: {ex.Message}");
         }
     }
 
-    private async Task AddScheduledReport()
+    private async Task SaveScheduleAsync()
     {
         if (!_hasReportAccess) return;
-        var payload = new CreateScheduledReportRequest
+        _pageError = null;
+        _pageMessage = null;
+
+        if (string.IsNullOrWhiteSpace(_scheduleForm.Name))
         {
-            Name = "Weekly Impact Summary",
-            Frequency = "Weekly",
-            NextRun = DateTime.UtcNow.AddDays(7)
-        };
+            _pageError = "Schedule name is required.";
+            return;
+        }
+
+        _isSavingSchedule = true;
+
+        var nextRun = _scheduleForm.NextRunDate.Date == default
+            ? DateTime.UtcNow.Date.AddDays(7)
+            : DateTime.SpecifyKind(_scheduleForm.NextRunDate.Date, DateTimeKind.Utc);
 
         try
         {
-            var created = await ReportService.CreateScheduledReportAsync(payload);
-            if (created != null)
+            if (_editingScheduleId.HasValue)
             {
-                _scheduledReports.Add(created);
-                _scheduledReports = _scheduledReports.OrderBy(s => s.NextRun).ToList();
+                var updated = await ReportService.UpdateScheduledReportAsync(_editingScheduleId.Value, new UpdateScheduledReportRequest
+                {
+                    Name = _scheduleForm.Name.Trim(),
+                    Frequency = _scheduleForm.Frequency.Trim(),
+                    NextRun = nextRun
+                });
+
+                if (updated != null)
+                {
+                    var index = _scheduledReports.FindIndex(s => s.Id == updated.Id);
+                    if (index >= 0) _scheduledReports[index] = updated;
+                    _scheduledReports = _scheduledReports.OrderBy(s => s.NextRun).ToList();
+                    _pageMessage = $"Updated schedule: {updated.Name}";
+                    CancelScheduleEdit();
+                }
+            }
+            else
+            {
+                var created = await ReportService.CreateScheduledReportAsync(new CreateScheduledReportRequest
+                {
+                    Name = _scheduleForm.Name.Trim(),
+                    Frequency = _scheduleForm.Frequency.Trim(),
+                    NextRun = nextRun
+                });
+                if (created != null)
+                {
+                    _scheduledReports.Add(created);
+                    _scheduledReports = _scheduledReports.OrderBy(s => s.NextRun).ToList();
+                    _pageMessage = $"Created schedule: {created.Name}";
+                    _scheduleForm = ReportScheduleForm.CreateDefault();
+                }
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error creating scheduled report: {ex.Message}");
+            _pageError = ex.Message;
+            Console.WriteLine($"Error saving scheduled report: {ex.Message}");
+        }
+        finally
+        {
+            _isSavingSchedule = false;
         }
     }
 
@@ -409,41 +595,105 @@
         if (!_hasReportAccess) return;
         var existing = _scheduledReports.FirstOrDefault(s => s.Id == id);
         if (existing == null) return;
-
-        var payload = new UpdateScheduledReportRequest
+        _editingScheduleId = id;
+        _scheduleForm = new ReportScheduleForm
         {
             Name = existing.Name,
-            Frequency = existing.Frequency,
-            NextRun = existing.NextRun.AddDays(7)
+            Frequency = string.IsNullOrWhiteSpace(existing.Frequency) ? "Weekly" : existing.Frequency,
+            NextRunDate = existing.NextRun.ToLocalTime().Date
         };
-
-        try
-        {
-            var updated = await ReportService.UpdateScheduledReportAsync(id, payload);
-            if (updated != null)
-            {
-                var index = _scheduledReports.FindIndex(s => s.Id == id);
-                if (index >= 0) _scheduledReports[index] = updated;
-                _scheduledReports = _scheduledReports.OrderBy(s => s.NextRun).ToList();
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error updating scheduled report: {ex.Message}");
-        }
     }
 
     private async Task DeleteSchedule(Guid id)
     {
         if (!_hasReportAccess) return;
+        _pageError = null;
+        _pageMessage = null;
         try
         {
+            if (!await JS.InvokeAsync<bool>("confirm", "Delete this scheduled report?"))
+            {
+                return;
+            }
+
             await ReportService.DeleteScheduledReportAsync(id);
             _scheduledReports = _scheduledReports.Where(s => s.Id != id).ToList();
+            if (_editingScheduleId == id)
+            {
+                CancelScheduleEdit();
+            }
+            _pageMessage = "Scheduled report deleted.";
         }
         catch (Exception ex)
         {
+            _pageError = ex.Message;
             Console.WriteLine($"Error deleting scheduled report: {ex.Message}");
         }
+    }
+
+    private void CancelScheduleEdit()
+    {
+        _editingScheduleId = null;
+        _scheduleForm = ReportScheduleForm.CreateDefault();
+    }
+
+    private async Task RefreshAllAsync()
+    {
+        if (!_hasReportAccess) return;
+        _isRefreshingAll = true;
+        _pageError = null;
+
+        try
+        {
+            _isLoadingRecent = true;
+            _isLoadingScheduled = true;
+            var recentTask = ReportService.GetRecentReportsAsync();
+            var scheduledTask = ReportService.GetScheduledReportsAsync();
+            await Task.WhenAll(recentTask, scheduledTask);
+            _recentReports = await recentTask;
+            _scheduledReports = (await scheduledTask).OrderBy(s => s.NextRun).ToList();
+        }
+        catch (Exception ex)
+        {
+            _pageError = ex.Message;
+        }
+        finally
+        {
+            _isLoadingRecent = false;
+            _isLoadingScheduled = false;
+            _isRefreshingAll = false;
+        }
+    }
+
+    private async Task OnRecentReportsToolbarClick(ClickEventArgs args)
+    {
+        if (_recentReportsGrid is null) return;
+        if (args.Item?.Id?.Contains("excelexport", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            await _recentReportsGrid.ExportToExcelAsync();
+        }
+    }
+
+    private async Task OnScheduledReportsToolbarClick(ClickEventArgs args)
+    {
+        if (_scheduledReportsGrid is null) return;
+        if (args.Item?.Id?.Contains("excelexport", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            await _scheduledReportsGrid.ExportToExcelAsync();
+        }
+    }
+
+    private sealed class ReportScheduleForm
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Frequency { get; set; } = "Weekly";
+        public DateTime NextRunDate { get; set; } = DateTime.Today.AddDays(7);
+
+        public static ReportScheduleForm CreateDefault() => new()
+        {
+            Name = "Weekly Impact Summary",
+            Frequency = "Weekly",
+            NextRunDate = DateTime.Today.AddDays(7)
+        };
     }
 }

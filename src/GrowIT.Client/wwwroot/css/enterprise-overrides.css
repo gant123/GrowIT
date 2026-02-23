@@ -174,7 +174,7 @@ body {
 }
 
 .table,
-table {
+table:not(.e-table):not([class*="e-"]) {
     --bs-table-bg: transparent;
 }
 

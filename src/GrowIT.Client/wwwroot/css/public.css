@@ -56,6 +56,18 @@
     width: auto;
 }
 
+.header-brand .brand-text {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: var(--growit-wordmark-grow);
+    letter-spacing: -0.02em;
+    line-height: 1;
+}
+
+.header-brand .brand-highlight {
+    color: var(--growit-wordmark-it);
+}
+
 .header-nav {
     display: flex;
     gap: 4px;
@@ -983,11 +995,11 @@
 .footer-logo span {
     font-size: 1.25rem;
     font-weight: 700;
-    color: var(--growit-text-primary);
+    color: var(--growit-wordmark-grow);
 }
 
 .footer-logo .highlight {
-    color: var(--growit-green);
+    color: var(--growit-wordmark-it);
 }
 
 .footer-brand p {
@@ -1136,11 +1148,11 @@
 .auth-logo .brand-text {
     font-size: 1.5rem;
     font-weight: 700;
-    color: var(--growit-text-primary);
+    color: var(--growit-wordmark-grow);
 }
 
 .auth-logo .brand-highlight {
-    color: var(--growit-green);
+    color: var(--growit-wordmark-it);
 }
 
 .auth-header {

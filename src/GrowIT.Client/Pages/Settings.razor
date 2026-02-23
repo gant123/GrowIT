@@ -2,6 +2,7 @@
 @attribute [Authorize]
 @using GrowIT.Shared.DTOs
 @using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Navigations
 @inject IAdminService AdminService
 @inject IRoleAccessService RoleAccessService
 @inject IJSRuntime JS
@@ -179,8 +180,22 @@
                         <div class="alert alert-danger">@_userActionError</div>
                     }
 
-                    <SfGrid DataSource="@_users" AllowPaging="true" AllowSorting="true" AllowResizing="true" Width="100%">
+                    <SfGrid TValue="AdminUserListItemDto"
+                            @ref="_usersGrid"
+                            DataSource="@_users"
+                            AllowPaging="true"
+                            AllowSorting="true"
+                            AllowFiltering="true"
+                            AllowResizing="true"
+                            AllowExcelExport="true"
+                            AllowTextWrap="true"
+                            ShowColumnChooser="true"
+                            Toolbar="@GridToolbarItems"
+                            Width="100%">
                         <GridPageSettings PageSize="8"></GridPageSettings>
+                        <GridFilterSettings Type="FilterType.Excel"></GridFilterSettings>
+                        <GridTextWrapSettings WrapMode="WrapMode.Content"></GridTextWrapSettings>
+                        <GridEvents TValue="AdminUserListItemDto" OnToolbarClick="OnUsersGridToolbarClick"></GridEvents>
                         <GridColumns>
                             <GridColumn Field=@nameof(AdminUserListItemDto.FullName) HeaderText="Name" Width="200"></GridColumn>
                             <GridColumn Field=@nameof(AdminUserListItemDto.Email) HeaderText="Email" Width="240"></GridColumn>
@@ -322,8 +337,22 @@
                     </div>
 
                     <div class="invite-grid-wrap mt-4">
-                        <SfGrid DataSource="@_invites" AllowPaging="true" AllowSorting="true" AllowResizing="true" Width="100%">
+                        <SfGrid TValue="OrganizationInviteListItemDto"
+                                @ref="_invitesGrid"
+                                DataSource="@_invites"
+                                AllowPaging="true"
+                                AllowSorting="true"
+                                AllowFiltering="true"
+                                AllowResizing="true"
+                                AllowExcelExport="true"
+                                AllowTextWrap="true"
+                                ShowColumnChooser="true"
+                                Toolbar="@GridToolbarItems"
+                                Width="100%">
                             <GridPageSettings PageSize="8"></GridPageSettings>
+                            <GridFilterSettings Type="FilterType.Excel"></GridFilterSettings>
+                            <GridTextWrapSettings WrapMode="WrapMode.Content"></GridTextWrapSettings>
+                            <GridEvents TValue="OrganizationInviteListItemDto" OnToolbarClick="OnInvitesGridToolbarClick"></GridEvents>
                             <GridColumns>
                                 <GridColumn Field=@nameof(OrganizationInviteListItemDto.Email) HeaderText="Email" Width="220"></GridColumn>
                                 <GridColumn HeaderText="Invitee" Width="180">
@@ -622,8 +651,22 @@
                             <div class="alert alert-danger py-2 mb-3">@_auditLogError</div>
                         }
 
-                        <SfGrid DataSource="@FilteredAuditLogs" AllowPaging="true" AllowSorting="true" AllowResizing="true" Width="100%">
+                        <SfGrid TValue="AdminAuditLogItemDto"
+                                @ref="_auditLogsGrid"
+                                DataSource="@FilteredAuditLogs"
+                                AllowPaging="true"
+                                AllowSorting="true"
+                                AllowFiltering="true"
+                                AllowResizing="true"
+                                AllowExcelExport="true"
+                                AllowTextWrap="true"
+                                ShowColumnChooser="true"
+                                Toolbar="@GridToolbarItems"
+                                Width="100%">
                             <GridPageSettings PageSize="10"></GridPageSettings>
+                            <GridFilterSettings Type="FilterType.Excel"></GridFilterSettings>
+                            <GridTextWrapSettings WrapMode="WrapMode.Content"></GridTextWrapSettings>
+                            <GridEvents TValue="AdminAuditLogItemDto" OnToolbarClick="OnAuditLogsGridToolbarClick"></GridEvents>
                             <GridColumns>
                                 <GridColumn HeaderText="When" Width="170">
                                     <Template>
@@ -690,6 +733,9 @@
     private OrganizationSettingsDto? _organization;
     private EmailDiagnosticsDto? _emailDiagnostics;
     private UpdateOrganizationSettingsRequest? _organizationEdit;
+    private SfGrid<AdminUserListItemDto>? _usersGrid;
+    private SfGrid<OrganizationInviteListItemDto>? _invitesGrid;
+    private SfGrid<AdminAuditLogItemDto>? _auditLogsGrid;
     private List<AdminUserListItemDto> _users = new();
     private List<OrganizationInviteListItemDto> _invites = new();
     private List<InviteAuditNotificationDto> _inviteActivity = new();
@@ -698,6 +744,7 @@
     private readonly HashSet<Guid> _busyUserIds = new();
     private readonly Dictionary<Guid, string> _roleDrafts = new();
     private SendTestEmailRequest _testEmailRequest = new();
+    private static readonly List<string> GridToolbarItems = ["Search", "ColumnChooser", "ExcelExport"];
     private static readonly string[] RoleOptions = ["Admin", "Manager", "Case Manager", "Analyst", "Member"];
     private string _auditTableFilter = "";
     private string _auditActionFilter = "";
@@ -767,6 +814,33 @@
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task OnUsersGridToolbarClick(ClickEventArgs args)
+    {
+        if (_usersGrid is null) return;
+        if (args.Item?.Id?.Contains("excelexport", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            await _usersGrid.ExportToExcelAsync();
+        }
+    }
+
+    private async Task OnInvitesGridToolbarClick(ClickEventArgs args)
+    {
+        if (_invitesGrid is null) return;
+        if (args.Item?.Id?.Contains("excelexport", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            await _invitesGrid.ExportToExcelAsync();
+        }
+    }
+
+    private async Task OnAuditLogsGridToolbarClick(ClickEventArgs args)
+    {
+        if (_auditLogsGrid is null) return;
+        if (args.Item?.Id?.Contains("excelexport", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            await _auditLogsGrid.ExportToExcelAsync();
         }
     }
 

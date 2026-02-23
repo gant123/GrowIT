@@ -1,6 +1,8 @@
 @page "/people"
 @using GrowIT.Client.Services
 @using GrowIT.Shared.DTOs
+@using Syncfusion.Blazor.Grids
+@using Syncfusion.Blazor.Navigations
 @inject IClientService ClientService
 @inject NavigationManager Navigation
 
@@ -35,53 +37,84 @@
     else
     {
         <div class="card-growit">
-            <div class="table-responsive">
-                <table class="table-growit">
-                    <thead>
-                        <tr>
-                            <th class="ps-4 cursor-pointer" @onclick='() => Sort("Name")'>Name <span class="oi oi-sort-ascending small"></span></th>
-                            <th>Phase</th>
-                            <th class="cursor-pointer" @onclick='() => Sort("Score")'>Stability <span class="oi oi-sort-ascending small"></span></th>
-                            <th>Contact</th>
-                            <th class="text-end pe-4">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var person in FilteredPeople)
-                        {
-                            <tr @onclick="() => ViewPerson(person.Id)" class="cursor-pointer">
-                                <td class="ps-4">
-                                    <div class="d-flex align-items-center gap-3">
-                                        <div class="avatar-growit avatar-md">
-                                            @GetInitials(person.Name)
-                                        </div>
-                                        <div>
-                                            <div class="fw-600">@person.Name</div>
-                                            <div class="small text-muted">@person.Email</div>
-                                        </div>
+            <div class="card-body p-0">
+                <SfGrid TValue="ClientDto"
+                        @ref="_peopleGrid"
+                        DataSource="@FilteredPeople.ToList()"
+                        AllowPaging="true"
+                        AllowSorting="true"
+                        AllowFiltering="true"
+                        AllowResizing="true"
+                        AllowExcelExport="true"
+                        AllowTextWrap="true"
+                        ShowColumnChooser="true"
+                        Toolbar="@GridToolbarItems"
+                        Height="560">
+                    <GridPageSettings PageSize="10"></GridPageSettings>
+                    <GridFilterSettings Type="FilterType.Menu"></GridFilterSettings>
+                    <GridTextWrapSettings WrapMode="WrapMode.Content"></GridTextWrapSettings>
+                    <GridEvents TValue="ClientDto" OnToolbarClick="OnPeopleToolbarClick"></GridEvents>
+                    <GridColumns>
+                        <GridColumn Field=@nameof(ClientDto.Name) HeaderText="Name" Width="280" ClipMode="ClipMode.EllipsisWithTooltip">
+                            <Template>
+                                @{
+                                    var person = (context as ClientDto)!;
+                                }
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="avatar-growit avatar-md">
+                                        @GetInitials(person.Name)
                                     </div>
-                                </td>
-                                <td>
-                                    <span class="badge-growit @GetPhaseClass(person.LifePhase.ToString())">
-                                        @person.LifePhase
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="stability-indicator" style="max-width: 150px;">
-                                        <span class="small fw-700">@person.StabilityScore</span>
-                                        <div class="stability-bar">
-                                            <div class="stability-fill" style="width: @($"{person.StabilityScore * 10}%")"></div>
-                                        </div>
+                                    <div>
+                                        <div class="fw-600">@person.Name</div>
+                                        <div class="small text-muted">@person.Email</div>
                                     </div>
-                                </td>
-                                <td class="text-muted small">@person.Phone</td>
-                                <td class="text-end pe-4">
-                                    <button class="btn-growit btn-ghost-growit btn-sm">View</button>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+                                </div>
+                            </Template>
+                        </GridColumn>
+                        <GridColumn Field=@nameof(ClientDto.LifePhase) HeaderText="Phase" Width="140" TextAlign="TextAlign.Center">
+                            <Template>
+                                @{
+                                    var person = (context as ClientDto)!;
+                                }
+                                <span class="badge-growit @GetPhaseClass(person.LifePhase.ToString())">
+                                    @person.LifePhase
+                                </span>
+                            </Template>
+                        </GridColumn>
+                        <GridColumn Field=@nameof(ClientDto.StabilityScore) HeaderText="Stability" Width="180" TextAlign="TextAlign.Center">
+                            <Template>
+                                @{
+                                    var person = (context as ClientDto)!;
+                                }
+                                <div class="stability-indicator" style="max-width: 150px;">
+                                    <span class="small fw-700">@person.StabilityScore</span>
+                                    <div class="stability-bar">
+                                        <div class="stability-fill" style="width: @($"{person.StabilityScore * 10}%")"></div>
+                                    </div>
+                                </div>
+                            </Template>
+                        </GridColumn>
+                        <GridColumn Field=@nameof(ClientDto.Phone) HeaderText="Contact" Width="220" ClipMode="ClipMode.EllipsisWithTooltip">
+                            <Template>
+                                @{
+                                    var person = (context as ClientDto)!;
+                                }
+                                <div class="small">
+                                    <div class="text-muted">@person.Phone</div>
+                                    <div class="text-muted">@person.Email</div>
+                                </div>
+                            </Template>
+                        </GridColumn>
+                        <GridColumn HeaderText="Actions" Width="140" AllowFiltering="false" AllowSorting="false" TextAlign="TextAlign.Right">
+                            <Template>
+                                @{
+                                    var person = (context as ClientDto)!;
+                                }
+                                <button class="btn-growit btn-ghost-growit btn-sm" @onclick="() => ViewPerson(person.Id)">View</button>
+                            </Template>
+                        </GridColumn>
+                    </GridColumns>
+                </SfGrid>
             </div>
         </div>
         <div class="mt-3 text-muted small text-end">
@@ -92,10 +125,10 @@
 
 @code {
     private List<ClientDto> _allPeople = new();
+    private SfGrid<ClientDto>? _peopleGrid;
     private bool _isLoading = true;
     private string SearchQuery { get; set; } = "";
-    private string _sortBy = "Name";
-    private bool _sortDesc = false;
+    private static readonly List<string> GridToolbarItems = ["Search", "ColumnChooser", "ExcelExport"];
 
     // Client-side filtering logic
     private IEnumerable<ClientDto> FilteredPeople
@@ -113,11 +146,7 @@
                 );
             }
 
-            return _sortBy switch
-            {
-                "Score" => _sortDesc ? query.OrderByDescending(p => p.StabilityScore) : query.OrderBy(p => p.StabilityScore),
-                _ => _sortDesc ? query.OrderByDescending(p => p.Name) : query.OrderBy(p => p.Name)
-            };
+            return query.OrderBy(p => p.Name);
         }
     }
 
@@ -137,18 +166,17 @@
         }
     }
 
-    private void Sort(string column)
-    {
-        if (_sortBy == column) _sortDesc = !_sortDesc;
-        else
-        {
-            _sortBy = column;
-            _sortDesc = false;
-        }
-    }
-
     private void ViewPerson(Guid id) => Navigation.NavigateTo($"/clients/{id}"); // Point to new Client Detail route
     private void OpenAddPerson() => Navigation.NavigateTo("/clients/create");
+
+    private async Task OnPeopleToolbarClick(ClickEventArgs args)
+    {
+        if (_peopleGrid is null) return;
+        if (args.Item?.Id?.Contains("excelexport", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            await _peopleGrid.ExportToExcelAsync();
+        }
+    }
 
     private string GetInitials(string name)
     {
@@ -165,5 +193,4 @@
         _ => "badge-neutral"
     };
 
-    private string GetScoreColor(int score) => score < 4 ? "bg-danger" : (score < 7 ? "bg-warning" : "bg-success");
 }

@@ -27,36 +27,104 @@ public class ReportsController : ControllerBase
     }
 
     [HttpGet("recent")]
-    public async Task<ActionResult<List<RecentReport>>> GetRecentReports()
+    public async Task<ActionResult<List<RecentReport>>> GetRecentReports([FromQuery] RecentReportsQueryParams query)
     {
-        var items = await _context.ReportRuns
-            .AsNoTracking()
+        var runs = _context.ReportRuns.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim();
+            runs = runs.Where(r => r.Name.Contains(search) || r.ReportType.Contains(search) || r.Format.Contains(search));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.ReportType))
+        {
+            var reportType = query.ReportType.Trim();
+            runs = runs.Where(r => r.ReportType == reportType);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Format))
+        {
+            var format = query.Format.Trim();
+            runs = runs.Where(r => r.Format == format);
+        }
+
+        if (query.DateFrom.HasValue)
+        {
+            runs = runs.Where(r => r.GeneratedAt >= query.DateFrom.Value);
+        }
+
+        if (query.DateTo.HasValue)
+        {
+            // inclusive end date for date-only UI inputs
+            var inclusiveEnd = query.DateTo.Value.Date.AddDays(1).AddTicks(-1);
+            runs = runs.Where(r => r.GeneratedAt <= inclusiveEnd);
+        }
+
+        var take = Math.Clamp(query.Take ?? 200, 1, 1000);
+
+        var items = await runs
             .OrderByDescending(r => r.GeneratedAt)
+            .Take(take)
             .Select(r => new RecentReport
             {
                 Id = r.Id,
                 Name = r.Name,
                 Format = r.Format,
+                ReportType = r.ReportType,
+                Status = "Generated",
                 GeneratedAt = r.GeneratedAt
             })
             .ToListAsync();
+
+        if (!string.IsNullOrWhiteSpace(query.Status))
+        {
+            items = items
+                .Where(i => string.Equals(i.Status, query.Status, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
 
         return Ok(items);
     }
 
     [HttpGet("scheduled")]
-    public async Task<ActionResult<List<ScheduledReport>>> GetScheduledReports()
+    public async Task<ActionResult<List<ScheduledReport>>> GetScheduledReports([FromQuery] ScheduledReportsQueryParams query)
     {
-        var items = await _context.ReportSchedules
+        var schedules = _context.ReportSchedules
             .AsNoTracking()
-            .Where(s => s.IsActive)
+            .AsQueryable();
+
+        if (!query.IncludeInactive)
+        {
+            schedules = schedules.Where(s => s.IsActive);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim();
+            schedules = schedules.Where(s => s.Name.Contains(search) || s.Frequency.Contains(search));
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Frequency))
+        {
+            var frequency = query.Frequency.Trim();
+            schedules = schedules.Where(s => s.Frequency == frequency);
+        }
+
+        var take = Math.Clamp(query.Take ?? 200, 1, 1000);
+
+        var items = await schedules
             .OrderBy(s => s.NextRun)
+            .Take(take)
             .Select(s => new ScheduledReport
             {
                 Id = s.Id,
                 Name = s.Name,
                 Frequency = s.Frequency,
-                NextRun = s.NextRun
+                NextRun = s.NextRun,
+                IsActive = s.IsActive,
+                CreatedAt = s.CreatedAt,
+                UpdatedAt = s.UpdatedAt
             })
             .ToListAsync();
 
@@ -92,6 +160,8 @@ public class ReportsController : ControllerBase
             Id = run.Id,
             Name = run.Name,
             Format = run.Format,
+            ReportType = run.ReportType,
+            Status = "Generated",
             GeneratedAt = run.GeneratedAt
         });
     }
@@ -146,7 +216,10 @@ public class ReportsController : ControllerBase
             Id = item.Id,
             Name = item.Name,
             Frequency = item.Frequency,
-            NextRun = item.NextRun
+            NextRun = item.NextRun,
+            IsActive = item.IsActive,
+            CreatedAt = item.CreatedAt,
+            UpdatedAt = item.UpdatedAt
         });
     }
 
@@ -169,7 +242,10 @@ public class ReportsController : ControllerBase
             Id = existing.Id,
             Name = existing.Name,
             Frequency = existing.Frequency,
-            NextRun = existing.NextRun
+            NextRun = existing.NextRun,
+            IsActive = existing.IsActive,
+            CreatedAt = existing.CreatedAt,
+            UpdatedAt = existing.UpdatedAt
         });
     }
 
