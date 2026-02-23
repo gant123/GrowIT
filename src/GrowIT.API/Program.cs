@@ -36,7 +36,7 @@ builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
     
     // 2. Configure Npgsql and attach the interceptor
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection") 
-                      ?? "Host=127.0.0.1;Port=5433;Database=GrowIT;Username=postgres;Password=password")
+                      ?? "Host=10.0.0.6;Port=5433;Database=GrowIT;Username=postgres;Password=password")
            .AddInterceptors(auditInterceptor);
 });
 

@@ -2,6 +2,7 @@
 @attribute [Authorize(Roles = "Admin,Manager")]
 @using GrowIT.Shared.DTOs
 @inject HttpClient Http
+@inject IJSRuntime JS
 
 <PageTitle>Reports - grow.IT</PageTitle>
 
@@ -340,33 +341,154 @@
         }
     }
 
-    private void GenerateReport(string reportType)
+    private async Task GenerateReport(string reportType)
     {
-        // Generate specific report
+        try
+        {
+            var payload = new GenerateReportRequest
+            {
+                ReportType = reportType,
+                Format = _customFormat
+            };
+
+            var response = await Http.PostAsJsonAsync("api/reports/generate", payload);
+            if (response.IsSuccessStatusCode)
+            {
+                var created = await response.Content.ReadFromJsonAsync<RecentReport>();
+                if (created != null)
+                {
+                    _recentReports.Insert(0, created);
+                    _recentReports = _recentReports
+                        .OrderByDescending(r => r.GeneratedAt)
+                        .ToList();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error generating report: {ex.Message}");
+        }
     }
 
-    private void GenerateCustomReport()
+    private async Task GenerateCustomReport()
     {
-        // Generate custom report based on builder settings
+        try
+        {
+            var payload = new GenerateReportRequest
+            {
+                ReportType = _customReportType,
+                Format = _customFormat,
+                FiscalYear = _customFiscalYear,
+                DateFrom = _customDateFrom,
+                DateTo = _customDateTo,
+                GroupBy = _customGroupBy
+            };
+
+            var response = await Http.PostAsJsonAsync("api/reports/generate", payload);
+            if (response.IsSuccessStatusCode)
+            {
+                var created = await response.Content.ReadFromJsonAsync<RecentReport>();
+                if (created != null)
+                {
+                    _recentReports.Insert(0, created);
+                    _recentReports = _recentReports
+                        .OrderByDescending(r => r.GeneratedAt)
+                        .ToList();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error generating custom report: {ex.Message}");
+        }
     }
 
-    private void DownloadReport(Guid id)
+    private async Task DownloadReport(Guid id)
     {
-        // Download report
+        try
+        {
+            // Trigger browser download by navigating to the file endpoint.
+            await JS.InvokeVoidAsync("window.open", $"api/reports/{id}/download", "_blank");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error downloading report: {ex.Message}");
+        }
     }
 
-    private void AddScheduledReport()
+    private async Task AddScheduledReport()
     {
-        // Open schedule modal
+        var payload = new CreateScheduledReportRequest
+        {
+            Name = "Weekly Impact Summary",
+            Frequency = "Weekly",
+            NextRun = DateTime.UtcNow.AddDays(7)
+        };
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/reports/scheduled", payload);
+            if (response.IsSuccessStatusCode)
+            {
+                var created = await response.Content.ReadFromJsonAsync<ScheduledReport>();
+                if (created != null)
+                {
+                    _scheduledReports.Add(created);
+                    _scheduledReports = _scheduledReports.OrderBy(s => s.NextRun).ToList();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error creating scheduled report: {ex.Message}");
+        }
     }
 
-    private void EditSchedule(Guid id)
+    private async Task EditSchedule(Guid id)
     {
-        // Edit scheduled report
+        var existing = _scheduledReports.FirstOrDefault(s => s.Id == id);
+        if (existing == null) return;
+
+        var payload = new UpdateScheduledReportRequest
+        {
+            Name = existing.Name,
+            Frequency = existing.Frequency,
+            NextRun = existing.NextRun.AddDays(7)
+        };
+
+        try
+        {
+            var response = await Http.PutAsJsonAsync($"api/reports/scheduled/{id}", payload);
+            if (response.IsSuccessStatusCode)
+            {
+                var updated = await response.Content.ReadFromJsonAsync<ScheduledReport>();
+                if (updated != null)
+                {
+                    var index = _scheduledReports.FindIndex(s => s.Id == id);
+                    if (index >= 0) _scheduledReports[index] = updated;
+                    _scheduledReports = _scheduledReports.OrderBy(s => s.NextRun).ToList();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error updating scheduled report: {ex.Message}");
+        }
     }
 
-    private void DeleteSchedule(Guid id)
+    private async Task DeleteSchedule(Guid id)
     {
-        // Delete scheduled report
+        try
+        {
+            var response = await Http.DeleteAsync($"api/reports/scheduled/{id}");
+            if (response.IsSuccessStatusCode)
+            {
+                _scheduledReports = _scheduledReports.Where(s => s.Id != id).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error deleting scheduled report: {ex.Message}");
+        }
     }
 }

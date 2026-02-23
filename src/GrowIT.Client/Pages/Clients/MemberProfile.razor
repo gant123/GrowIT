@@ -95,12 +95,14 @@ else
 
         <ReassignInvestmentModal @bind-Show="showReassignModal" 
                                  InvestmentId="selectedInvestmentId"
+                                 Members="householdMembers"
                                  OnChanged="LoadProfile" />
 }
 
 @code {
     [Parameter] public Guid Id { get; set; }
     private FamilyMemberProfileDto? profile;
+    private List<FamilyMemberDto> householdMembers = new();
     private bool showEditModal = false;
     private bool showReassignModal = false;
     private Guid selectedInvestmentId;
@@ -110,6 +112,15 @@ else
     private async Task LoadProfile()
     {
         profile = await Http.GetFromJsonAsync<FamilyMemberProfileDto>($"api/clients/members/{Id}");
+        if (profile != null)
+        {
+            var clientDetail = await Http.GetFromJsonAsync<ClientDetailDto>($"api/clients/{profile.ClientId}");
+            householdMembers = clientDetail?.HouseholdMembers ?? new();
+        }
+        else
+        {
+            householdMembers = new();
+        }
     }
 
     private void ToggleEdit() => showEditModal = true;

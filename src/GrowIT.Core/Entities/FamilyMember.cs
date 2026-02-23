@@ -1,10 +1,12 @@
+using GrowIT.Core.Interfaces;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace GrowIT.Core.Entities;
 
-public class FamilyMember
+public class FamilyMember : IMustHaveTenant
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid TenantId { get; set; }
     
     // The Link to the Head of Household
     public Guid ClientId { get; set; } 

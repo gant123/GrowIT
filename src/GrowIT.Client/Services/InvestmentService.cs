@@ -15,25 +15,7 @@ public interface IInvestmentService
     Task DeleteInvestmentAsync(Guid id);
     Task ApproveInvestmentAsync(Guid id, string approvedBy);
     Task DisburseInvestmentAsync(Guid id);
-    Task ReassignInvestmentAsync(Guid id, ReassignRequest request);
-}
-
-/// <summary>
-/// Query parameters for filtering investments.
-/// </summary>
-public class InvestmentQueryParams
-{
-    public Guid? PersonId { get; set; }
-    public InvestmentStatus? Status { get; set; }
-    public string? SearchTerm { get; set; }
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
-}
-
-public class ReassignRequest
-{
-    public Guid? NewFamilyMemberId { get; set; }
-    public string ReassignReason { get; set; } = string.Empty;
+    Task ReassignInvestmentAsync(Guid id, ReassignInvestmentRequest request);
 }
 
 public class InvestmentService : BaseApiService, IInvestmentService
@@ -67,7 +49,7 @@ public class InvestmentService : BaseApiService, IInvestmentService
 
     public async Task ApproveInvestmentAsync(Guid id, string approvedBy)
     {
-        await PostAsync($"{BaseEndpoint}/{id}/approve", new { approvedBy });
+        await PostAsync($"{BaseEndpoint}/{id}/approve", new ApproveInvestmentRequest { ApprovedBy = approvedBy });
     }
 
     public async Task DisburseInvestmentAsync(Guid id)
@@ -75,9 +57,9 @@ public class InvestmentService : BaseApiService, IInvestmentService
         await PostAsync($"{BaseEndpoint}/{id}/disburse", new { });
     }
 
-    public async Task ReassignInvestmentAsync(Guid id, ReassignRequest request)
+    public async Task ReassignInvestmentAsync(Guid id, ReassignInvestmentRequest request)
     {
-        await PatchAsync<ReassignRequest, object>($"{BaseEndpoint}/{id}/reassign", request);
+        await PatchAsync<ReassignInvestmentRequest, object>($"{BaseEndpoint}/{id}/reassign", request);
     }
 
     private static string BuildQueryString(InvestmentQueryParams query)

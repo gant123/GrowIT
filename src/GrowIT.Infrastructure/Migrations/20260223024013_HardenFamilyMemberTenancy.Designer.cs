@@ -3,6 +3,7 @@ using System;
 using GrowIT.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GrowIT.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260223024013_HardenFamilyMemberTenancy")]
+    partial class HardenFamilyMemberTenancy
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -295,63 +298,6 @@ namespace GrowIT.Infrastructure.Migrations
                     b.ToTable("Funds");
                 });
 
-            modelBuilder.Entity("GrowIT.Core.Entities.GrowthPlan", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid?>("AssignedToUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("ClientId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("CompletedGoals")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("FamilyMemberId")
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("Season")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("TargetEndDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("TotalGoals")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AssignedToUserId");
-
-                    b.HasIndex("ClientId");
-
-                    b.HasIndex("FamilyMemberId");
-
-                    b.ToTable("GrowthPlans");
-                });
-
             modelBuilder.Entity("GrowIT.Core.Entities.Household", b =>
                 {
                     b.Property<Guid>("Id")
@@ -623,79 +569,6 @@ namespace GrowIT.Infrastructure.Migrations
                     b.ToTable("Programs");
                 });
 
-            modelBuilder.Entity("GrowIT.Core.Entities.ReportRun", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Format")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("GeneratedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("ReportType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("RequestPayloadJson")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<Guid?>("RequestedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ReportRuns");
-                });
-
-            modelBuilder.Entity("GrowIT.Core.Entities.ReportSchedule", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("CreatedByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Frequency")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("NextRun")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("TenantId")
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("ReportSchedules");
-                });
-
             modelBuilder.Entity("GrowIT.Core.Entities.Role", b =>
                 {
                     b.Property<Guid>("Id")
@@ -922,29 +795,6 @@ namespace GrowIT.Infrastructure.Migrations
                         .HasForeignKey("HouseholdId");
 
                     b.Navigation("Household");
-                });
-
-            modelBuilder.Entity("GrowIT.Core.Entities.GrowthPlan", b =>
-                {
-                    b.HasOne("GrowIT.Core.Entities.User", "AssignedToUser")
-                        .WithMany()
-                        .HasForeignKey("AssignedToUserId");
-
-                    b.HasOne("GrowIT.Core.Entities.Client", "Client")
-                        .WithMany()
-                        .HasForeignKey("ClientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("GrowIT.Core.Entities.FamilyMember", "FamilyMember")
-                        .WithMany()
-                        .HasForeignKey("FamilyMemberId");
-
-                    b.Navigation("AssignedToUser");
-
-                    b.Navigation("Client");
-
-                    b.Navigation("FamilyMember");
                 });
 
             modelBuilder.Entity("GrowIT.Core.Entities.Imprint", b =>

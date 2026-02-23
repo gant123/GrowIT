@@ -17,7 +17,7 @@ public class ApplicationDbContext : DbContext
     }
 
     // ========================================================================
-    // 1. THE TABLES (19 Entities)
+    // 1. THE TABLES
     // ========================================================================
 
     // Domain: SaaS & Business
@@ -35,6 +35,7 @@ public class ApplicationDbContext : DbContext
     // Domain: Case Management
     public DbSet<Household> Households { get; set; }
     public DbSet<Client> Clients { get; set; }
+    public DbSet<GrowthPlan> GrowthPlans { get; set; }
     public DbSet<Document> Documents { get; set; }
     public DbSet<AppTask> Tasks { get; set; } // Uses the 'AppTask' class we created
     public DbSet<Notification> Notifications { get; set; }
@@ -48,6 +49,8 @@ public class ApplicationDbContext : DbContext
     // Domain: Compliance
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<BillingEvent> BillingEvents { get; set; }
+    public DbSet<ReportRun> ReportRuns { get; set; }
+    public DbSet<ReportSchedule> ReportSchedules { get; set; }
 
     // ========================================================================
     // 2. THE CONFIGURATION (The Rules)

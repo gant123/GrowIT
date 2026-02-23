@@ -8,18 +8,11 @@ namespace GrowIT.Client.Services;
 
 public interface IAuthService
 {
-    Task<AuthResponse?> Login(LoginRequest request);
-    Task<AuthResponse?> Register(RegisterRequest request);
+    Task<AuthResponseDto?> Login(LoginRequest request);
+    Task<AuthResponseDto?> Register(RegisterRequest request);
     Task Logout();
     Task<bool> ForgotPassword(ForgotPasswordRequest request);
     Task<bool> ResetPassword(ResetPasswordRequest request);
-}
-
-public class AuthResponse
-{
-    public string Token { get; set; } = string.Empty;
-    public Guid UserId { get; set; }
-    public Guid TenantId { get; set; }
 }
 
 public class AuthService : BaseApiService, IAuthService
@@ -35,13 +28,13 @@ public class AuthService : BaseApiService, IAuthService
         _localStorage = localStorage;
     }
 
-    public async Task<AuthResponse?> Login(LoginRequest request)
+    public async Task<AuthResponseDto?> Login(LoginRequest request)
     {
         var response = await _http.PostAsJsonAsync("api/auth/login", request, _jsonOptions);
         
         if (response.IsSuccessStatusCode)
         {
-            var result = await response.Content.ReadFromJsonAsync<AuthResponse>(_jsonOptions);
+            var result = await response.Content.ReadFromJsonAsync<AuthResponseDto>(_jsonOptions);
             if (result != null && !string.IsNullOrEmpty(result.Token))
             {
                 await _localStorage.SetItemAsync("authToken", result.Token);
@@ -63,7 +56,7 @@ public class AuthService : BaseApiService, IAuthService
         return null;
     }
 
-    public async Task<AuthResponse?> Register(RegisterRequest request)
+    public async Task<AuthResponseDto?> Register(RegisterRequest request)
     {
         // The API currently returns { Message, TenantId } 
         // We'll call the register endpoint and then log the user in.

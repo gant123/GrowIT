@@ -109,6 +109,12 @@ public class ClientsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateClient(CreateClientRequest request)
     {
+        var tenantId = _tenantService.TenantId;
+        if (!tenantId.HasValue || tenantId == Guid.Empty)
+        {
+            return Unauthorized("No valid tenant context found.");
+        }
+
         var newClient = new Client
         {
             FirstName = request.FirstName,
@@ -118,7 +124,7 @@ public class ClientsController : ControllerBase
             HouseholdCount = request.HouseholdCount,
             StabilityScore = request.StabilityScore,
             LifePhase = request.LifePhase,
-            TenantId = _tenantService.TenantId ?? Guid.Empty
+            TenantId = tenantId.Value
         };
 
         _context.Clients.Add(newClient);
@@ -148,7 +154,7 @@ public class ClientsController : ControllerBase
     [HttpPost("{id}/members")]
     public async Task<IActionResult> AddFamilyMember(Guid id, CreateFamilyMemberRequest request)
     {
-        var client = await _context.Clients.FindAsync(id);
+        var client = await _context.Clients.FirstOrDefaultAsync(c => c.Id == id);
         if (client == null) return NotFound("Client not found.");
 
         DateTime? utcBirthDate = null;
@@ -160,6 +166,7 @@ public class ClientsController : ControllerBase
         var member = new FamilyMember
         {
             Id = Guid.NewGuid(),
+            TenantId = client.TenantId,
             ClientId = id,
             FirstName = request.FirstName,
             LastName = request.LastName,
@@ -179,7 +186,14 @@ public class ClientsController : ControllerBase
     [HttpGet("members/{memberId}")]
     public async Task<ActionResult<FamilyMemberProfileDto>> GetMemberProfile(Guid memberId)
     {
-        var member = await _context.FamilyMembers.FindAsync(memberId);
+        var member = await _context.FamilyMembers
+            .Join(_context.Clients,
+                member => member.ClientId,
+                client => client.Id,
+                (member, client) => new { member, client })
+            .Where(x => x.member.Id == memberId)
+            .Select(x => x.member)
+            .FirstOrDefaultAsync();
         if (member == null) return NotFound();
 
         // 1. Fetch Investments for this person
@@ -223,6 +237,7 @@ public class ClientsController : ControllerBase
         return Ok(new FamilyMemberProfileDto
         {
             Id = member.Id,
+            ClientId = member.ClientId,
             Name = $"{member.FirstName} {member.LastName}",
             Relationship = member.Relationship,
             Age = member.DateOfBirth.HasValue ? (int)((DateTime.Now - member.DateOfBirth.Value).TotalDays / 365.25) : 0,
@@ -239,7 +254,14 @@ public class ClientsController : ControllerBase
     [HttpPut("members/{memberId}")]
     public async Task<IActionResult> UpdateFamilyMember(Guid memberId, CreateFamilyMemberRequest request)
     {
-        var member = await _context.FamilyMembers.FindAsync(memberId);
+        var member = await _context.FamilyMembers
+            .Join(_context.Clients,
+                member => member.ClientId,
+                client => client.Id,
+                (member, client) => new { member, client })
+            .Where(x => x.member.Id == memberId)
+            .Select(x => x.member)
+            .FirstOrDefaultAsync();
         if (member == null) return NotFound();
 
         member.FirstName = request.FirstName;
@@ -258,7 +280,14 @@ public class ClientsController : ControllerBase
     [HttpDelete("members/{memberId}")]
     public async Task<IActionResult> DeleteFamilyMember(Guid memberId)
     {
-        var member = await _context.FamilyMembers.FindAsync(memberId);
+        var member = await _context.FamilyMembers
+            .Join(_context.Clients,
+                member => member.ClientId,
+                client => client.Id,
+                (member, client) => new { member, client })
+            .Where(x => x.member.Id == memberId)
+            .Select(x => x.member)
+            .FirstOrDefaultAsync();
         if (member == null) return NotFound();
 
         // Optional: Check if they have investments before deleting
@@ -266,6 +295,12 @@ public class ClientsController : ControllerBase
         if (hasInvestments)
         {
             return BadRequest("Cannot delete a member who has recorded investments. Reassign the investments first.");
+        }
+
+        var hasImprints = await _context.Imprints.AnyAsync(i => i.FamilyMemberId == memberId);
+        if (hasImprints)
+        {
+            return BadRequest("Cannot delete a member who has recorded milestones. Reassign or remove the milestones first.");
         }
 
         _context.FamilyMembers.Remove(member);

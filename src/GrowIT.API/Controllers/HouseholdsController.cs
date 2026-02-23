@@ -27,11 +27,17 @@ public class HouseholdsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateHousehold(CreateHouseholdRequest request)
     {
+        var tenantId = _tenantService.TenantId;
+        if (!tenantId.HasValue || tenantId == Guid.Empty)
+        {
+            return Unauthorized("No valid tenant context found.");
+        }
+
         var household = new Household
         {
             Name = request.Name,
             PrimaryClientId = request.PrimaryClientId,
-            TenantId = _tenantService.TenantId ?? Guid.Empty
+            TenantId = tenantId.Value
         };
 
         _context.Households.Add(household);
@@ -55,8 +61,11 @@ public class HouseholdsController : ControllerBase
     [HttpPost("{householdId}/add-member/{clientId}")]
     public async Task<IActionResult> AddMember(Guid householdId, Guid clientId, [FromQuery] HouseholdRole role)
     {
-        // Find the person
-        var client = await _context.Clients.FindAsync(clientId);
+        var household = await _context.Households.FirstOrDefaultAsync(h => h.Id == householdId);
+        if (household == null) return NotFound("Household not found");
+
+        // Find the person (tenant-filtered)
+        var client = await _context.Clients.FirstOrDefaultAsync(c => c.Id == clientId);
         if (client == null) return NotFound("Client not found");
 
         // Link them
@@ -66,16 +75,11 @@ public class HouseholdsController : ControllerBase
         // If this is the "Head", update the Household record too
         if (role == HouseholdRole.Head)
         {
-            var household = await _context.Households.FindAsync(householdId);
-            if (household != null)
-            {
-                household.PrimaryClientId = clientId;
-            }
+            household.PrimaryClientId = clientId;
         }
 
         await _context.SaveChangesAsync();
         return Ok(new { Message = $"Added {client.FirstName} to the household." });
     }
 
-    
 }

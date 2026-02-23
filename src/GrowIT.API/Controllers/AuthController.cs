@@ -113,7 +113,12 @@ public class AuthController : ControllerBase
         // Important: Use user.TenantId to ensure the token has the correct tenant context
         var token = _tokenService.CreateToken(user, user.TenantId);
 
-        return Ok(new { Token = token, UserId = user.Id, TenantId = user.TenantId });
+        return Ok(new AuthResponseDto
+        {
+            Token = token,
+            UserId = user.Id,
+            TenantId = user.TenantId
+        });
     }
 
     [HttpPost("forgot-password")]

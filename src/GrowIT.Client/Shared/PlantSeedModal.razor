@@ -179,7 +179,4 @@
         members.Clear();
         await ShowChanged.InvokeAsync(false);
     }
-
-    // Temporary internal DTO to fix build if not in Shared
-    public class ProgramDto { public Guid Id { get; set; } public string Name { get; set; } = ""; }
 }

@@ -1,16 +1,16 @@
 @page "/investments"
 @using GrowIT.Client.Services
+@using GrowIT.Client.Shared
 @using GrowIT.Shared.DTOs
 @using GrowIT.Shared.Enums
 @inject IInvestmentService InvestmentService
-@inject NavigationManager Navigation
 
 <PageTitle>Investments - grow.IT</PageTitle>
 
 <div class="dashboard fade-in mt-4">
     <PageHeader Title="Investments" Subtitle="Track aid and resources distributed to people.">
         <Actions>
-            <button class="btn-growit btn-primary-growit" @onclick=@(() => Navigation.NavigateTo("/investments/new"))>
+            <button class="btn-growit btn-primary-growit" @onclick="OpenNewInvestment">
                 <span class="oi oi-plus me-2"></span>New Investment
             </button>
         </Actions>
@@ -76,7 +76,7 @@
                                     {
                                         <button class="btn-growit btn-primary-growit btn-sm me-1" @onclick="() => Approve(inv.Id)">Approve</button>
                                     }
-                                    <button class="btn-growit btn-ghost-growit btn-sm">Details</button>
+                                    <button class="btn-growit btn-ghost-growit btn-sm" disabled title="Investment detail page not implemented yet">Details</button>
                                 </td>
                             </tr>
                         }
@@ -87,9 +87,12 @@
     }
 </div>
 
+<PlantSeedModal @bind-Show="showPlantSeedModal" OnSeedPlanted="ReloadInvestments" />
+
 @code {
     private List<InvestmentListDto> _investments = new();
     private bool _isLoading = true;
+    private bool showPlantSeedModal;
     private string SearchQuery { get; set; } = "";
     private string StatusFilter { get; set; } = "";
 
@@ -111,6 +114,11 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await ReloadInvestments();
+    }
+
+    private async Task ReloadInvestments()
+    {
         try
         {
             var result = await InvestmentService.GetInvestmentsAsync(new InvestmentQueryParams());
@@ -123,8 +131,11 @@
 {
     // Ensure you provide the required 'approvedBy' parameter
     await InvestmentService.ApproveInvestmentAsync(id, "Current User"); 
-    await OnInitializedAsync(); 
+    await ReloadInvestments(); 
 }
+
+    private void OpenNewInvestment() => showPlantSeedModal = true;
+
     // FIXED: Fully qualified name
     private string GetBadge(GrowIT.Shared.Enums.InvestmentStatus status) => status switch
     {

@@ -1,7 +1,6 @@
 @page "/imprints"
 @using GrowIT.Shared.DTOs
 @using GrowIT.Shared.Enums
-@inject NavigationManager Navigation
 @inject HttpClient Http
 
 <PageTitle>Imprints - grow.IT</PageTitle>
@@ -62,11 +61,126 @@
     }
 </div>
 
+@if (_showCreateModal)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.55);" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Record Imprint</h5>
+                    <button type="button" class="btn-close" @onclick="CloseCreateModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(_createError))
+                    {
+                        <div class="alert alert-danger">@_createError</div>
+                    }
+
+                    @if (_isCreateLoading)
+                    {
+                        <div class="text-center py-4 text-muted">Loading required data...</div>
+                    }
+                    else
+                    {
+                        <EditForm Model="_createRequest" OnValidSubmit="SubmitImprintAsync">
+                            <DataAnnotationsValidator />
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Client</label>
+                                    <select class="form-select" value="@_createRequest.ClientId" @onchange="OnCreateClientChanged">
+                                        <option value="">Select client</option>
+                                        @foreach (var client in _clients)
+                                        {
+                                            <option value="@client.Id">@client.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Family Member (Optional)</label>
+                                    <InputSelect class="form-select" @bind-Value="_createRequest.FamilyMemberId">
+                                        <option value="">Entire household</option>
+                                        @foreach (var member in _selectedMembers)
+                                        {
+                                            <option value="@member.Id">@member.Name (@member.Relationship)</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Linked Investment (Optional)</label>
+                                    <InputSelect class="form-select" @bind-Value="_createRequest.InvestmentId">
+                                        <option value="">None</option>
+                                        @foreach (var inv in _selectedClientInvestments)
+                                        {
+                                            <option value="@inv.Id">@inv.Date.ToLocalTime().ToString("MMM d") - @inv.Purpose - @inv.Amount.ToString("C0")</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Date Occurred</label>
+                                    <InputDate class="form-control" @bind-Value="_createRequest.DateOccurred" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Category</label>
+                                    <InputSelect class="form-select" @bind-Value="_createRequest.Category">
+                                        @foreach (var cat in Enum.GetValues<ImprintCategory>())
+                                        {
+                                            <option value="@cat">@cat</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Outcome</label>
+                                    <InputSelect class="form-select" @bind-Value="_createRequest.Outcome">
+                                        @foreach (var outcome in Enum.GetValues<ImpactOutcome>())
+                                        {
+                                            <option value="@outcome">@outcome</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Title</label>
+                                    <InputText class="form-control" @bind-Value="_createRequest.Title" />
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Notes</label>
+                                    <InputTextArea class="form-control" rows="3" @bind-Value="_createRequest.Notes" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Follow-up Date (Optional)</label>
+                                    <InputDate class="form-control" @bind-Value="_createRequest.FollowupDate" />
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end gap-2 mt-4">
+                                <button type="button" class="btn btn-outline-secondary" @onclick="CloseCreateModal">Cancel</button>
+                                <button type="submit" class="btn btn-primary" disabled="@_isSavingCreate">Save Imprint</button>
+                            </div>
+                        </EditForm>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
     private List<ImprintListDto> _allImprints = new();
+    private List<ClientDto> _clients = new();
+    private List<FamilyMemberDto> _selectedMembers = new();
+    private List<InvestmentListDto> _selectedClientInvestments = new();
     private string _searchQuery = "";
     private string _categoryFilter = "";
     private bool _isLoading = true;
+    private bool _showCreateModal;
+    private bool _isCreateLoading;
+    private bool _isSavingCreate;
+    private string _createError = "";
+    private CreateImprintRequest _createRequest = new()
+    {
+        DateOccurred = DateTime.UtcNow,
+        Outcome = ImpactOutcome.Improved
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -106,7 +220,95 @@
         }
     }
 
-    private void OpenNewImprint() => Navigation.NavigateTo("/imprints/new");
+    private async Task OpenNewImprint()
+    {
+        _showCreateModal = true;
+        _isCreateLoading = true;
+        _createError = "";
+        _selectedMembers.Clear();
+        _selectedClientInvestments.Clear();
+        _createRequest = new CreateImprintRequest
+        {
+            DateOccurred = DateTime.UtcNow,
+            Outcome = ImpactOutcome.Improved
+        };
+
+        try
+        {
+            _clients = await Http.GetFromJsonAsync<List<ClientDto>>("api/clients") ?? new();
+        }
+        catch (Exception ex)
+        {
+            _createError = $"Failed to load clients: {ex.Message}";
+        }
+        finally
+        {
+            _isCreateLoading = false;
+        }
+    }
+
+    private async Task OnCreateClientChanged(ChangeEventArgs e)
+    {
+        _selectedMembers.Clear();
+        _selectedClientInvestments.Clear();
+        _createRequest.FamilyMemberId = null;
+        _createRequest.InvestmentId = null;
+
+        if (!Guid.TryParse(e.Value?.ToString(), out var clientId))
+        {
+            _createRequest.ClientId = Guid.Empty;
+            return;
+        }
+
+        _createRequest.ClientId = clientId;
+
+        var detail = await Http.GetFromJsonAsync<ClientDetailDto>($"api/clients/{clientId}");
+        _selectedMembers = detail?.HouseholdMembers ?? new();
+
+        var investments = await Http.GetFromJsonAsync<PaginatedResult<InvestmentListDto>>($"api/investments?personId={clientId}&pageNumber=1&pageSize=100");
+        _selectedClientInvestments = investments?.Items ?? new();
+    }
+
+    private async Task SubmitImprintAsync()
+    {
+        _createError = "";
+
+        if (_createRequest.ClientId == Guid.Empty)
+        {
+            _createError = "Client is required.";
+            return;
+        }
+
+        _isSavingCreate = true;
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/imprints", _createRequest);
+            if (!response.IsSuccessStatusCode)
+            {
+                _createError = await response.Content.ReadAsStringAsync();
+                return;
+            }
+
+            CloseCreateModal();
+            _isLoading = true;
+            _allImprints = await Http.GetFromJsonAsync<List<ImprintListDto>>("api/imprints") ?? new();
+        }
+        catch (Exception ex)
+        {
+            _createError = ex.Message;
+        }
+        finally
+        {
+            _isSavingCreate = false;
+            _isLoading = false;
+        }
+    }
+
+    private void CloseCreateModal()
+    {
+        _showCreateModal = false;
+        _createError = "";
+    }
     
     // Supporting DTO if not in Shared (but it should be)
     // If ImprintListDto is missing in shared, uncomment below:

@@ -1,0 +1,25 @@
+namespace GrowIT.Shared.DTOs;
+
+public class GenerateReportRequest
+{
+    public string ReportType { get; set; } = string.Empty;
+    public string? Format { get; set; } = "pdf";
+    public string? FiscalYear { get; set; }
+    public DateTime? DateFrom { get; set; }
+    public DateTime? DateTo { get; set; }
+    public string? GroupBy { get; set; }
+}
+
+public class CreateScheduledReportRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Frequency { get; set; } = string.Empty;
+    public DateTime NextRun { get; set; }
+}
+
+public class UpdateScheduledReportRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Frequency { get; set; } = string.Empty;
+    public DateTime NextRun { get; set; }
+}

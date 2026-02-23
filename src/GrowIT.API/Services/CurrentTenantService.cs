@@ -28,9 +28,8 @@ public class CurrentTenantService : ICurrentTenantService
                 return tenantId;
             }
 
-            // FALLBACK: For development only, you might want a default. 
-            // In Production, this should probably be null to prevent data leaks.
-            return Guid.Empty; 
+            // No tenant claim means no tenant context. Callers should reject writes/reads that require tenancy.
+            return null;
         }
     }
 

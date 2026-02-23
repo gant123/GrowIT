@@ -28,11 +28,12 @@ public class InvestmentsController : ControllerBase
     {
         var dbQuery = _context.Investments
             .Include(i => i.Client)
+            .Include(i => i.FamilyMember)
             .AsQueryable();
 
         // Filtering
         if (query.PersonId.HasValue)
-            dbQuery = dbQuery.Where(i => i.ClientId == query.PersonId.Value);
+            dbQuery = dbQuery.Where(i => i.ClientId == query.PersonId.Value || i.FamilyMemberId == query.PersonId.Value);
         
         if (query.Status.HasValue)
             dbQuery = dbQuery.Where(i => i.Status == query.Status.Value);
@@ -40,7 +41,8 @@ public class InvestmentsController : ControllerBase
         if (!string.IsNullOrEmpty(query.SearchTerm))
         {
             dbQuery = dbQuery.Where(i => 
-                (i.Client != null && (i.Client.FirstName + " " + i.Client.LastName).Contains(query.SearchTerm)) || 
+                (i.Client != null && (i.Client.FirstName + " " + i.Client.LastName).Contains(query.SearchTerm)) ||
+                (i.FamilyMember != null && (i.FamilyMember.FirstName + " " + i.FamilyMember.LastName).Contains(query.SearchTerm)) ||
                 i.Reason.Contains(query.SearchTerm) || 
                 i.PayeeName.Contains(query.SearchTerm));
         }
@@ -55,7 +57,9 @@ public class InvestmentsController : ControllerBase
             {
                 Id = i.Id,
                 Date = i.CreatedAt,
-                PersonName = i.Client != null ? i.Client.FirstName + " " + i.Client.LastName : "Unknown",
+                PersonName = i.FamilyMember != null
+                    ? i.FamilyMember.FirstName + " " + i.FamilyMember.LastName
+                    : (i.Client != null ? i.Client.FirstName + " " + i.Client.LastName : "Unknown"),
                 Purpose = i.Reason,
                 Amount = i.Amount,
                 Status = i.Status
@@ -76,6 +80,7 @@ public class InvestmentsController : ControllerBase
     {
         var investment = await _context.Investments
             .Include(i => i.Client)
+            .Include(i => i.FamilyMember)
             .FirstOrDefaultAsync(i => i.Id == id);
 
         if (investment == null) return NotFound();
@@ -84,7 +89,9 @@ public class InvestmentsController : ControllerBase
         {
             Id = investment.Id,
             Date = investment.CreatedAt,
-            PersonName = investment.Client != null ? investment.Client.FirstName + " " + investment.Client.LastName : "Unknown",
+            PersonName = investment.FamilyMember != null
+                ? investment.FamilyMember.FirstName + " " + investment.FamilyMember.LastName
+                : (investment.Client != null ? investment.Client.FirstName + " " + investment.Client.LastName : "Unknown"),
             Purpose = investment.Reason,
             Amount = investment.Amount,
             Status = investment.Status,
@@ -95,9 +102,28 @@ public class InvestmentsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateInvestment(CreateInvestmentRequest request)
     {
-        // 1. Validate: Does the Fund exist?
-        var fund = await _context.Funds.FirstOrDefaultAsync(f => f.Id == request.FundId);
+        var tenantId = _tenantService.TenantId;
+        if (!tenantId.HasValue || tenantId == Guid.Empty)
+        {
+            return Unauthorized("No valid tenant context found.");
+        }
+
+        // 1. Validate core references inside this tenant
+        var clientExists = await _context.Clients.AnyAsync(c => c.Id == request.ClientId && c.TenantId == tenantId.Value);
+        if (!clientExists) return BadRequest("Invalid client.");
+
+        var fund = await _context.Funds.FirstOrDefaultAsync(f => f.Id == request.FundId && f.TenantId == tenantId.Value);
         if (fund == null) return NotFound("Fund not found");
+
+        var programExists = await _context.Programs.AnyAsync(p => p.Id == request.ProgramId && p.TenantId == tenantId.Value);
+        if (!programExists) return BadRequest("Invalid program.");
+
+        if (request.FamilyMemberId.HasValue)
+        {
+            var memberExists = await _context.FamilyMembers
+                .AnyAsync(fm => fm.Id == request.FamilyMemberId.Value && fm.ClientId == request.ClientId);
+            if (!memberExists) return BadRequest("Family member not found for the selected client.");
+        }
 
         // 2. Business Logic: Do we have enough money?
         if (fund.AvailableAmount < request.Amount)
@@ -116,7 +142,7 @@ public class InvestmentsController : ControllerBase
             PayeeName = request.PayeeName,
             Reason = request.Reason,
             Status = InvestmentStatus.Pending,
-            TenantId = _tenantService.TenantId ?? Guid.Empty,
+            TenantId = tenantId.Value,
             SnapshotUnitCost = request.Amount, 
             CreatedBy = Guid.Empty 
         };
@@ -133,9 +159,9 @@ public class InvestmentsController : ControllerBase
     }
 
     [HttpPost("{id}/approve")]
-    public async Task<IActionResult> ApproveInvestment(Guid id, [FromBody] ApproveRequest request)
+    public async Task<IActionResult> ApproveInvestment(Guid id, [FromBody] ApproveInvestmentRequest request)
     {
-        var investment = await _context.Investments.FindAsync(id);
+        var investment = await _context.Investments.FirstOrDefaultAsync(i => i.Id == id);
         if (investment == null) return NotFound();
 
         investment.Status = InvestmentStatus.Approved;
@@ -148,7 +174,7 @@ public class InvestmentsController : ControllerBase
     [HttpPost("{id}/disburse")]
     public async Task<IActionResult> DisburseInvestment(Guid id)
     {
-        var investment = await _context.Investments.FindAsync(id);
+        var investment = await _context.Investments.FirstOrDefaultAsync(i => i.Id == id);
         if (investment == null) return NotFound();
 
         investment.Status = InvestmentStatus.Disbursed;
@@ -178,10 +204,21 @@ public class InvestmentsController : ControllerBase
     }
 
     [HttpPatch("{id}/reassign")]
-    public async Task<IActionResult> ReassignInvestment(Guid id, [FromBody] ReassignRequest request)
+    public async Task<IActionResult> ReassignInvestment(Guid id, [FromBody] ReassignInvestmentRequest request)
     {
-        var investment = await _context.Investments.FindAsync(id);
+        var investment = await _context.Investments.FirstOrDefaultAsync(i => i.Id == id);
         if (investment == null) return NotFound();
+
+        if (request.NewFamilyMemberId.HasValue)
+        {
+            var validTarget = await _context.FamilyMembers
+                .AnyAsync(fm => fm.Id == request.NewFamilyMemberId.Value && fm.ClientId == investment.ClientId);
+
+            if (!validTarget)
+            {
+                return BadRequest("Target family member must belong to the same client.");
+            }
+        }
 
         // Track the change for the AuditLog
         investment.FamilyMemberId = request.NewFamilyMemberId;
@@ -190,24 +227,4 @@ public class InvestmentsController : ControllerBase
         await _context.SaveChangesAsync();
         return Ok();
     }
-}
-
-public class ReassignRequest
-{
-    public Guid? NewFamilyMemberId { get; set; }
-    public string ReassignReason { get; set; } = string.Empty;
-}
-
-public class ApproveRequest
-{
-    public string ApprovedBy { get; set; } = string.Empty;
-}
-
-public class InvestmentQueryParams
-{
-    public Guid? PersonId { get; set; }
-    public InvestmentStatus? Status { get; set; }
-    public string? SearchTerm { get; set; }
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
 }
