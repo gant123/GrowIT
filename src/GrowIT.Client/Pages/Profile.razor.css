@@ -1,0 +1,214 @@
+.profile-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    gap: 1rem;
+}
+
+.profile-loading {
+    min-height: 240px;
+    display: grid;
+    place-items: center;
+    gap: .5rem;
+    color: var(--growit-text-muted);
+}
+
+.profile-grid {
+    display: grid;
+    grid-template-columns: 1.2fr .8fr;
+    gap: 1rem;
+}
+
+.profile-card {
+    border: 1px solid var(--growit-border);
+    border-radius: 16px;
+    background: var(--growit-bg-card);
+    box-shadow: var(--growit-shadow-sm);
+    overflow: hidden;
+}
+
+.profile-card-header {
+    padding: 1rem;
+    border-bottom: 1px solid var(--growit-border);
+}
+
+.profile-card-header h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.profile-card-header p {
+    margin: .25rem 0 0;
+    color: var(--growit-text-muted);
+    font-size: .82rem;
+}
+
+.profile-card-body {
+    padding: 1rem;
+}
+
+.identity-banner {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: .8rem;
+    align-items: center;
+    border: 1px solid var(--growit-border);
+    border-radius: 12px;
+    background: var(--growit-bg-secondary);
+    padding: .8rem;
+    margin-bottom: 1rem;
+}
+
+.avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(22,163,74,.1);
+    color: var(--growit-green);
+    font-weight: 700;
+    overflow: hidden;
+}
+
+.avatar-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.profile-photo-uploader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+    border: 1px solid var(--growit-border);
+    background: var(--growit-bg-secondary);
+    border-radius: 12px;
+    padding: .75rem;
+    margin-bottom: .9rem;
+}
+
+.photo-upload-copy {
+    display: grid;
+    gap: .15rem;
+}
+
+.photo-upload-copy strong {
+    font-size: .82rem;
+    color: var(--growit-text-primary);
+}
+
+.photo-upload-copy span {
+    font-size: .75rem;
+    color: var(--growit-text-muted);
+}
+
+.identity-name {
+    font-weight: 700;
+    color: var(--growit-text-primary);
+}
+
+.identity-meta {
+    color: var(--growit-text-muted);
+    font-size: .78rem;
+}
+
+.security-summary {
+    margin-top: 1rem;
+    border-top: 1px solid var(--growit-border);
+    padding-top: .85rem;
+    display: grid;
+    gap: .55rem;
+}
+
+.notification-preferences-panel {
+    margin-top: 1rem;
+    border-top: 1px solid var(--growit-border);
+    padding-top: .85rem;
+}
+
+.preferences-header h3 {
+    margin: 0;
+    font-size: .9rem;
+    font-weight: 700;
+}
+
+.preferences-header p {
+    margin: .2rem 0 .65rem;
+    color: var(--growit-text-muted);
+    font-size: .78rem;
+}
+
+.preference-list {
+    display: grid;
+    gap: .55rem;
+}
+
+.preference-item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: .65rem;
+    align-items: flex-start;
+    border: 1px solid var(--growit-border);
+    background: var(--growit-bg-secondary);
+    border-radius: 10px;
+    padding: .65rem;
+}
+
+.preference-item input[type="checkbox"] {
+    margin-top: .25rem;
+}
+
+.preference-item strong {
+    display: block;
+    color: var(--growit-text-primary);
+    font-size: .83rem;
+}
+
+.preference-item span {
+    display: block;
+    color: var(--growit-text-muted);
+    font-size: .76rem;
+    margin-top: .12rem;
+}
+
+.security-row {
+    display: flex;
+    justify-content: space-between;
+    gap: .75rem;
+    align-items: center;
+    color: var(--growit-text-secondary);
+    font-size: .82rem;
+}
+
+.security-row strong {
+    color: var(--growit-text-primary);
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: .12rem .5rem;
+    font-size: .7rem;
+    font-weight: 700;
+    border: 1px solid transparent;
+}
+
+.status-pill.active { background: rgba(16,185,129,.10); color: #059669; border-color: rgba(16,185,129,.22); }
+.status-pill.inactive { background: rgba(239,68,68,.10); color: #dc2626; border-color: rgba(239,68,68,.22); }
+
+@media (max-width: 992px) {
+    .profile-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-photo-uploader {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

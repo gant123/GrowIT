@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 namespace GrowIT.API.Controllers;
 
 [ApiController]
-[Authorize]
+[Authorize(Policy = "AdminOrManager")]
 [Route("api/[controller]")]
 public class AdminController : ControllerBase
 {
@@ -382,6 +382,7 @@ public class AdminController : ControllerBase
     }
 
     [HttpPost("seed-demo-data")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<SeedDemoDataResponseDto>> SeedDemoData()
     {
         var tenantId = _tenantService.TenantId;
@@ -495,9 +496,68 @@ public class AdminController : ControllerBase
         return Ok(response);
     }
 
+    [HttpGet("audit-logs")]
+    public async Task<ActionResult<List<AdminAuditLogItemDto>>> GetAuditLogs([FromQuery] int take = 100, [FromQuery] string? table = null, [FromQuery] string? action = null)
+    {
+        take = Math.Clamp(take, 1, 500);
+
+        var userLookup = await _context.Users
+            .IgnoreQueryFilters()
+            .Select(u => new { u.Id, Name = (u.FirstName + " " + u.LastName).Trim(), u.Email })
+            .ToDictionaryAsync(x => x.Id, x => string.IsNullOrWhiteSpace(x.Name) ? x.Email : x.Name);
+
+        var query = _context.AuditLogs.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(table))
+        {
+            var normalizedTable = table.Trim();
+            query = query.Where(a => a.TableName == normalizedTable);
+        }
+
+        if (!string.IsNullOrWhiteSpace(action))
+        {
+            var normalizedAction = action.Trim();
+            query = query.Where(a => a.ActionType == normalizedAction);
+        }
+
+        var rawLogs = await query
+            .OrderByDescending(a => a.CreatedAt)
+            .Take(take)
+            .Select(a => new
+            {
+                a.Id,
+                a.ActionType,
+                a.TableName,
+                a.RecordId,
+                a.UserId,
+                a.CreatedAt,
+                a.PreviousData,
+                a.NewData
+            })
+            .ToListAsync();
+
+        var logs = rawLogs.Select(a => new AdminAuditLogItemDto
+        {
+            Id = a.Id,
+            ActionType = a.ActionType,
+            TableName = a.TableName,
+            RecordId = a.RecordId,
+            UserId = a.UserId,
+            CreatedAt = a.CreatedAt,
+            Summary = BuildAuditSummary(a.ActionType, a.TableName)
+        }).ToList();
+
+        foreach (var log in logs)
+        {
+            log.UserName = userLookup.TryGetValue(log.UserId, out var name) ? name : "System";
+        }
+
+        return Ok(logs);
+    }
+
     private string BuildInviteLink(string token, string email)
     {
-        var clientUrl = (_config["ClientUrl"] ?? "https://localhost:7234").TrimEnd('/');
+        var clientUrl = (_config["ClientUrl"] ?? "http://localhost:5245").TrimEnd('/');
         return $"{clientUrl}/accept-invite?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(email)}";
     }
 
@@ -561,7 +621,7 @@ public class AdminController : ControllerBase
     private async Task AddInviteAuditNotificationsAsync(Guid tenantId, string title, string message)
     {
         var recipientIds = await _context.Users.IgnoreQueryFilters()
-            .Where(u => u.TenantId == tenantId && u.IsActive)
+            .Where(u => u.TenantId == tenantId && u.IsActive && u.NotifyInviteActivity)
             .Select(u => u.Id)
             .ToListAsync();
 
@@ -582,6 +642,23 @@ public class AdminController : ControllerBase
                 CreatedAt = now
             });
         }
+    }
+
+    private static string? BuildAuditSummary(string actionType, string tableName)
+    {
+        if (actionType.Equals("Budget Adjustment", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Fund totals were adjusted.";
+        }
+
+        if (actionType.Equals("Create", StringComparison.OrdinalIgnoreCase))
+            return $"Created {tableName} record.";
+        if (actionType.Equals("Update", StringComparison.OrdinalIgnoreCase))
+            return $"Updated {tableName} record.";
+        if (actionType.Equals("Delete", StringComparison.OrdinalIgnoreCase))
+            return $"Deleted {tableName} record.";
+
+        return null;
     }
 
     private static List<GrowIT.Core.Entities.Program> CreateDemoPrograms(Guid tenantId) =>

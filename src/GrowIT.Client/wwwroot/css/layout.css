@@ -225,6 +225,7 @@
     color: white;
     flex-shrink: 0;
     box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2);
+    overflow: hidden;
 }
 
 .sidebar-user-info {
@@ -780,6 +781,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
 }
 
 .user-profile-btn .select-chevron {
@@ -885,12 +887,50 @@
     height: 44px;
     font-size: 0.9375rem;
     border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.user-avatar-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 
 .user-details {
     display: flex;
     flex-direction: column;
     min-width: 0;
+}
+
+.user-role-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 4px;
+}
+
+.user-role-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: rgba(22, 163, 74, 0.1);
+    border: 1px solid rgba(22, 163, 74, 0.2);
+    color: var(--growit-green);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.user-org {
+    color: var(--growit-text-muted);
+    font-size: 0.6875rem;
+    max-width: 150px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .user-name {
@@ -926,6 +966,60 @@
     text-align: left;
 }
 
+.dropdown-group-label {
+    padding: 8px 16px 4px;
+    color: var(--growit-text-dim);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.dropdown-access-summary {
+    margin: 8px 12px 0;
+    padding: 10px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--growit-border);
+    background: var(--growit-bg-primary);
+}
+
+.access-summary-label {
+    color: var(--growit-text-dim);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+}
+
+.access-summary-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.access-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.1;
+}
+
+.access-pill.allowed {
+    background: rgba(22, 163, 74, 0.1);
+    color: var(--growit-green);
+    border: 1px solid rgba(22, 163, 74, 0.22);
+}
+
+.access-pill.muted {
+    background: var(--growit-bg-secondary);
+    color: var(--growit-text-muted);
+    border: 1px solid var(--growit-border);
+}
+
 .dropdown-item:hover {
     background: var(--growit-bg-card-hover);
     color: var(--growit-text-primary);
@@ -954,6 +1048,17 @@
 }
 
 /* Notifications Items */
+.notification-item-button {
+    appearance: none;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+    display: block;
+}
+
 .notification-item {
     display: flex;
     gap: 12px;

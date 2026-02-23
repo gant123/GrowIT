@@ -10,7 +10,7 @@ using System.Text.Json;
 
 namespace GrowIT.API.Controllers;
 
-[Authorize]
+[Authorize(Policy = "AdminOrManager")]
 [ApiController]
 [Route("api/[controller]")]
 public class ReportsController : ControllerBase

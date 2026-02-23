@@ -13,6 +13,7 @@ public interface IAdminService
     Task<List<OrganizationInviteListItemDto>> GetInvitesAsync();
     Task<List<InviteAuditNotificationDto>> GetInviteActivityAsync(int take = 25);
     Task MarkInviteActivityReadAllAsync();
+    Task<List<AdminAuditLogItemDto>> GetAuditLogsAsync(int take = 100, string? table = null, string? action = null);
     Task<SeedDemoDataResponseDto> SeedDemoDataAsync();
     Task<CreateOrganizationInviteResponse> CreateInviteAsync(CreateOrganizationInviteRequest request);
     Task<CreateOrganizationInviteResponse> ResendInviteAsync(Guid inviteId);
@@ -49,6 +50,17 @@ public class AdminService : BaseApiService, IAdminService
 
     public Task MarkInviteActivityReadAllAsync() =>
         PostAsync("api/admin/invite-activity/mark-all-read", new { });
+
+    public async Task<List<AdminAuditLogItemDto>> GetAuditLogsAsync(int take = 100, string? table = null, string? action = null)
+    {
+        var endpoint = $"api/admin/audit-logs?take={Math.Clamp(take, 1, 500)}";
+        if (!string.IsNullOrWhiteSpace(table))
+            endpoint += $"&table={Uri.EscapeDataString(table)}";
+        if (!string.IsNullOrWhiteSpace(action))
+            endpoint += $"&action={Uri.EscapeDataString(action)}";
+
+        return await GetAsync<List<AdminAuditLogItemDto>>(endpoint) ?? [];
+    }
 
     public async Task<SeedDemoDataResponseDto> SeedDemoDataAsync() =>
         (await PostAsync<object, SeedDemoDataResponseDto>("api/admin/seed-demo-data", new { }))!;

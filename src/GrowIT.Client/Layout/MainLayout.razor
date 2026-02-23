@@ -1,8 +1,12 @@
 @inherits LayoutComponentBase
 @implements IDisposable
+@using GrowIT.Shared.DTOs
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject IAuthService AuthService
+@inject INotificationService NotificationService
+@inject IProfileService ProfileService
+@inject IRoleAccessService RoleAccessService
 
 <div class="growit-app" data-theme="@_currentTheme">
     <!-- Sidebar Overlay for Mobile -->
@@ -67,7 +71,8 @@
                 </NavLink>
             </div>
             
-            <AuthorizeView Roles="Admin,Manager">
+            @if (_canAccessIntelligence)
+            {
                 <div class="nav-section">
                     <div class="nav-section-label">Intelligence</div>
                     <NavLink href="/reports" class="nav-item" title="Funding Readiness Reports" @onclick="HandleNavSelected">
@@ -81,7 +86,7 @@
                         <span class="nav-badge">Beta</span>
                     </NavLink>
                 </div>
-            </AuthorizeView>
+            }
             
             <div class="nav-section">
                 <div class="nav-section-label">System</div>
@@ -90,10 +95,13 @@
                     <span class="nav-text">Organization</span>
                 </NavLink>
 
-                <NavLink href="/settings" class="nav-item" title="Settings" @onclick="HandleNavSelected">
-                    <span class="nav-icon"><i class="bi bi-gear"></i></span>
-                    <span class="nav-text">Settings</span>
-                </NavLink>
+                @if (_canAccessAdminWorkspace)
+                {
+                    <NavLink href="/settings" class="nav-item" title="Settings" @onclick="HandleNavSelected">
+                        <span class="nav-icon"><i class="bi bi-gear"></i></span>
+                        <span class="nav-text">Settings</span>
+                    </NavLink>
+                }
             </div>
         </nav>
         
@@ -101,7 +109,14 @@
         <div class="sidebar-footer">
             <div class="sidebar-user">
                 <div class="sidebar-user-avatar">
-                    <span>@_userInitials</span>
+                    @if (!string.IsNullOrWhiteSpace(_userPhotoUrl))
+                    {
+                        <img src="@_userPhotoUrl" alt="Profile photo" class="user-avatar-photo" />
+                    }
+                    else
+                    {
+                        <span>@_userInitials</span>
+                    }
                 </div>
                 <div class="sidebar-user-info">
                     <span class="sidebar-user-name">@_userName</span>
@@ -216,7 +231,7 @@
                     </button>
                     
                     <div class="dropdown-container">
-                        <button class="topbar-btn notifications-btn @(_notificationsOpen ? "active" : "")" @onclick="ToggleNotifications" title="Notifications">
+                        <button class="topbar-btn notifications-btn @(_notificationsOpen ? "active" : "")" @onclick="ToggleNotificationsAsync" title="Notifications">
                             <i class="bi bi-bell"></i>
                             @if (_notificationCount > 0)
                             {
@@ -229,29 +244,47 @@
                             <div class="topbar-dropdown notifications-dropdown">
                                 <div class="dropdown-header">
                                     <h3>Notifications</h3>
-                                    <button class="btn-link" @onclick="MarkNotificationsAsRead" @onclick:stopPropagation="true">Mark all as read</button>
+                                    <button class="btn-link" @onclick="MarkNotificationsAsRead" @onclick:stopPropagation="true" disabled="@(_notificationCount == 0)">
+                                        Mark all as read
+                                    </button>
                                 </div>
                                 <div class="dropdown-body">
-                                    <div class="notification-item @(_notificationCount > 0 ? "unread" : "")">
-                                        <div class="notification-icon success">
-                                            <i class="bi bi-check2"></i>
-                                        </div>
-                                        <div class="notification-content">
-                                            <p><strong>New Impact Documented</strong> for John Smith</p>
-                                            <span class="notification-time">2 minutes ago</span>
-                                        </div>
-                                    </div>
-                                    @if (_notificationCount > 1)
+                                    @if (_isNotificationsLoading)
                                     {
-                                        <div class="notification-item unread">
-                                            <div class="notification-icon info">
-                                                <i class="bi bi-info-circle"></i>
-                                            </div>
+                                        <div class="notification-item">
                                             <div class="notification-content">
-                                                <p>Grant report for <strong>FY24 Q3</strong> is ready</p>
-                                                <span class="notification-time">1 hour ago</span>
+                                                <p>Loading notifications...</p>
                                             </div>
                                         </div>
+                                    }
+                                    else if (_headerNotifications.Count == 0)
+                                    {
+                                        <div class="notification-item">
+                                            <div class="notification-content">
+                                                <p>No notifications yet.</p>
+                                                <span class="notification-time">Invite activity and system alerts will appear here.</span>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var notification in _headerNotifications)
+                                        {
+                                            <button type="button"
+                                                    class="notification-item-button"
+                                                    @onclick="() => OpenNotificationAsync(notification)"
+                                                    @onclick:stopPropagation="true">
+                                                <div class="notification-item @(notification.IsRead ? "" : "unread")">
+                                                    <div class="notification-icon @(GetNotificationIconTone(notification))">
+                                                        <i class="@GetNotificationIcon(notification)"></i>
+                                                    </div>
+                                                    <div class="notification-content">
+                                                        <p><strong>@notification.Title</strong> @notification.Message</p>
+                                                        <span class="notification-time">@FormatRelativeTime(notification.CreatedAt)</span>
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        }
                                     }
                                 </div>
                                 <div class="dropdown-footer">
@@ -263,7 +296,16 @@
 
                     <div class="dropdown-container">
                         <button class="user-profile-btn" @onclick="ToggleUserMenu">
-                            <div class="user-avatar">@_userInitials</div>
+                            <div class="user-avatar">
+                                @if (!string.IsNullOrWhiteSpace(_userPhotoUrl))
+                                {
+                                    <img src="@_userPhotoUrl" alt="Profile photo" class="user-avatar-photo" />
+                                }
+                                else
+                                {
+                                    @_userInitials
+                                }
+                            </div>
                             <i class="bi bi-chevron-down select-chevron"></i>
                         </button>
                         
@@ -271,21 +313,71 @@
                         {
                             <div class="topbar-dropdown user-dropdown">
                                 <div class="user-dropdown-header">
-                                    <div class="user-avatar lg">@_userInitials</div>
+                                    <div class="user-avatar lg">
+                                        @if (!string.IsNullOrWhiteSpace(_userPhotoUrl))
+                                        {
+                                            <img src="@_userPhotoUrl" alt="Profile photo" class="user-avatar-photo" />
+                                        }
+                                        else
+                                        {
+                                            @_userInitials
+                                        }
+                                    </div>
                                     <div class="user-details">
                                         <span class="user-name">@_userName</span>
                                         <span class="user-email">@_userEmail</span>
+                                        <div class="user-role-row">
+                                            <span class="user-role-pill">@_userRole</span>
+                                            <span class="user-org">@_userOrganization</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="dropdown-body">
+                                    <div class="dropdown-group-label">Workspace</div>
+                                    <NavLink href="/notifications" class="dropdown-item" @onclick="() => _userMenuOpen = false">
+                                        <i class="bi bi-bell"></i>
+                                        Notifications
+                                    </NavLink>
                                     <NavLink href="/profile" class="dropdown-item" @onclick="() => _userMenuOpen = false">
                                         <i class="bi bi-person-gear"></i>
-                                        Profile Settings
+                                        Profile & Security
                                     </NavLink>
-                                    <NavLink href="/settings" class="dropdown-item" @onclick="() => _userMenuOpen = false">
-                                        <i class="bi bi-sliders"></i>
-                                        System Preferences
-                                    </NavLink>
+                                    @if (_canAccessIntelligence)
+                                    {
+                                        <NavLink href="/reports" class="dropdown-item" @onclick="() => _userMenuOpen = false">
+                                            <i class="bi bi-pie-chart"></i>
+                                            Funding Reports
+                                        </NavLink>
+                                    }
+                                    @if (_canAccessAdminWorkspace)
+                                    {
+                                        <div class="dropdown-group-label">Administration</div>
+                                        <NavLink href="/settings" class="dropdown-item" @onclick="() => _userMenuOpen = false">
+                                            <i class="bi bi-sliders"></i>
+                                            System Preferences
+                                        </NavLink>
+                                    }
+                                    <div class="dropdown-access-summary">
+                                        <div class="access-summary-label">Access</div>
+                                        <div class="access-summary-pills">
+                                            @if (_canDocumentServiceRecords)
+                                            {
+                                                <span class="access-pill allowed">Service Records</span>
+                                            }
+                                            @if (_canManageFinancials)
+                                            {
+                                                <span class="access-pill allowed">Financial Config</span>
+                                            }
+                                            @if (_canAccessIntelligence)
+                                            {
+                                                <span class="access-pill allowed">Reports</span>
+                                            }
+                                            @if (!_canDocumentServiceRecords && !_canManageFinancials && !_canAccessIntelligence)
+                                            {
+                                                <span class="access-pill muted">Read-only Workspace</span>
+                                            }
+                                        </div>
+                                    </div>
                                     <div class="dropdown-divider"></div>
                                     <button class="dropdown-item logout" @onclick="HandleLogout" @onclick:stopPropagation="true">
                                         <i class="bi bi-box-arrow-right"></i>
@@ -296,10 +388,13 @@
                         }
                     </div>
 
-                    <button class="btn btn-primary btn-plant" @onclick="OpenPlantSeedModal">
-                        <i class="bi bi-plus-lg"></i>
-                        <span>Plant Seed</span>
-                    </button>
+                    @if (_canDocumentServiceRecords)
+                    {
+                        <button class="btn btn-primary btn-plant" @onclick="OpenPlantSeedModal">
+                            <i class="bi bi-plus-lg"></i>
+                            <span>Plant Seed</span>
+                        </button>
+                    }
                 </div>
             </div>
         </header>
@@ -320,12 +415,19 @@
     private string _userEmail = "";
     private string _userRole = "Guest";
     private string _userInitials = "U";
+    private string? _userPhotoUrl;
+    private string _userOrganization = "Workspace";
+    private bool _canAccessAdminWorkspace;
+    private bool _canAccessIntelligence;
+    private bool _canManageFinancials;
+    private bool _canDocumentServiceRecords;
+    private bool _profileSummaryLoaded;
 
     private string _currentTheme = "light";
     private bool _sidebarCollapsed = false;
     private string _searchQuery = "";
     private string _selectedFiscalYear = "FY24-25";
-    private int _notificationCount = 3;
+    private int _notificationCount;
     private bool _userMenuOpen = false;
     private bool _notificationsOpen = false;
     private bool _plantSeedModalOpen = false;
@@ -333,6 +435,8 @@
     private bool _searchFocused = false;
     private int _highlightedSearchIndex = -1;
     private ElementReference _searchInput;
+    private List<NotificationItemDto> _headerNotifications = [];
+    private bool _isNotificationsLoading;
 
     private static readonly List<QuickNavItem> QuickNavItems =
     [
@@ -364,7 +468,7 @@
 
     private List<QuickNavItem> SearchSuggestions =>
         QuickNavItems
-            .Where(item => MatchesQuickSearch(item, _searchQuery))
+            .Where(item => MatchesQuickSearch(item, _searchQuery) && CanAccessRoute(item.Route))
             .OrderBy(item => item.Category)
             .ThenBy(item => item.Label)
             .Take(8)
@@ -387,9 +491,15 @@
 
         if (user.Identity?.IsAuthenticated ?? false)
         {
+            var access = await RoleAccessService.GetAccessAsync();
+            _canAccessAdminWorkspace = access.CanManageAdminWorkspace;
+            _canAccessIntelligence = access.CanAccessReports;
+            _canManageFinancials = access.CanManageFinancials;
+            _canDocumentServiceRecords = access.CanDocumentServiceRecords;
+
             _userName = user.Identity.Name ?? "User";
             _userEmail = user.FindFirst(c => c.Type == "email" || c.Type == System.Security.Claims.ClaimTypes.Email)?.Value ?? "";
-            _userRole = user.FindFirst(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "User";
+            _userRole = access.PrimaryRole;
             
             if (!string.IsNullOrEmpty(_userName))
             {
@@ -403,6 +513,20 @@
                     _userInitials = parts[0][0].ToString().ToUpper();
                 }
             }
+
+            await RefreshNotificationsAsync(silent: true);
+            await RefreshProfileSummaryAsync();
+        }
+        else
+        {
+            _canAccessAdminWorkspace = false;
+            _canAccessIntelligence = false;
+            _canManageFinancials = false;
+            _canDocumentServiceRecords = false;
+            _userRole = "Guest";
+            _userOrganization = "Workspace";
+            _userPhotoUrl = null;
+            _profileSummaryLoaded = false;
         }
     }
 
@@ -502,31 +626,54 @@
         await JS.InvokeVoidAsync("sidebarManager.closeMobile");
     }
 
-    private void ToggleUserMenu()
+    private async Task ToggleUserMenu()
     {
         _userMenuOpen = !_userMenuOpen;
         if (_userMenuOpen) _notificationsOpen = false;
         _searchFocused = false;
+        if (_userMenuOpen)
+        {
+            _profileSummaryLoaded = false;
+            await RefreshProfileSummaryAsync();
+        }
         StateHasChanged();
     }
 
-    private void ToggleNotifications()
+    private async Task ToggleNotificationsAsync()
     {
         _notificationsOpen = !_notificationsOpen;
         if (_notificationsOpen) _userMenuOpen = false;
         _searchFocused = false;
+        if (_notificationsOpen)
+        {
+            await RefreshNotificationsAsync(silent: true);
+        }
         StateHasChanged();
     }
 
     private async Task MarkNotificationsAsRead()
     {
-        _notificationCount = 0;
-        await JS.InvokeVoidAsync("blazorInterop.showToast", "All notifications marked as read", "success");
-        StateHasChanged();
+        try
+        {
+            await NotificationService.MarkAllReadAsync();
+            foreach (var n in _headerNotifications)
+            {
+                n.IsRead = true;
+            }
+            _notificationCount = 0;
+            await JS.InvokeVoidAsync("blazorInterop.showToast", "All notifications marked as read", "success");
+            StateHasChanged();
+        }
+        catch
+        {
+            // Keep shell resilient if notifications endpoint is unavailable.
+        }
     }
 
     private void OpenPlantSeedModal()
     {
+        if (!_canDocumentServiceRecords)
+            return;
         _plantSeedModalOpen = true;
     }
 
@@ -556,6 +703,9 @@
 
     private void NavigateToQuickItem(QuickNavItem item)
     {
+        if (!CanAccessRoute(item.Route))
+            return;
+
         _searchQuery = string.Empty;
         _searchFocused = false;
         _highlightedSearchIndex = -1;
@@ -567,6 +717,26 @@
         _notificationsOpen = false;
         Navigation.NavigateTo("/notifications");
         await Task.CompletedTask;
+    }
+
+    private async Task OpenNotificationAsync(NotificationItemDto notification)
+    {
+        try
+        {
+            if (!notification.IsRead)
+            {
+                await NotificationService.MarkReadAsync(notification.Id);
+                notification.IsRead = true;
+                _notificationCount = Math.Max(0, _notificationCount - 1);
+            }
+        }
+        catch
+        {
+            // Navigation is still allowed even if mark-read fails.
+        }
+
+        _notificationsOpen = false;
+        Navigation.NavigateTo(string.IsNullOrWhiteSpace(notification.Link) ? "/notifications" : notification.Link);
     }
 
     private async Task HandleSearchKeyUp(KeyboardEventArgs e)
@@ -608,6 +778,12 @@
             var route = ResolveSearchRoute(_searchQuery);
             if (route is not null)
             {
+                if (!CanAccessRoute(route))
+                {
+                    await JS.InvokeVoidAsync("blazorInterop.showToast", "You do not have access to that section.", "warning");
+                    return;
+                }
+
                 _searchFocused = false;
                 Navigation.NavigateTo(route);
                 return;
@@ -668,6 +844,108 @@
             return "/notifications";
 
         return null;
+    }
+
+    private async Task RefreshNotificationsAsync(bool silent = false)
+    {
+        _isNotificationsLoading = true;
+        try
+        {
+            var inbox = await NotificationService.GetNotificationsAsync(8);
+            _headerNotifications = inbox.Items;
+            _notificationCount = inbox.UnreadCount;
+        }
+        catch
+        {
+            if (!silent)
+            {
+                try
+                {
+                    await JS.InvokeVoidAsync("blazorInterop.showToast", "Unable to load notifications", "error");
+                }
+                catch { }
+            }
+        }
+        finally
+        {
+            _isNotificationsLoading = false;
+        }
+    }
+
+    private static string GetNotificationIcon(NotificationItemDto item)
+    {
+        if (item.Category.Contains("Invite", StringComparison.OrdinalIgnoreCase)) return "bi bi-envelope-check";
+        if ((item.Link ?? "").Contains("imprints", StringComparison.OrdinalIgnoreCase)) return "bi bi-check2-circle";
+        if ((item.Link ?? "").Contains("reports", StringComparison.OrdinalIgnoreCase)) return "bi bi-file-earmark-bar-graph";
+        return "bi bi-bell";
+    }
+
+    private static string GetNotificationIconTone(NotificationItemDto item)
+    {
+        if (item.Category.Contains("Invite", StringComparison.OrdinalIgnoreCase)) return "info";
+        if (!item.IsRead) return "success";
+        return "info";
+    }
+
+    private static string FormatRelativeTime(DateTime utcDateTime)
+    {
+        var span = DateTime.UtcNow - utcDateTime;
+        if (span.TotalMinutes < 1) return "just now";
+        if (span.TotalHours < 1) return $"{Math.Max(1, (int)span.TotalMinutes)} min ago";
+        if (span.TotalDays < 1) return $"{(int)span.TotalHours} hr ago";
+        if (span.TotalDays < 7) return $"{(int)span.TotalDays} days ago";
+        return utcDateTime.ToLocalTime().ToString("MMM d, yyyy");
+    }
+
+    private bool CanAccessRoute(string route)
+    {
+        var normalized = route.Trim().ToLowerInvariant();
+        return normalized switch
+        {
+            "/reports" => _canAccessIntelligence,
+            "/insights" => _canAccessIntelligence,
+            "/settings" => _canAccessAdminWorkspace,
+            _ => true
+        };
+    }
+
+    private async Task RefreshProfileSummaryAsync()
+    {
+        if (_profileSummaryLoaded)
+            return;
+
+        try
+        {
+            var profile = await ProfileService.GetProfileAsync();
+            if (profile != null)
+            {
+                _userOrganization = string.IsNullOrWhiteSpace(profile.OrganizationName) ? "Workspace" : profile.OrganizationName;
+                _userPhotoUrl = profile.PhotoUrl;
+
+                var fullName = $"{profile.FirstName} {profile.LastName}".Trim();
+                if (!string.IsNullOrWhiteSpace(fullName))
+                {
+                    _userName = fullName;
+                    var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length > 1)
+                    {
+                        _userInitials = $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+                    }
+                    else if (parts.Length == 1)
+                    {
+                        _userInitials = parts[0][0].ToString().ToUpperInvariant();
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Keep shell resilient when profile API is unavailable.
+        }
+        finally
+        {
+            _profileSummaryLoaded = true;
+        }
     }
 
     public void Dispose()

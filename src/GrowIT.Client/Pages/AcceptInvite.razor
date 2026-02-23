@@ -43,6 +43,24 @@
             }
             else
             {
+                @if (_alreadySignedIn)
+                {
+                    <div class="auth-alert warning mb-3">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        <span>You are currently signed in. To accept an invite, sign out first or open this link in a private/incognito window.</span>
+                    </div>
+                    <div class="d-flex gap-2 mb-3 flex-wrap">
+                        <button class="btn btn-outline-secondary" @onclick="SignOutAndReloadInvite" disabled="@_isSigningOut">
+                            @if (_isSigningOut)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            <span>Sign Out & Continue</span>
+                        </button>
+                        <a class="btn btn-outline-primary" href="/login">Go to Sign In</a>
+                    </div>
+                }
+
                 @if (_inviteValidation is not null)
                 {
                     <div class="invite-summary-card">
@@ -135,7 +153,9 @@
     private string _currentTheme = "light";
     private bool _isValidating = true;
     private bool _isSubmitting;
+    private bool _isSigningOut;
     private bool _showPassword;
+    private bool _alreadySignedIn;
     private string? _validationError;
     private string? _errorMessage;
     private InviteValidationDto? _inviteValidation;
@@ -150,8 +170,7 @@
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         if (authState.User.Identity?.IsAuthenticated ?? false)
         {
-            Navigation.NavigateTo("/");
-            return;
+            _alreadySignedIn = true;
         }
 
         if (string.IsNullOrWhiteSpace(Token) || string.IsNullOrWhiteSpace(EmailQuery))
@@ -190,6 +209,12 @@
     private async Task HandleAcceptInvite()
     {
         _errorMessage = null;
+        if (_alreadySignedIn)
+        {
+            _errorMessage = "Sign out of your current account before accepting this invitation.";
+            return;
+        }
+
         if (string.IsNullOrWhiteSpace(Token) || string.IsNullOrWhiteSpace(_email))
         {
             _errorMessage = "Invite token or email is missing.";
@@ -230,6 +255,25 @@
         finally
         {
             _isSubmitting = false;
+        }
+    }
+
+    private async Task SignOutAndReloadInvite()
+    {
+        if (_isSigningOut) return;
+
+        _isSigningOut = true;
+        _errorMessage = null;
+        try
+        {
+            await AuthService.Logout();
+            var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+            Navigation.NavigateTo(uri.PathAndQuery, forceLoad: true);
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+            _isSigningOut = false;
         }
     }
 }

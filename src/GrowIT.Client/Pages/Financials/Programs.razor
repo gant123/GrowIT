@@ -3,18 +3,29 @@
 @using GrowIT.Shared.DTOs
 @using GrowIT.Client.Shared
 @inject IFinancialService FinancialService
+@inject IRoleAccessService RoleAccessService
 
 <PageTitle>Programs - grow.IT</PageTitle>
 
 <div class="programs-page">
     <PageHeader Title="Programs & Services" Subtitle="Define repeatable service models so each act of care becomes measurable, fundable, and scalable.">
         <Actions>
-            <button class="btn btn-primary" @onclick="OpenCreateModal">
-                <i class="bi bi-plus-lg"></i>
-                <span>Add Program</span>
-            </button>
+            @if (_canManageFinancials)
+            {
+                <button class="btn btn-primary" @onclick="OpenCreateModal">
+                    <i class="bi bi-plus-lg"></i>
+                    <span>Add Program</span>
+                </button>
+            }
         </Actions>
     </PageHeader>
+
+    @if (!_canManageFinancials)
+    {
+        <div class="alert alert-info" role="alert">
+            You have read-only access to programs. `Admin`, `Manager`, or `Owner` roles can create and edit program definitions.
+        </div>
+    }
 
     @if (!string.IsNullOrWhiteSpace(_loadError))
     {
@@ -81,10 +92,13 @@
                 <div class="program-empty-icon"><i class="bi bi-folder-x"></i></div>
                 <h3>No programs found</h3>
                 <p>Create your first service model to standardize what you do, what it costs, and how it scales.</p>
-                <button class="btn btn-outline-primary" @onclick="OpenCreateModal">
-                    <i class="bi bi-plus-lg"></i>
-                    <span>Create First Program</span>
-                </button>
+                @if (_canManageFinancials)
+                {
+                    <button class="btn btn-outline-primary" @onclick="OpenCreateModal">
+                        <i class="bi bi-plus-lg"></i>
+                        <span>Create First Program</span>
+                    </button>
+                }
             </div>
         }
         else
@@ -137,7 +151,7 @@
     </section>
 </div>
 
-@if (showCreateModal)
+@if (showCreateModal && _canManageFinancials)
 {
     <div class="modal fade show d-block programs-modal-backdrop" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-lg">
@@ -203,6 +217,7 @@
     private string? _saveError;
     private CreateProgramRequest newProgram = new();
     private string SearchQuery { get; set; } = string.Empty;
+    private bool _canManageFinancials;
 
     private int ProgramsWithCapacity => programs?.Count(p => p.CapacityLimit.HasValue && p.CapacityLimit.Value > 0) ?? 0;
     private int CapacityReadyPrograms => programs?.Count(p => p.CapacityLimit.HasValue && p.CapacityLimit > 0 && p.DefaultUnitCost > 0) ?? 0;
@@ -223,7 +238,11 @@
         }
     }
 
-    protected override async Task OnInitializedAsync() => await LoadPrograms();
+    protected override async Task OnInitializedAsync()
+    {
+        _canManageFinancials = (await RoleAccessService.GetAccessAsync()).CanManageFinancials;
+        await LoadPrograms();
+    }
 
     private async Task LoadPrograms()
     {
@@ -241,6 +260,7 @@
 
     private void OpenCreateModal()
     {
+        if (!_canManageFinancials) return;
         _saveError = null;
         showCreateModal = true;
     }
@@ -253,6 +273,7 @@
 
     private async Task CreateProgram()
     {
+        if (!_canManageFinancials) return;
         _saveError = null;
 
         if (string.IsNullOrWhiteSpace(newProgram.Name))

@@ -3,6 +3,7 @@
 @using GrowIT.Shared.DTOs
 @using Syncfusion.Blazor.Grids
 @inject IAdminService AdminService
+@inject IRoleAccessService RoleAccessService
 @inject IJSRuntime JS
 
 <PageTitle>Settings - grow.IT</PageTitle>
@@ -49,25 +50,33 @@
         </div>
     </div>
 
-    <div class="settings-tabbar" role="tablist" aria-label="Settings sections">
-        <button class="settings-tab @(ActiveTab == "organization" ? "active" : null)" @onclick="@(() => SetActiveTab("organization"))">Organization</button>
-        <button class="settings-tab @(ActiveTab == "users" ? "active" : null)" @onclick="@(() => SetActiveTab("users"))">Users & Roles</button>
-        <button class="settings-tab @(ActiveTab == "invites" ? "active" : null)" @onclick="@(() => SetActiveTab("invites"))">Invites</button>
-        <button class="settings-tab @(ActiveTab == "security" ? "active" : null)" @onclick="@(() => SetActiveTab("security"))">Security</button>
-    </div>
-
-    @if (_isLoading)
+    @if (!_hasSettingsAccess)
     {
-        <div class="settings-loading">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p>Loading settings workspace...</p>
+        <div class="alert alert-warning" role="alert">
+            This workspace is limited to `Admin`, `Manager`, or `Owner` roles.
         </div>
     }
     else
     {
-        @if (ActiveTab == "organization")
+        <div class="settings-tabbar" role="tablist" aria-label="Settings sections">
+            <button class="settings-tab @(ActiveTab == "organization" ? "active" : null)" @onclick="@(() => SetActiveTab("organization"))">Organization</button>
+            <button class="settings-tab @(ActiveTab == "users" ? "active" : null)" @onclick="@(() => SetActiveTab("users"))">Users & Roles</button>
+            <button class="settings-tab @(ActiveTab == "invites" ? "active" : null)" @onclick="@(() => SetActiveTab("invites"))">Invites</button>
+            <button class="settings-tab @(ActiveTab == "security" ? "active" : null)" @onclick="@(() => SetActiveTab("security"))">Security</button>
+        </div>
+
+        @if (_isLoading)
         {
-            <section class="settings-panel">
+            <div class="settings-loading">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p>Loading settings workspace...</p>
+            </div>
+        }
+        else
+        {
+            @if (ActiveTab == "organization")
+            {
+                <section class="settings-panel">
                 <div class="settings-panel-header">
                     <div>
                         <h2>Organization Profile</h2>
@@ -148,12 +157,12 @@
                         </EditForm>
                     }
                 </div>
-            </section>
-        }
+                </section>
+            }
 
-        @if (ActiveTab == "users")
-        {
-            <section class="settings-panel">
+            @if (ActiveTab == "users")
+            {
+                <section class="settings-panel">
                 <div class="settings-panel-header">
                     <div>
                         <h2>Users & Roles</h2>
@@ -248,12 +257,12 @@
                         </GridColumns>
                     </SfGrid>
                 </div>
-            </section>
-        }
+                </section>
+            }
 
-        @if (ActiveTab == "invites")
-        {
-            <section class="settings-panel">
+            @if (ActiveTab == "invites")
+            {
+                <section class="settings-panel">
                 <div class="settings-panel-header">
                     <div>
                         <h2>Invite Team Members</h2>
@@ -412,12 +421,12 @@
                         }
                     </div>
                 </div>
-            </section>
-        }
+                </section>
+            }
 
-        @if (ActiveTab == "security")
-        {
-            <section class="settings-panel">
+            @if (ActiveTab == "security")
+            {
+                <section class="settings-panel">
                 <div class="settings-panel-header">
                     <div>
                         <h2>Security & Access Controls</h2>
@@ -438,15 +447,22 @@
                                 <div class="alert alert-danger py-2 mb-0 mt-2">@_seedDataError</div>
                             }
                         </div>
-                        <button class="btn btn-outline-primary"
-                                disabled="@_isSeedingDemoData"
-                                @onclick="SeedDemoDataAsync">
-                            @if (_isSeedingDemoData)
-                            {
-                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                            }
-                            <span>Seed Demo Data</span>
-                        </button>
+                        @if (_canSeedDemoData)
+                        {
+                            <button class="btn btn-outline-primary"
+                                    disabled="@_isSeedingDemoData"
+                                    @onclick="SeedDemoDataAsync">
+                                @if (_isSeedingDemoData)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                <span>Seed Demo Data</span>
+                            </button>
+                        }
+                        else
+                        {
+                            <span class="badge text-bg-secondary">Admin/Owner Only</span>
+                        }
                     </div>
 
                     <div class="security-grid">
@@ -483,8 +499,79 @@
                             <span class="security-status planned">Planned</span>
                         </div>
                     </div>
+
+                    <div class="audit-log-panel mt-4">
+                        <div class="audit-log-header">
+                            <div>
+                                <h3>Audit Trail</h3>
+                                <p>Review recent create/update/delete events recorded across the workspace.</p>
+                            </div>
+                            <div class="audit-log-actions">
+                                <select class="form-select form-select-sm" @bind="_auditTableFilter">
+                                    <option value="">All tables</option>
+                                    @foreach (var tableName in _auditTableOptions)
+                                    {
+                                        <option value="@tableName">@tableName</option>
+                                    }
+                                </select>
+                                <select class="form-select form-select-sm" @bind="_auditActionFilter">
+                                    <option value="">All actions</option>
+                                    <option value="Create">Create</option>
+                                    <option value="Update">Update</option>
+                                    <option value="Delete">Delete</option>
+                                    <option value="Budget Adjustment">Budget Adjustment</option>
+                                </select>
+                                <button class="btn btn-outline-secondary btn-sm" disabled="@_isLoadingAuditLogs" @onclick="RefreshAuditLogsAsync">
+                                    @if (_isLoadingAuditLogs)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    }
+                                    <span>Refresh</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(_auditLogError))
+                        {
+                            <div class="alert alert-danger py-2 mb-3">@_auditLogError</div>
+                        }
+
+                        <SfGrid DataSource="@FilteredAuditLogs" AllowPaging="true" AllowSorting="true" AllowResizing="true" Width="100%">
+                            <GridPageSettings PageSize="10"></GridPageSettings>
+                            <GridColumns>
+                                <GridColumn HeaderText="When" Width="170">
+                                    <Template>
+                                        @{
+                                            var log = (context as AdminAuditLogItemDto)!;
+                                        }
+                                        <span>@log.CreatedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</span>
+                                    </Template>
+                                </GridColumn>
+                                <GridColumn Field=@nameof(AdminAuditLogItemDto.ActionType) HeaderText="Action" Width="150"></GridColumn>
+                                <GridColumn Field=@nameof(AdminAuditLogItemDto.TableName) HeaderText="Table" Width="160"></GridColumn>
+                                <GridColumn Field=@nameof(AdminAuditLogItemDto.UserName) HeaderText="User" Width="190"></GridColumn>
+                                <GridColumn HeaderText="Summary" Width="300">
+                                    <Template>
+                                        @{
+                                            var log = (context as AdminAuditLogItemDto)!;
+                                        }
+                                        <span>@(string.IsNullOrWhiteSpace(log.Summary) ? $"{log.ActionType} on {log.TableName}" : log.Summary)</span>
+                                    </Template>
+                                </GridColumn>
+                                <GridColumn HeaderText="Record" Width="220">
+                                    <Template>
+                                        @{
+                                            var log = (context as AdminAuditLogItemDto)!;
+                                        }
+                                        <code>@log.RecordId</code>
+                                    </Template>
+                                </GridColumn>
+                            </GridColumns>
+                        </SfGrid>
+                    </div>
                 </div>
-            </section>
+                </section>
+            }
         }
     }
 </div>
@@ -495,6 +582,9 @@
     private bool _isSavingOrganization;
     private bool _isSendingInvite;
     private bool _isSeedingDemoData;
+    private bool _isLoadingAuditLogs;
+    private bool _hasSettingsAccess = true;
+    private bool _canSeedDemoData;
     private string? _pageError;
     private string? _orgSaveMessage;
     private string? _userActionMessage;
@@ -504,21 +594,40 @@
     private string? _lastInviteLink;
     private string? _seedDataMessage;
     private string? _seedDataError;
+    private string? _auditLogError;
 
     private OrganizationSettingsDto? _organization;
     private UpdateOrganizationSettingsRequest? _organizationEdit;
     private List<AdminUserListItemDto> _users = new();
     private List<OrganizationInviteListItemDto> _invites = new();
     private List<InviteAuditNotificationDto> _inviteActivity = new();
+    private List<AdminAuditLogItemDto> _auditLogs = new();
     private CreateOrganizationInviteRequest _newInvite = new() { ExpiresInDays = 7, Role = "Member" };
     private readonly HashSet<Guid> _busyUserIds = new();
     private readonly Dictionary<Guid, string> _roleDrafts = new();
     private static readonly string[] RoleOptions = ["Admin", "Manager", "Case Manager", "Analyst", "Member"];
+    private string _auditTableFilter = "";
+    private string _auditActionFilter = "";
 
     private int PendingInviteCount => _invites.Count(i => string.Equals(i.Status, "Pending", StringComparison.OrdinalIgnoreCase));
     private int InviteActivityUnreadCount => _inviteActivity.Count(i => !i.IsRead);
+    private List<string> _auditTableOptions => _auditLogs.Select(l => l.TableName).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(s => s).ToList();
+    private List<AdminAuditLogItemDto> FilteredAuditLogs => _auditLogs
+        .Where(l => string.IsNullOrWhiteSpace(_auditTableFilter) || string.Equals(l.TableName, _auditTableFilter, StringComparison.OrdinalIgnoreCase))
+        .Where(l => string.IsNullOrWhiteSpace(_auditActionFilter) || string.Equals(l.ActionType, _auditActionFilter, StringComparison.OrdinalIgnoreCase))
+        .ToList();
     protected override async Task OnInitializedAsync()
     {
+        var access = await RoleAccessService.GetAccessAsync();
+        _hasSettingsAccess = access.CanManageAdminWorkspace;
+        _canSeedDemoData = access.CanSeedDemoData;
+
+        if (!_hasSettingsAccess)
+        {
+            _isLoading = false;
+            return;
+        }
+
         await LoadAllAsync();
     }
 
@@ -533,7 +642,8 @@
             var usersTask = AdminService.GetUsersAsync();
             var invitesTask = AdminService.GetInvitesAsync();
             var inviteActivityTask = AdminService.GetInviteActivityAsync(30);
-            await Task.WhenAll(orgTask, usersTask, invitesTask, inviteActivityTask);
+            var auditLogsTask = AdminService.GetAuditLogsAsync(100);
+            await Task.WhenAll(orgTask, usersTask, invitesTask, inviteActivityTask, auditLogsTask);
 
             _organization = await orgTask;
             _organizationEdit = new UpdateOrganizationSettingsRequest
@@ -553,6 +663,7 @@
             InitializeRoleDrafts(_users);
             _invites = await invitesTask;
             _inviteActivity = await inviteActivityTask;
+            _auditLogs = await auditLogsTask;
         }
         catch (Exception ex)
         {
@@ -818,6 +929,24 @@
         }
     }
 
+    private async Task RefreshAuditLogsAsync()
+    {
+        _auditLogError = null;
+        _isLoadingAuditLogs = true;
+        try
+        {
+            _auditLogs = await AdminService.GetAuditLogsAsync(100);
+        }
+        catch (Exception ex)
+        {
+            _auditLogError = ex.Message;
+        }
+        finally
+        {
+            _isLoadingAuditLogs = false;
+        }
+    }
+
     private void ReplaceUser(AdminUserListItemDto updated)
     {
         var index = _users.FindIndex(u => u.Id == updated.Id);
@@ -854,5 +983,6 @@
         _inviteError = null;
         _seedDataMessage = null;
         _seedDataError = null;
+        _auditLogError = null;
     }
 }

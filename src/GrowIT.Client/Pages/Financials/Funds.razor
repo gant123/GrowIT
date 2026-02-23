@@ -2,6 +2,7 @@
 @using GrowIT.Shared.DTOs
 @using GrowIT.Client.Shared
 @inject IFinancialService FinancialService
+@inject IRoleAccessService RoleAccessService
 @inject ILogger<Funds> Logger
 
 <PageTitle>Funds - grow.IT</PageTitle>
@@ -9,12 +10,22 @@
 <div class="funds-page">
     <PageHeader Title="Funds" Subtitle="Manage capital sources, monitor deployment, and protect service capacity with real-time balance visibility.">
         <Actions>
-            <button class="btn btn-primary" @onclick="CreateNew">
-                <i class="bi bi-plus-lg"></i>
-                <span>Create Fund</span>
-            </button>
+            @if (_canManageFinancials)
+            {
+                <button class="btn btn-primary" @onclick="CreateNew">
+                    <i class="bi bi-plus-lg"></i>
+                    <span>Create Fund</span>
+                </button>
+            }
         </Actions>
     </PageHeader>
+
+    @if (!_canManageFinancials)
+    {
+        <div class="alert alert-info" role="alert">
+            You have read-only access to funds. `Admin`, `Manager`, or `Owner` roles can create and edit funds.
+        </div>
+    }
 
     @if (!string.IsNullOrWhiteSpace(errorMessage))
     {
@@ -80,10 +91,13 @@
                 <div class="funds-empty-icon"><i class="bi bi-wallet2"></i></div>
                 <h3>No funds configured</h3>
                 <p>Create a fund source before documenting service investments so costs and capacity remain measurable from day one.</p>
-                <button class="btn btn-outline-primary" @onclick="CreateNew">
-                    <i class="bi bi-plus-lg"></i>
-                    <span>Initialize First Fund</span>
-                </button>
+                @if (_canManageFinancials)
+                {
+                    <button class="btn btn-outline-primary" @onclick="CreateNew">
+                        <i class="bi bi-plus-lg"></i>
+                        <span>Initialize First Fund</span>
+                    </button>
+                }
             </div>
         }
         else
@@ -102,9 +116,12 @@
                             </div>
                             <div class="fund-card-actions">
                                 <span class="fund-status-pill @GetStatusClass(percent)">@GetStatusLabel(percent)</span>
-                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => EditFund(fund)" title="Edit Fund">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
+                                @if (_canManageFinancials)
+                                {
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => EditFund(fund)" title="Edit Fund">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                }
                             </div>
                         </div>
 
@@ -145,15 +162,19 @@
     </section>
 </div>
 
-<CreateFundModal @bind-Show="showCreateModal"
-                 FundToEdit="selectedFund"
-                 OnFundCreated="ReloadFunds" />
+@if (_canManageFinancials)
+{
+    <CreateFundModal @bind-Show="showCreateModal"
+                     FundToEdit="selectedFund"
+                     OnFundCreated="ReloadFunds" />
+}
 
 @code {
     private List<FundDto>? funds;
     private FundDto? selectedFund;
     private bool showCreateModal;
     private string? errorMessage;
+    private bool _canManageFinancials;
 
     private decimal TotalAvailable => funds?.Sum(f => f.AvailableAmount) ?? 0m;
     private decimal TotalBudget => funds?.Sum(f => f.TotalAmount) ?? 0m;
@@ -162,6 +183,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _canManageFinancials = (await RoleAccessService.GetAccessAsync()).CanManageFinancials;
         await ReloadFunds();
     }
 
@@ -182,12 +204,14 @@
 
     private void EditFund(FundDto fund)
     {
+        if (!_canManageFinancials) return;
         selectedFund = fund;
         showCreateModal = true;
     }
 
     private void CreateNew()
     {
+        if (!_canManageFinancials) return;
         selectedFund = null;
         showCreateModal = true;
     }

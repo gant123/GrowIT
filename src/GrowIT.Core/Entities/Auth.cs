@@ -17,6 +17,9 @@ public class User : IMustHaveTenant
     public DateTime? ResetTokenExpires { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime? DeactivatedAt { get; set; }
+    public string? PhotoUrl { get; set; }
+    public bool NotifyInviteActivity { get; set; } = true;
+    public bool NotifySystemAlerts { get; set; } = true;
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

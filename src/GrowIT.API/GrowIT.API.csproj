@@ -25,4 +25,9 @@
     <ProjectReference Include="..\GrowIT.Shared\GrowIT.Shared.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Remove="bin\**;obj\**" />
+    <None Remove="bin\**;obj\**" />
+  </ItemGroup>
+
 </Project>

@@ -349,6 +349,42 @@
     gap: .75rem;
 }
 
+.audit-log-panel {
+    border-top: 1px solid var(--growit-border);
+    padding-top: 1rem;
+}
+
+.audit-log-header {
+    display: flex;
+    justify-content: space-between;
+    gap: .75rem;
+    align-items: flex-start;
+    margin-bottom: .85rem;
+}
+
+.audit-log-header h3 {
+    margin: 0;
+    font-size: .92rem;
+    font-weight: 700;
+}
+
+.audit-log-header p {
+    margin: .2rem 0 0;
+    color: var(--growit-text-muted);
+    font-size: .78rem;
+}
+
+.audit-log-actions {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.audit-log-actions .form-select {
+    min-width: 150px;
+}
+
 .seed-tools-card {
     border: 1px solid var(--growit-border);
     border-radius: 12px;
@@ -462,6 +498,11 @@
     }
 
     .seed-tools-card {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .audit-log-header {
         flex-direction: column;
         align-items: stretch;
     }

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using GrowIT.API.Middleware;
 using GrowIT.API.Services;
@@ -67,6 +68,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy => policy.RequireAssertion(context =>
+        HasAnyRole(context.User, "Admin", "Owner")));
+    options.AddPolicy("AdminOrManager", policy => policy.RequireAssertion(context =>
+        HasAnyRole(context.User, "Admin", "Manager", "Owner")));
+    options.AddPolicy("ServiceWriter", policy => policy.RequireAssertion(context =>
+        HasAnyRole(context.User, "Admin", "Manager", "Owner", "Case Manager")));
+});
+
 // F. Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -87,6 +98,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseStaticFiles();
 
 app.UseCors("AllowBlazorOrigin"); 
 app.UseAuthentication();          
@@ -98,4 +110,13 @@ app.Run();
 
 public partial class Program
 {
+    internal static bool HasAnyRole(ClaimsPrincipal user, params string[] allowedRoles)
+    {
+        var allowed = new HashSet<string>(allowedRoles, StringComparer.OrdinalIgnoreCase);
+
+        return user.Claims.Any(c =>
+            (c.Type == ClaimTypes.Role || c.Type == "role") &&
+            !string.IsNullOrWhiteSpace(c.Value) &&
+            allowed.Contains(c.Value.Trim()));
+    }
 }

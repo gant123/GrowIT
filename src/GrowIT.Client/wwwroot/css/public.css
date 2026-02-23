@@ -1247,6 +1247,11 @@
     color: var(--growit-success);
 }
 
+.auth-alert.warning {
+    background: color-mix(in srgb, var(--growit-warning) 12%, transparent);
+    color: #b45309;
+}
+
 .auth-alert svg {
     width: 20px;
     height: 20px;

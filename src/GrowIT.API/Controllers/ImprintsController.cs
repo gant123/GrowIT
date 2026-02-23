@@ -24,6 +24,7 @@ public class ImprintsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "ServiceWriter")]
     public async Task<IActionResult> CreateImprint(CreateImprintRequest request)
     {
         var tenantId = _tenantService.TenantId;

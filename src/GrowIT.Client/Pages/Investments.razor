@@ -4,6 +4,7 @@
 @using GrowIT.Shared.DTOs
 @using GrowIT.Shared.Enums
 @inject IInvestmentService InvestmentService
+@inject IRoleAccessService RoleAccessService
 @inject IJSRuntime JS
 
 <PageTitle>Investments - grow.IT</PageTitle>
@@ -11,11 +12,19 @@
 <div class="dashboard fade-in mt-4">
     <PageHeader Title="Service Investments" Subtitle="Document real-time service costs to build capacity, repeatability, and funding readiness.">
         <Actions>
-            <button class="btn-growit btn-primary-growit" @onclick="OpenNewInvestment">
-                <i class="bi bi-plus-lg me-2"></i>Plant Seed
-            </button>
+            @if (_canDocumentServiceRecords)
+            {
+                <button class="btn-growit btn-primary-growit" @onclick="OpenNewInvestment">
+                    <i class="bi bi-plus-lg me-2"></i>Plant Seed
+                </button>
+            }
         </Actions>
     </PageHeader>
+
+    @if (!_canDocumentServiceRecords)
+    {
+        <div class="alert alert-info mb-3">You have read-only access to investments. `Case Manager`, `Manager`, `Admin`, or `Owner` can create investment records.</div>
+    }
 
     <div class="card-growit mb-4">
         <div class="card-body">
@@ -78,13 +87,13 @@
                                     <span class="badge-growit @GetBadge(inv.Status)">@inv.Status</span>
                                 </td>
                                 <td class="text-end pe-4">
-                                    @if (inv.Status == GrowIT.Shared.Enums.InvestmentStatus.Pending)
+                                    @if (_canApproveServiceInvestments && inv.Status == GrowIT.Shared.Enums.InvestmentStatus.Pending)
                                     {
                                         <button class="btn-growit btn-primary-growit btn-sm me-1"
                                                 disabled="@(_busyInvestmentId == inv.Id)"
                                                 @onclick="() => Approve(inv.Id)">Approve</button>
                                     }
-                                    @if (inv.Status == GrowIT.Shared.Enums.InvestmentStatus.Approved)
+                                    @if (_canApproveServiceInvestments && inv.Status == GrowIT.Shared.Enums.InvestmentStatus.Approved)
                                     {
                                         <button class="btn-growit btn-secondary-growit btn-sm me-1"
                                                 disabled="@(_busyInvestmentId == inv.Id)"
@@ -104,6 +113,8 @@
 <PlantSeedModal @bind-Show="showPlantSeedModal" OnSeedPlanted="ReloadInvestments" />
 <InvestmentDetailModal @bind-Show="showInvestmentDetailModal"
                        InvestmentId="selectedInvestmentId"
+                       CanApproveDisburse="_canApproveServiceInvestments"
+                       CanDelete="_canApproveServiceInvestments"
                        OnChanged="ReloadInvestments" />
 
 @code {
@@ -114,6 +125,8 @@
     private Guid selectedInvestmentId;
     private Guid? _busyInvestmentId;
     private string? _actionError;
+    private bool _canDocumentServiceRecords;
+    private bool _canApproveServiceInvestments;
     private string SearchQuery { get; set; } = "";
     private string StatusFilter { get; set; } = "";
 
@@ -135,6 +148,9 @@
 
     protected override async Task OnInitializedAsync()
     {
+        var access = await RoleAccessService.GetAccessAsync();
+        _canDocumentServiceRecords = access.CanDocumentServiceRecords;
+        _canApproveServiceInvestments = access.CanApproveServiceInvestments;
         await ReloadInvestments();
     }
 
@@ -150,6 +166,7 @@
 
  private async Task Approve(Guid id)
 {
+    if (!_canApproveServiceInvestments) return;
     _actionError = null;
     _busyInvestmentId = id;
     try
@@ -169,6 +186,7 @@
 
     private async Task Disburse(Guid id)
     {
+        if (!_canApproveServiceInvestments) return;
         _actionError = null;
         _busyInvestmentId = id;
         try
@@ -191,7 +209,11 @@
         }
     }
 
-    private void OpenNewInvestment() => showPlantSeedModal = true;
+    private void OpenNewInvestment()
+    {
+        if (!_canDocumentServiceRecords) return;
+        showPlantSeedModal = true;
+    }
     private void OpenDetails(Guid id)
     {
         selectedInvestmentId = id;

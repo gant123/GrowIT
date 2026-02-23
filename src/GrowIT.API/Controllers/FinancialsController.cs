@@ -32,6 +32,7 @@ public class FinancialsController : ControllerBase
     // FUNDS
     // ==========================================
     [HttpPost("funds")]
+    [Authorize(Policy = "AdminOrManager")]
     public async Task<IActionResult> CreateFund(CreateFundRequest request)
     {
         var tenantId = _tenantService.TenantId;
@@ -74,6 +75,7 @@ public class FinancialsController : ControllerBase
     // PROGRAMS
     // ==========================================
     [HttpPost("programs")]
+    [Authorize(Policy = "AdminOrManager")]
     public async Task<IActionResult> CreateProgram(CreateProgramRequest request)
     {
         var tenantId = _tenantService.TenantId;
@@ -119,6 +121,7 @@ public class FinancialsController : ControllerBase
     }
 
     [HttpPut("funds/{id}")]
+    [Authorize(Policy = "AdminOrManager")]
     public async Task<IActionResult> UpdateFund(Guid id, UpdateFundRequest request)
     {
         // 1. VALIDATION (The Enterprise Way)

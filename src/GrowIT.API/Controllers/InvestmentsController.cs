@@ -104,6 +104,7 @@ public class InvestmentsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "ServiceWriter")]
     public async Task<IActionResult> CreateInvestment(CreateInvestmentRequest request)
     {
         var tenantId = _tenantService.TenantId;
@@ -163,6 +164,7 @@ public class InvestmentsController : ControllerBase
     }
 
     [HttpPost("{id}/approve")]
+    [Authorize(Policy = "AdminOrManager")]
     public async Task<IActionResult> ApproveInvestment(Guid id, [FromBody] ApproveInvestmentRequest request)
     {
         var investment = await _context.Investments.FirstOrDefaultAsync(i => i.Id == id);
@@ -176,6 +178,7 @@ public class InvestmentsController : ControllerBase
     }
 
     [HttpPost("{id}/disburse")]
+    [Authorize(Policy = "AdminOrManager")]
     public async Task<IActionResult> DisburseInvestment(Guid id)
     {
         var investment = await _context.Investments.FirstOrDefaultAsync(i => i.Id == id);
@@ -188,6 +191,7 @@ public class InvestmentsController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Policy = "AdminOrManager")]
     public async Task<IActionResult> DeleteInvestment(Guid id)
     {
         var investment = await _context.Investments
@@ -208,6 +212,7 @@ public class InvestmentsController : ControllerBase
     }
 
     [HttpPatch("{id}/reassign")]
+    [Authorize(Policy = "ServiceWriter")]
     public async Task<IActionResult> ReassignInvestment(Guid id, [FromBody] ReassignInvestmentRequest request)
     {
         var investment = await _context.Investments.FirstOrDefaultAsync(i => i.Id == id);

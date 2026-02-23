@@ -55,6 +55,7 @@ public class GrowthPlansController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "ServiceWriter")]
     public async Task<ActionResult<GrowthPlanListDto>> Create([FromBody] CreateGrowthPlanRequest request)
     {
         var tenantId = _tenantService.TenantId;
@@ -103,6 +104,7 @@ public class GrowthPlansController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
+    [Authorize(Policy = "ServiceWriter")]
     public async Task<ActionResult<GrowthPlanListDto>> Update(Guid id, [FromBody] UpdateGrowthPlanRequest request)
     {
         var existing = await _context.GrowthPlans
@@ -126,6 +128,7 @@ public class GrowthPlansController : ControllerBase
     }
 
     [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "ServiceWriter")]
     public async Task<IActionResult> Delete(Guid id)
     {
         var existing = await _context.GrowthPlans.FirstOrDefaultAsync(x => x.Id == id);

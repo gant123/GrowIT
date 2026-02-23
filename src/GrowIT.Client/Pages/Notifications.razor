@@ -1,15 +1,181 @@
 @page "/notifications"
 @attribute [Authorize]
+@using GrowIT.Shared.DTOs
+@inject INotificationService NotificationService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
 
-<div style="max-width: 1100px; margin: 0 auto;">
-    <PageHeader Title="Notifications" Subtitle="Alerts and activity notifications" />
+<PageTitle>Notifications - grow.IT</PageTitle>
 
-    <div class="card-growit">
-        <div class="card-body">
-            <p style="margin-bottom: 8px;">Header notifications now route here correctly.</p>
-            <p style="margin-bottom: 0; color: var(--growit-text-secondary);">
-                This is a placeholder inbox page until notifications are backed by a dedicated API endpoint.
-            </p>
+<div class="notifications-page">
+    <PageHeader Title="Notifications" Subtitle="Operational alerts, invite activity, and system updates for your workspace." />
+
+    <div class="notifications-toolbar">
+        <div class="notifications-filters">
+            <button class="filter-chip @( _filter == "all" ? "active" : null)" @onclick='() => SetFilterAsync("all")'>All</button>
+            <button class="filter-chip @( _filter == "unread" ? "active" : null)" @onclick='() => SetFilterAsync("unread")'>Unread</button>
+            <button class="filter-chip @( _filter == "invite" ? "active" : null)" @onclick='() => SetFilterAsync("invite")'>Invite Activity</button>
+            <button class="filter-chip @( _filter == "system" ? "active" : null)" @onclick='() => SetFilterAsync("system")'>System</button>
+        </div>
+        <div class="notifications-actions">
+            <span class="unread-pill">@_unreadCount unread</span>
+            <button class="btn btn-outline-secondary btn-sm" disabled="@(_unreadCount == 0 || _isLoading)" @onclick="MarkAllReadAsync">
+                Mark all read
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" disabled="@_isLoading" @onclick="LoadAsync">Refresh</button>
         </div>
     </div>
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-danger d-flex justify-content-between align-items-center">
+            <span>@_error</span>
+            <button class="btn btn-sm btn-outline-light" @onclick="LoadAsync">Retry</button>
+        </div>
+    }
+
+    <section class="notifications-panel">
+        @if (_isLoading)
+        {
+            <div class="notifications-loading">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p>Loading notifications...</p>
+            </div>
+        }
+        else if (FilteredItems.Count == 0)
+        {
+            <div class="notifications-empty">
+                <i class="bi bi-bell-slash"></i>
+                <div>
+                    <h3>No notifications found</h3>
+                    <p>Invite activity, reporting, and system alerts will appear here.</p>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="notifications-list">
+                @foreach (var item in FilteredItems)
+                {
+                    <button type="button" class="notification-row @(item.IsRead ? "read" : "unread")" @onclick="() => OpenNotificationAsync(item)">
+                        <div class="notification-row-icon @(GetIconTone(item))">
+                            <i class="@GetIcon(item)"></i>
+                        </div>
+                        <div class="notification-row-body">
+                            <div class="notification-row-header">
+                                <strong>@item.Title</strong>
+                                <span>@item.CreatedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</span>
+                            </div>
+                            <p>@item.Message</p>
+                            <div class="notification-meta">
+                                <span class="category">@item.Category</span>
+                                @if (!string.IsNullOrWhiteSpace(item.Link))
+                                {
+                                    <span class="link-hint">Open linked page</span>
+                                }
+                            </div>
+                        </div>
+                    </button>
+                }
+            </div>
+        }
+    </section>
 </div>
+
+@code {
+    private bool _isLoading = true;
+    private string? _error;
+    private string _filter = "all";
+    private int _unreadCount;
+    private List<NotificationItemDto> _items = [];
+
+    private List<NotificationItemDto> FilteredItems => _filter switch
+    {
+        "unread" => _items.Where(i => !i.IsRead).ToList(),
+        "invite" => _items.Where(i => i.Category.Contains("Invite", StringComparison.OrdinalIgnoreCase)).ToList(),
+        "system" => _items.Where(i => !i.Category.Contains("Invite", StringComparison.OrdinalIgnoreCase)).ToList(),
+        _ => _items
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _error = null;
+        try
+        {
+            var inbox = await NotificationService.GetNotificationsAsync(100);
+            _items = inbox.Items;
+            _unreadCount = inbox.UnreadCount;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SetFilterAsync(string filter)
+    {
+        _filter = filter;
+        await Task.CompletedTask;
+    }
+
+    private async Task MarkAllReadAsync()
+    {
+        try
+        {
+            await NotificationService.MarkAllReadAsync();
+            foreach (var item in _items)
+            {
+                item.IsRead = true;
+            }
+            _unreadCount = 0;
+            await JS.InvokeVoidAsync("blazorInterop.showToast", "Notifications marked as read", "success");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task OpenNotificationAsync(NotificationItemDto item)
+    {
+        try
+        {
+            if (!item.IsRead)
+            {
+                await NotificationService.MarkReadAsync(item.Id);
+                item.IsRead = true;
+                _unreadCount = Math.Max(0, _unreadCount - 1);
+            }
+        }
+        catch
+        {
+            // Navigation can continue if mark-read fails.
+        }
+
+        if (!string.IsNullOrWhiteSpace(item.Link))
+        {
+            Navigation.NavigateTo(item.Link);
+        }
+    }
+
+    private static string GetIcon(NotificationItemDto item)
+    {
+        if (item.Category.Contains("Invite", StringComparison.OrdinalIgnoreCase)) return "bi bi-envelope-check";
+        if (item.Link.Contains("settings", StringComparison.OrdinalIgnoreCase)) return "bi bi-gear";
+        return "bi bi-bell";
+    }
+
+    private static string GetIconTone(NotificationItemDto item) =>
+        item.Category.Contains("Invite", StringComparison.OrdinalIgnoreCase) ? "invite" :
+        item.IsRead ? "neutral" : "active";
+}

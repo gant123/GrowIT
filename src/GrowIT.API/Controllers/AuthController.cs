@@ -69,6 +69,8 @@ public class AuthController : ControllerBase
             Email = request.Email,
             Role = string.IsNullOrEmpty(request.Role) ? "Admin" : request.Role, // Ensure a role is set
             IsActive = true,
+            NotifyInviteActivity = true,
+            NotifySystemAlerts = true,
             // Hash the password immediately!
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
         };
@@ -257,6 +259,8 @@ public class AuthController : ControllerBase
             Email = normalizedEmail,
             Role = string.IsNullOrWhiteSpace(invite.Role) ? "Member" : invite.Role,
             IsActive = true,
+            NotifyInviteActivity = true,
+            NotifySystemAlerts = true,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
         };
 
@@ -311,7 +315,7 @@ public class AuthController : ControllerBase
     {
         var recipientIds = await _context.Users
             .IgnoreQueryFilters()
-            .Where(u => u.TenantId == invite.TenantId && u.IsActive)
+            .Where(u => u.TenantId == invite.TenantId && u.IsActive && u.NotifyInviteActivity)
             .Select(u => u.Id)
             .ToListAsync();
 

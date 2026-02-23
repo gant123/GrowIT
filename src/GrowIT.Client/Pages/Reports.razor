@@ -1,7 +1,8 @@
 @page "/reports"
-@attribute [Authorize(Roles = "Admin,Manager")]
+@attribute [Authorize]
 @using GrowIT.Shared.DTOs
 @inject IReportService ReportService
+@inject IRoleAccessService RoleAccessService
 @inject IJSRuntime JS
 
 <PageTitle>Reports - grow.IT</PageTitle>
@@ -9,6 +10,15 @@
 <div class="page-reports">
     <!-- Page Header -->
     <PageHeader Title="Funding Readiness Reports" Subtitle="Turn day-to-day service into verifiable financial intelligence and funder-ready evidence." />
+
+    @if (!_hasReportAccess)
+    {
+        <div class="alert alert-warning" role="alert">
+            Reports are available to `Admin`, `Manager`, or `Owner` roles.
+        </div>
+    }
+    else
+    {
 
     <!-- Report Templates -->
     <div class="report-section">
@@ -238,6 +248,8 @@
             </button>
         </div>
     </div>
+
+    }
 </div>
 
 @code {
@@ -256,9 +268,20 @@
     // Scheduled reports
     private List<ScheduledReport> _scheduledReports = new();
     private bool _isLoadingScheduled = true;
+    private bool _hasReportAccess = true;
 
     protected override async Task OnInitializedAsync()
     {
+        var access = await RoleAccessService.GetAccessAsync();
+        _hasReportAccess = access.CanAccessReports;
+
+        if (!_hasReportAccess)
+        {
+            _isLoadingRecent = false;
+            _isLoadingScheduled = false;
+            return;
+        }
+
         try
         {
             _recentReports = await ReportService.GetRecentReportsAsync();
@@ -288,6 +311,7 @@
 
     private async Task GenerateReport(string reportType)
     {
+        if (!_hasReportAccess) return;
         try
         {
             var payload = new GenerateReportRequest
@@ -313,6 +337,7 @@
 
     private async Task GenerateCustomReport()
     {
+        if (!_hasReportAccess) return;
         try
         {
             var payload = new GenerateReportRequest
@@ -342,6 +367,7 @@
 
     private async Task DownloadReport(Guid id)
     {
+        if (!_hasReportAccess) return;
         try
         {
             // Trigger browser download by navigating to the file endpoint.
@@ -355,6 +381,7 @@
 
     private async Task AddScheduledReport()
     {
+        if (!_hasReportAccess) return;
         var payload = new CreateScheduledReportRequest
         {
             Name = "Weekly Impact Summary",
@@ -379,6 +406,7 @@
 
     private async Task EditSchedule(Guid id)
     {
+        if (!_hasReportAccess) return;
         var existing = _scheduledReports.FirstOrDefault(s => s.Id == id);
         if (existing == null) return;
 
@@ -407,6 +435,7 @@
 
     private async Task DeleteSchedule(Guid id)
     {
+        if (!_hasReportAccess) return;
         try
         {
             await ReportService.DeleteScheduledReportAsync(id);

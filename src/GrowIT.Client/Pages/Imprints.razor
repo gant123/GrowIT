@@ -4,18 +4,27 @@
 @inject IImprintService ImprintService
 @inject IClientService ClientService
 @inject IInvestmentService InvestmentService
+@inject IRoleAccessService RoleAccessService
 
 <PageTitle>Imprints - grow.IT</PageTitle>
 
 <div class="imprints-page">
     <PageHeader Title="Imprints" Subtitle="Document verified outcomes and milestones so service translates into credible impact evidence.">
         <Actions>
-            <button class="btn btn-primary" @onclick="OpenNewImprint">
-                <i class="bi bi-plus-lg"></i>
-                <span>Record Imprint</span>
-            </button>
+            @if (_canDocumentServiceRecords)
+            {
+                <button class="btn btn-primary" @onclick="OpenNewImprint">
+                    <i class="bi bi-plus-lg"></i>
+                    <span>Record Imprint</span>
+                </button>
+            }
         </Actions>
     </PageHeader>
+
+    @if (!_canDocumentServiceRecords)
+    {
+        <div class="alert alert-info mb-3">You have read-only access to imprints. `Case Manager`, `Manager`, `Admin`, or `Owner` can record outcomes.</div>
+    }
 
     @if (!string.IsNullOrWhiteSpace(_loadError))
     {
@@ -137,16 +146,19 @@
                 <div class="imprint-empty-icon"><i class="bi bi-journal-x"></i></div>
                 <h3>No imprints found</h3>
                 <p>Start documenting service outcomes to build a reliable impact history for funding readiness.</p>
-                <button class="btn btn-outline-primary" @onclick="OpenNewImprint">
-                    <i class="bi bi-plus-lg"></i>
-                    <span>Record First Imprint</span>
-                </button>
+                @if (_canDocumentServiceRecords)
+                {
+                    <button class="btn btn-outline-primary" @onclick="OpenNewImprint">
+                        <i class="bi bi-plus-lg"></i>
+                        <span>Record First Imprint</span>
+                    </button>
+                }
             </div>
         }
     </section>
 </div>
 
-@if (_showCreateModal)
+@if (_showCreateModal && _canDocumentServiceRecords)
 {
     <div class="modal fade show d-block growit-modal-backdrop" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -269,6 +281,7 @@
     private bool _showCreateModal;
     private bool _isCreateLoading;
     private bool _isSavingCreate;
+    private bool _canDocumentServiceRecords;
     private string _createError = "";
     private string? _loadError;
     private CreateImprintRequest _createRequest = new()
@@ -281,7 +294,11 @@
     private int DistinctPeopleCount => _allImprints.Select(i => i.PersonId).Distinct().Count();
     private int ThisMonthImprintCount => _allImprints.Count(i => i.Date.ToUniversalTime() >= new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1));
 
-    protected override async Task OnInitializedAsync() => await ReloadImprintsAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        _canDocumentServiceRecords = (await RoleAccessService.GetAccessAsync()).CanDocumentServiceRecords;
+        await ReloadImprintsAsync();
+    }
 
     private async Task ReloadImprintsAsync()
     {
@@ -326,6 +343,7 @@
 
     private async Task OpenNewImprint()
     {
+        if (!_canDocumentServiceRecords) return;
         _showCreateModal = true;
         _isCreateLoading = true;
         _createError = "";
@@ -389,6 +407,7 @@
 
     private async Task SubmitImprintAsync()
     {
+        if (!_canDocumentServiceRecords) return;
         _createError = "";
 
         if (_createRequest.ClientId == Guid.Empty)

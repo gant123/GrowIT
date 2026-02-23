@@ -3,6 +3,7 @@ using System;
 using GrowIT.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GrowIT.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260223065004_AddUserNotificationPreferences")]
+    partial class AddUserNotificationPreferences
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -926,9 +929,6 @@ namespace GrowIT.Infrastructure.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("PasswordResetToken")
-                        .HasColumnType("text");
-
-                    b.Property<string>("PhotoUrl")
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("ResetTokenExpires")

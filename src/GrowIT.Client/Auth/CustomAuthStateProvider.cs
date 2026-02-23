@@ -36,17 +36,10 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
     }
 
 // Change 'void' to 'Task'
-    public Task MarkUserAsAuthenticated(string email)
+    public async Task MarkUserAsAuthenticated(string email)
     {
-        var authenticatedUser = new ClaimsPrincipal(new ClaimsIdentity(new[]
-        {
-            new Claim(ClaimTypes.Name, email)
-        }, "apiauth"));
-        
-        var authState = Task.FromResult(new AuthenticationState(authenticatedUser));
-        NotifyAuthenticationStateChanged(authState);
-
-        return Task.CompletedTask;
+        var authState = await GetAuthenticationStateAsync();
+        NotifyAuthenticationStateChanged(Task.FromResult(authState));
     }
 
 public Task MarkUserAsLoggedOut()

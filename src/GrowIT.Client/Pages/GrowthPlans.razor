@@ -3,18 +3,27 @@
 @using GrowIT.Shared.Enums
 @inject IGrowthPlanService GrowthPlanService
 @inject IClientService ClientService
+@inject IRoleAccessService RoleAccessService
 
 <PageTitle>Growth Plans - grow.IT</PageTitle>
 
 <div class="growth-plans-page">
     <PageHeader Title="Growth Plans" Subtitle="Turn service patterns into realistic capacity plans and sustainable next-step pathways.">
         <Actions>
-            <button class="btn btn-primary" @onclick="OpenCreateModal">
-                <i class="bi bi-plus-lg"></i>
-                <span>New Growth Plan</span>
-            </button>
+            @if (_canDocumentServiceRecords)
+            {
+                <button class="btn btn-primary" @onclick="OpenCreateModal">
+                    <i class="bi bi-plus-lg"></i>
+                    <span>New Growth Plan</span>
+                </button>
+            }
         </Actions>
     </PageHeader>
+
+    @if (!_canDocumentServiceRecords)
+    {
+        <div class="alert alert-info mb-3">You have read-only access to growth plans. `Case Manager`, `Manager`, `Admin`, or `Owner` can create and update plans.</div>
+    }
 
     @if (!string.IsNullOrWhiteSpace(_listError))
     {
@@ -93,10 +102,13 @@
                 <div class="growth-empty-icon"><i class="bi bi-diagram-3"></i></div>
                 <h3>No growth plans found</h3>
                 <p>Create a plan to document capacity pacing, milestones, and the support needed to keep service sustainable.</p>
-                <button class="btn btn-outline-primary" @onclick="OpenCreateModal">
-                    <i class="bi bi-plus-lg"></i>
-                    <span>Create Growth Plan</span>
-                </button>
+                @if (_canDocumentServiceRecords)
+                {
+                    <button class="btn btn-outline-primary" @onclick="OpenCreateModal">
+                        <i class="bi bi-plus-lg"></i>
+                        <span>Create Growth Plan</span>
+                    </button>
+                }
             </div>
         }
         else
@@ -148,14 +160,17 @@
                         </div>
 
                         <div class="plan-card-actions">
-                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => OpenEditModal(plan)">
-                                <i class="bi bi-pencil"></i>
-                                <span>Edit</span>
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeletePlanAsync(plan.Id)">
-                                <i class="bi bi-trash3"></i>
-                                <span>Delete</span>
-                            </button>
+                            @if (_canDocumentServiceRecords)
+                            {
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => OpenEditModal(plan)">
+                                    <i class="bi bi-pencil"></i>
+                                    <span>Edit</span>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="() => DeletePlanAsync(plan.Id)">
+                                    <i class="bi bi-trash3"></i>
+                                    <span>Delete</span>
+                                </button>
+                            }
                         </div>
                     </article>
                 }
@@ -164,7 +179,7 @@
     </section>
 </div>
 
-@if (_showCreateModal)
+@if (_showCreateModal && _canDocumentServiceRecords)
 {
     <div class="modal fade show d-block growth-modal-backdrop" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -242,7 +257,7 @@
     </div>
 }
 
-@if (_showEditModal)
+@if (_showEditModal && _canDocumentServiceRecords)
 {
     <div class="modal fade show d-block growth-modal-backdrop" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -341,6 +356,7 @@
     private UpdateGrowthPlanRequest _editRequest = new();
     private string SearchQuery { get; set; } = "";
     private string SelectedStatusFilter { get; set; } = "all";
+    private bool _canDocumentServiceRecords;
 
     private int ActivePipelineCount => _allPlans.Count(p => p.Status is GrowthPlanStatus.Draft or GrowthPlanStatus.Active);
     private int CompletedOutcomeCount => _allPlans.Count(p => p.Status is GrowthPlanStatus.Completed or GrowthPlanStatus.Graduated);
@@ -348,6 +364,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        _canDocumentServiceRecords = (await RoleAccessService.GetAccessAsync()).CanDocumentServiceRecords;
         await ReloadPlansAsync();
     }
 
@@ -372,6 +389,7 @@
 
     private async Task OpenCreateModal()
     {
+        if (!_canDocumentServiceRecords) return;
         _showCreateModal = true;
         _isCreateLoading = true;
         _createError = "";
@@ -404,6 +422,7 @@
 
     private void OpenEditModal(GrowthPlanListDto plan)
     {
+        if (!_canDocumentServiceRecords) return;
         _editingPlanId = plan.Id;
         _editError = "";
         _showEditModal = true;
@@ -440,6 +459,7 @@
 
     private async Task CreatePlanAsync()
     {
+        if (!_canDocumentServiceRecords) return;
         _createError = "";
 
         if (_createRequest.PersonId == Guid.Empty)
@@ -480,6 +500,7 @@
 
     private async Task DeletePlanAsync(Guid id)
     {
+        if (!_canDocumentServiceRecords) return;
         try
         {
             await GrowthPlanService.DeleteGrowthPlanAsync(id);
@@ -493,6 +514,7 @@
 
     private async Task SaveEditAsync()
     {
+        if (!_canDocumentServiceRecords) return;
         _editError = "";
 
         if (_editingPlanId == Guid.Empty)

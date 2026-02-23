@@ -1,28 +1,399 @@
 @page "/profile"
 @attribute [Authorize]
+@using GrowIT.Shared.DTOs
+@using Microsoft.AspNetCore.Components.Forms
+@inject IProfileService ProfileService
+@inject IJSRuntime JS
 
-<div style="max-width: 1100px; margin: 0 auto;">
-    <PageHeader Title="Profile" Subtitle="Account details and preferences" />
+<PageTitle>Profile - grow.IT</PageTitle>
 
-    <div class="card-growit">
-        <div class="card-body">
-            <AuthorizeView>
-                <Authorized Context="auth">
-                    <div style="display: grid; gap: 10px;">
-                        <div><strong>Name:</strong> @GetClaim(auth.User.Identity?.Name, "User")</div>
-                        <div><strong>Email:</strong> @GetClaim(auth.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value, "Not available")</div>
-                        <div><strong>Role:</strong> @GetClaim(auth.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value, "User")</div>
-                    </div>
-                </Authorized>
-                <NotAuthorized>
-                    <p style="margin: 0;">You must be signed in to view your profile.</p>
-                </NotAuthorized>
-            </AuthorizeView>
+<div class="profile-page">
+    <PageHeader Title="Profile" Subtitle="Manage your account details and security settings." />
+
+    @if (!string.IsNullOrWhiteSpace(_pageError))
+    {
+        <div class="alert alert-danger d-flex justify-content-between align-items-center">
+            <span>@_pageError</span>
+            <button class="btn btn-sm btn-outline-light" @onclick="LoadAsync">Retry</button>
         </div>
-    </div>
+    }
+
+    @if (_isLoading)
+    {
+        <div class="profile-loading">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p>Loading profile...</p>
+        </div>
+    }
+    else if (_profile is not null)
+    {
+        <div class="profile-grid">
+            <section class="profile-card identity-card">
+                <div class="profile-card-header">
+                    <h2>Account Identity</h2>
+                    <p>Update your display name used across the workspace.</p>
+                </div>
+                <div class="profile-card-body">
+                    <div class="identity-banner">
+                        <div class="avatar">
+                            @if (!string.IsNullOrWhiteSpace(_profile.PhotoUrl))
+                            {
+                                <img src="@_profile.PhotoUrl" alt="Profile photo" class="avatar-photo" />
+                            }
+                            else
+                            {
+                                <span>@Initials</span>
+                            }
+                        </div>
+                        <div>
+                            <div class="identity-name">@DisplayName</div>
+                            <div class="identity-meta">@_profile.Email</div>
+                            <div class="identity-meta">@_profile.Role • @(_profile.OrganizationName ?? "Organization")</div>
+                        </div>
+                    </div>
+
+                    <div class="profile-photo-uploader">
+                        <div class="photo-upload-copy">
+                            <strong>Profile Photo</strong>
+                            <span>Upload a JPG, PNG, or WEBP image (max 5MB) for your workspace avatar.</span>
+                        </div>
+                        <label class="btn btn-outline-secondary btn-sm mb-0">
+                            @if (_isUploadingPhoto)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            <i class="bi bi-upload me-2"></i>
+                            <span>@(_isUploadingPhoto ? "Uploading..." : "Upload Photo")</span>
+                            <InputFile OnChange="UploadProfilePhotoAsync" accept="image/png,image/jpeg,image/webp" class="d-none" disabled="@_isUploadingPhoto" />
+                        </label>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(_photoSuccess))
+                    {
+                        <div class="alert alert-success py-2">@_photoSuccess</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_photoError))
+                    {
+                        <div class="alert alert-danger py-2">@_photoError</div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(_profileSuccess))
+                    {
+                        <div class="alert alert-success py-2">@_profileSuccess</div>
+                    }
+
+                    <EditForm Model="_profileEdit" OnValidSubmit="SaveProfileAsync">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">First name</label>
+                                <InputText class="form-control" @bind-Value="_profileEdit.FirstName" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last name</label>
+                                <InputText class="form-control" @bind-Value="_profileEdit.LastName" />
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Email</label>
+                                <input class="form-control" value="@_profile.Email" readonly />
+                                <div class="form-text">Email changes are currently handled by an administrator.</div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end mt-3">
+                            <button class="btn btn-primary" type="submit" disabled="@_isSavingProfile">
+                                @if (_isSavingProfile)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                <span>Save Profile</span>
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </section>
+
+            <section class="profile-card security-card">
+                <div class="profile-card-header">
+                    <h2>Password & Security</h2>
+                    <p>Use a strong password and rotate credentials regularly.</p>
+                </div>
+                <div class="profile-card-body">
+                    @if (!string.IsNullOrWhiteSpace(_passwordSuccess))
+                    {
+                        <div class="alert alert-success py-2">@_passwordSuccess</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_passwordError))
+                    {
+                        <div class="alert alert-danger py-2">@_passwordError</div>
+                    }
+
+                    <EditForm Model="_changePassword" OnValidSubmit="ChangePasswordAsync">
+                        <div class="mb-3">
+                            <label class="form-label">Current password</label>
+                            <InputText type="password" class="form-control" @bind-Value="_changePassword.CurrentPassword" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">New password</label>
+                            <InputText type="password" class="form-control" @bind-Value="_changePassword.NewPassword" />
+                            <div class="form-text">Minimum 8 characters.</div>
+                        </div>
+                        <button class="btn btn-outline-primary" type="submit" disabled="@_isChangingPassword">
+                            @if (_isChangingPassword)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            <span>Update Password</span>
+                        </button>
+                    </EditForm>
+
+                    <div class="security-summary">
+                        <div class="security-row">
+                            <span>Status</span>
+                            <span class="status-pill @(_profile.IsActive ? "active" : "inactive")">@(_profile.IsActive ? "Active" : "Inactive")</span>
+                        </div>
+                        <div class="security-row">
+                            <span>Role</span>
+                            <strong>@_profile.Role</strong>
+                        </div>
+                        <div class="security-row">
+                            <span>Member since</span>
+                            <strong>@_profile.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")</strong>
+                        </div>
+                    </div>
+
+                    <div class="notification-preferences-panel">
+                        <div class="preferences-header">
+                            <h3>Notification Preferences</h3>
+                            <p>Control which in-app alerts are created for your account.</p>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(_preferencesSuccess))
+                        {
+                            <div class="alert alert-success py-2">@_preferencesSuccess</div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(_preferencesError))
+                        {
+                            <div class="alert alert-danger py-2">@_preferencesError</div>
+                        }
+
+                        <div class="preference-list">
+                            <label class="preference-item">
+                                <InputCheckbox @bind-Value="_notificationPreferences.NotifyInviteActivity" />
+                                <div>
+                                    <strong>Invite Activity</strong>
+                                    <span>Invite created, resent, revoked, and accepted alerts.</span>
+                                </div>
+                            </label>
+                            <label class="preference-item">
+                                <InputCheckbox @bind-Value="_notificationPreferences.NotifySystemAlerts" />
+                                <div>
+                                    <strong>System Alerts</strong>
+                                    <span>Operational notices and future system-generated alerts.</span>
+                                </div>
+                            </label>
+                        </div>
+
+                        <button class="btn btn-outline-primary btn-sm mt-3"
+                                disabled="@_isSavingNotificationPreferences"
+                                @onclick="SaveNotificationPreferencesAsync">
+                            @if (_isSavingNotificationPreferences)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            <span>Save Preferences</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
+    }
 </div>
 
 @code {
-    private static string GetClaim(string? value, string fallback) =>
-        string.IsNullOrWhiteSpace(value) ? fallback : value;
+    private bool _isLoading = true;
+    private bool _isSavingProfile;
+    private bool _isChangingPassword;
+    private bool _isSavingNotificationPreferences;
+    private bool _isUploadingPhoto;
+    private string? _pageError;
+    private string? _profileSuccess;
+    private string? _passwordSuccess;
+    private string? _passwordError;
+    private string? _preferencesSuccess;
+    private string? _preferencesError;
+    private string? _photoSuccess;
+    private string? _photoError;
+
+    private UserProfileDto? _profile;
+    private UpdateUserProfileRequest _profileEdit = new();
+    private ChangePasswordRequest _changePassword = new();
+    private UpdateNotificationPreferencesRequest _notificationPreferences = new();
+
+    private string DisplayName => _profile is null ? "User" : $"{_profile.FirstName} {_profile.LastName}".Trim();
+    private string Initials
+    {
+        get
+        {
+            if (_profile is null) return "U";
+            var first = string.IsNullOrWhiteSpace(_profile.FirstName) ? "" : _profile.FirstName[0].ToString();
+            var last = string.IsNullOrWhiteSpace(_profile.LastName) ? "" : _profile.LastName[0].ToString();
+            var value = (first + last).ToUpperInvariant();
+            return string.IsNullOrWhiteSpace(value) ? "U" : value;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _pageError = null;
+        _profileSuccess = null;
+        _photoSuccess = null;
+        _photoError = null;
+        try
+        {
+            _profile = await ProfileService.GetProfileAsync();
+            _profileEdit = new UpdateUserProfileRequest
+            {
+                FirstName = _profile.FirstName,
+                LastName = _profile.LastName
+            };
+            _notificationPreferences = new UpdateNotificationPreferencesRequest
+            {
+                NotifyInviteActivity = _profile.NotifyInviteActivity,
+                NotifySystemAlerts = _profile.NotifySystemAlerts
+            };
+        }
+        catch (Exception ex)
+        {
+            _pageError = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveProfileAsync()
+    {
+        if (_profile is null) return;
+
+        _isSavingProfile = true;
+        _profileSuccess = null;
+        _pageError = null;
+        _photoSuccess = null;
+        _photoError = null;
+        try
+        {
+            _profile = await ProfileService.UpdateProfileAsync(_profileEdit);
+            _profileSuccess = "Profile updated. Sign out and sign back in to refresh header identity everywhere.";
+        }
+        catch (Exception ex)
+        {
+            _pageError = ex.Message;
+        }
+        finally
+        {
+            _isSavingProfile = false;
+        }
+    }
+
+    private async Task ChangePasswordAsync()
+    {
+        _passwordSuccess = null;
+        _passwordError = null;
+        if (string.IsNullOrWhiteSpace(_changePassword.CurrentPassword) || string.IsNullOrWhiteSpace(_changePassword.NewPassword))
+        {
+            _passwordError = "Current and new password are required.";
+            return;
+        }
+
+        _isChangingPassword = true;
+        try
+        {
+            await ProfileService.ChangePasswordAsync(_changePassword);
+            _changePassword = new ChangePasswordRequest();
+            _passwordSuccess = "Password updated successfully.";
+            try
+            {
+                await JS.InvokeVoidAsync("blazorInterop.showToast", "Password updated", "success");
+            }
+            catch { }
+        }
+        catch (Exception ex)
+        {
+            _passwordError = ex.Message;
+        }
+        finally
+        {
+            _isChangingPassword = false;
+        }
+    }
+
+    private async Task SaveNotificationPreferencesAsync()
+    {
+        if (_profile is null) return;
+
+        _preferencesSuccess = null;
+        _preferencesError = null;
+        _isSavingNotificationPreferences = true;
+        try
+        {
+            _profile = await ProfileService.UpdateNotificationPreferencesAsync(_notificationPreferences);
+            _notificationPreferences = new UpdateNotificationPreferencesRequest
+            {
+                NotifyInviteActivity = _profile.NotifyInviteActivity,
+                NotifySystemAlerts = _profile.NotifySystemAlerts
+            };
+            _preferencesSuccess = "Notification preferences updated.";
+        }
+        catch (Exception ex)
+        {
+            _preferencesError = ex.Message;
+        }
+        finally
+        {
+            _isSavingNotificationPreferences = false;
+        }
+    }
+
+    private async Task UploadProfilePhotoAsync(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        _photoSuccess = null;
+        _photoError = null;
+        if (file is null)
+        {
+            _photoError = "No file selected.";
+            return;
+        }
+
+        _isUploadingPhoto = true;
+        try
+        {
+            _profile = await ProfileService.UploadProfilePhotoAsync(file);
+            _profileEdit = new UpdateUserProfileRequest
+            {
+                FirstName = _profile.FirstName,
+                LastName = _profile.LastName
+            };
+            _notificationPreferences = new UpdateNotificationPreferencesRequest
+            {
+                NotifyInviteActivity = _profile.NotifyInviteActivity,
+                NotifySystemAlerts = _profile.NotifySystemAlerts
+            };
+            _photoSuccess = "Profile photo updated.";
+        }
+        catch (Exception ex)
+        {
+            _photoError = ex.Message;
+        }
+        finally
+        {
+            _isUploadingPhoto = false;
+        }
+    }
 }

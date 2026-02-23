@@ -98,6 +98,18 @@ public class SeedDemoDataResponseDto
     public int GrowthPlansCreated { get; set; }
 }
 
+public class AdminAuditLogItemDto
+{
+    public Guid Id { get; set; }
+    public string ActionType { get; set; } = string.Empty;
+    public string TableName { get; set; } = string.Empty;
+    public Guid RecordId { get; set; }
+    public Guid UserId { get; set; }
+    public string UserName { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public string? Summary { get; set; }
+}
+
 public class InviteValidationDto
 {
     public bool IsValid { get; set; }

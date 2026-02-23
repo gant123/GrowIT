@@ -72,7 +72,7 @@
 
                 <div class="modal-footer border-top d-flex justify-content-between" style="border-color: var(--growit-border);">
                     <div class="d-flex gap-2">
-                        @if (_detail != null && _detail.Status == InvestmentStatus.Pending)
+                        @if (CanApproveDisburse && _detail != null && _detail.Status == InvestmentStatus.Pending)
                         {
                             <button class="btn btn-primary"
                                     disabled="@_isMutating"
@@ -80,7 +80,7 @@
                                 Approve
                             </button>
                         }
-                        @if (_detail != null && _detail.Status == InvestmentStatus.Approved)
+                        @if (CanApproveDisburse && _detail != null && _detail.Status == InvestmentStatus.Approved)
                         {
                             <button class="btn btn-secondary"
                                     disabled="@_isMutating"
@@ -88,7 +88,7 @@
                                 Disburse
                             </button>
                         }
-                        @if (_detail != null)
+                        @if (CanDelete && _detail != null)
                         {
                             <button class="btn btn-outline-danger"
                                     disabled="@_isMutating"
@@ -97,6 +97,10 @@
                             </button>
                         }
                     </div>
+                    @if (_detail != null && !CanApproveDisburse && !CanDelete)
+                    {
+                        <div class="small text-muted">Read-only access. Approval, disbursement, and deletion require elevated permissions.</div>
+                    }
                     <button class="btn btn-outline-secondary" @onclick="Close">Close</button>
                 </div>
             </div>
@@ -109,6 +113,8 @@
     [Parameter] public EventCallback<bool> ShowChanged { get; set; }
     [Parameter] public Guid InvestmentId { get; set; }
     [Parameter] public EventCallback OnChanged { get; set; }
+    [Parameter] public bool CanApproveDisburse { get; set; }
+    [Parameter] public bool CanDelete { get; set; }
 
     private InvestmentDetailDto? _detail;
     private bool _isLoading;
@@ -160,6 +166,7 @@
 
     private async Task ApproveAsync()
     {
+        if (!CanApproveDisburse) return;
         if (_detail == null) return;
         _isMutating = true;
         _error = null;
@@ -181,6 +188,7 @@
 
     private async Task DisburseAsync()
     {
+        if (!CanApproveDisburse) return;
         if (_detail == null) return;
         _isMutating = true;
         _error = null;
@@ -205,6 +213,7 @@
 
     private async Task DeleteAsync()
     {
+        if (!CanDelete) return;
         if (_detail == null) return;
         _isMutating = true;
         _error = null;
