@@ -107,6 +107,13 @@
     color: var(--growit-text-muted);
 }
 
+.photo-upload-actions {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
 .identity-name {
     font-weight: 700;
     color: var(--growit-text-primary);

@@ -110,6 +110,37 @@ public class AdminAuditLogItemDto
     public string? Summary { get; set; }
 }
 
+public class EmailDiagnosticsDto
+{
+    public string EnvironmentName { get; set; } = string.Empty;
+    public string? SmtpHost { get; set; }
+    public int? SmtpPort { get; set; }
+    public bool? UseSsl { get; set; }
+    public string? FromEmail { get; set; }
+    public string? SmtpUserMasked { get; set; }
+    public bool HasPassword { get; set; }
+    public bool HasPlaceholders { get; set; }
+    public bool DevFileFallbackEnabled { get; set; }
+    public string? DevFileFallbackDirectory { get; set; }
+    public string? ClientUrl { get; set; }
+    public string StatusSummary { get; set; } = string.Empty;
+}
+
+public class SendTestEmailRequest
+{
+    public string? ToEmail { get; set; }
+    public string? Subject { get; set; }
+}
+
+public class SendTestEmailResponse
+{
+    public bool Succeeded { get; set; }
+    public string DeliveryMode { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public string? FallbackFilePath { get; set; }
+    public string? TargetEmail { get; set; }
+}
+
 public class InviteValidationDto
 {
     public bool IsValid { get; set; }

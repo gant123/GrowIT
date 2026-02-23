@@ -22,13 +22,16 @@ public class ProfileController : ControllerBase
 
     private readonly ApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
-    private readonly IWebHostEnvironment _environment;
+    private readonly IFileStorageService _fileStorage;
 
-    public ProfileController(ApplicationDbContext context, ICurrentUserService currentUserService, IWebHostEnvironment environment)
+    public ProfileController(
+        ApplicationDbContext context,
+        ICurrentUserService currentUserService,
+        IFileStorageService fileStorage)
     {
         _context = context;
         _currentUserService = currentUserService;
-        _environment = environment;
+        _fileStorage = fileStorage;
     }
 
     [HttpGet]
@@ -47,21 +50,7 @@ public class ProfileController : ControllerBase
             .Select(t => t.Name)
             .FirstOrDefaultAsync();
 
-        return Ok(new UserProfileDto
-        {
-            UserId = user.Id,
-            TenantId = user.TenantId,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            Email = user.Email,
-            Role = user.Role,
-            IsActive = user.IsActive,
-            PhotoUrl = user.PhotoUrl,
-            NotifyInviteActivity = user.NotifyInviteActivity,
-            NotifySystemAlerts = user.NotifySystemAlerts,
-            CreatedAt = user.CreatedAt,
-            OrganizationName = tenantName
-        });
+        return Ok(ToProfileDto(user, tenantName));
     }
 
     [HttpPut]
@@ -155,24 +144,33 @@ public class ProfileController : ControllerBase
         if (extension is null)
             return BadRequest("Unsupported image file type.");
 
-        var webRoot = _environment.WebRootPath ?? Path.Combine(_environment.ContentRootPath, "wwwroot");
-        Directory.CreateDirectory(webRoot);
-        var uploadsRoot = Path.Combine(webRoot, "uploads", "profile-photos");
-        var tenantFolder = Path.Combine(uploadsRoot, user.TenantId.ToString("N"));
-        Directory.CreateDirectory(tenantFolder);
+        await using var stream = file.OpenReadStream();
+        var stored = await _fileStorage.SaveProfilePhotoAsync(
+            user.TenantId,
+            user.Id,
+            stream,
+            extension,
+            user.PhotoUrl,
+            HttpContext.RequestAborted);
 
-        DeleteExistingProfilePhotoIfManaged(user.PhotoUrl, webRoot);
+        user.PhotoUrl = stored.RelativePath;
+        await _context.SaveChangesAsync();
 
-        var fileName = $"{user.Id:N}_{DateTime.UtcNow:yyyyMMddHHmmssfff}{extension}";
-        var filePath = Path.Combine(tenantFolder, fileName);
+        return await GetProfile();
+    }
 
-        await using (var stream = System.IO.File.Create(filePath))
-        {
-            await file.CopyToAsync(stream);
-        }
+    [HttpDelete("photo")]
+    public async Task<ActionResult<UserProfileDto>> RemovePhoto()
+    {
+        var userId = _currentUserService.UserId;
+        if (!userId.HasValue || userId == Guid.Empty)
+            return Unauthorized("No valid user context found.");
 
-        var relativePath = $"/uploads/profile-photos/{user.TenantId:N}/{fileName}";
-        user.PhotoUrl = $"{Request.Scheme}://{Request.Host}{relativePath}";
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
+        if (user is null) return NotFound();
+
+        await _fileStorage.DeleteProfilePhotoAsync(user.PhotoUrl, HttpContext.RequestAborted);
+        user.PhotoUrl = null;
         await _context.SaveChangesAsync();
 
         return await GetProfile();
@@ -197,30 +195,36 @@ public class ProfileController : ControllerBase
         };
     }
 
-    private static void DeleteExistingProfilePhotoIfManaged(string? currentPhotoUrl, string webRoot)
+    private UserProfileDto ToProfileDto(GrowIT.Core.Entities.User user, string? tenantName)
     {
-        if (string.IsNullOrWhiteSpace(currentPhotoUrl))
-            return;
-
-        try
+        return new UserProfileDto
         {
-            if (!Uri.TryCreate(currentPhotoUrl, UriKind.Absolute, out var uri))
-                return;
+            UserId = user.Id,
+            TenantId = user.TenantId,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Email = user.Email,
+            Role = user.Role,
+            IsActive = user.IsActive,
+            PhotoUrl = ToPublicPhotoUrl(user.PhotoUrl),
+            NotifyInviteActivity = user.NotifyInviteActivity,
+            NotifySystemAlerts = user.NotifySystemAlerts,
+            CreatedAt = user.CreatedAt,
+            OrganizationName = tenantName
+        };
+    }
 
-            var absolutePath = uri.AbsolutePath;
-            if (!absolutePath.StartsWith("/uploads/profile-photos/", StringComparison.OrdinalIgnoreCase))
-                return;
+    private string? ToPublicPhotoUrl(string? storedPhotoUrl)
+    {
+        if (string.IsNullOrWhiteSpace(storedPhotoUrl))
+            return null;
 
-            var relativePath = absolutePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
-            var fullPath = Path.Combine(webRoot, relativePath);
-            if (System.IO.File.Exists(fullPath))
-            {
-                System.IO.File.Delete(fullPath);
-            }
-        }
-        catch
-        {
-            // Ignore cleanup issues to avoid blocking uploads.
-        }
+        if (Uri.TryCreate(storedPhotoUrl, UriKind.Absolute, out _))
+            return storedPhotoUrl;
+
+        if (!storedPhotoUrl.StartsWith('/'))
+            storedPhotoUrl = "/" + storedPhotoUrl;
+
+        return $"{Request.Scheme}://{Request.Host}{storedPhotoUrl}";
     }
 }

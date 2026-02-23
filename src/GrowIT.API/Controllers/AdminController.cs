@@ -496,6 +496,78 @@ public class AdminController : ControllerBase
         return Ok(response);
     }
 
+    [HttpGet("email-diagnostics")]
+    public ActionResult<EmailDiagnosticsDto> GetEmailDiagnostics()
+    {
+        var smtpHost = _config["Email:SmtpHost"]?.Trim();
+        var smtpUser = _config["Email:SmtpUser"]?.Trim();
+        var smtpPass = _config["Email:SmtpPass"];
+        var fromEmail = _config["Email:FromEmail"]?.Trim();
+        var env = _config["ASPNETCORE_ENVIRONMENT"] ?? HttpContext.RequestServices.GetService<IWebHostEnvironment>()?.EnvironmentName ?? "Unknown";
+
+        var hasPlaceholders = (smtpUser?.Contains("YOUR_", StringComparison.OrdinalIgnoreCase) ?? false)
+            || (smtpPass?.Contains("YOUR_", StringComparison.OrdinalIgnoreCase) ?? false);
+
+        var diagnostics = new EmailDiagnosticsDto
+        {
+            EnvironmentName = env,
+            SmtpHost = smtpHost,
+            SmtpPort = int.TryParse(_config["Email:SmtpPort"], out var port) ? port : null,
+            UseSsl = bool.TryParse(_config["Email:UseSsl"], out var ssl) ? ssl : null,
+            FromEmail = fromEmail,
+            SmtpUserMasked = MaskCredential(smtpUser),
+            HasPassword = !string.IsNullOrWhiteSpace(smtpPass),
+            HasPlaceholders = hasPlaceholders,
+            DevFileFallbackEnabled = !string.IsNullOrWhiteSpace(_config["Email:DevFileFallbackEnabled"])
+                ? bool.TryParse(_config["Email:DevFileFallbackEnabled"], out var fallbackEnabled) && fallbackEnabled
+                : string.Equals(env, "Development", StringComparison.OrdinalIgnoreCase),
+            DevFileFallbackDirectory = _config["Email:DevFileFallbackDirectory"],
+            ClientUrl = _config["ClientUrl"]
+        };
+
+        diagnostics.StatusSummary = BuildEmailDiagnosticsStatusSummary(diagnostics);
+        return Ok(diagnostics);
+    }
+
+    [HttpPost("email-test")]
+    public async Task<ActionResult<SendTestEmailResponse>> SendTestEmail([FromBody] SendTestEmailRequest? request)
+    {
+        var currentUserId = _currentUserService.UserId;
+        if (!currentUserId.HasValue || currentUserId == Guid.Empty)
+            return Unauthorized("No valid user context found.");
+
+        var currentUser = await _context.Users.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == currentUserId.Value);
+
+        var targetEmail = string.IsNullOrWhiteSpace(request?.ToEmail)
+            ? currentUser?.Email
+            : request!.ToEmail!.Trim();
+
+        if (string.IsNullOrWhiteSpace(targetEmail))
+            return BadRequest("A target email is required.");
+
+        var subject = string.IsNullOrWhiteSpace(request?.Subject)
+            ? $"grow.IT SMTP Test ({DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC)"
+            : request!.Subject!.Trim();
+
+        var body = $@"
+            <p>This is a grow.IT test email sent from the Settings security workspace.</p>
+            <p><strong>Environment:</strong> {(_config["ASPNETCORE_ENVIRONMENT"] ?? "Unknown")}</p>
+            <p><strong>Sent At (UTC):</strong> {DateTime.UtcNow:O}</p>
+            <p><strong>Tenant:</strong> {_tenantService.TenantId}</p>";
+
+        var result = await _emailService.SendEmailDetailedAsync(targetEmail, subject, body);
+
+        return Ok(new SendTestEmailResponse
+        {
+            Succeeded = result.Succeeded,
+            DeliveryMode = result.DeliveryMode,
+            Message = result.Message,
+            FallbackFilePath = result.FallbackFilePath,
+            TargetEmail = targetEmail
+        });
+    }
+
     [HttpGet("audit-logs")]
     public async Task<ActionResult<List<AdminAuditLogItemDto>>> GetAuditLogs([FromQuery] int take = 100, [FromQuery] string? table = null, [FromQuery] string? action = null)
     {
@@ -582,6 +654,27 @@ public class AdminController : ControllerBase
 
     private bool IsDevelopment() =>
         string.Equals(_config["ASPNETCORE_ENVIRONMENT"], "Development", StringComparison.OrdinalIgnoreCase);
+
+    private static string? MaskCredential(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+        if (value.Length <= 4)
+            return new string('*', value.Length);
+
+        return $"{value[..2]}***{value[^2..]}";
+    }
+
+    private static string BuildEmailDiagnosticsStatusSummary(EmailDiagnosticsDto dto)
+    {
+        if (string.IsNullOrWhiteSpace(dto.SmtpHost) || string.IsNullOrWhiteSpace(dto.SmtpUserMasked))
+            return "SMTP not configured";
+        if (dto.HasPlaceholders)
+            return "SMTP configured with placeholders";
+        if (dto.DevFileFallbackEnabled)
+            return "SMTP configured (development file fallback enabled)";
+        return "SMTP configured";
+    }
 
     private static AdminUserListItemDto ToAdminUserListItem(User user) => new()
     {

@@ -20,6 +20,18 @@ public class EmailService : IEmailService
 
     public async Task SendEmailAsync(string to, string subject, string body)
     {
+        var result = await SendEmailInternalAsync(to, subject, body, throwOnFailure: true);
+        if (!result.Succeeded && string.Equals(result.DeliveryMode, "Failed", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(result.Error ?? "Email send failed.");
+        }
+    }
+
+    public Task<EmailSendResult> SendEmailDetailedAsync(string to, string subject, string body) =>
+        SendEmailInternalAsync(to, subject, body, throwOnFailure: false);
+
+    private async Task<EmailSendResult> SendEmailInternalAsync(string to, string subject, string body, bool throwOnFailure)
+    {
         var smtpHost = _config["Email:SmtpHost"]?.Trim();
         var smtpUser = _config["Email:SmtpUser"]?.Trim();
         var smtpPass = _config["Email:SmtpPass"];
@@ -34,7 +46,12 @@ public class EmailService : IEmailService
             smtpUser.Contains("YOUR_") || (smtpPass != null && smtpPass.Contains("YOUR_")))
         {
             _logger.LogWarning("SMTP is not configured or using placeholders. Email to {To} with subject '{Subject}' will not be sent. Body: {Body}", to, subject, body);
-            return;
+            return new EmailSendResult
+            {
+                Succeeded = false,
+                DeliveryMode = "SkippedUnconfigured",
+                Message = "SMTP is not configured. Email was not sent."
+            };
         }
 
         if (string.IsNullOrWhiteSpace(fromEmail))
@@ -64,6 +81,12 @@ public class EmailService : IEmailService
 
             await client.SendMailAsync(mailMessage);
             _logger.LogInformation("Email sent to {To} successfully.", to);
+            return new EmailSendResult
+            {
+                Succeeded = true,
+                DeliveryMode = "Smtp",
+                Message = "Email sent successfully via SMTP."
+            };
         }
         catch (Exception ex)
         {
@@ -73,11 +96,26 @@ public class EmailService : IEmailService
                 _logger.LogWarning(ex,
                     "SMTP send failed in Development. Email written to file fallback at {FilePath}. To={To} Subject={Subject}",
                     filePath, to, subject);
-                return;
+                return new EmailSendResult
+                {
+                    Succeeded = true,
+                    DeliveryMode = "DevFileFallback",
+                    Message = "SMTP failed, but a development email file was generated.",
+                    FallbackFilePath = filePath
+                };
             }
 
             _logger.LogError(ex, "Failed to send email to {To}.", to);
-            throw;
+            if (throwOnFailure)
+                throw;
+
+            return new EmailSendResult
+            {
+                Succeeded = false,
+                DeliveryMode = "Failed",
+                Message = "Email send failed.",
+                Error = ex.Message
+            };
         }
     }
 

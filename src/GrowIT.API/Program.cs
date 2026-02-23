@@ -9,6 +9,7 @@ using GrowIT.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.Extensions.FileProviders;
 
 
 // AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -25,6 +26,7 @@ builder.Services.AddScoped<ICurrentTenantService, CurrentTenantService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>(); // NEW: Needed for Audit
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 
 // B. Register the Interceptor itself
 builder.Services.AddScoped<AuditInterceptor>(); 
@@ -86,6 +88,16 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var app = builder.Build();
+
+var webRootPath = app.Environment.WebRootPath;
+if (string.IsNullOrWhiteSpace(webRootPath))
+{
+    webRootPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot");
+}
+
+Directory.CreateDirectory(webRootPath);
+app.Environment.WebRootPath = webRootPath;
+app.Environment.WebRootFileProvider = new PhysicalFileProvider(webRootPath);
 
 // ==========================================
 // 3. PIPELINE

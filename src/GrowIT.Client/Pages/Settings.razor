@@ -465,6 +465,92 @@
                         }
                     </div>
 
+                    <div class="email-diagnostics-card mb-4">
+                        <div class="email-diagnostics-header">
+                            <div>
+                                <h3>Email Delivery Diagnostics</h3>
+                                <p>Validate SMTP configuration and send a live test email from this environment.</p>
+                            </div>
+                            <button class="btn btn-outline-secondary btn-sm"
+                                    disabled="@_isLoadingEmailDiagnostics"
+                                    @onclick="RefreshEmailDiagnosticsAsync">
+                                @if (_isLoadingEmailDiagnostics)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                <span>Refresh</span>
+                            </button>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(_emailDiagnosticsError))
+                        {
+                            <div class="alert alert-danger py-2 mb-3">@_emailDiagnosticsError</div>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(_testEmailMessage))
+                        {
+                            <div class="alert @(_testEmailSucceeded ? "alert-success" : "alert-warning") py-2 mb-3">@_testEmailMessage</div>
+                        }
+
+                        <div class="email-diagnostics-grid">
+                            <div class="diag-item">
+                                <span>Status</span>
+                                <strong>@(_emailDiagnostics?.StatusSummary ?? "Loading...")</strong>
+                            </div>
+                            <div class="diag-item">
+                                <span>Environment</span>
+                                <strong>@(_emailDiagnostics?.EnvironmentName ?? "-")</strong>
+                            </div>
+                            <div class="diag-item">
+                                <span>SMTP Host</span>
+                                <strong>@(_emailDiagnostics?.SmtpHost ?? "Not configured")</strong>
+                            </div>
+                            <div class="diag-item">
+                                <span>Port / SSL</span>
+                                <strong>@($"{_emailDiagnostics?.SmtpPort?.ToString() ?? "-"} / {(_emailDiagnostics?.UseSsl is null ? "-" : (_emailDiagnostics.UseSsl.Value ? "SSL" : "No SSL"))}")</strong>
+                            </div>
+                            <div class="diag-item">
+                                <span>SMTP User</span>
+                                <strong>@(_emailDiagnostics?.SmtpUserMasked ?? "-")</strong>
+                            </div>
+                            <div class="diag-item">
+                                <span>Password</span>
+                                <strong>@((_emailDiagnostics?.HasPassword ?? false) ? "Configured" : "Missing")</strong>
+                            </div>
+                            <div class="diag-item">
+                                <span>From Email</span>
+                                <strong>@(_emailDiagnostics?.FromEmail ?? "-")</strong>
+                            </div>
+                            <div class="diag-item">
+                                <span>Dev Fallback</span>
+                                <strong>@((_emailDiagnostics?.DevFileFallbackEnabled ?? false) ? "Enabled" : "Disabled")</strong>
+                            </div>
+                        </div>
+
+                        <div class="email-test-form mt-3">
+                            <div class="row g-2">
+                                <div class="col-md-5">
+                                    <label class="form-label">Send Test To</label>
+                                    <InputText class="form-control" @bind-Value="_testEmailRequest.ToEmail" placeholder="Defaults to your account email" />
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label">Subject (optional)</label>
+                                    <InputText class="form-control" @bind-Value="_testEmailRequest.Subject" placeholder="grow.IT SMTP Test" />
+                                </div>
+                                <div class="col-md-2 d-flex align-items-end">
+                                    <button class="btn btn-primary w-100"
+                                            disabled="@_isSendingTestEmail"
+                                            @onclick="SendTestEmailAsync">
+                                        @if (_isSendingTestEmail)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        }
+                                        <span>Send Test</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="security-grid">
                         <div class="security-card">
                             <div class="security-icon"><i class="bi bi-shield-lock"></i></div>
@@ -583,6 +669,9 @@
     private bool _isSendingInvite;
     private bool _isSeedingDemoData;
     private bool _isLoadingAuditLogs;
+    private bool _isLoadingEmailDiagnostics;
+    private bool _isSendingTestEmail;
+    private bool _testEmailSucceeded;
     private bool _hasSettingsAccess = true;
     private bool _canSeedDemoData;
     private string? _pageError;
@@ -595,8 +684,11 @@
     private string? _seedDataMessage;
     private string? _seedDataError;
     private string? _auditLogError;
+    private string? _emailDiagnosticsError;
+    private string? _testEmailMessage;
 
     private OrganizationSettingsDto? _organization;
+    private EmailDiagnosticsDto? _emailDiagnostics;
     private UpdateOrganizationSettingsRequest? _organizationEdit;
     private List<AdminUserListItemDto> _users = new();
     private List<OrganizationInviteListItemDto> _invites = new();
@@ -605,6 +697,7 @@
     private CreateOrganizationInviteRequest _newInvite = new() { ExpiresInDays = 7, Role = "Member" };
     private readonly HashSet<Guid> _busyUserIds = new();
     private readonly Dictionary<Guid, string> _roleDrafts = new();
+    private SendTestEmailRequest _testEmailRequest = new();
     private static readonly string[] RoleOptions = ["Admin", "Manager", "Case Manager", "Analyst", "Member"];
     private string _auditTableFilter = "";
     private string _auditActionFilter = "";
@@ -643,7 +736,8 @@
             var invitesTask = AdminService.GetInvitesAsync();
             var inviteActivityTask = AdminService.GetInviteActivityAsync(30);
             var auditLogsTask = AdminService.GetAuditLogsAsync(100);
-            await Task.WhenAll(orgTask, usersTask, invitesTask, inviteActivityTask, auditLogsTask);
+            var emailDiagnosticsTask = AdminService.GetEmailDiagnosticsAsync();
+            await Task.WhenAll(orgTask, usersTask, invitesTask, inviteActivityTask, auditLogsTask, emailDiagnosticsTask);
 
             _organization = await orgTask;
             _organizationEdit = new UpdateOrganizationSettingsRequest
@@ -664,6 +758,7 @@
             _invites = await invitesTask;
             _inviteActivity = await inviteActivityTask;
             _auditLogs = await auditLogsTask;
+            _emailDiagnostics = await emailDiagnosticsTask;
         }
         catch (Exception ex)
         {
@@ -947,6 +1042,50 @@
         }
     }
 
+    private async Task RefreshEmailDiagnosticsAsync()
+    {
+        _emailDiagnosticsError = null;
+        _isLoadingEmailDiagnostics = true;
+        try
+        {
+            _emailDiagnostics = await AdminService.GetEmailDiagnosticsAsync();
+        }
+        catch (Exception ex)
+        {
+            _emailDiagnosticsError = ex.Message;
+        }
+        finally
+        {
+            _isLoadingEmailDiagnostics = false;
+        }
+    }
+
+    private async Task SendTestEmailAsync()
+    {
+        _emailDiagnosticsError = null;
+        _testEmailMessage = null;
+        _testEmailSucceeded = false;
+        _isSendingTestEmail = true;
+        try
+        {
+            var response = await AdminService.SendTestEmailAsync(_testEmailRequest);
+            _testEmailSucceeded = response.Succeeded;
+            _testEmailMessage = response.Succeeded
+                ? $"Test email sent to {response.TargetEmail} via {response.DeliveryMode}.{(string.IsNullOrWhiteSpace(response.FallbackFilePath) ? "" : $" File: {response.FallbackFilePath}")}"
+                : response.Message;
+
+            await RefreshEmailDiagnosticsAsync();
+        }
+        catch (Exception ex)
+        {
+            _testEmailMessage = ex.Message;
+        }
+        finally
+        {
+            _isSendingTestEmail = false;
+        }
+    }
+
     private void ReplaceUser(AdminUserListItemDto updated)
     {
         var index = _users.FindIndex(u => u.Id == updated.Id);
@@ -984,5 +1123,6 @@
         _seedDataMessage = null;
         _seedDataError = null;
         _auditLogError = null;
+        _emailDiagnosticsError = null;
     }
 }

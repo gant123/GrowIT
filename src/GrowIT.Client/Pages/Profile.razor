@@ -55,17 +55,33 @@
                     <div class="profile-photo-uploader">
                         <div class="photo-upload-copy">
                             <strong>Profile Photo</strong>
-                            <span>Upload a JPG, PNG, or WEBP image (max 5MB) for your workspace avatar.</span>
+                            <span>Upload a JPG, PNG, or WEBP image (max 5MB). grow.IT will optimize it for avatar display.</span>
                         </div>
-                        <label class="btn btn-outline-secondary btn-sm mb-0">
-                            @if (_isUploadingPhoto)
+                        <div class="photo-upload-actions">
+                            <label class="btn btn-outline-secondary btn-sm mb-0">
+                                @if (_isUploadingPhoto)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                <i class="bi bi-upload me-2"></i>
+                                <span>@(_isUploadingPhoto ? "Uploading..." : "Upload Photo")</span>
+                                <InputFile OnChange="UploadProfilePhotoAsync" accept="image/png,image/jpeg,image/webp" class="d-none" disabled="@(_isUploadingPhoto || _isRemovingPhoto)" />
+                            </label>
+                            @if (!string.IsNullOrWhiteSpace(_profile.PhotoUrl))
                             {
-                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <button type="button"
+                                        class="btn btn-outline-danger btn-sm"
+                                        disabled="@(_isUploadingPhoto || _isRemovingPhoto)"
+                                        @onclick="RemoveProfilePhotoAsync">
+                                    @if (_isRemovingPhoto)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    }
+                                    <i class="bi bi-trash3 me-2"></i>
+                                    <span>@(_isRemovingPhoto ? "Removing..." : "Remove Photo")</span>
+                                </button>
                             }
-                            <i class="bi bi-upload me-2"></i>
-                            <span>@(_isUploadingPhoto ? "Uploading..." : "Upload Photo")</span>
-                            <InputFile OnChange="UploadProfilePhotoAsync" accept="image/png,image/jpeg,image/webp" class="d-none" disabled="@_isUploadingPhoto" />
-                        </label>
+                        </div>
                     </div>
 
                     @if (!string.IsNullOrWhiteSpace(_photoSuccess))
@@ -214,6 +230,7 @@
     private bool _isChangingPassword;
     private bool _isSavingNotificationPreferences;
     private bool _isUploadingPhoto;
+    private bool _isRemovingPhoto;
     private string? _pageError;
     private string? _profileSuccess;
     private string? _passwordSuccess;
@@ -394,6 +411,29 @@
         finally
         {
             _isUploadingPhoto = false;
+        }
+    }
+
+    private async Task RemoveProfilePhotoAsync()
+    {
+        if (_profile is null || string.IsNullOrWhiteSpace(_profile.PhotoUrl))
+            return;
+
+        _photoSuccess = null;
+        _photoError = null;
+        _isRemovingPhoto = true;
+        try
+        {
+            _profile = await ProfileService.RemoveProfilePhotoAsync();
+            _photoSuccess = "Profile photo removed.";
+        }
+        catch (Exception ex)
+        {
+            _photoError = ex.Message;
+        }
+        finally
+        {
+            _isRemovingPhoto = false;
         }
     }
 }

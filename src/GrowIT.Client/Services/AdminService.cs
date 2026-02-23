@@ -14,6 +14,8 @@ public interface IAdminService
     Task<List<InviteAuditNotificationDto>> GetInviteActivityAsync(int take = 25);
     Task MarkInviteActivityReadAllAsync();
     Task<List<AdminAuditLogItemDto>> GetAuditLogsAsync(int take = 100, string? table = null, string? action = null);
+    Task<EmailDiagnosticsDto> GetEmailDiagnosticsAsync();
+    Task<SendTestEmailResponse> SendTestEmailAsync(SendTestEmailRequest request);
     Task<SeedDemoDataResponseDto> SeedDemoDataAsync();
     Task<CreateOrganizationInviteResponse> CreateInviteAsync(CreateOrganizationInviteRequest request);
     Task<CreateOrganizationInviteResponse> ResendInviteAsync(Guid inviteId);
@@ -61,6 +63,12 @@ public class AdminService : BaseApiService, IAdminService
 
         return await GetAsync<List<AdminAuditLogItemDto>>(endpoint) ?? [];
     }
+
+    public async Task<EmailDiagnosticsDto> GetEmailDiagnosticsAsync() =>
+        (await GetAsync<EmailDiagnosticsDto>("api/admin/email-diagnostics"))!;
+
+    public async Task<SendTestEmailResponse> SendTestEmailAsync(SendTestEmailRequest request) =>
+        (await PostAsync<SendTestEmailRequest, SendTestEmailResponse>("api/admin/email-test", request))!;
 
     public async Task<SeedDemoDataResponseDto> SeedDemoDataAsync() =>
         (await PostAsync<object, SeedDemoDataResponseDto>("api/admin/seed-demo-data", new { }))!;

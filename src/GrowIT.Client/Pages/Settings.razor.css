@@ -456,6 +456,65 @@
 .security-status.ready { background: rgba(16,185,129,.10); color: #059669; border-color: rgba(16,185,129,.22); }
 .security-status.planned { background: rgba(148,163,184,.12); color: var(--growit-text-muted); border-color: rgba(148,163,184,.22); }
 
+.email-diagnostics-card {
+    border: 1px solid var(--growit-border);
+    border-radius: 14px;
+    background: var(--growit-bg-secondary);
+    padding: 1rem;
+}
+
+.email-diagnostics-header {
+    display: flex;
+    justify-content: space-between;
+    gap: .75rem;
+    align-items: flex-start;
+    margin-bottom: .75rem;
+}
+
+.email-diagnostics-header h3 {
+    margin: 0;
+    font-size: .9rem;
+    font-weight: 700;
+}
+
+.email-diagnostics-header p {
+    margin: .2rem 0 0;
+    color: var(--growit-text-muted);
+    font-size: .78rem;
+}
+
+.email-diagnostics-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .6rem;
+}
+
+.diag-item {
+    border: 1px solid var(--growit-border);
+    border-radius: 10px;
+    background: var(--growit-bg-primary);
+    padding: .6rem .7rem;
+    display: grid;
+    gap: .2rem;
+}
+
+.diag-item span {
+    color: var(--growit-text-muted);
+    font-size: .72rem;
+}
+
+.diag-item strong {
+    color: var(--growit-text-primary);
+    font-size: .8rem;
+    overflow-wrap: anywhere;
+}
+
+.email-test-form .form-label {
+    font-size: .75rem;
+    color: var(--growit-text-muted);
+    margin-bottom: .25rem;
+}
+
 :deep(.e-grid) {
     border-radius: 12px;
     border-color: var(--growit-border);
@@ -506,6 +565,10 @@
         flex-direction: column;
         align-items: stretch;
     }
+
+    .email-diagnostics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 768px) {
@@ -539,5 +602,14 @@
     .invite-audit-title-row {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .email-diagnostics-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .email-diagnostics-grid {
+        grid-template-columns: 1fr;
     }
 }

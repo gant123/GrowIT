@@ -69,6 +69,13 @@ public abstract class BaseApiService
         await EnsureSuccessWithDetailsAsync(response);
     }
 
+    protected async Task<TResponse?> DeleteAsync<TResponse>(string endpoint)
+    {
+        var response = await _http.DeleteAsync(endpoint);
+        await EnsureSuccessWithDetailsAsync(response);
+        return await response.Content.ReadFromJsonAsync<TResponse>(_jsonOptions);
+    }
+
     private static async Task EnsureSuccessWithDetailsAsync(HttpResponseMessage response)
     {
         if (response.IsSuccessStatusCode)
