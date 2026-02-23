@@ -24,7 +24,7 @@
 
 .nav-link:hover {
     background: var(--growit-bg-card);
-    color: var(--growit-text);
+    color: var(--growit-text-primary);
 }
 
 .nav-link.active {

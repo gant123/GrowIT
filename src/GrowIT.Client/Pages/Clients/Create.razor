@@ -2,24 +2,32 @@
 @using GrowIT.Shared.DTOs
 @using GrowIT.Shared.Enums
 @attribute [Authorize]
-@inject HttpClient Http
+@inject IClientService ClientService
 @inject NavigationManager NavManager
 
-<div style="max-width: 640px; margin: 0 auto;">
-    <PageHeader Title="Add New Client" Subtitle="Register a new individual or family into the system">
+<div class="create-client-page fade-in">
+    <PageHeader Title="Create Founder Case File" Subtitle="Start documenting service, capacity, and household context from day one.">
         <Actions>
-            <a href="clients" class="btn-growit btn-secondary-growit">
-                <span class="oi oi-arrow-left me-1"></span> Back to Directory
+            <a href="/clients" class="btn-growit btn-secondary-growit">
+                <i class="bi bi-arrow-left me-1"></i> Back to Directory
             </a>
         </Actions>
     </PageHeader>
 
-    <div class="card-growit">
+    <div class="card-growit form-card">
         <div class="card-body">
+            <div class="create-intro-panel">
+                <div class="intro-icon"><i class="bi bi-seedling"></i></div>
+                <div>
+                    <div class="intro-title">Start with service, build structure as you go</div>
+                    <div class="intro-text">This case file becomes the foundation for tracking service investments, household progress, and future funding readiness.</div>
+                </div>
+            </div>
+
             @if (!string.IsNullOrEmpty(errorMessage))
             {
                 <div class="alert-danger-growit">
-                    <span class="oi oi-warning"></span>
+                    <i class="bi bi-exclamation-triangle"></i>
                     <span>@errorMessage</span>
                 </div>
             }
@@ -28,18 +36,18 @@
                 <DataAnnotationsValidator />
 
                 <!-- Basic Information -->
-                <div style="margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--growit-border);">
-                    <h3 style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--growit-text-secondary); margin: 0 0 16px 0;">Basic Information</h3>
+                <div class="form-section">
+                    <h3 class="section-title">Basic Information</h3>
                     
-                    <div class="row">
-                        <div class="col-md-6">
+                    <div class="form-row two-col">
+                        <div>
                             <div class="form-group-growit">
                                 <label>First Name <span style="color: var(--growit-danger);">*</span></label>
                                 <InputText @bind-Value="clientRequest.FirstName" class="form-input-growit" placeholder="e.g. John" />
                                 <ValidationMessage For="@(() => clientRequest.FirstName)" />
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div>
                             <div class="form-group-growit">
                                 <label>Last Name <span style="color: var(--growit-danger);">*</span></label>
                                 <InputText @bind-Value="clientRequest.LastName" class="form-input-growit" placeholder="e.g. Smith" />
@@ -48,14 +56,14 @@
                         </div>
                     </div>
 
-                    <div class="row">
-                        <div class="col-md-6">
+                    <div class="form-row two-col">
+                        <div>
                             <div class="form-group-growit">
                                 <label>Email</label>
                                 <InputText @bind-Value="clientRequest.Email" class="form-input-growit" placeholder="john@example.com" />
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div>
                             <div class="form-group-growit">
                                 <label>Phone</label>
                                 <InputText @bind-Value="clientRequest.Phone" class="form-input-growit" placeholder="(555) 123-4567" />
@@ -65,22 +73,25 @@
                 </div>
 
                 <!-- Assessment -->
-                <div style="margin-bottom: 24px;">
-                    <h3 style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--growit-text-secondary); margin: 0 0 16px 0;">Assessment</h3>
+                <div class="form-section">
+                    <h3 class="section-title">Service Readiness Assessment</h3>
                     
-                    <div class="row">
-                        <div class="col-md-6">
+                    <div class="form-row two-col">
+                        <div>
                             <div class="form-group-growit">
                                 <label>Household Size</label>
                                 <InputNumber @bind-Value="clientRequest.HouseholdCount" class="form-input-growit" />
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div>
                             <div class="form-group-growit">
                                 <label>Stability Score (1-10)</label>
                                 <InputNumber @bind-Value="clientRequest.StabilityScore" class="form-input-growit" min="1" max="10" />
-                                <div style="margin-top: 8px; height: 6px; background-color: var(--growit-border); border-radius: 3px; overflow: hidden;">
-                                    <div style="height: 100%; width: @($"{clientRequest.StabilityScore * 10}%"); background: linear-gradient(90deg, var(--growit-danger), var(--growit-warning), var(--growit-green)); border-radius: 3px; transition: width 0.2s ease;"></div>
+                                <div class="score-preview">
+                                    <div class="score-bar">
+                                        <div class="score-fill" style="width: @($"{Math.Clamp(clientRequest.StabilityScore, 0, 10) * 10}%")"></div>
+                                    </div>
+                                    <div class="score-caption">Higher scores indicate stronger immediate stability and lower founder strain risk.</div>
                                 </div>
                             </div>
                         </div>
@@ -88,19 +99,19 @@
 
                     <div class="form-group-growit">
                         <label>Life Phase</label>
-                        <div class="d-flex gap-3">
+                        <div class="phase-selector">
                             <label class="phase-option @(clientRequest.LifePhase == LifePhase.Crisis ? "selected" : "")" @onclick="@(() => clientRequest.LifePhase = LifePhase.Crisis)">
-                                <span class="oi oi-warning phase-icon" style="color: var(--growit-danger);"></span>
+                                <i class="bi bi-exclamation-triangle phase-icon crisis"></i>
                                 <span class="phase-name">Crisis</span>
                                 <span class="phase-desc">Immediate assistance needed</span>
                             </label>
                             <label class="phase-option @(clientRequest.LifePhase == LifePhase.Stable ? "selected" : "")" @onclick="@(() => clientRequest.LifePhase = LifePhase.Stable)">
-                                <span class="oi oi-pulse phase-icon" style="color: var(--growit-warning);"></span>
+                                <i class="bi bi-shield-check phase-icon stable"></i>
                                 <span class="phase-name">Stable</span>
                                 <span class="phase-desc">Maintaining status</span>
                             </label>
                             <label class="phase-option @(clientRequest.LifePhase == LifePhase.Thriving ? "selected" : "")" @onclick="@(() => clientRequest.LifePhase = LifePhase.Thriving)">
-                                <span class="oi oi-arrow-thick-top phase-icon" style="color: var(--growit-success);"></span>
+                                <i class="bi bi-graph-up-arrow phase-icon thriving"></i>
                                 <span class="phase-name">Thriving</span>
                                 <span class="phase-desc">Progressing positively</span>
                             </label>
@@ -109,9 +120,9 @@
                 </div>
 
                 <!-- Actions -->
-                <div class="d-flex justify-content-end gap-3 pt-3" style="border-top: 1px solid var(--growit-border);">
-                    <a href="clients" class="btn-secondary-growit">Cancel</a>
-                    <button type="submit" class="btn-primary-growit" disabled="@isSubmitting">
+                <div class="form-actions">
+                    <a href="/clients" class="btn-growit btn-secondary-growit">Cancel</a>
+                    <button type="submit" class="btn-growit btn-primary-growit" disabled="@isSubmitting">
                         @if (isSubmitting)
                         {
                             <span class="spinner-growit" style="width: 16px; height: 16px; border-width: 2px;"></span>
@@ -119,8 +130,8 @@
                         }
                         else
                         {
-                            <span class="oi oi-check"></span>
-                            <span>Save Client</span>
+                            <i class="bi bi-check2-circle"></i>
+                            <span>Create Case File</span>
                         }
                     </button>
                 </div>
@@ -128,47 +139,6 @@
         </div>
     </div>
 </div>
-
-<style>
-    .phase-option {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 8px;
-        padding: 16px;
-        background-color: var(--growit-bg-secondary);
-        border: 2px solid var(--growit-border);
-        border-radius: 8px;
-        cursor: pointer;
-        transition: all 0.15s ease;
-        text-align: center;
-    }
-    
-    .phase-option:hover {
-        border-color: var(--growit-border-light);
-    }
-    
-    .phase-option.selected {
-        border-color: var(--growit-green);
-        background-color: rgba(111, 186, 44, 0.1);
-    }
-    
-    .phase-icon {
-        font-size: 20px;
-    }
-    
-    .phase-name {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--growit-text-primary);
-    }
-    
-    .phase-desc {
-        font-size: 11px;
-        color: var(--growit-text-muted);
-    }
-</style>
 
 @code {
     private CreateClientRequest clientRequest = new()
@@ -188,21 +158,15 @@
 
         try
         {
-            var response = await Http.PostAsJsonAsync("api/Clients", clientRequest);
-
-            if (response.IsSuccessStatusCode)
+            var clientId = await ClientService.CreateClientAsync(clientRequest);
+            if (clientId != Guid.Empty)
             {
                 NavManager.NavigateTo("/clients");
-            }
-            else
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                errorMessage = $"Error saving client: {errorContent}";
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"System Error: {ex.Message}";
+            errorMessage = ex.Message;
         }
         finally
         {

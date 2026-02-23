@@ -46,6 +46,7 @@
     --growit-text-secondary: #475569;
     --growit-text-muted: #64748b;
     --growit-text-dim: #94a3b8;
+    --growit-text: var(--growit-text-primary);
     
     --growit-border: #e2e8f0;
     --growit-border-light: #f1f5f9;
@@ -81,6 +82,36 @@
     --radius-lg: 12px;
     --radius-xl: 16px;
     --radius-full: 9999px;
+
+    /* Compatibility tokens used in pages.css */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-7: 1.75rem;
+    --space-8: 2rem;
+
+    --color-primary: var(--growit-green);
+    --color-success: var(--growit-success);
+    --color-warning: var(--growit-warning);
+    --color-danger: var(--growit-danger);
+    --color-info: var(--growit-info);
+
+    --text-primary: var(--growit-text-primary);
+    --text-secondary: var(--growit-text-secondary);
+    --text-tertiary: var(--growit-text-muted);
+
+    --bg-secondary: var(--growit-bg-card-hover);
+    --bg-tertiary: var(--growit-border-light);
+    --card-bg: var(--growit-bg-card);
+    --border-color: var(--growit-border);
+
+    --shadow-sm: var(--growit-shadow-sm);
+    --shadow-md: var(--growit-shadow-md);
+    --shadow-lg: var(--growit-shadow-lg);
+    --transition-base: all var(--transition-normal);
 }
 
 .opacity-75 {
@@ -110,6 +141,7 @@
     --growit-text-secondary: #e2e8f0; /* Increased contrast for dark mode */
     --growit-text-muted: #cbd5e1;     /* Increased contrast for dark mode */
     --growit-text-dim: #94a3b8;       /* Increased contrast for dark mode */
+    --growit-text: var(--growit-text-primary);
     
     --growit-border: #1e293b;
     --growit-border-light: #0f172a;
@@ -120,6 +152,8 @@
     --growit-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5), 0 1px 2px -1px rgba(0, 0, 0, 0.4);
     --growit-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
     --growit-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+    --bg-secondary: color-mix(in srgb, var(--growit-bg-card) 88%, white 12%);
+    --bg-tertiary: color-mix(in srgb, var(--growit-bg-card) 60%, black 40%);
 }
 
 /* ========================================
@@ -147,6 +181,45 @@ body {
     min-height: 100vh;
     overflow-x: hidden;
 }
+
+#app {
+    min-height: 100vh;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+.oi {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    line-height: 1;
+}
+
+.oi::before {
+    line-height: 1;
+}
+
+/* Fallbacks for custom/unsupported Open Iconic names currently used in Razor */
+.oi.oi-dashboard::before,
+.oi.oi-transfer::before,
+.oi.oi-circle-check::before,
+.oi.oi-sort-ascending::before,
+.oi.oi-arrow-top::before {
+    font-family: var(--font-body);
+    font-weight: 700;
+}
+
+.oi.oi-dashboard::before { content: "▦"; font-size: 0.95em; }
+.oi.oi-transfer::before { content: "⇄"; }
+.oi.oi-circle-check::before { content: "✓"; }
+.oi.oi-sort-ascending::before { content: "⇅"; }
+.oi.oi-arrow-top::before { content: "↑"; }
 
 /* ========================================
    TYPOGRAPHY
@@ -177,6 +250,11 @@ a {
 
 a:hover {
     color: var(--growit-green-light);
+}
+
+a,
+button {
+    -webkit-tap-highlight-color: transparent;
 }
 
 /* ========================================
@@ -292,6 +370,11 @@ a:hover {
     transition: all var(--transition-normal);
 }
 
+.kpi-card .kpi-icon-wrapper .bi {
+    font-size: 1.25rem;
+    line-height: 1;
+}
+
 .kpi-card:hover .kpi-icon-wrapper {
     transform: scale(1.1);
 }
@@ -324,6 +407,11 @@ a:hover {
     font-size: 0.75rem;
     font-weight: 600;
     margin-top: 12px;
+}
+
+.kpi-trend .bi {
+    font-size: 0.8rem;
+    line-height: 1;
 }
 
 .kpi-trend.up { color: var(--growit-success); }

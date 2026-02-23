@@ -1,5 +1,7 @@
 @using GrowIT.Shared.DTOs
-@inject HttpClient Http
+@inject IClientService ClientService
+@inject IFinancialService FinancialService
+@inject IInvestmentService InvestmentService
 @inject NavigationManager NavManager
 
 @if (Show)
@@ -128,15 +130,15 @@
             isLoading = true;
             try 
             {
-                var clientsTask = Http.GetFromJsonAsync<List<ClientDto>>("api/clients");
-                var fundsTask = Http.GetFromJsonAsync<List<FundDto>>("api/financials/funds");
-                var programsTask = Http.GetFromJsonAsync<List<ProgramDto>>("api/financials/programs");
+                var fundsTask = FinancialService.GetFundsAsync();
+                var programsTask = FinancialService.GetProgramsAsync();
+                var clientsTask = ClientService.GetAllClientsAsync();
                 
                 await Task.WhenAll(clientsTask, fundsTask, programsTask);
                 
-                clients = await clientsTask ?? new();
-                funds = await fundsTask ?? new();
-                programs = await programsTask ?? new();
+                clients = await clientsTask;
+                funds = await fundsTask;
+                programs = await programsTask;
             }
             finally { isLoading = false; }
         }
@@ -151,7 +153,7 @@
             request.FamilyMemberId = null; // Clear individual if family changes
             
             // Fetch client detail to get household members
-            var detail = await Http.GetFromJsonAsync<ClientDetailDto>($"api/clients/{clientId}");
+            var detail = await ClientService.GetClientDetailAsync(clientId);
             members = detail?.HouseholdMembers ?? new();
         }
         else
@@ -164,8 +166,8 @@
 
     private async Task HandleValidSubmit()
     {
-        var response = await Http.PostAsJsonAsync("api/investments", request);
-        if (response.IsSuccessStatusCode)
+        var investmentId = await InvestmentService.CreateInvestmentAsync(request);
+        if (investmentId != Guid.Empty)
         {
             await Close();
             await OnSeedPlanted.InvokeAsync();

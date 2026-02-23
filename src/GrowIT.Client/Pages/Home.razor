@@ -8,59 +8,85 @@
 
 <PageTitle>grow.IT - Impact Dashboard</PageTitle>
 
-@if (stats == null)
+@if (_isLoading)
 {
     <div class="loading-state">
         <div class="spinner-growit"></div>
         <p class="loading-state-text">Loading impact data...</p>
     </div>
 }
+else if (!string.IsNullOrWhiteSpace(_loadError))
+{
+    <div class="alert alert-danger d-flex justify-content-between align-items-center mt-4">
+        <span>@_loadError</span>
+        <button class="btn btn-sm btn-outline-light" @onclick="Refresh">Retry</button>
+    </div>
+}
+else if (stats == null)
+{
+    <div class="alert alert-secondary mt-4">No dashboard data available.</div>
+}
 else
 {
     <div class="dashboard fade-in">
-        <PageHeader Title="Return on Impact" Subtitle="Translating service into sustainability.">
+        <PageHeader Title="Founder Survivability Dashboard" Subtitle="Protect the mission by tracking capacity, cost, and documented impact in real time.">
             <Actions>
                 <button class="btn-growit btn-secondary-growit" @onclick="Refresh">
-                    <span class="oi oi-reload me-1"></span> Refresh Data
+                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh
                 </button>
             </Actions>
         </PageHeader>
 
+        <div class="card-growit mb-4">
+            <div class="card-body d-flex flex-column flex-lg-row align-items-start align-items-lg-center justify-content-between gap-3">
+                <div>
+                    <div class="text-uppercase fw-700 text-muted" style="font-size: 0.72rem; letter-spacing: 0.08em;">Mission Operating Signal</div>
+                    <h3 class="mb-1" style="font-size: 1.15rem;">Plant the seed. Measure the growth. Build the future.</h3>
+                    <p class="mb-0 text-muted">grow.IT helps founders document service as financial intelligence, prove capacity, and stay funding-ready without burning out.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="badge-growit badge-neutral" style="color: var(--growit-text-secondary) !important;">Cost Clarity</span>
+                    <span class="badge-growit badge-neutral" style="color: var(--growit-text-secondary) !important;">Capacity Visibility</span>
+                    <span class="badge-growit badge-neutral" style="color: var(--growit-text-secondary) !important;">Funding Readiness</span>
+                </div>
+            </div>
+        </div>
+
         <div class="grid-4 mb-4">
-            <KpiCard Label="Direct Impact (YTD)" 
+            <KpiCard Label="Verified Service Value (YTD)" 
                      Value="@stats.TotalInvestedYtd.ToString("C0")" 
-                     Icon="oi-heart" 
+                     Icon="bi bi-heart-pulse" 
                      Color="success" 
-                     TrendText="Capital Deployed" 
-                     TrendIcon="oi-arrow-top" 
+                     TrendText="Documented in real time" 
+                     TrendIcon="bi bi-arrow-up-right" 
                      TrendDirection="up" />
             
-            <KpiCard Label="Families Served" 
+            <KpiCard Label="Households Reached" 
                      Value="@stats.HouseholdsServedYtd.ToString()" 
-                     Icon="oi-people" 
+                     Icon="bi bi-people" 
                      Color="info" 
-                     TrendText="Unique Households" />
+                     TrendText="Unique households this year" />
 
-            <KpiCard Label="Active Case Files" 
+            <KpiCard Label="Active Service Records" 
                      Value="@stats.ActiveCases.ToString()" 
-                     Icon="oi-folder" 
+                     Icon="bi bi-folder2-open" 
                      Color="warning" 
-                     TrendText="Managed Profiles" />
+                     TrendText="Profiles being tracked" />
             
-            <KpiCard Label="Funds Available" 
+            <KpiCard Label="Current Capacity" 
                      Value="@stats.FundsAvailable.ToString("C0")" 
-                     Icon="oi-briefcase" 
+                     Icon="bi bi-wallet2" 
                      Color="primary" 
-                     TrendText="Capacity to Serve" />
+                     TrendText="Available to continue serving" />
         </div>
 
         <div class="card-growit mb-4">
             <div class="card-header">
-                <h3 class="section-title">"The Harvest" - Growth Trends</h3>
+                <h3 class="section-title">Growth Trend: Service Becoming Structure</h3>
                 <div class="chart-legend">
                     <div class="legend-item impact">
                         <span class="legend-dot"></span>
-                        <span>Monthly Impact Value</span>
+                        <span>Monthly documented service value</span>
                     </div>
                 </div>
             </div>
@@ -112,8 +138,8 @@ else
         <div class="grid-2">
             <div class="card-growit">
                 <div class="card-header">
-                    <h3 class="section-title">Critical Action Items</h3>
-                    <span class="badge-growit badge-warning">@stats.PendingFollowUps.Count Priority</span>
+                    <h3 class="section-title">Founder Follow-Ups</h3>
+                    <span class="badge-growit badge-warning">@stats.PendingFollowUps.Count Action Items</span>
                 </div>
                 <div class="card-body p-0">
                     <div class="tasks-list">
@@ -135,9 +161,9 @@ else
                         else
                         {
                             <div class="empty-state">
-                                <span class="oi oi-circle-check empty-state-icon text-success"></span>
-                                <div class="empty-state-title">Compliant</div>
-                                <div class="empty-state-description">No pending follow-ups required at this time.</div>
+                                <i class="bi bi-check2-circle empty-state-icon text-success"></i>
+                                <div class="empty-state-title">Clear for Today</div>
+                                <div class="empty-state-description">No immediate follow-ups are due. Your team can focus on service delivery.</div>
                             </div>
                         }
                     </div>
@@ -146,7 +172,7 @@ else
 
             <div class="card-growit">
                 <div class="card-header">
-                    <h3 class="section-title">"The Soil" - Recent Activity</h3>
+                    <h3 class="section-title">Recent Service Signals</h3>
                 </div>
                 <div class="card-body p-0">
                     <div class="activity-list">
@@ -156,7 +182,7 @@ else
                             {
                                 <div class="activity-item">
                                     <div class="activity-icon @(GetActivityClass(item.Icon))">
-                                        <span class="oi @item.Icon"></span>
+                                        <i class="@GetActivityIconClass(item.Icon)"></i>
                                     </div>
                                     <div class="activity-content">
                                         <div class="activity-text">@item.Description</div>
@@ -168,7 +194,7 @@ else
                         else
                         {
                             <div class="empty-state">
-                                <p class="text-muted">No operational activity recorded.</p>
+                                <p class="text-muted">No recent activity yet. Start by planting a seed investment or documenting an imprint.</p>
                             </div>
                         }
                     </div>
@@ -180,6 +206,8 @@ else
 
 @code {
     private DashboardStatsDto? stats;
+    private bool _isLoading = true;
+    private string? _loadError;
 
     protected override async Task OnInitializedAsync()
     {
@@ -188,13 +216,21 @@ else
 
     private async Task Refresh()
     {
+        _isLoading = true;
+        _loadError = null;
         try 
         {
             stats = await DashboardService.GetStatsAsync();
         }
         catch (Exception ex)
         {
+            stats = null;
+            _loadError = ex.Message;
             Console.WriteLine($"Error loading dashboard: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
         }
     }
 
@@ -218,4 +254,12 @@ else
         if (icon.Contains("people") || icon.Contains("person") || icon.Contains("flag")) return "client";
         return "fund";
     }
+
+    private static string GetActivityIconClass(string icon) => icon switch
+    {
+        var value when value.Contains("dollar", StringComparison.OrdinalIgnoreCase) => "bi bi-cash-stack",
+        var value when value.Contains("flag", StringComparison.OrdinalIgnoreCase) => "bi bi-flag",
+        var value when value.Contains("people", StringComparison.OrdinalIgnoreCase) || value.Contains("person", StringComparison.OrdinalIgnoreCase) => "bi bi-people",
+        _ => "bi bi-activity"
+    };
 }

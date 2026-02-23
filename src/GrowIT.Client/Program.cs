@@ -34,6 +34,12 @@ builder.Services.AddScoped<IClientService, ClientService>(); // New!
 builder.Services.AddScoped<IInvestmentService, InvestmentService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IImprintService, ImprintService>();
+builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IGrowthPlanService, GrowthPlanService>();
+builder.Services.AddScoped<IHouseholdService, HouseholdService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<IFinancialService, FinancialService>();
 // 4. API Connection: Points specifically to your Backend API
 //    Make sure this matches the port your API is running on (likely 5286 or 5000)
 builder.Services.AddScoped(sp => new HttpClient 

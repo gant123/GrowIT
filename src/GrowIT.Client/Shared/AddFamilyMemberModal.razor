@@ -1,5 +1,5 @@
 @using GrowIT.Shared.DTOs
-@inject HttpClient Http
+@inject IClientService ClientService
 
 @if (Show)
 {
@@ -17,6 +17,11 @@
                 </div>
 
                 <div class="modal-body p-4">
+                    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                    {
+                        <div class="alert alert-danger py-2">@_errorMessage</div>
+                    }
+
                     <EditForm Model="@request" OnValidSubmit="HandleSubmit">
                         <DataAnnotationsValidator />
 
@@ -82,6 +87,7 @@
     [Parameter] public EventCallback OnMemberAdded { get; set; }
 
     private CreateFamilyMemberRequest request = new();
+    private string? _errorMessage;
     private bool IsEditMode => MemberId.HasValue;
 
     private string ThemeInputStyle => "background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border: 1px solid var(--growit-border);";
@@ -90,19 +96,27 @@
     {
         if (Show)
         {
+            _errorMessage = null;
             if (IsEditMode)
             {
                 // Load existing data for Edit Mode
-                var existing = await Http.GetFromJsonAsync<FamilyMemberProfileDto>($"api/clients/members/{MemberId}");
-                if (existing != null)
+                try
                 {
-                    var nameParts = existing.Name.Split(' ', 2);
-                    request.FirstName = nameParts[0];
-                    request.LastName = nameParts.Length > 1 ? nameParts[1] : "";
-                    request.Relationship = existing.Relationship;
-                    request.DateOfBirth = existing.DateOfBirth; // Now populates DOB
-                    request.SchoolOrEmployer = existing.School;
-                    request.Notes = existing.Notes;
+                    var existing = await ClientService.GetMemberProfileAsync(MemberId!.Value);
+                    if (existing != null)
+                    {
+                        var nameParts = existing.Name.Split(' ', 2);
+                        request.FirstName = nameParts[0];
+                        request.LastName = nameParts.Length > 1 ? nameParts[1] : "";
+                        request.Relationship = existing.Relationship;
+                        request.DateOfBirth = existing.DateOfBirth;
+                        request.SchoolOrEmployer = existing.School;
+                        request.Notes = existing.Notes;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _errorMessage = ex.Message;
                 }
             }
             else if (string.IsNullOrEmpty(request.LastName))
@@ -114,28 +128,31 @@
 
     private async Task HandleSubmit()
     {
-        HttpResponseMessage response;
-        if (IsEditMode)
+        _errorMessage = null;
+        try
         {
-            // API PUT for updates
-            response = await Http.PutAsJsonAsync($"api/clients/members/{MemberId}", request);
-        }
-        else
-        {
-            // API POST for new members
-            response = await Http.PostAsJsonAsync($"api/clients/{ClientId}/members", request);
-        }
+            if (IsEditMode && MemberId.HasValue)
+            {
+                await ClientService.UpdateFamilyMemberAsync(MemberId.Value, request);
+            }
+            else
+            {
+                await ClientService.AddFamilyMemberAsync(ClientId, request);
+            }
 
-        if (response.IsSuccessStatusCode)
-        {
             await OnMemberAdded.InvokeAsync();
             await Close();
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
         }
     }
 
     private async Task Close()
     {
         Show = false;
+        _errorMessage = null;
         request = new(); 
         await ShowChanged.InvokeAsync(false);
     }

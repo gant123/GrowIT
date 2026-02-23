@@ -2,7 +2,7 @@
     @if (!string.IsNullOrEmpty(Icon))
     {
         <div class="kpi-icon-wrapper">
-            <span class="oi @Icon"></span>
+            <span class="@BuildIconClass(Icon)"></span>
         </div>
     }
     <div class="kpi-label">@Label</div>
@@ -12,7 +12,7 @@
         <div class="kpi-trend @TrendClass">
             @if (!string.IsNullOrEmpty(TrendIcon))
             {
-                <span class="oi @TrendIcon"></span>
+                <span class="@BuildIconClass(TrendIcon)"></span>
             }
             @TrendText
         </div>
@@ -47,4 +47,21 @@
         "down" => "down",
         _ => "neutral"
     };
+
+    private static string BuildIconClass(string icon)
+    {
+        if (string.IsNullOrWhiteSpace(icon))
+            return string.Empty;
+
+        if (icon.Contains(' '))
+            return icon;
+
+        if (icon.StartsWith("oi-"))
+            return $"oi {icon}";
+
+        if (icon.StartsWith("bi-"))
+            return $"bi {icon}";
+
+        return icon;
+    }
 }

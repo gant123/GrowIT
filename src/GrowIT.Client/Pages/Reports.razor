@@ -1,14 +1,14 @@
 @page "/reports"
 @attribute [Authorize(Roles = "Admin,Manager")]
 @using GrowIT.Shared.DTOs
-@inject HttpClient Http
+@inject IReportService ReportService
 @inject IJSRuntime JS
 
 <PageTitle>Reports - grow.IT</PageTitle>
 
 <div class="page-reports">
     <!-- Page Header -->
-    <PageHeader Title="Reports" Subtitle="Translating service into verifiable financial intelligence." />
+    <PageHeader Title="Funding Readiness Reports" Subtitle="Turn day-to-day service into verifiable financial intelligence and funder-ready evidence." />
 
     <!-- Report Templates -->
     <div class="report-section">
@@ -16,111 +16,79 @@
         <div class="report-cards">
             <div class="report-card" @onclick=@(() => GenerateReport("impact-summary"))>
                 <div class="report-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M21.21 15.89A10 10 0 1 1 8 2.83"/>
-                        <path d="M22 12A10 10 0 0 0 12 2v10z"/>
-                    </svg>
+                    <i class="bi bi-pie-chart"></i>
                 </div>
                 <div class="report-content">
                     <h3 class="report-title">Seed to Harvest Summary</h3>
                     <p class="report-desc">Overview of families served, capital deployed, and verified outcomes.</p>
                 </div>
                 <div class="report-action">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="9 18 15 12 9 6"/>
-                    </svg>
+                    <i class="bi bi-chevron-right"></i>
                 </div>
             </div>
 
             <div class="report-card" @onclick=@(() => GenerateReport("investment-detail"))>
                 <div class="report-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="1" x2="12" y2="23"/>
-                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                    </svg>
+                    <i class="bi bi-cash-stack"></i>
                 </div>
                 <div class="report-content">
                     <h3 class="report-title">Financial Intelligence Detail</h3>
                     <p class="report-desc">Complete breakdown of all service costs and model repeatability.</p>
                 </div>
                 <div class="report-action">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="9 18 15 12 9 6"/>
-                    </svg>
+                    <i class="bi bi-chevron-right"></i>
                 </div>
             </div>
 
             <div class="report-card" @onclick=@(() => GenerateReport("outcomes-by-category"))>
                 <div class="report-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                        <polyline points="22 4 12 14.01 9 11.01"/>
-                    </svg>
+                    <i class="bi bi-check2-circle"></i>
                 </div>
                 <div class="report-content">
                     <h3 class="report-title">Outcomes by Category</h3>
                     <p class="report-desc">Documented imprints grouped by outcome category with verification status.</p>
                 </div>
                 <div class="report-action">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="9 18 15 12 9 6"/>
-                    </svg>
+                    <i class="bi bi-chevron-right"></i>
                 </div>
             </div>
 
             <div class="report-card" @onclick=@(() => GenerateReport("funding-utilization"))>
                 <div class="report-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-                        <line x1="1" y1="10" x2="23" y2="10"/>
-                    </svg>
+                    <i class="bi bi-credit-card"></i>
                 </div>
                 <div class="report-content">
                     <h3 class="report-title">Funding Utilization</h3>
                     <p class="report-desc">Track spending by funding source, grant, and budget allocation.</p>
                 </div>
                 <div class="report-action">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="9 18 15 12 9 6"/>
-                    </svg>
+                    <i class="bi bi-chevron-right"></i>
                 </div>
             </div>
 
             <div class="report-card" @onclick=@(() => GenerateReport("season-progression"))>
                 <div class="report-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
-                        <polyline points="17 6 23 6 23 12"/>
-                    </svg>
+                    <i class="bi bi-graph-up-arrow"></i>
                 </div>
                 <div class="report-content">
                     <h3 class="report-title">Season Progression</h3>
                     <p class="report-desc">Track how people move through Crisis, Planting, Growing, and Harvest seasons.</p>
                 </div>
                 <div class="report-action">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="9 18 15 12 9 6"/>
-                    </svg>
+                    <i class="bi bi-chevron-right"></i>
                 </div>
             </div>
 
             <div class="report-card" @onclick=@(() => GenerateReport("demographic-breakdown"))>
                 <div class="report-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                        <circle cx="9" cy="7" r="4"/>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                    </svg>
+                    <i class="bi bi-people"></i>
                 </div>
                 <div class="report-content">
                     <h3 class="report-title">Demographic Breakdown</h3>
                     <p class="report-desc">People served by household size, income level, and employment status.</p>
                 </div>
                 <div class="report-action">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="9 18 15 12 9 6"/>
-                    </svg>
+                    <i class="bi bi-chevron-right"></i>
                 </div>
             </div>
         </div>
@@ -183,11 +151,7 @@
                 
                 <div class="builder-field builder-actions">
                     <button class="btn btn-primary" @onclick="GenerateCustomReport">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="7 10 12 15 17 10"/>
-                            <line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
+                        <i class="bi bi-download me-2"></i>
                         Generate Report
                     </button>
                 </div>
@@ -209,13 +173,7 @@
                 {
                     <div class="recent-report-item">
                         <div class="report-file-icon">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                <polyline points="14 2 14 8 20 8"/>
-                                <line x1="16" y1="13" x2="8" y2="13"/>
-                                <line x1="16" y1="17" x2="8" y2="17"/>
-                                <polyline points="10 9 9 9 8 9"/>
-                            </svg>
+                            <i class="bi bi-file-earmark-text"></i>
                         </div>
                         <div class="report-file-info">
                             <span class="report-file-name">@report.Name</span>
@@ -223,11 +181,7 @@
                         </div>
                         <div class="report-file-actions">
                             <button class="btn btn-ghost btn-sm" @onclick="() => DownloadReport(report.Id)">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                    <polyline points="7 10 12 15 17 10"/>
-                                    <line x1="12" y1="15" x2="12" y2="3"/>
-                                </svg>
+                                <i class="bi bi-download"></i>
                                 Download
                             </button>
                         </div>
@@ -262,16 +216,10 @@
                         </div>
                         <div class="scheduled-actions">
                             <button class="btn-icon-only" title="Edit" @onclick="() => EditSchedule(scheduled.Id)">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                </svg>
+                                <i class="bi bi-pencil-square"></i>
                             </button>
                             <button class="btn-icon-only danger" title="Delete" @onclick="() => DeleteSchedule(scheduled.Id)">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="3 6 5 6 21 6"/>
-                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                                </svg>
+                                <i class="bi bi-trash"></i>
                             </button>
                         </div>
                     </div>
@@ -285,10 +233,7 @@
             }
             
             <button class="btn btn-secondary" @onclick="AddScheduledReport">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="btn-icon">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
+                <i class="bi bi-plus-lg me-2"></i>
                 Add Scheduled Report
             </button>
         </div>
@@ -316,7 +261,7 @@
     {
         try
         {
-            _recentReports = await Http.GetFromJsonAsync<List<RecentReport>>("api/reports/recent") ?? new();
+            _recentReports = await ReportService.GetRecentReportsAsync();
         }
         catch (Exception ex)
         {
@@ -329,7 +274,7 @@
 
         try
         {
-            _scheduledReports = await Http.GetFromJsonAsync<List<ScheduledReport>>("api/reports/scheduled") ?? new();
+            _scheduledReports = await ReportService.GetScheduledReportsAsync();
         }
         catch (Exception ex)
         {
@@ -351,17 +296,13 @@
                 Format = _customFormat
             };
 
-            var response = await Http.PostAsJsonAsync("api/reports/generate", payload);
-            if (response.IsSuccessStatusCode)
+            var created = await ReportService.GenerateReportAsync(payload);
+            if (created != null)
             {
-                var created = await response.Content.ReadFromJsonAsync<RecentReport>();
-                if (created != null)
-                {
-                    _recentReports.Insert(0, created);
-                    _recentReports = _recentReports
-                        .OrderByDescending(r => r.GeneratedAt)
-                        .ToList();
-                }
+                _recentReports.Insert(0, created);
+                _recentReports = _recentReports
+                    .OrderByDescending(r => r.GeneratedAt)
+                    .ToList();
             }
         }
         catch (Exception ex)
@@ -384,17 +325,13 @@
                 GroupBy = _customGroupBy
             };
 
-            var response = await Http.PostAsJsonAsync("api/reports/generate", payload);
-            if (response.IsSuccessStatusCode)
+            var created = await ReportService.GenerateReportAsync(payload);
+            if (created != null)
             {
-                var created = await response.Content.ReadFromJsonAsync<RecentReport>();
-                if (created != null)
-                {
-                    _recentReports.Insert(0, created);
-                    _recentReports = _recentReports
-                        .OrderByDescending(r => r.GeneratedAt)
-                        .ToList();
-                }
+                _recentReports.Insert(0, created);
+                _recentReports = _recentReports
+                    .OrderByDescending(r => r.GeneratedAt)
+                    .ToList();
             }
         }
         catch (Exception ex)
@@ -427,15 +364,11 @@
 
         try
         {
-            var response = await Http.PostAsJsonAsync("api/reports/scheduled", payload);
-            if (response.IsSuccessStatusCode)
+            var created = await ReportService.CreateScheduledReportAsync(payload);
+            if (created != null)
             {
-                var created = await response.Content.ReadFromJsonAsync<ScheduledReport>();
-                if (created != null)
-                {
-                    _scheduledReports.Add(created);
-                    _scheduledReports = _scheduledReports.OrderBy(s => s.NextRun).ToList();
-                }
+                _scheduledReports.Add(created);
+                _scheduledReports = _scheduledReports.OrderBy(s => s.NextRun).ToList();
             }
         }
         catch (Exception ex)
@@ -458,16 +391,12 @@
 
         try
         {
-            var response = await Http.PutAsJsonAsync($"api/reports/scheduled/{id}", payload);
-            if (response.IsSuccessStatusCode)
+            var updated = await ReportService.UpdateScheduledReportAsync(id, payload);
+            if (updated != null)
             {
-                var updated = await response.Content.ReadFromJsonAsync<ScheduledReport>();
-                if (updated != null)
-                {
-                    var index = _scheduledReports.FindIndex(s => s.Id == id);
-                    if (index >= 0) _scheduledReports[index] = updated;
-                    _scheduledReports = _scheduledReports.OrderBy(s => s.NextRun).ToList();
-                }
+                var index = _scheduledReports.FindIndex(s => s.Id == id);
+                if (index >= 0) _scheduledReports[index] = updated;
+                _scheduledReports = _scheduledReports.OrderBy(s => s.NextRun).ToList();
             }
         }
         catch (Exception ex)
@@ -480,11 +409,8 @@
     {
         try
         {
-            var response = await Http.DeleteAsync($"api/reports/scheduled/{id}");
-            if (response.IsSuccessStatusCode)
-            {
-                _scheduledReports = _scheduledReports.Where(s => s.Id != id).ToList();
-            }
+            await ReportService.DeleteScheduledReportAsync(id);
+            _scheduledReports = _scheduledReports.Where(s => s.Id != id).ToList();
         }
         catch (Exception ex)
         {

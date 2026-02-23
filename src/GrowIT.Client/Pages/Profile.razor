@@ -1,0 +1,28 @@
+@page "/profile"
+@attribute [Authorize]
+
+<div style="max-width: 1100px; margin: 0 auto;">
+    <PageHeader Title="Profile" Subtitle="Account details and preferences" />
+
+    <div class="card-growit">
+        <div class="card-body">
+            <AuthorizeView>
+                <Authorized Context="auth">
+                    <div style="display: grid; gap: 10px;">
+                        <div><strong>Name:</strong> @GetClaim(auth.User.Identity?.Name, "User")</div>
+                        <div><strong>Email:</strong> @GetClaim(auth.User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value, "Not available")</div>
+                        <div><strong>Role:</strong> @GetClaim(auth.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value, "User")</div>
+                    </div>
+                </Authorized>
+                <NotAuthorized>
+                    <p style="margin: 0;">You must be signed in to view your profile.</p>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    </div>
+</div>
+
+@code {
+    private static string GetClaim(string? value, string fallback) =>
+        string.IsNullOrWhiteSpace(value) ? fallback : value;
+}

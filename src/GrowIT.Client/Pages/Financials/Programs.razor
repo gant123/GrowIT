@@ -2,76 +2,175 @@
 @attribute [Authorize]
 @using GrowIT.Shared.DTOs
 @using GrowIT.Client.Shared
-@inject HttpClient Http
+@inject IFinancialService FinancialService
 
-<div class="container-fluid mt-4">
-    <PageHeader Title="Programs & Services" Subtitle="Define the types of assistance you offer.">
+<PageTitle>Programs - grow.IT</PageTitle>
+
+<div class="programs-page">
+    <PageHeader Title="Programs & Services" Subtitle="Define repeatable service models so each act of care becomes measurable, fundable, and scalable.">
         <Actions>
-            <button class="btn btn-primary shadow-sm" @onclick="() => showCreateModal = true">
-                <span class="oi oi-plus me-2"></span>Add Program
+            <button class="btn btn-primary" @onclick="OpenCreateModal">
+                <i class="bi bi-plus-lg"></i>
+                <span>Add Program</span>
             </button>
         </Actions>
     </PageHeader>
 
-    @if (programs == null)
+    @if (!string.IsNullOrWhiteSpace(_loadError))
     {
-        <div class="text-center py-5"><div class="spinner-border text-primary" role="status"></div></div>
-    }
-    else if (!programs.Any())
-    {
-        <KpiCard Label="Programs" Value="No Programs Defined" Icon="oi-list" Class="text-center py-5">
-            <p class="small text-secondary mb-4" style="color: var(--growit-text-secondary) !important;">Create services like "Utility Assistance" or "Food Pantry" to track your impact.</p>
-            <button class="btn btn-outline" @onclick="() => showCreateModal = true">Create First Program</button>
-        </KpiCard>
-    }
-    else
-    {
-        <div class="row">
-            @foreach (var p in programs)
-            {
-                <div class="col-md-4 mb-4">
-                    <KpiCard Label="Program" Value="@p.Name" Icon="oi-tag" Color="primary" Class="h-100">
-                        <p class="text-secondary small mb-2 mt-2" style="color: var(--growit-text-secondary) !important;">@p.Description</p>
-                        @if (p.CapacityLimit.HasValue)
-                        {
-                            <div class="d-flex align-items-center gap-2 mt-3 p-2 rounded" style="background-color: var(--growit-bg-primary); border: 1px solid var(--growit-border);">
-                                <span class="oi oi-dashboard text-info small"></span>
-                                <span class="small fw-bold">Capacity: @p.CapacityLimit @p.CapacityPeriod</span>
-                            </div>
-                        }
-                    </KpiCard>
-                </div>
-            }
+        <div class="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
+            <div>@_loadError</div>
+            <button class="btn btn-sm btn-outline-light" @onclick="LoadPrograms">Retry</button>
         </div>
     }
+
+    <div class="program-kpis">
+        <div class="program-kpi-card">
+            <div class="program-kpi-icon total"><i class="bi bi-folder2-open"></i></div>
+            <div>
+                <div class="program-kpi-label">Programs</div>
+                <div class="program-kpi-value">@(programs?.Count ?? 0)</div>
+            </div>
+        </div>
+        <div class="program-kpi-card">
+            <div class="program-kpi-icon capacity"><i class="bi bi-speedometer2"></i></div>
+            <div>
+                <div class="program-kpi-label">With Capacity Limits</div>
+                <div class="program-kpi-value">@ProgramsWithCapacity</div>
+            </div>
+        </div>
+        <div class="program-kpi-card">
+            <div class="program-kpi-icon unit"><i class="bi bi-cash-coin"></i></div>
+            <div>
+                <div class="program-kpi-label">Avg Unit Cost</div>
+                <div class="program-kpi-value">@AverageUnitCostLabel</div>
+            </div>
+        </div>
+        <div class="program-kpi-card">
+            <div class="program-kpi-icon readiness"><i class="bi bi-clipboard-data"></i></div>
+            <div>
+                <div class="program-kpi-label">Capacity-Ready Models</div>
+                <div class="program-kpi-value">@CapacityReadyPrograms</div>
+            </div>
+        </div>
+    </div>
+
+    <section class="program-panel">
+        <div class="program-panel-header">
+            <div>
+                <h2>Program Catalog</h2>
+                <p>Maintain service definitions and cost assumptions used across investments and reporting.</p>
+            </div>
+            <div class="program-panel-meta">@(FilteredPrograms.Count()) program(s)</div>
+        </div>
+
+        <div class="program-toolbar">
+            <div class="program-search">
+                <i class="bi bi-search"></i>
+                <input class="form-control" placeholder="Search by name or description" @bind="SearchQuery" @bind:event="oninput" />
+            </div>
+        </div>
+
+        @if (programs == null)
+        {
+            <div class="program-loading"><div class="spinner-border text-primary" role="status"></div><p>Loading programs...</p></div>
+        }
+        else if (!FilteredPrograms.Any())
+        {
+            <div class="program-empty">
+                <div class="program-empty-icon"><i class="bi bi-folder-x"></i></div>
+                <h3>No programs found</h3>
+                <p>Create your first service model to standardize what you do, what it costs, and how it scales.</p>
+                <button class="btn btn-outline-primary" @onclick="OpenCreateModal">
+                    <i class="bi bi-plus-lg"></i>
+                    <span>Create First Program</span>
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="program-grid">
+                @foreach (var p in FilteredPrograms.OrderBy(p => p.Name))
+                {
+                    <article class="program-card" @key="p.Id">
+                        <div class="program-card-header">
+                            <div>
+                                <h3>@p.Name</h3>
+                                <div class="program-unit-cost">
+                                    <i class="bi bi-cash-coin"></i>
+                                    @if (p.DefaultUnitCost > 0)
+                                    {
+                                        <span>@p.DefaultUnitCost.ToString("C0") default unit cost</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Unit cost not configured</span>
+                                    }
+                                </div>
+                            </div>
+                            @if (p.CapacityLimit.HasValue)
+                            {
+                                <span class="capacity-chip configured">@p.CapacityLimit @p.CapacityPeriod</span>
+                            }
+                            else
+                            {
+                                <span class="capacity-chip missing">No capacity limit</span>
+                            }
+                        </div>
+                        <div class="program-card-body">
+                            <p class="program-description">@(string.IsNullOrWhiteSpace(p.Description) ? "No description provided yet." : p.Description)</p>
+                            <div class="program-attributes">
+                                <div class="program-attr">
+                                    <span class="label">Capacity</span>
+                                    <span class="value">@(p.CapacityLimit.HasValue ? $"{p.CapacityLimit} per {p.CapacityPeriod}" : "Not set")</span>
+                                </div>
+                                <div class="program-attr">
+                                    <span class="label">Unit Cost</span>
+                                    <span class="value">@(p.DefaultUnitCost > 0 ? p.DefaultUnitCost.ToString("C2") : "Not set")</span>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </section>
 </div>
 
 @if (showCreateModal)
 {
-    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px);">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
-                <div class="modal-header border-bottom" style="border-color: var(--growit-border);">
-                    <h5 class="modal-title fw-bold">New Program</h5>
-                    <button class="btn btn-link" style="color: var(--growit-text-muted)" @onclick="() => showCreateModal = false"><span class="oi oi-x"></span></button>
+    <div class="modal fade show d-block programs-modal-backdrop" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content programs-modal-shell">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title">New Program</h5>
+                        <div class="modal-subtitle">Define a repeatable service model that can be measured, costed, and explained to funders.</div>
+                    </div>
+                    <button type="button" class="btn-close" @onclick="CloseCreateModal"></button>
                 </div>
                 <div class="modal-body p-4">
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted text-uppercase" style="color: var(--growit-text-muted) !important;">Program Name</label>
-                        <input @bind="newProgram.Name" class="form-control" style="background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border-color: var(--growit-border);" placeholder="e.g. Utility Assistance" />
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label small fw-bold text-muted text-uppercase" style="color: var(--growit-text-muted) !important;">Description</label>
-                        <textarea @bind="newProgram.Description" class="form-control" rows="3" style="background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border-color: var(--growit-border);" placeholder="What does this service provide?"></textarea>
-                    </div>
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted text-uppercase" style="color: var(--growit-text-muted) !important;">Capacity Limit</label>
-                            <input @bind="newProgram.CapacityLimit" type="number" class="form-control" style="background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border-color: var(--growit-border);" placeholder="e.g. 50" />
+                    @if (!string.IsNullOrWhiteSpace(_saveError))
+                    {
+                        <div class="alert alert-danger">@_saveError</div>
+                    }
+
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <label class="form-label">Program Name</label>
+                            <input @bind="newProgram.Name" class="form-control" placeholder="e.g. Community Care Box Distribution" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Description</label>
+                            <textarea @bind="newProgram.Description" class="form-control" rows="4" placeholder="Describe what this service provides and what outcome it supports."></textarea>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label small fw-bold text-muted text-uppercase" style="color: var(--growit-text-muted) !important;">Period</label>
-                            <select @bind="newProgram.CapacityPeriod" class="form-select" style="background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border-color: var(--growit-border);">
+                            <label class="form-label">Capacity Limit</label>
+                            <input @bind="newProgram.CapacityLimit" type="number" class="form-control" placeholder="e.g. 50" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Capacity Period</label>
+                            <select @bind="newProgram.CapacityPeriod" class="form-select">
                                 <option value="">None</option>
                                 <option value="Weekly">Weekly</option>
                                 <option value="Monthly">Monthly</option>
@@ -79,7 +178,17 @@
                             </select>
                         </div>
                     </div>
-                    <button class="btn btn-primary w-100 fw-bold" @onclick="CreateProgram">Save Program</button>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="CloseCreateModal">Cancel</button>
+                        <button class="btn btn-primary" @onclick="CreateProgram" disabled="@_isSaving">
+                            @if (_isSaving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            <span>Save Program</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -88,26 +197,85 @@
 
 @code {
     private List<ProgramDto>? programs;
-    private bool showCreateModal = false;
+    private bool showCreateModal;
+    private bool _isSaving;
+    private string? _loadError;
+    private string? _saveError;
     private CreateProgramRequest newProgram = new();
-    private string InputStyle => "background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border-color: var(--growit-border);";
+    private string SearchQuery { get; set; } = string.Empty;
+
+    private int ProgramsWithCapacity => programs?.Count(p => p.CapacityLimit.HasValue && p.CapacityLimit.Value > 0) ?? 0;
+    private int CapacityReadyPrograms => programs?.Count(p => p.CapacityLimit.HasValue && p.CapacityLimit > 0 && p.DefaultUnitCost > 0) ?? 0;
+    private string AverageUnitCostLabel => (programs?.Any(p => p.DefaultUnitCost > 0) ?? false)
+        ? programs!.Where(p => p.DefaultUnitCost > 0).Average(p => p.DefaultUnitCost).ToString("C0")
+        : "$0";
+
+    private IEnumerable<ProgramDto> FilteredPrograms
+    {
+        get
+        {
+            var source = programs ?? [];
+            if (string.IsNullOrWhiteSpace(SearchQuery)) return source;
+
+            return source.Where(p =>
+                (p.Name?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (p.Description?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+    }
 
     protected override async Task OnInitializedAsync() => await LoadPrograms();
 
     private async Task LoadPrograms()
     {
-        try { programs = await Http.GetFromJsonAsync<List<ProgramDto>>("api/financials/programs"); }
-        catch { /* Handle error */ }
+        try
+        {
+            _loadError = null;
+            programs = await FinancialService.GetProgramsAsync();
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+            programs = [];
+        }
+    }
+
+    private void OpenCreateModal()
+    {
+        _saveError = null;
+        showCreateModal = true;
+    }
+
+    private void CloseCreateModal()
+    {
+        _saveError = null;
+        showCreateModal = false;
     }
 
     private async Task CreateProgram()
     {
-        var response = await Http.PostAsJsonAsync("api/financials/programs", newProgram);
-        if (response.IsSuccessStatusCode)
+        _saveError = null;
+
+        if (string.IsNullOrWhiteSpace(newProgram.Name))
         {
+            _saveError = "Program name is required.";
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            await FinancialService.CreateProgramAsync(newProgram);
             showCreateModal = false;
             newProgram = new();
             await LoadPrograms();
+        }
+        catch (Exception ex)
+        {
+            _saveError = ex.Message;
+        }
+        finally
+        {
+            _isSaving = false;
         }
     }
 }

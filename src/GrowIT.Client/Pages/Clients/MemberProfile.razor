@@ -1,93 +1,162 @@
 @page "/clients/member/{Id:guid}"
+@attribute [Authorize]
 @using GrowIT.Shared.DTOs
 @using GrowIT.Client.Shared
-@inject HttpClient Http
+@inject IClientService ClientService
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 
-@if (profile == null)
+@if (_isLoading)
 {
-    <div class="text-center py-5">
-        <div class="spinner-border text-info" role="status"></div>
-        <p class="mt-2 text-muted">Opening individual file...</p>
+    <div class="loading-state">
+        <div class="spinner-growit"></div>
+        <p class="loading-state-text">Opening individual file...</p>
     </div>
+}
+else if (profile == null)
+{
+    <div class="alert alert-danger">@(_loadError ?? "Unable to load member profile.")</div>
 }
 else
 {
+    <div class="member-profile-page fade-in">
+    @if (!string.IsNullOrWhiteSpace(_deleteError))
+    {
+        <div class="alert alert-danger mb-4">@_deleteError</div>
+    }
+
     <PageHeader Title="@profile.Name" Subtitle="@($"{profile.Relationship} Profile • {profile.Age} years old")">
         <Actions>
             <button class="btn-growit btn-secondary-growit" @onclick="GoBack">
-                <span class="oi oi-arrow-left me-1"></span> Back
+                <i class="bi bi-arrow-left me-1"></i> Back
             </button>
             <button class="btn-growit btn-secondary-growit" @onclick="ToggleEdit">
-                <span class="oi oi-pencil me-1"></span>Edit
+                <i class="bi bi-pencil-square me-1"></i>Edit
             </button>
             <button class="btn-growit btn-danger-growit" @onclick="ConfirmDelete">
-                <span class="oi oi-trash me-1"></span>Delete
+                <i class="bi bi-trash me-1"></i>Delete
             </button>
         </Actions>
     </PageHeader>
 
+    <div class="grid-3 mb-4">
+        <div class="member-metric-card">
+            <div class="metric-icon info"><i class="bi bi-cash-stack"></i></div>
+            <div>
+                <div class="metric-label">Allocated Service Value</div>
+                <div class="metric-value">@profile.TotalInvested.ToString("C0")</div>
+                <div class="metric-subtext">Tracked to this household member</div>
+            </div>
+        </div>
+        <div class="member-metric-card">
+            <div class="metric-icon warning"><i class="bi bi-journal-text"></i></div>
+            <div>
+                <div class="metric-label">Timeline Entries</div>
+                <div class="metric-value">@profile.Timeline.Count</div>
+                <div class="metric-subtext">Investments and imprints recorded</div>
+            </div>
+        </div>
+        <div class="member-metric-card">
+            <div class="metric-icon primary"><i class="bi bi-calendar-heart"></i></div>
+            <div>
+                <div class="metric-label">Date of Birth</div>
+                <div class="metric-value-sm">@(profile.DateOfBirth?.ToString("MMM dd, yyyy") ?? "Not recorded")</div>
+                <div class="metric-subtext">Age and lifecycle context</div>
+            </div>
+        </div>
+    </div>
+
     <div class="row g-4">
             <div class="col-lg-4">
-                <div class="card border-0 shadow-sm mb-4" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
-                    <div class="card-header bg-transparent fw-bold py-3">Individual Impact</div>
+                <div class="card-growit mb-4">
+                    <div class="card-header">
+                        <h3 class="section-title">Individual Profile Summary</h3>
+                    </div>
                     <div class="card-body">
-                        <div class="text-center py-3">
-                            <div class="display-5 fw-bold text-info">@profile.TotalInvested.ToString("C0")</div>
-                            <div class="small text-muted text-uppercase" style="color: var(--growit-text-muted) !important;">Allocated to @profile.Name</div>
+                        <div class="member-summary-list">
+                            <div class="detail-row"><span>Relationship</span><strong>@profile.Relationship</strong></div>
+                            <div class="detail-row"><span>Age</span><strong>@profile.Age years</strong></div>
+                            <div class="detail-row"><span>School</span><strong>@(string.IsNullOrWhiteSpace(profile.School) ? "Not recorded" : profile.School)</strong></div>
+                            <div class="detail-row"><span>Total allocated</span><strong class="text-info">@profile.TotalInvested.ToString("C2")</strong></div>
                         </div>
-                        <hr style="border-color: var(--growit-border);" />
-                        <div class="mb-3">
-                            <label class="small fw-bold text-muted text-uppercase d-block mb-1" style="color: var(--growit-text-muted) !important;">Confidential Notes</label>
-                            <p class="small p-3 rounded" style="background-color: var(--growit-bg-primary);">
-                                @(string.IsNullOrEmpty(profile.Notes) ? "No specific notes for this member." : profile.Notes)
-                            </p>
+                    </div>
+                </div>
+
+                <div class="card-growit">
+                    <div class="card-header">
+                        <h3 class="section-title">Notes & Context</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="member-notes-panel">
+                            @if (string.IsNullOrWhiteSpace(profile.Notes))
+                            {
+                                <div class="empty-state">
+                                    <i class="bi bi-journal empty-state-icon"></i>
+                                    <div class="empty-state-title">No individual notes yet</div>
+                                    <div class="empty-state-description">Use this profile to capture context that supports continuity of service.</div>
+                                </div>
+                            }
+                            else
+                            {
+                                <p>@profile.Notes</p>
+                            }
                         </div>
                     </div>
                 </div>
             </div>
 
             <div class="col-lg-8">
-                <div class="card border-0 shadow-sm h-100" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
-                    <div class="card-header bg-transparent fw-bold py-3">Personal Activity</div>
+                <div class="card-growit h-100">
+                    <div class="card-header">
+                        <h3 class="section-title">Personal Activity Timeline</h3>
+                        <span class="badge-growit badge-neutral">@profile.Timeline.Count Entries</span>
+                    </div>
                     <div class="card-body p-0">
                         @if (profile.Timeline.Any())
                         {
-                            <div class="list-group list-group-flush">
+                            <div class="list-group list-group-flush member-timeline-list">
                                 @foreach (var item in profile.Timeline)
                                 {
-                                    <div class="list-group-item p-4 d-flex gap-3" style="background-color: transparent; border-color: var(--growit-border);">
-                                        <div class="rounded-circle d-flex align-items-center justify-content-center border" style="width: 40px; height: 40px; min-width: 40px;">
-                                            <span class="oi @item.Icon @item.ColorClass"></span>
+                                    <div class="list-group-item p-4 d-flex gap-3 member-timeline-item">
+                                        <div class="member-timeline-dot @MapTimelineTone(item.ColorClass)">
+                                            <i class="@MapTimelineIcon(item.Icon)"></i>
                                         </div>
                                         <div class="flex-grow-1">
                                             <div class="d-flex justify-content-between">
                                                 <h6 class="fw-bold mb-1">@item.Title</h6>
                                                 <div>
-                                                    <small class="text-muted" style="color: var(--growit-text-muted) !important;">@item.Date.ToShortDateString()</small>
+                                                    <small class="text-muted">@item.Date.ToShortDateString()</small>
                                                     @if (item.Type == "Investment")
                                                     {
-                                                        <button class="btn btn-sm btn-link text-info p-0 ms-2" @onclick="() => OpenReassignModal(item.Id)">
-                                                            <span class="oi oi-transfer"></span>
+                                                        <button class="btn btn-sm btn-link text-info p-0 ms-2" title="Reassign investment" @onclick="() => OpenReassignModal(item.Id)">
+                                                            <i class="bi bi-arrow-left-right"></i>
                                                         </button>
                                                     }
                                                 </div>
                                             </div>
-                                            <p class="small mb-2 text-secondary" style="color: var(--growit-text-secondary) !important;">@item.Description</p>
+                                            <p class="small mb-2 text-secondary">@item.Description</p>
                                             @if (item.Amount.HasValue)
                                             {
-                                                <span class="badge bg-info bg-opacity-10 text-info fw-bold border border-info-subtle">@item.Amount.Value.ToString("C2")</span>
+                                                <span class="badge-growit bg-info text-white">@item.Amount.Value.ToString("C2")</span>
                                             }
                                         </div>
                                     </div>
                                 }
                             </div>
                         }
+                        else
+                        {
+                            <div class="empty-state">
+                                <i class="bi bi-clock-history empty-state-icon"></i>
+                                <div class="empty-state-title">No personal activity yet</div>
+                                <div class="empty-state-description">Timeline entries will appear when investments or imprints are tied to this individual.</div>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
         </div>
+    </div>
         
         <AddFamilyMemberModal @bind-Show="showEditModal" 
                               MemberId="@Id" 
@@ -106,20 +175,31 @@ else
     private bool showEditModal = false;
     private bool showReassignModal = false;
     private Guid selectedInvestmentId;
+    private string? _loadError;
+    private string? _deleteError;
+    private bool _isLoading = true;
 
     protected override async Task OnInitializedAsync() => await LoadProfile();
 
     private async Task LoadProfile()
     {
-        profile = await Http.GetFromJsonAsync<FamilyMemberProfileDto>($"api/clients/members/{Id}");
-        if (profile != null)
+        _loadError = null;
+        _isLoading = true;
+        try
         {
-            var clientDetail = await Http.GetFromJsonAsync<ClientDetailDto>($"api/clients/{profile.ClientId}");
+            profile = await ClientService.GetMemberProfileAsync(Id);
+            var clientDetail = await ClientService.GetClientDetailAsync(profile.ClientId);
             householdMembers = clientDetail?.HouseholdMembers ?? new();
         }
-        else
+        catch (Exception ex)
         {
+            profile = null;
             householdMembers = new();
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
         }
     }
 
@@ -133,12 +213,48 @@ else
 
     private async Task ConfirmDelete()
     {
+        _deleteError = null;
         if (await JS.InvokeAsync<bool>("confirm", "Delete this member?"))
         {
-            var res = await Http.DeleteAsync($"api/clients/members/{Id}");
-            if (res.IsSuccessStatusCode) Nav.NavigateTo("clients");
+            try
+            {
+                await ClientService.DeleteFamilyMemberAsync(Id);
+                Nav.NavigateTo("/clients");
+            }
+            catch (Exception ex)
+            {
+                _deleteError = ex.Message;
+                await JS.InvokeVoidAsync("alert", _deleteError);
+            }
         }
     }
 
-    private void GoBack() => Nav.NavigateTo("clients");
+    private void GoBack()
+    {
+        if (profile != null)
+        {
+            Nav.NavigateTo($"/clients/{profile.ClientId}");
+            return;
+        }
+
+        Nav.NavigateTo("/clients");
+    }
+
+    private static string MapTimelineIcon(string icon) => icon switch
+    {
+        var value when value.Contains("dollar", StringComparison.OrdinalIgnoreCase) => "bi bi-cash-stack",
+        var value when value.Contains("flag", StringComparison.OrdinalIgnoreCase) => "bi bi-flag",
+        var value when value.Contains("check", StringComparison.OrdinalIgnoreCase) => "bi bi-check2-circle",
+        var value when value.Contains("people", StringComparison.OrdinalIgnoreCase) || value.Contains("person", StringComparison.OrdinalIgnoreCase) => "bi bi-people",
+        _ => "bi bi-activity"
+    };
+
+    private static string MapTimelineTone(string colorClass) => colorClass switch
+    {
+        var value when value.Contains("success", StringComparison.OrdinalIgnoreCase) => "success",
+        var value when value.Contains("warning", StringComparison.OrdinalIgnoreCase) => "warning",
+        var value when value.Contains("danger", StringComparison.OrdinalIgnoreCase) => "danger",
+        var value when value.Contains("info", StringComparison.OrdinalIgnoreCase) => "info",
+        _ => "neutral"
+    };
 }

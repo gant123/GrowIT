@@ -1970,3 +1970,136 @@
     color: var(--growit-text-secondary);
     margin: 0 0 24px 0;
 }
+
+/* ========================================
+   PUBLIC PAGES ENTERPRISE POLISH (v2)
+   ======================================== */
+.hero {
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 18px 44px rgba(15, 23, 42, 0.08);
+}
+
+.hero-badge {
+    border-color: rgba(22, 163, 74, 0.2);
+    background: rgba(22, 163, 74, 0.08);
+    color: var(--growit-green);
+    font-weight: 700;
+}
+
+.hero-steps-preview .preview-item {
+    border-color: rgba(148, 163, 184, 0.18);
+    background: color-mix(in srgb, var(--growit-bg-card) 82%, transparent);
+}
+
+.hero-actions .btn {
+    box-shadow: var(--growit-shadow-sm);
+}
+
+.problem-card,
+.feature-card {
+    border-color: rgba(148, 163, 184, 0.14);
+    box-shadow: var(--growit-shadow-sm);
+}
+
+.problem-card:hover,
+.feature-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--growit-shadow);
+}
+
+.auth-card {
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    box-shadow: 0 20px 48px rgba(15, 23, 42, 0.08);
+}
+
+.auth-header h1 {
+    letter-spacing: -0.02em;
+}
+
+.auth-header p {
+    color: var(--growit-text-muted);
+}
+
+.auth-alert {
+    border: 1px solid rgba(239, 68, 68, 0.18);
+    border-radius: 12px;
+    background: rgba(239, 68, 68, 0.06);
+}
+
+.auth-alert svg {
+    width: 18px;
+    height: 18px;
+}
+
+.input-wrapper {
+    position: relative;
+}
+
+.input-wrapper .input-icon-bi {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--growit-text-dim);
+    font-size: 0.95rem;
+    pointer-events: none;
+}
+
+.invite-page .auth-container.single-panel {
+    grid-template-columns: minmax(0, 640px);
+    justify-content: center;
+}
+
+.invite-card-shell {
+    max-width: 640px;
+    width: 100%;
+}
+
+.invite-summary-card {
+    border: 1px solid var(--growit-border);
+    border-radius: 14px;
+    background: var(--growit-bg-primary);
+    padding: 0.85rem;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem 0.85rem;
+}
+
+.invite-summary-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.invite-summary-row .label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--growit-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.invite-summary-row .value {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--growit-text-primary);
+    overflow-wrap: anywhere;
+}
+
+.invite-page .auth-card .password-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.invite-page .btn.btn-primary.btn-block i.bi {
+    font-size: 0.95rem;
+}
+
+@media (max-width: 768px) {
+    .invite-summary-card {
+        grid-template-columns: 1fr;
+    }
+}

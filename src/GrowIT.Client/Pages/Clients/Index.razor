@@ -4,51 +4,154 @@
 @using GrowIT.Shared.Enums
 @using Syncfusion.Blazor.Grids
 @using GrowIT.Client.Shared 
-@inject HttpClient Http
+@inject IClientService ClientService
 @inject NavigationManager Nav
 
 <div class="dashboard fade-in mt-4">
-    <PageHeader Title="Case Files" Subtitle="Manage all active households and profiles.">
+    <PageHeader Title="Founder Case Directory" Subtitle="Track households, stability, and service readiness from one operational view.">
         <Actions>
             <button class="btn-growit btn-primary-growit shadow-sm" @onclick="OpenCreateModal">
-                <span class="oi oi-plus me-2"></span>New Client
+                <i class="bi bi-plus-lg me-2"></i>New Case File
             </button>
         </Actions>
     </PageHeader>
 
-    @if (clients == null)
+    @if (_isLoading)
     {
         <div class="loading-state">
             <div class="spinner-growit"></div>
-            <p class="loading-state-text">Loading directory...</p>
+            <p class="loading-state-text">Loading founder directory...</p>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(_loadError))
+    {
+        <div class="alert alert-danger d-flex justify-content-between align-items-center mb-4">
+            <span>@_loadError</span>
+            <button class="btn btn-sm btn-outline-light" @onclick="LoadClients">Retry</button>
+        </div>
+    }
+    else if (clients == null || clients.Count == 0)
+    {
+        <div class="card-growit client-directory-empty">
+            <div class="card-body">
+                <div class="empty-state">
+                    <i class="bi bi-people empty-state-icon"></i>
+                    <div class="empty-state-title">No case files yet</div>
+                    <div class="empty-state-description">
+                        Start your service model by creating the first household profile. grow.IT will begin building capacity and impact clarity as you serve.
+                    </div>
+                    <button class="btn-growit btn-primary-growit" @onclick="OpenCreateModal">
+                        <i class="bi bi-plus-lg me-2"></i>Create First Case File
+                    </button>
+                </div>
+            </div>
         </div>
     }
     else
     {
-        <div class="card-growit">
-            <div class="card-body p-0">
-                <SfGrid DataSource="@clients" 
+        <div class="client-directory-shell">
+            <div class="grid-4 mb-4">
+                <div class="client-metric-card">
+                    <div class="metric-icon success"><i class="bi bi-people"></i></div>
+                    <div class="metric-content">
+                        <div class="metric-label">Active Case Files</div>
+                        <div class="metric-value">@clients.Count</div>
+                        <div class="metric-subtext">Founders documenting service in progress</div>
+                    </div>
+                </div>
+
+                <div class="client-metric-card">
+                    <div class="metric-icon danger"><i class="bi bi-exclamation-triangle"></i></div>
+                    <div class="metric-content">
+                        <div class="metric-label">Crisis Phase</div>
+                        <div class="metric-value">@PhaseCount(LifePhase.Crisis)</div>
+                        <div class="metric-subtext">Priority support and stabilization</div>
+                    </div>
+                </div>
+
+                <div class="client-metric-card">
+                    <div class="metric-icon info"><i class="bi bi-shield-check"></i></div>
+                    <div class="metric-content">
+                        <div class="metric-label">Avg Stability Score</div>
+                        <div class="metric-value">@AverageStability.ToString("0.0")<span class="metric-value-suffix">/10</span></div>
+                        <div class="metric-subtext">Capacity signal across the portfolio</div>
+                    </div>
+                </div>
+
+                <div class="client-metric-card">
+                    <div class="metric-icon primary"><i class="bi bi-clipboard-data"></i></div>
+                    <div class="metric-content">
+                        <div class="metric-label">Readiness Signal</div>
+                        <div class="metric-value">@ReadinessSignal</div>
+                        <div class="metric-subtext">@ReadinessSummary</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-growit mb-4">
+                <div class="card-body">
+                    <div class="client-directory-controls">
+                        <div class="directory-search">
+                            <i class="bi bi-search"></i>
+                            <input type="text"
+                                   placeholder="Search name, email, or phone..."
+                                   @bind="_searchText"
+                                   @bind:event="oninput" />
+                        </div>
+
+                        <div class="phase-filter-group" role="group" aria-label="Filter by life phase">
+                            <button class="@PhaseFilterButtonClass(null)" @onclick="() => SetPhaseFilter(null)">
+                                <span>All</span>
+                                <small>@clients.Count</small>
+                            </button>
+                            <button class="@PhaseFilterButtonClass(LifePhase.Crisis)" @onclick="() => SetPhaseFilter(LifePhase.Crisis)">
+                                <span>Crisis</span>
+                                <small>@PhaseCount(LifePhase.Crisis)</small>
+                            </button>
+                            <button class="@PhaseFilterButtonClass(LifePhase.Stable)" @onclick="() => SetPhaseFilter(LifePhase.Stable)">
+                                <span>Stable</span>
+                                <small>@PhaseCount(LifePhase.Stable)</small>
+                            </button>
+                            <button class="@PhaseFilterButtonClass(LifePhase.Thriving)" @onclick="() => SetPhaseFilter(LifePhase.Thriving)">
+                                <span>Thriving</span>
+                                <small>@PhaseCount(LifePhase.Thriving)</small>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-growit">
+                <div class="card-header">
+                    <h3 class="section-title">Case Files</h3>
+                    <div class="directory-header-meta">
+                        <span class="badge-growit badge-neutral">@FilteredClients.Count() shown</span>
+                        <span class="text-muted small">Use column filters and sorting for grant-ready segmentation</span>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <SfGrid DataSource="@FilteredClients.ToList()" 
                         AllowPaging="true" 
                         AllowSorting="true" 
                         AllowFiltering="true" 
-                        Toolbar="@(new List<string>() { "Search" })"
-                        Height="100%">
-                    
-                    <GridPageSettings PageSize="10"></GridPageSettings>
-                    <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Menu"></GridFilterSettings>
-                    
-                    <GridColumns>
-                        <GridColumn HeaderText="Client Name" Width="240">
-                            <Template>
+                        AllowResizing="true"
+                        Height="560">
+
+                        <GridPageSettings PageSize="10"></GridPageSettings>
+                        <GridFilterSettings Type="Syncfusion.Blazor.Grids.FilterType.Menu"></GridFilterSettings>
+
+                        <GridColumns>
+                            <GridColumn HeaderText="Client Name" Width="240">
+                                <Template>
                                 @{
                                     var client = (context as ClientDto);
-                                    <div class="d-flex align-items-center gap-3 cursor-pointer" @onclick="() => NavigateToClient(client.Id)">
-                                        <div class="avatar-growit avatar-md">
+                                    <div class="client-name-cell" @onclick="() => NavigateToClient(client.Id)">
+                                        <div class="avatar-growit avatar-md client-avatar">
                                             @GetInitials(client.Name)
                                         </div>
-                                        <div class="overflow-hidden">
+                                        <div class="client-name-meta">
                                             <div class="fw-600 text-primary text-truncate">@client.Name</div>
-                                            <div class="small text-muted text-truncate">@client.Email</div>
+                                            <div class="small text-muted text-truncate">@GetDisplayEmail(client)</div>
                                         </div>
                                     </div>
                                 }
@@ -70,33 +173,59 @@
                             <Template>
                                 @{
                                     var score = (context as ClientDto).StabilityScore;
-                                    
-                                    <div class="px-2">
-                                        <div class="d-flex justify-content-between small mb-1">
+                                    <div class="stability-cell">
+                                        <div class="stability-row-label">
                                             <span class="fw-bold text-muted">Score</span>
                                             <span class="fw-bold">@score/10</span>
                                         </div>
                                         <div class="stability-bar">
-                                            <div class="stability-fill" style="width: @($"{score * 10}%")"></div>
+                                            <div class="stability-fill @GetStabilityBand(score)" style="width: @($"{score * 10}%")"></div>
                                         </div>
                                     </div>
                                 }
                             </Template>
                         </GridColumn>
 
-                        <GridColumn Field=@nameof(ClientDto.Phone) HeaderText="Phone" Width="140"></GridColumn>
-
-                        <GridColumn Width="100" TextAlign="TextAlign.Center">
+                        <GridColumn HeaderText="Contact" Width="180">
                             <Template>
-                                <button class="btn-growit btn-ghost-growit btn-sm" 
-                                        @onclick="() => NavigateToClient((context as ClientDto).Id)">
-                                    View File
-                                </button>
+                                @{
+                                    var client = (context as ClientDto);
+                                    <div class="contact-cell">
+                                        <div class="contact-line"><i class="bi bi-telephone"></i> @GetDisplayPhone(client)</div>
+                                        <div class="contact-line muted"><i class="bi bi-envelope"></i> @GetContactStatus(client)</div>
+                                    </div>
+                                }
+                            </Template>
+                        </GridColumn>
+
+                        <GridColumn HeaderText="Readiness" Width="180">
+                            <Template>
+                                @{
+                                    var client = (context as ClientDto);
+                                    <div class="readiness-cell">
+                                        <span class="badge-growit @GetReadinessBadgeClass(client)">@GetReadinessLabel(client)</span>
+                                        <div class="small text-muted mt-1">@GetReadinessHint(client)</div>
+                                    </div>
+                                }
+                            </Template>
+                        </GridColumn>
+
+                        <GridColumn Width="140" TextAlign="TextAlign.Center">
+                            <Template>
+                                @{
+                                    var client = (context as ClientDto);
+                                    <div class="directory-actions-cell">
+                                        <button class="btn-growit btn-ghost-growit btn-sm" @onclick="() => NavigateToClient(client.Id)">
+                                            <i class="bi bi-folder2-open me-1"></i>View File
+                                        </button>
+                                    </div>
+                                }
                             </Template>
                         </GridColumn>
                     </GridColumns>
                 </SfGrid>
             </div>
+        </div>
         </div>
     }
     
@@ -107,23 +236,64 @@
 @code {
     private List<ClientDto>? clients;
     private bool showCreateModal = false;
+    private bool _isLoading = true;
+    private string? _loadError;
+    private string _searchText = string.Empty;
+    private LifePhase? _phaseFilter;
 
     protected override async Task OnInitializedAsync() => await LoadClients();
 
     private async Task LoadClients()
     {
+        _isLoading = true;
+        _loadError = null;
         try
         {
-            clients = await Http.GetFromJsonAsync<List<ClientDto>>("api/clients");
+            clients = await ClientService.GetAllClientsAsync();
         }
         catch (Exception ex)
         {
+            _loadError = ex.Message;
             Console.WriteLine($"Error loading clients: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
         }
     }
 
+    private IEnumerable<ClientDto> FilteredClients =>
+        (clients ?? Enumerable.Empty<ClientDto>())
+            .Where(c => _phaseFilter == null || c.LifePhase == _phaseFilter.Value)
+            .Where(MatchesSearch)
+            .OrderByDescending(c => c.StabilityScore)
+            .ThenBy(c => c.Name);
+
+    private double AverageStability =>
+        clients is { Count: > 0 } ? clients.Average(c => c.StabilityScore) : 0;
+
+    private string ReadinessSignal
+    {
+        get
+        {
+            if (clients is not { Count: > 0 }) return "N/A";
+            if (AverageStability >= 7 && PhaseCount(LifePhase.Crisis) <= 2) return "Strong";
+            if (AverageStability >= 5) return "Building";
+            return "At Risk";
+        }
+    }
+
+    private string ReadinessSummary => ReadinessSignal switch
+    {
+        "Strong" => "Portfolio shows repeatable stability patterns",
+        "Building" => "Progressing, but needs focused stabilization",
+        "At Risk" => "High crisis load may increase founder strain",
+        _ => "Add case files to establish a baseline"
+    };
+
     private void NavigateToClient(Guid id) => Nav.NavigateTo($"clients/{id}");
     private void OpenCreateModal() => showCreateModal = true;
+    private void SetPhaseFilter(LifePhase? phase) => _phaseFilter = phase;
 
     private string GetInitials(string name)
     {
@@ -133,11 +303,65 @@
         return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
     }
 
+    private bool MatchesSearch(ClientDto client)
+    {
+        if (string.IsNullOrWhiteSpace(_searchText)) return true;
+        var search = _searchText.Trim();
+        return client.Name.Contains(search, StringComparison.OrdinalIgnoreCase)
+               || client.Email.Contains(search, StringComparison.OrdinalIgnoreCase)
+               || client.Phone.Contains(search, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private int PhaseCount(LifePhase phase) => clients?.Count(c => c.LifePhase == phase) ?? 0;
+
+    private string PhaseFilterButtonClass(LifePhase? phase) =>
+        _phaseFilter == phase ? "phase-filter-btn active" : "phase-filter-btn";
+
+    private static string GetDisplayEmail(ClientDto client) =>
+        string.IsNullOrWhiteSpace(client.Email) ? "No email on file" : client.Email;
+
+    private static string GetDisplayPhone(ClientDto client) =>
+        string.IsNullOrWhiteSpace(client.Phone) ? "No phone on file" : client.Phone;
+
+    private static string GetContactStatus(ClientDto client) =>
+        string.IsNullOrWhiteSpace(client.Email) && string.IsNullOrWhiteSpace(client.Phone)
+            ? "Needs contact details"
+            : "Contact method available";
+
+    private static string GetReadinessLabel(ClientDto client)
+    {
+        if (client.StabilityScore >= 8 && client.LifePhase == LifePhase.Thriving) return "Funding-ready";
+        if (client.StabilityScore >= 5) return "Building";
+        return "Stabilize";
+    }
+
+    private static string GetReadinessHint(ClientDto client) => client.LifePhase switch
+    {
+        LifePhase.Crisis => "Prioritize immediate service support",
+        LifePhase.Stable => "Track repeatable interventions",
+        LifePhase.Thriving => "Document model outcomes for scaling",
+        _ => "Continue documenting service"
+    };
+
+    private static string GetReadinessBadgeClass(ClientDto client) => GetReadinessLabel(client) switch
+    {
+        "Funding-ready" => "bg-success",
+        "Building" => "bg-info",
+        _ => "bg-warning text-dark"
+    };
+
     private string GetPhaseBadgeClass(LifePhase phase) => phase switch
     {
         LifePhase.Crisis => "badge-phase-crisis",
         LifePhase.Stable => "badge-phase-stable",
         LifePhase.Thriving => "badge-phase-thriving",
         _ => "badge-neutral"
+    };
+
+    private static string GetStabilityBand(int score) => score switch
+    {
+        <= 3 => "danger",
+        <= 6 => "warning",
+        _ => "success"
     };
 }

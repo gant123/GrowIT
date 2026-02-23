@@ -1429,9 +1429,11 @@
     flex-shrink: 0;
 }
 
-.report-icon svg {
+.report-icon svg,
+.report-icon .bi {
     width: 24px;
     height: 24px;
+    color: var(--color-primary);
     stroke: var(--color-primary);
 }
 
@@ -1456,7 +1458,8 @@
     color: var(--text-tertiary);
 }
 
-.report-action svg {
+.report-action svg,
+.report-action .bi {
     width: 20px;
     height: 20px;
 }
@@ -1547,9 +1550,11 @@
     justify-content: center;
 }
 
-.report-file-icon svg {
+.report-file-icon svg,
+.report-file-icon .bi {
     width: 20px;
     height: 20px;
+    color: var(--text-secondary);
     stroke: var(--text-secondary);
 }
 

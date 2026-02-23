@@ -29,7 +29,7 @@ public class DashboardController : ControllerBase
         // 1. KPI: Total Invested YTD (Only Approved ones)
         var totalInvestedYtd = await _context.Investments
             .Where(i => i.CreatedAt.Year == currentYear && i.Status == InvestmentStatus.Approved)
-            .SumAsync(i => i.Amount);
+            .SumAsync(i => (decimal?)i.Amount) ?? 0m;
 
         // 2. KPI: Households Served YTD (Unique Clients with Approved Investments)
         var householdsServed = await _context.Investments
@@ -42,12 +42,12 @@ public class DashboardController : ControllerBase
         var activeCases = await _context.Clients.CountAsync();
 
         // 4. KPI: Funds Available
-        var fundsAvailable = await _context.Funds.SumAsync(f => f.AvailableAmount);
+        var fundsAvailable = await _context.Funds.SumAsync(f => (decimal?)f.AvailableAmount) ?? 0m;
 
         // 5. Total Lifetime Stats (Filling missing DTO fields)
         var totalLifetimeInvested = await _context.Investments
             .Where(i => i.Status == InvestmentStatus.Approved)
-            .SumAsync(i => i.Amount);
+            .SumAsync(i => (decimal?)i.Amount) ?? 0m;
         var totalMilestones = await _context.Imprints.CountAsync();
 
         // 6. CHART: Monthly Trends (Group by Month)
@@ -82,9 +82,16 @@ public class DashboardController : ControllerBase
             .ToListAsync();
 
         var recentImprints = await _context.Imprints
-            .Include(i => i.Client)
             .OrderByDescending(i => i.DateOccurred)
             .Take(10)
+            .Select(i => new
+            {
+                i.Id,
+                i.Title,
+                i.DateOccurred,
+                i.Outcome,
+                ClientFirstName = i.Client != null ? i.Client.FirstName : null
+            })
             .ToListAsync();
 
         var activityFeed = new List<ActivityItem>();
@@ -103,7 +110,7 @@ public class DashboardController : ControllerBase
         activityFeed.AddRange(recentImprints.Select(m => new ActivityItem
         {
             Id = m.Id,
-            Description = $"Harvest: {m.Title} ({m.Client?.FirstName ?? "Unknown"})",
+            Description = $"Harvest: {m.Title} ({m.ClientFirstName ?? "Unknown"})",
             Date = m.DateOccurred,
             Icon = "oi-flag",
             Color = m.Outcome == ImpactOutcome.Improved ? "text-primary" : "text-warning"

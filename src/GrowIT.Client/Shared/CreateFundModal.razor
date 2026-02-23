@@ -1,6 +1,5 @@
 @using GrowIT.Shared.DTOs
-@using System.Text.Json
-@inject HttpClient Http
+@inject IFinancialService FinancialService
 
 @if (Show)
 {
@@ -135,75 +134,36 @@
  private async Task HandleValidSubmit()
     {
         errorMessage = ""; // Clear previous errors
-        HttpResponseMessage response;
-
-        if (IsEditMode && FundToEdit != null)
+        try
         {
-            if (string.IsNullOrWhiteSpace(changeReason) || changeReason.Length < 5)
+            if (IsEditMode && FundToEdit != null)
             {
-                showReasonError = true;
-                return;
+                if (string.IsNullOrWhiteSpace(changeReason) || changeReason.Length < 5)
+                {
+                    showReasonError = true;
+                    return;
+                }
+
+                var updateReq = new UpdateFundRequest 
+                { 
+                    Name = request.Name, 
+                    TotalAmount = request.TotalAmount,
+                    ChangeReason = changeReason 
+                };
+                
+                await FinancialService.UpdateFundAsync(FundToEdit.Id, updateReq);
+            }
+            else
+            {
+                await FinancialService.CreateFundAsync(request);
             }
 
-            var updateReq = new UpdateFundRequest 
-            { 
-                Name = request.Name, 
-                TotalAmount = request.TotalAmount,
-                ChangeReason = changeReason 
-            };
-            
-            response = await Http.PutAsJsonAsync($"api/financials/funds/{FundToEdit.Id}", updateReq);
-        }
-        else
-        {
-            response = await Http.PostAsJsonAsync("api/financials/funds", request);
-        }
-
-        if (response.IsSuccessStatusCode)
-        {
             await Close();
             await OnFundCreated.InvokeAsync();
         }
-        else
+        catch (Exception ex)
         {
-            // *** THE FIX: PARSE THE JSON ERROR ***
-            var rawError = await response.Content.ReadAsStringAsync();
-            try 
-            {
-                // Parse the "Problem Details" JSON
-                using var doc = JsonDocument.Parse(rawError);
-                var root = doc.RootElement;
-                
-                // 1. Check for Validation Errors (e.g. "TotalAmount": ["Must be positive"])
-                if (root.TryGetProperty("errors", out var errors))
-                {
-                    var messages = new List<string>();
-                    foreach (var prop in errors.EnumerateObject())
-                    {
-                        // Extract each error message from the array
-                        foreach (var msg in prop.Value.EnumerateArray())
-                        {
-                            messages.Add(msg.GetString() ?? "");
-                        }
-                    }
-                    errorMessage = string.Join("\n", messages);
-                }
-                // 2. Check for Simple "Detail" (e.g. "Cannot reduce budget...")
-                else if (root.TryGetProperty("detail", out var detail))
-                {
-                    errorMessage = detail.GetString() ?? "An error occurred.";
-                }
-                // 3. Fallback
-                else
-                {
-                    errorMessage = "An unexpected error occurred.";
-                }
-            }
-            catch
-            {
-                // If it's not JSON (e.g. server crash HTML), just show the raw text
-                errorMessage = rawError.Length > 100 ? "Server Error (Check logs)" : rawError;
-            }
+            errorMessage = ex.Message;
         }
     }
     private async Task Close()

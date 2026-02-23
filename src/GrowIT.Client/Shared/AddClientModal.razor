@@ -1,6 +1,6 @@
 @using GrowIT.Shared.DTOs
 @using GrowIT.Shared.Enums 
-@inject HttpClient Http
+@inject IClientService ClientService
 
 @if (Show)
 {
@@ -97,8 +97,8 @@ protected override void OnParametersSet()
     }
     private async Task HandleSubmit()
     {
-        var response = await Http.PostAsJsonAsync("api/clients", request);
-        if (response.IsSuccessStatusCode)
+        var clientId = await ClientService.CreateClientAsync(request);
+        if (clientId != Guid.Empty)
         {
             request = new CreateClientRequest(); 
             await OnClientAdded.InvokeAsync();

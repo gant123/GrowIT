@@ -13,6 +13,8 @@ public interface IAuthService
     Task Logout();
     Task<bool> ForgotPassword(ForgotPasswordRequest request);
     Task<bool> ResetPassword(ResetPasswordRequest request);
+    Task<InviteValidationDto?> ValidateInvite(string token, string email);
+    Task<AuthResponseDto?> AcceptInvite(AcceptInviteRequest request);
 }
 
 public class AuthService : BaseApiService, IAuthService
@@ -91,5 +93,37 @@ public class AuthService : BaseApiService, IAuthService
     {
         var response = await _http.PostAsJsonAsync("api/auth/reset-password", request, _jsonOptions);
         return response.IsSuccessStatusCode;
+    }
+
+    public async Task<InviteValidationDto?> ValidateInvite(string token, string email)
+    {
+        var endpoint = $"api/auth/invites/validate?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(email)}";
+        var response = await _http.GetAsync(endpoint);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            throw new Exception(string.IsNullOrWhiteSpace(body) ? "Invite validation failed." : body);
+        }
+
+        return await response.Content.ReadFromJsonAsync<InviteValidationDto>(_jsonOptions);
+    }
+
+    public async Task<AuthResponseDto?> AcceptInvite(AcceptInviteRequest request)
+    {
+        var response = await _http.PostAsJsonAsync("api/auth/accept-invite", request, _jsonOptions);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadAsStringAsync();
+            throw new Exception(string.IsNullOrWhiteSpace(body) ? "Invite acceptance failed." : body);
+        }
+
+        var result = await response.Content.ReadFromJsonAsync<AuthResponseDto>(_jsonOptions);
+        if (result != null && !string.IsNullOrEmpty(result.Token))
+        {
+            await _localStorage.SetItemAsync("authToken", result.Token);
+            await ((CustomAuthStateProvider)_authStateProvider).MarkUserAsAuthenticated(request.Email);
+            _http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", result.Token);
+        }
+        return result;
     }
 }

@@ -1,0 +1,235 @@
+@page "/accept-invite"
+@layout PublicLayout
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Web
+@using GrowIT.Shared.DTOs
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject AuthenticationStateProvider AuthStateProvider
+
+<PageTitle>Accept Invitation - grow.IT</PageTitle>
+
+<div class="auth-page invite-page">
+    <div class="auth-container single-panel">
+        <div class="auth-card invite-card-shell">
+            <div class="auth-logo">
+                <a href="/welcome">
+                    <img src="images/logo-@(_currentTheme).png" alt="GrowIT" class="brand-logo" />
+                </a>
+            </div>
+
+            <div class="auth-header">
+                <h1>Join Your Organization</h1>
+                <p>Create your account to join <strong>@(_inviteValidation?.OrganizationName ?? "grow.IT")</strong>.</p>
+            </div>
+
+            @if (_isValidating)
+            {
+                <div class="text-center py-4 text-muted">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 mb-0">Validating invitation...</p>
+                </div>
+            }
+            else if (!string.IsNullOrWhiteSpace(_validationError))
+            {
+                <div class="auth-alert error">
+                    <i class="bi bi-exclamation-octagon"></i>
+                    <span>@_validationError</span>
+                </div>
+                <div class="auth-footer mt-3">
+                    <p><a href="/login">Return to sign in</a> or request a new invite from your admin.</p>
+                </div>
+            }
+            else
+            {
+                @if (_inviteValidation is not null)
+                {
+                    <div class="invite-summary-card">
+                        <div class="invite-summary-row">
+                            <span class="label">Organization</span>
+                            <span class="value">@_inviteValidation.OrganizationName</span>
+                        </div>
+                        <div class="invite-summary-row">
+                            <span class="label">Email</span>
+                            <span class="value">@_inviteValidation.Email</span>
+                        </div>
+                        <div class="invite-summary-row">
+                            <span class="label">Role</span>
+                            <span class="value">@_inviteValidation.Role</span>
+                        </div>
+                        <div class="invite-summary-row">
+                            <span class="label">Expires</span>
+                            <span class="value">@(_inviteValidation.ExpiresAt?.ToLocalTime().ToString("MMM d, yyyy h:mm tt") ?? "Unknown")</span>
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(_errorMessage))
+                {
+                    <div class="auth-alert error mt-3">
+                        <i class="bi bi-exclamation-circle"></i>
+                        <span>@_errorMessage</span>
+                    </div>
+                }
+
+                <form class="auth-form mt-3" @onsubmit="HandleAcceptInvite" @onsubmit:preventDefault>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="firstName">First name</label>
+                            <div class="input-wrapper">
+                                <i class="bi bi-person input-icon-bi"></i>
+                                <input id="firstName" class="form-control" @bind="_firstName" autocomplete="given-name" required />
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="lastName">Last name</label>
+                            <div class="input-wrapper">
+                                <i class="bi bi-person input-icon-bi"></i>
+                                <input id="lastName" class="form-control" @bind="_lastName" autocomplete="family-name" required />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="inviteEmail">Email</label>
+                        <div class="input-wrapper">
+                            <i class="bi bi-envelope input-icon-bi"></i>
+                            <input id="inviteEmail" class="form-control" @bind="_email" autocomplete="email" readonly />
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="invitePassword">Password</label>
+                        <div class="input-wrapper">
+                            <i class="bi bi-lock input-icon-bi"></i>
+                            <input type="@(_showPassword ? "text" : "password")" id="invitePassword" class="form-control" @bind="_password" autocomplete="new-password" minlength="8" required />
+                            <button type="button" class="password-toggle" @onclick="TogglePassword" title="Toggle password visibility">
+                                <i class="bi @(_showPassword ? "bi-eye-slash" : "bi-eye")"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block" disabled="@_isSubmitting">
+                        @if (_isSubmitting)
+                        {
+                            <span class="btn-spinner"></span>
+                            <span>Creating account...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-box-arrow-in-right"></i>
+                            <span>Join Organization</span>
+                        }
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "token")] public string? Token { get; set; }
+    [SupplyParameterFromQuery(Name = "email")] public string? EmailQuery { get; set; }
+
+    private string _currentTheme = "light";
+    private bool _isValidating = true;
+    private bool _isSubmitting;
+    private bool _showPassword;
+    private string? _validationError;
+    private string? _errorMessage;
+    private InviteValidationDto? _inviteValidation;
+
+    private string _email = string.Empty;
+    private string _firstName = string.Empty;
+    private string _lastName = string.Empty;
+    private string _password = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (authState.User.Identity?.IsAuthenticated ?? false)
+        {
+            Navigation.NavigateTo("/");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(Token) || string.IsNullOrWhiteSpace(EmailQuery))
+        {
+            _validationError = "Invite link is missing required information.";
+            _isValidating = false;
+            return;
+        }
+
+        try
+        {
+            _inviteValidation = await AuthService.ValidateInvite(Token, EmailQuery);
+            _email = _inviteValidation?.Email ?? EmailQuery ?? string.Empty;
+        }
+        catch (Exception ex)
+        {
+            _validationError = ex.Message;
+        }
+        finally
+        {
+            _isValidating = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _currentTheme = await JS.InvokeAsync<string>("blazorInterop.getTheme");
+            StateHasChanged();
+        }
+    }
+
+    private void TogglePassword() => _showPassword = !_showPassword;
+
+    private async Task HandleAcceptInvite()
+    {
+        _errorMessage = null;
+        if (string.IsNullOrWhiteSpace(Token) || string.IsNullOrWhiteSpace(_email))
+        {
+            _errorMessage = "Invite token or email is missing.";
+            return;
+        }
+
+        if (_password.Length < 8)
+        {
+            _errorMessage = "Password must be at least 8 characters.";
+            return;
+        }
+
+        _isSubmitting = true;
+        try
+        {
+            var result = await AuthService.AcceptInvite(new AcceptInviteRequest
+            {
+                Token = Token,
+                Email = _email,
+                FirstName = _firstName,
+                LastName = _lastName,
+                Password = _password
+            });
+
+            if (result is not null)
+            {
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                _errorMessage = "Unable to accept invite. Please contact your administrator.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+}

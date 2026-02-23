@@ -3,6 +3,7 @@
 ## Active API Contracts (used by current controllers/client)
 - `AuthDtos.cs`
 - `AuthResponseDto.cs`
+- `AdminManagementDtos.cs`
 - `ClientDto.cs`
 - `ClientDetailDto.cs`
 - `CreateClientRequest.cs`
@@ -15,10 +16,11 @@
 - `DashboardStatsDto.cs`
 - `FamilyMemberProfileDto.cs`
 - `FundDto.cs`
+- `HouseholdDtos.cs`
 - `ImprintListDto.cs`
 - `ImprintResponseDto.cs`
 - `InvestmentApiDtos.cs`
-- `InvestmentDetailDto.cs` (partially populated by current API)
+- `InvestmentDetailDto.cs` (v1-minimal detail contract)
 - `InvestmentListDto.cs`
 - `PaginatedResult.cs`
 - `ProgramDto.cs`
@@ -36,6 +38,6 @@
 - `InvestmentSummaryByFundingSource.cs`
 
 ## Notes
-- `ImprintListDto` and `InvestmentDetailDto` contain fields not fully populated by current backend projections yet.
+- `ImprintListDto` and `InvestmentDetailDto` were trimmed to the current v1 API payloads to avoid contract drift.
 - `ReportsController` and `GrowthPlansController` are now DB-backed (EF Core), not in-memory.
 - Prefer adding new request/response contracts to `GrowIT.Shared/DTOs` instead of defining classes inside controllers or client services.

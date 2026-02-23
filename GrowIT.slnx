@@ -6,4 +6,7 @@
     <Project Path="src/GrowIT.Infrastructure/GrowIT.Infrastructure.csproj" />
     <Project Path="src/GrowIT.Shared/GrowIT.Shared.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GrowIT.API.Tests/GrowIT.API.Tests.csproj" />
+  </Folder>
 </Solution>

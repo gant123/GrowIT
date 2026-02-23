@@ -31,6 +31,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<User> Users { get; set; }
     public DbSet<Role> Roles { get; set; }
     public DbSet<UserRole> UserRoles { get; set; }
+    public DbSet<OrganizationInvite> OrganizationInvites { get; set; }
 
     // Domain: Case Management
     public DbSet<Household> Households { get; set; }

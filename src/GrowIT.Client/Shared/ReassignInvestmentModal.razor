@@ -1,5 +1,5 @@
 @using GrowIT.Shared.DTOs
-@inject HttpClient Http
+@inject IInvestmentService InvestmentService
 
 @if (Show)
 {
@@ -58,15 +58,15 @@
             NewFamilyMemberId = newMemberId,
             ReassignReason = reason.Trim()
         };
-        var response = await Http.PatchAsJsonAsync($"api/investments/{InvestmentId}/reassign", payload);
-        if (response.IsSuccessStatusCode)
+        try
         {
+            await InvestmentService.ReassignInvestmentAsync(InvestmentId, payload);
             await OnChanged.InvokeAsync();
             await Close();
         }
-        else
+        catch (Exception ex)
         {
-            errorMessage = await response.Content.ReadAsStringAsync();
+            errorMessage = ex.Message;
         }
     }
 

@@ -15,6 +15,8 @@ public class User : IMustHaveTenant
     
     public string? PasswordResetToken { get; set; }
     public DateTime? ResetTokenExpires { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTime? DeactivatedAt { get; set; }
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

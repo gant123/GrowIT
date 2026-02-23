@@ -1,0 +1,246 @@
+@using GrowIT.Shared.DTOs
+@using GrowIT.Shared.Enums
+@inject IInvestmentService InvestmentService
+@inject IJSRuntime JS
+
+@if (Show)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); z-index: 1200;" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
+                <div class="modal-header border-bottom" style="border-color: var(--growit-border);">
+                    <div>
+                        <h5 class="modal-title fw-bold mb-1">Investment Details</h5>
+                        <div class="small text-muted">@(_detail?.PersonName ?? "Loading...")</div>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" @onclick="Close"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    @if (!string.IsNullOrWhiteSpace(_error))
+                    {
+                        <div class="alert alert-danger">@_error</div>
+                    }
+
+                    @if (_isLoading)
+                    {
+                        <div class="text-center py-4">
+                            <div class="spinner-border text-info" role="status"></div>
+                            <p class="small mt-2 mb-0 text-muted">Loading investment details...</p>
+                        </div>
+                    }
+                    else if (_detail == null)
+                    {
+                        <div class="alert alert-secondary mb-0">Investment not found.</div>
+                    }
+                    else
+                    {
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="small text-muted text-uppercase fw-bold">Date</div>
+                                <div>@_detail.Date.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="small text-muted text-uppercase fw-bold">Status</div>
+                                <div><span class="badge @GetStatusBadge(_detail.Status)">@_detail.Status</span></div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="small text-muted text-uppercase fw-bold">Person</div>
+                                <div>@_detail.PersonName</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="small text-muted text-uppercase fw-bold">Amount</div>
+                                <div class="fw-bold">@_detail.Amount.ToString("C2")</div>
+                            </div>
+                            <div class="col-md-12">
+                                <div class="small text-muted text-uppercase fw-bold">Purpose</div>
+                                <div>@_detail.Purpose</div>
+                            </div>
+                            <div class="col-md-12">
+                                <div class="small text-muted text-uppercase fw-bold">Program / Category</div>
+                                <div>@(string.IsNullOrWhiteSpace(_detail.Category) ? "Unspecified" : _detail.Category)</div>
+                            </div>
+                            <div class="col-md-12">
+                                <div class="small text-muted text-uppercase fw-bold">Notes</div>
+                                <div class="p-3 rounded" style="background-color: var(--growit-bg-primary); border: 1px solid var(--growit-border);">
+                                    @(string.IsNullOrWhiteSpace(_detail.Notes) ? "No notes recorded." : _detail.Notes)
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <div class="modal-footer border-top d-flex justify-content-between" style="border-color: var(--growit-border);">
+                    <div class="d-flex gap-2">
+                        @if (_detail != null && _detail.Status == InvestmentStatus.Pending)
+                        {
+                            <button class="btn btn-primary"
+                                    disabled="@_isMutating"
+                                    @onclick="ApproveAsync">
+                                Approve
+                            </button>
+                        }
+                        @if (_detail != null && _detail.Status == InvestmentStatus.Approved)
+                        {
+                            <button class="btn btn-secondary"
+                                    disabled="@_isMutating"
+                                    @onclick="DisburseAsync">
+                                Disburse
+                            </button>
+                        }
+                        @if (_detail != null)
+                        {
+                            <button class="btn btn-outline-danger"
+                                    disabled="@_isMutating"
+                                    @onclick="DeleteAsync">
+                                Delete
+                            </button>
+                        }
+                    </div>
+                    <button class="btn btn-outline-secondary" @onclick="Close">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Show { get; set; }
+    [Parameter] public EventCallback<bool> ShowChanged { get; set; }
+    [Parameter] public Guid InvestmentId { get; set; }
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private InvestmentDetailDto? _detail;
+    private bool _isLoading;
+    private bool _isMutating;
+    private string? _error;
+    private Guid _loadedId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Show)
+            return;
+
+        if (InvestmentId == Guid.Empty)
+        {
+            _detail = null;
+            _error = "Invalid investment id.";
+            return;
+        }
+
+        if (_loadedId != InvestmentId || _detail == null)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _isLoading = true;
+        _error = null;
+        try
+        {
+            _detail = await InvestmentService.GetInvestmentAsync(InvestmentId);
+            _loadedId = InvestmentId;
+            if (_detail == null)
+            {
+                _error = "Investment not found.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _detail = null;
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task ApproveAsync()
+    {
+        if (_detail == null) return;
+        _isMutating = true;
+        _error = null;
+        try
+        {
+            await InvestmentService.ApproveInvestmentAsync(_detail.Id, "Current User");
+            await LoadAsync();
+            await OnChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isMutating = false;
+        }
+    }
+
+    private async Task DisburseAsync()
+    {
+        if (_detail == null) return;
+        _isMutating = true;
+        _error = null;
+        try
+        {
+            if (!await JS.InvokeAsync<bool>("confirm", "Mark this investment as disbursed?"))
+                return;
+
+            await InvestmentService.DisburseInvestmentAsync(_detail.Id);
+            await LoadAsync();
+            await OnChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isMutating = false;
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (_detail == null) return;
+        _isMutating = true;
+        _error = null;
+        try
+        {
+            if (!await JS.InvokeAsync<bool>("confirm", "Delete this investment?"))
+                return;
+
+            await InvestmentService.DeleteInvestmentAsync(_detail.Id);
+            await OnChanged.InvokeAsync();
+            await Close();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isMutating = false;
+        }
+    }
+
+    private async Task Close()
+    {
+        _error = null;
+        _detail = null;
+        _loadedId = Guid.Empty;
+        await ShowChanged.InvokeAsync(false);
+    }
+
+    private static string GetStatusBadge(InvestmentStatus status) => status switch
+    {
+        InvestmentStatus.Pending => "bg-warning text-dark",
+        InvestmentStatus.Approved => "bg-success",
+        InvestmentStatus.Disbursed => "bg-info",
+        InvestmentStatus.Cancelled => "bg-danger",
+        _ => "bg-secondary"
+    };
+}

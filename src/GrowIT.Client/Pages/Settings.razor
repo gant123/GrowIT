@@ -1,69 +1,858 @@
 @page "/settings"
 @attribute [Authorize]
+@using GrowIT.Shared.DTOs
+@using Syncfusion.Blazor.Grids
+@inject IAdminService AdminService
+@inject IJSRuntime JS
 
-<div style="max-width: 1000px; margin: 0 auto;">
-    <PageHeader Title="Settings" Subtitle="Manage your organization and preferences" />
+<PageTitle>Settings - grow.IT</PageTitle>
 
-    <div class="row g-4">
-        <div class="col-md-4">
-            <div class="card-growit h-100">
-                <div class="card-body">
-                    <span class="oi oi-home" style="font-size: 28px; color: var(--growit-green); display: block; margin-bottom: 12px;"></span>
-                    <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Organization</h3>
-                    <p style="font-size: 13px; color: var(--growit-text-secondary); margin: 0 0 16px 0;">Manage your organization details and branding.</p>
-                    <button class="btn-secondary-growit" disabled style="opacity: 0.5;">Configure</button>
-                </div>
+<div class="settings-page">
+    <PageHeader Title="Settings" Subtitle="Manage organization configuration, team access, and operational controls." />
+
+    @if (!string.IsNullOrWhiteSpace(_pageError))
+    {
+        <div class="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
+            <div>@_pageError</div>
+            <button class="btn btn-sm btn-outline-light" @onclick="LoadAllAsync">Retry</button>
+        </div>
+    }
+
+    <div class="settings-kpis">
+        <div class="settings-kpi-card">
+            <div class="settings-kpi-icon org"><i class="bi bi-building"></i></div>
+            <div>
+                <div class="settings-kpi-label">Organization</div>
+                <div class="settings-kpi-value">@(_organization?.Name ?? "Loading...")</div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card-growit h-100">
-                <div class="card-body">
-                    <span class="oi oi-people" style="font-size: 28px; color: var(--growit-green); display: block; margin-bottom: 12px;"></span>
-                    <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Users & Roles</h3>
-                    <p style="font-size: 13px; color: var(--growit-text-secondary); margin: 0 0 16px 0;">Invite team members and manage access permissions.</p>
-                    <button class="btn-secondary-growit" disabled style="opacity: 0.5;">Manage</button>
-                </div>
+        <div class="settings-kpi-card">
+            <div class="settings-kpi-icon users"><i class="bi bi-people"></i></div>
+            <div>
+                <div class="settings-kpi-label">Active Users</div>
+                <div class="settings-kpi-value">@_users.Count(u => u.IsActive)</div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card-growit h-100">
-                <div class="card-body">
-                    <span class="oi oi-bell" style="font-size: 28px; color: var(--growit-warning); display: block; margin-bottom: 12px;"></span>
-                    <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Notifications</h3>
-                    <p style="font-size: 13px; color: var(--growit-text-secondary); margin: 0 0 16px 0;">Configure email alerts and notification preferences.</p>
-                    <button class="btn-secondary-growit" disabled style="opacity: 0.5;">Configure</button>
-                </div>
+        <div class="settings-kpi-card">
+            <div class="settings-kpi-icon pending"><i class="bi bi-envelope-paper"></i></div>
+            <div>
+                <div class="settings-kpi-label">Pending Invites</div>
+                <div class="settings-kpi-value">@PendingInviteCount</div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card-growit h-100">
-                <div class="card-body">
-                    <span class="oi oi-link-intact" style="font-size: 28px; color: var(--growit-text-secondary); display: block; margin-bottom: 12px;"></span>
-                    <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Integrations</h3>
-                    <p style="font-size: 13px; color: var(--growit-text-secondary); margin: 0 0 16px 0;">Connect with external services and data sources.</p>
-                    <button class="btn-secondary-growit" disabled style="opacity: 0.5;">View</button>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card-growit h-100">
-                <div class="card-body">
-                    <span class="oi oi-credit-card" style="font-size: 28px; color: var(--growit-success); display: block; margin-bottom: 12px;"></span>
-                    <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Billing</h3>
-                    <p style="font-size: 13px; color: var(--growit-text-secondary); margin: 0 0 16px 0;">Manage your subscription and payment methods.</p>
-                    <button class="btn-secondary-growit" disabled style="opacity: 0.5;">Manage</button>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card-growit h-100">
-                <div class="card-body">
-                    <span class="oi oi-lock-locked" style="font-size: 28px; color: var(--growit-danger); display: block; margin-bottom: 12px;"></span>
-                    <h3 style="font-size: 16px; font-weight: 600; margin: 0 0 8px 0;">Security</h3>
-                    <p style="font-size: 13px; color: var(--growit-text-secondary); margin: 0 0 16px 0;">Password policies and two-factor authentication.</p>
-                    <button class="btn-secondary-growit" disabled style="opacity: 0.5;">Configure</button>
-                </div>
+        <div class="settings-kpi-card">
+            <div class="settings-kpi-icon modules"><i class="bi bi-bell"></i></div>
+            <div>
+                <div class="settings-kpi-label">Invite Alerts</div>
+                <div class="settings-kpi-value">@InviteActivityUnreadCount</div>
             </div>
         </div>
     </div>
+
+    <div class="settings-tabbar" role="tablist" aria-label="Settings sections">
+        <button class="settings-tab @(ActiveTab == "organization" ? "active" : null)" @onclick="@(() => SetActiveTab("organization"))">Organization</button>
+        <button class="settings-tab @(ActiveTab == "users" ? "active" : null)" @onclick="@(() => SetActiveTab("users"))">Users & Roles</button>
+        <button class="settings-tab @(ActiveTab == "invites" ? "active" : null)" @onclick="@(() => SetActiveTab("invites"))">Invites</button>
+        <button class="settings-tab @(ActiveTab == "security" ? "active" : null)" @onclick="@(() => SetActiveTab("security"))">Security</button>
+    </div>
+
+    @if (_isLoading)
+    {
+        <div class="settings-loading">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p>Loading settings workspace...</p>
+        </div>
+    }
+    else
+    {
+        @if (ActiveTab == "organization")
+        {
+            <section class="settings-panel">
+                <div class="settings-panel-header">
+                    <div>
+                        <h2>Organization Profile</h2>
+                        <p>Update the organization profile and module configuration used throughout the platform.</p>
+                    </div>
+                </div>
+                <div class="settings-panel-body">
+                    @if (!string.IsNullOrWhiteSpace(_orgSaveMessage))
+                    {
+                        <div class="alert alert-success">@_orgSaveMessage</div>
+                    }
+                    @if (_organizationEdit is not null)
+                    {
+                        <EditForm Model="_organizationEdit" OnValidSubmit="SaveOrganizationAsync">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Organization Name</label>
+                                    <InputText class="form-control" @bind-Value="_organizationEdit.Name" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Contact Email</label>
+                                    <InputText class="form-control" @bind-Value="_organizationEdit.ContactEmail" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Organization Type</label>
+                                    <InputText class="form-control" @bind-Value="_organizationEdit.OrganizationType" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Organization Size</label>
+                                    <InputText class="form-control" @bind-Value="_organizationEdit.OrganizationSize" />
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Address</label>
+                                    <InputTextArea class="form-control" rows="3" @bind-Value="_organizationEdit.Address" />
+                                </div>
+                            </div>
+
+                            <div class="module-grid mt-4">
+                                <label class="module-card @(_organizationEdit.TrackPeople ? "selected" : null)">
+                                    <InputCheckbox @bind-Value="_organizationEdit.TrackPeople" />
+                                    <div>
+                                        <strong><i class="bi bi-people"></i> People / Clients</strong>
+                                        <span>Case files, households, and member profiles</span>
+                                    </div>
+                                </label>
+                                <label class="module-card @(_organizationEdit.TrackInvestments ? "selected" : null)">
+                                    <InputCheckbox @bind-Value="_organizationEdit.TrackInvestments" />
+                                    <div>
+                                        <strong><i class="bi bi-cash-stack"></i> Investments</strong>
+                                        <span>Service costs, disbursements, and funding usage</span>
+                                    </div>
+                                </label>
+                                <label class="module-card @(_organizationEdit.TrackOutcomes ? "selected" : null)">
+                                    <InputCheckbox @bind-Value="_organizationEdit.TrackOutcomes" />
+                                    <div>
+                                        <strong><i class="bi bi-check2-circle"></i> Outcomes / Imprints</strong>
+                                        <span>Milestones, evidence, and impact verification</span>
+                                    </div>
+                                </label>
+                                <label class="module-card @(_organizationEdit.TrackPrograms ? "selected" : null)">
+                                    <InputCheckbox @bind-Value="_organizationEdit.TrackPrograms" />
+                                    <div>
+                                        <strong><i class="bi bi-folder2-open"></i> Programs</strong>
+                                        <span>Service models, capacity assumptions, and categories</span>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div class="d-flex justify-content-end mt-4">
+                                <button class="btn btn-primary" type="submit" disabled="@_isSavingOrganization">
+                                    @if (_isSavingOrganization)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    }
+                                    <span>Save Organization Settings</span>
+                                </button>
+                            </div>
+                        </EditForm>
+                    }
+                </div>
+            </section>
+        }
+
+        @if (ActiveTab == "users")
+        {
+            <section class="settings-panel">
+                <div class="settings-panel-header">
+                    <div>
+                        <h2>Users & Roles</h2>
+                        <p>Manage roles and access state for users in your organization. Invite new team members from the Invites tab.</p>
+                    </div>
+                </div>
+                <div class="settings-panel-body">
+                    @if (!string.IsNullOrWhiteSpace(_userActionMessage))
+                    {
+                        <div class="alert alert-success">@_userActionMessage</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_userActionError))
+                    {
+                        <div class="alert alert-danger">@_userActionError</div>
+                    }
+
+                    <SfGrid DataSource="@_users" AllowPaging="true" AllowSorting="true" AllowResizing="true" Width="100%">
+                        <GridPageSettings PageSize="8"></GridPageSettings>
+                        <GridColumns>
+                            <GridColumn Field=@nameof(AdminUserListItemDto.FullName) HeaderText="Name" Width="200"></GridColumn>
+                            <GridColumn Field=@nameof(AdminUserListItemDto.Email) HeaderText="Email" Width="240"></GridColumn>
+                            <GridColumn HeaderText="Status" Width="130">
+                                <Template>
+                                    @{
+                                        var user = (context as AdminUserListItemDto)!;
+                                    }
+                                    <span class="user-status-pill @(user.IsActive ? "active" : "inactive")">
+                                        @(user.IsActive ? "Active" : "Inactive")
+                                    </span>
+                                </Template>
+                            </GridColumn>
+                            <GridColumn HeaderText="Role" Width="220">
+                                <Template>
+                                    @{
+                                        var user = (context as AdminUserListItemDto)!;
+                                    }
+                                    <div class="user-role-editor">
+                                        <select class="form-select form-select-sm"
+                                                value="@GetRoleDraft(user)"
+                                                @onchange="e => SetRoleDraft(user.Id, e.Value?.ToString())"
+                                                disabled="@IsUserBusy(user.Id)">
+                                            @foreach (var role in RoleOptions)
+                                            {
+                                                <option value="@role">@role</option>
+                                            }
+                                            @if (!IsPresetRole(GetRoleDraft(user)))
+                                            {
+                                                <option value="@GetRoleDraft(user)">@GetRoleDraft(user)</option>
+                                            }
+                                        </select>
+                                        <button class="btn btn-sm btn-outline-primary"
+                                                disabled="@(!CanSaveRole(user) || IsUserBusy(user.Id))"
+                                                @onclick="() => SaveUserRoleAsync(user)">
+                                            Save
+                                        </button>
+                                    </div>
+                                </Template>
+                            </GridColumn>
+                            <GridColumn HeaderText="Joined" Width="150">
+                                <Template>
+                                    @{
+                                        var user = (context as AdminUserListItemDto)!;
+                                    }
+                                    <span>@user.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")</span>
+                                </Template>
+                            </GridColumn>
+                            <GridColumn HeaderText="Actions" Width="200">
+                                <Template>
+                                    @{
+                                        var user = (context as AdminUserListItemDto)!;
+                                    }
+                                    <div class="grid-action-row">
+                                        @if (user.IsActive)
+                                        {
+                                            <button class="btn btn-sm btn-outline-danger"
+                                                    disabled="@IsUserBusy(user.Id)"
+                                                    @onclick="() => DeactivateUserAsync(user)">
+                                                Deactivate
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-sm btn-outline-success"
+                                                    disabled="@IsUserBusy(user.Id)"
+                                                    @onclick="() => ReactivateUserAsync(user)">
+                                                Reactivate
+                                            </button>
+                                        }
+                                    </div>
+                                </Template>
+                            </GridColumn>
+                        </GridColumns>
+                    </SfGrid>
+                </div>
+            </section>
+        }
+
+        @if (ActiveTab == "invites")
+        {
+            <section class="settings-panel">
+                <div class="settings-panel-header">
+                    <div>
+                        <h2>Invite Team Members</h2>
+                        <p>Send secure invitations so staff can join your organization workspace without creating a new tenant.</p>
+                    </div>
+                </div>
+                <div class="settings-panel-body">
+                    @if (!string.IsNullOrWhiteSpace(_inviteMessage))
+                    {
+                        <div class="alert alert-success">@_inviteMessage</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(_inviteError))
+                    {
+                        <div class="alert alert-danger">@_inviteError</div>
+                    }
+
+                    <div class="invite-create-card">
+                        <h3>Send Invitation</h3>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <InputText class="form-control" @bind-Value="_newInvite.Email" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">First Name</label>
+                                <InputText class="form-control" @bind-Value="_newInvite.FirstName" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Last Name</label>
+                                <InputText class="form-control" @bind-Value="_newInvite.LastName" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Role</label>
+                                <InputText class="form-control" @bind-Value="_newInvite.Role" placeholder="Admin / Manager / Case Manager" />
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Expires (days)</label>
+                                <InputNumber class="form-control" @bind-Value="_newInvite.ExpiresInDays" />
+                            </div>
+                            <div class="col-md-6 d-flex align-items-end">
+                                <button class="btn btn-primary" @onclick="CreateInviteAsync" disabled="@_isSendingInvite">
+                                    @if (_isSendingInvite)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    }
+                                    <span>Send Invite</span>
+                                </button>
+                                @if (!string.IsNullOrWhiteSpace(_lastInviteLink))
+                                {
+                                    <button class="btn btn-outline-secondary ms-2" @onclick="CopyLastInviteLinkAsync">
+                                        <i class="bi bi-clipboard"></i>
+                                        <span>Copy Link</span>
+                                    </button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="invite-grid-wrap mt-4">
+                        <SfGrid DataSource="@_invites" AllowPaging="true" AllowSorting="true" AllowResizing="true" Width="100%">
+                            <GridPageSettings PageSize="8"></GridPageSettings>
+                            <GridColumns>
+                                <GridColumn Field=@nameof(OrganizationInviteListItemDto.Email) HeaderText="Email" Width="220"></GridColumn>
+                                <GridColumn HeaderText="Invitee" Width="180">
+                                    <Template>
+                                        @{
+                                            var invite = (context as OrganizationInviteListItemDto)!;
+                                            var name = string.Join(" ", new[] { invite.FirstName, invite.LastName }.Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
+                                        }
+                                        <span>@(string.IsNullOrWhiteSpace(name) ? "Not provided" : name)</span>
+                                    </Template>
+                                </GridColumn>
+                                <GridColumn Field=@nameof(OrganizationInviteListItemDto.Role) HeaderText="Role" Width="130"></GridColumn>
+                                <GridColumn HeaderText="Status" Width="130">
+                                    <Template>
+                                        @{
+                                            var invite = (context as OrganizationInviteListItemDto)!;
+                                        }
+                                        <span class="invite-status-pill @GetInviteStatusClass(invite.Status)">@invite.Status</span>
+                                    </Template>
+                                </GridColumn>
+                                <GridColumn HeaderText="Created" Width="150">
+                                    <Template>
+                                        @{
+                                            var invite = (context as OrganizationInviteListItemDto)!;
+                                        }
+                                        <span>@invite.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")</span>
+                                    </Template>
+                                </GridColumn>
+                                <GridColumn HeaderText="Expires" Width="150">
+                                    <Template>
+                                        @{
+                                            var invite = (context as OrganizationInviteListItemDto)!;
+                                        }
+                                        <span>@invite.ExpiresAt.ToLocalTime().ToString("MMM d, yyyy")</span>
+                                    </Template>
+                                </GridColumn>
+                                <GridColumn HeaderText="Actions" Width="200">
+                                    <Template>
+                                        @{
+                                            var invite = (context as OrganizationInviteListItemDto)!;
+                                        }
+                                        <div class="grid-action-row">
+                                            @if (invite.Status == "Pending" || invite.Status == "Expired")
+                                            {
+                                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => ResendInviteAsync(invite.Id)">Resend</button>
+                                            }
+                                            @if (invite.Status != "Accepted" && invite.Status != "Revoked")
+                                            {
+                                                <button class="btn btn-sm btn-outline-danger" @onclick="() => RevokeInviteAsync(invite.Id)">Revoke</button>
+                                            }
+                                        </div>
+                                    </Template>
+                                </GridColumn>
+                            </GridColumns>
+                        </SfGrid>
+                    </div>
+
+                    <div class="invite-audit-card mt-4">
+                        <div class="invite-audit-header">
+                            <div>
+                                <h3>Invite Activity Notifications</h3>
+                                <p>Audit trail alerts for invite creation, resend, revocation, and acceptance.</p>
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary"
+                                    disabled="@(_inviteActivity.Count == 0 || InviteActivityUnreadCount == 0)"
+                                    @onclick="MarkInviteActivityReadAllAsync">
+                                Mark all read
+                            </button>
+                        </div>
+
+                        @if (_inviteActivity.Count == 0)
+                        {
+                            <div class="invite-audit-empty">
+                                <i class="bi bi-bell-slash"></i>
+                                <span>No invite activity yet.</span>
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="invite-audit-list">
+                                @foreach (var item in _inviteActivity)
+                                {
+                                    <div class="invite-audit-item @(item.IsRead ? "read" : "unread")">
+                                        <div class="invite-audit-dot" aria-hidden="true"></div>
+                                        <div class="invite-audit-content">
+                                            <div class="invite-audit-title-row">
+                                                <strong>@item.Title</strong>
+                                                <span>@item.CreatedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</span>
+                                            </div>
+                                            <p>@item.Message</p>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </section>
+        }
+
+        @if (ActiveTab == "security")
+        {
+            <section class="settings-panel">
+                <div class="settings-panel-header">
+                    <div>
+                        <h2>Security & Access Controls</h2>
+                        <p>Foundational security controls are available now. Advanced policies can be layered in next.</p>
+                    </div>
+                </div>
+                <div class="settings-panel-body">
+                    <div class="seed-tools-card mb-4">
+                        <div>
+                            <h3>Demo Data</h3>
+                            <p>Seed sample households, clients, funds, programs, investments, imprints, and growth plans for UI and workflow testing.</p>
+                            @if (!string.IsNullOrWhiteSpace(_seedDataMessage))
+                            {
+                                <div class="alert alert-success py-2 mb-0 mt-2">@_seedDataMessage</div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(_seedDataError))
+                            {
+                                <div class="alert alert-danger py-2 mb-0 mt-2">@_seedDataError</div>
+                            }
+                        </div>
+                        <button class="btn btn-outline-primary"
+                                disabled="@_isSeedingDemoData"
+                                @onclick="SeedDemoDataAsync">
+                            @if (_isSeedingDemoData)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            <span>Seed Demo Data</span>
+                        </button>
+                    </div>
+
+                    <div class="security-grid">
+                        <div class="security-card">
+                            <div class="security-icon"><i class="bi bi-shield-lock"></i></div>
+                            <div>
+                                <h3>Password Resets</h3>
+                                <p>Users can self-serve password resets via the secure token-based reset flow.</p>
+                            </div>
+                            <span class="security-status ready">Enabled</span>
+                        </div>
+                        <div class="security-card">
+                            <div class="security-icon"><i class="bi bi-building-lock"></i></div>
+                            <div>
+                                <h3>Tenant Isolation</h3>
+                                <p>Tenant-scoped query filters and endpoint validation protect organization boundaries.</p>
+                            </div>
+                            <span class="security-status ready">Enabled</span>
+                        </div>
+                        <div class="security-card">
+                            <div class="security-icon"><i class="bi bi-envelope-check"></i></div>
+                            <div>
+                                <h3>Invite Expiration</h3>
+                                <p>New org invites expire automatically and can be revoked or resent from this workspace.</p>
+                            </div>
+                            <span class="security-status ready">Enabled</span>
+                        </div>
+                        <div class="security-card">
+                            <div class="security-icon"><i class="bi bi-key"></i></div>
+                            <div>
+                                <h3>Advanced MFA Policy</h3>
+                                <p>Planned next: enforced MFA, session controls, and role policy templates.</p>
+                            </div>
+                            <span class="security-status planned">Planned</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        }
+    }
 </div>
+
+@code {
+    private string ActiveTab { get; set; } = "organization";
+    private bool _isLoading = true;
+    private bool _isSavingOrganization;
+    private bool _isSendingInvite;
+    private bool _isSeedingDemoData;
+    private string? _pageError;
+    private string? _orgSaveMessage;
+    private string? _userActionMessage;
+    private string? _userActionError;
+    private string? _inviteMessage;
+    private string? _inviteError;
+    private string? _lastInviteLink;
+    private string? _seedDataMessage;
+    private string? _seedDataError;
+
+    private OrganizationSettingsDto? _organization;
+    private UpdateOrganizationSettingsRequest? _organizationEdit;
+    private List<AdminUserListItemDto> _users = new();
+    private List<OrganizationInviteListItemDto> _invites = new();
+    private List<InviteAuditNotificationDto> _inviteActivity = new();
+    private CreateOrganizationInviteRequest _newInvite = new() { ExpiresInDays = 7, Role = "Member" };
+    private readonly HashSet<Guid> _busyUserIds = new();
+    private readonly Dictionary<Guid, string> _roleDrafts = new();
+    private static readonly string[] RoleOptions = ["Admin", "Manager", "Case Manager", "Analyst", "Member"];
+
+    private int PendingInviteCount => _invites.Count(i => string.Equals(i.Status, "Pending", StringComparison.OrdinalIgnoreCase));
+    private int InviteActivityUnreadCount => _inviteActivity.Count(i => !i.IsRead);
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAllAsync();
+    }
+
+    private async Task LoadAllAsync()
+    {
+        _isLoading = true;
+        _pageError = null;
+        _orgSaveMessage = null;
+        try
+        {
+            var orgTask = AdminService.GetOrganizationAsync();
+            var usersTask = AdminService.GetUsersAsync();
+            var invitesTask = AdminService.GetInvitesAsync();
+            var inviteActivityTask = AdminService.GetInviteActivityAsync(30);
+            await Task.WhenAll(orgTask, usersTask, invitesTask, inviteActivityTask);
+
+            _organization = await orgTask;
+            _organizationEdit = new UpdateOrganizationSettingsRequest
+            {
+                Name = _organization.Name,
+                Address = _organization.Address,
+                ContactEmail = _organization.ContactEmail,
+                OrganizationType = _organization.OrganizationType,
+                OrganizationSize = _organization.OrganizationSize,
+                TrackPeople = _organization.TrackPeople,
+                TrackInvestments = _organization.TrackInvestments,
+                TrackOutcomes = _organization.TrackOutcomes,
+                TrackPrograms = _organization.TrackPrograms
+            };
+
+            _users = await usersTask;
+            InitializeRoleDrafts(_users);
+            _invites = await invitesTask;
+            _inviteActivity = await inviteActivityTask;
+        }
+        catch (Exception ex)
+        {
+            _pageError = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task SaveOrganizationAsync()
+    {
+        if (_organizationEdit is null) return;
+
+        _isSavingOrganization = true;
+        _orgSaveMessage = null;
+        _pageError = null;
+        try
+        {
+            _organization = await AdminService.UpdateOrganizationAsync(_organizationEdit);
+            _orgSaveMessage = "Organization settings saved.";
+        }
+        catch (Exception ex)
+        {
+            _pageError = ex.Message;
+        }
+        finally
+        {
+            _isSavingOrganization = false;
+        }
+    }
+
+    private async Task CreateInviteAsync()
+    {
+        ClearTransientMessages();
+        _inviteError = null;
+        _inviteMessage = null;
+        _lastInviteLink = null;
+
+        if (string.IsNullOrWhiteSpace(_newInvite.Email))
+        {
+            _inviteError = "Email is required.";
+            return;
+        }
+
+        _isSendingInvite = true;
+        try
+        {
+            var response = await AdminService.CreateInviteAsync(_newInvite);
+            _inviteMessage = response.Message;
+            _lastInviteLink = response.InviteLink;
+            _newInvite = new CreateOrganizationInviteRequest { ExpiresInDays = 7, Role = "Member" };
+            _invites = await AdminService.GetInvitesAsync();
+            _inviteActivity = await AdminService.GetInviteActivityAsync(30);
+            ActiveTab = "invites";
+        }
+        catch (Exception ex)
+        {
+            _inviteError = ex.Message;
+        }
+        finally
+        {
+            _isSendingInvite = false;
+        }
+    }
+
+    private async Task ResendInviteAsync(Guid inviteId)
+    {
+        ClearTransientMessages();
+        _inviteError = null;
+        _inviteMessage = null;
+        try
+        {
+            var response = await AdminService.ResendInviteAsync(inviteId);
+            _inviteMessage = response.Message;
+            _lastInviteLink = response.InviteLink;
+            _invites = await AdminService.GetInvitesAsync();
+            _inviteActivity = await AdminService.GetInviteActivityAsync(30);
+        }
+        catch (Exception ex)
+        {
+            _inviteError = ex.Message;
+        }
+    }
+
+    private async Task RevokeInviteAsync(Guid inviteId)
+    {
+        ClearTransientMessages();
+        _inviteError = null;
+        _inviteMessage = null;
+        try
+        {
+            await AdminService.RevokeInviteAsync(inviteId);
+            _inviteMessage = "Invite revoked.";
+            _invites = await AdminService.GetInvitesAsync();
+            _inviteActivity = await AdminService.GetInviteActivityAsync(30);
+        }
+        catch (Exception ex)
+        {
+            _inviteError = ex.Message;
+        }
+    }
+
+    private async Task CopyLastInviteLinkAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_lastInviteLink)) return;
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", _lastInviteLink);
+        try
+        {
+            await JS.InvokeVoidAsync("blazorInterop.showToast", "Invite link copied", "success");
+        }
+        catch
+        {
+            // Clipboard succeeded; toast is optional.
+        }
+    }
+
+    private static string GetInviteStatusClass(string status) => status.ToLowerInvariant() switch
+    {
+        "pending" => "pending",
+        "accepted" => "accepted",
+        "expired" => "expired",
+        "revoked" => "revoked",
+        _ => "unknown"
+    };
+
+    private void SetActiveTab(string tab)
+    {
+        ActiveTab = tab;
+        ClearTransientMessages();
+    }
+
+    private string GetRoleDraft(AdminUserListItemDto user)
+    {
+        if (_roleDrafts.TryGetValue(user.Id, out var role) && !string.IsNullOrWhiteSpace(role))
+            return role;
+
+        _roleDrafts[user.Id] = user.Role;
+        return user.Role;
+    }
+
+    private void SetRoleDraft(Guid userId, string? value)
+    {
+        _roleDrafts[userId] = string.IsNullOrWhiteSpace(value) ? "Member" : value.Trim();
+        _userActionError = null;
+        _userActionMessage = null;
+    }
+
+    private bool CanSaveRole(AdminUserListItemDto user) =>
+        !string.Equals(GetRoleDraft(user).Trim(), user.Role?.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    private bool IsUserBusy(Guid userId) => _busyUserIds.Contains(userId);
+
+    private static bool IsPresetRole(string role) =>
+        RoleOptions.Any(r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase));
+
+    private async Task SaveUserRoleAsync(AdminUserListItemDto user)
+    {
+        var newRole = GetRoleDraft(user);
+        if (string.IsNullOrWhiteSpace(newRole)) return;
+
+        ClearTransientMessages();
+        _busyUserIds.Add(user.Id);
+        try
+        {
+            var updated = await AdminService.UpdateUserRoleAsync(user.Id, new UpdateAdminUserRoleRequest { Role = newRole });
+            ReplaceUser(updated);
+            _roleDrafts[user.Id] = updated.Role;
+            _userActionMessage = $"Updated role for {updated.FullName}.";
+        }
+        catch (Exception ex)
+        {
+            _userActionError = ex.Message;
+        }
+        finally
+        {
+            _busyUserIds.Remove(user.Id);
+        }
+    }
+
+    private async Task DeactivateUserAsync(AdminUserListItemDto user)
+    {
+        ClearTransientMessages();
+        _busyUserIds.Add(user.Id);
+        try
+        {
+            var updated = await AdminService.DeactivateUserAsync(user.Id);
+            ReplaceUser(updated);
+            _userActionMessage = $"{updated.FullName} has been deactivated.";
+        }
+        catch (Exception ex)
+        {
+            _userActionError = ex.Message;
+        }
+        finally
+        {
+            _busyUserIds.Remove(user.Id);
+        }
+    }
+
+    private async Task ReactivateUserAsync(AdminUserListItemDto user)
+    {
+        ClearTransientMessages();
+        _busyUserIds.Add(user.Id);
+        try
+        {
+            var updated = await AdminService.ReactivateUserAsync(user.Id);
+            ReplaceUser(updated);
+            _userActionMessage = $"{updated.FullName} has been reactivated.";
+        }
+        catch (Exception ex)
+        {
+            _userActionError = ex.Message;
+        }
+        finally
+        {
+            _busyUserIds.Remove(user.Id);
+        }
+    }
+
+    private async Task MarkInviteActivityReadAllAsync()
+    {
+        ClearTransientMessages();
+        try
+        {
+            await AdminService.MarkInviteActivityReadAllAsync();
+            _inviteActivity = _inviteActivity
+                .Select(i => { i.IsRead = true; return i; })
+                .ToList();
+            _inviteMessage = "Invite activity marked as read.";
+        }
+        catch (Exception ex)
+        {
+            _inviteError = ex.Message;
+        }
+    }
+
+    private async Task SeedDemoDataAsync()
+    {
+        ClearTransientMessages();
+        _seedDataError = null;
+        _seedDataMessage = null;
+        _isSeedingDemoData = true;
+        try
+        {
+            var result = await AdminService.SeedDemoDataAsync();
+            _seedDataMessage = $"{result.Message} " +
+                $"Programs:{result.ProgramsCreated}, Funds:{result.FundsCreated}, Households:{result.HouseholdsCreated}, " +
+                $"Clients:{result.ClientsCreated}, Members:{result.FamilyMembersCreated}, Investments:{result.InvestmentsCreated}, " +
+                $"Imprints:{result.ImprintsCreated}, Plans:{result.GrowthPlansCreated}.";
+
+            await LoadAllAsync();
+            ActiveTab = "security";
+        }
+        catch (Exception ex)
+        {
+            _seedDataError = ex.Message;
+        }
+        finally
+        {
+            _isSeedingDemoData = false;
+        }
+    }
+
+    private void ReplaceUser(AdminUserListItemDto updated)
+    {
+        var index = _users.FindIndex(u => u.Id == updated.Id);
+        if (index >= 0)
+        {
+            _users[index] = updated;
+        }
+        else
+        {
+            _users.Add(updated);
+        }
+
+        _users = _users
+            .OrderBy(u => u.FullName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(u => u.Email, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private void InitializeRoleDrafts(IEnumerable<AdminUserListItemDto> users)
+    {
+        _roleDrafts.Clear();
+        foreach (var user in users)
+        {
+            _roleDrafts[user.Id] = user.Role;
+        }
+    }
+
+    private void ClearTransientMessages()
+    {
+        _orgSaveMessage = null;
+        _userActionMessage = null;
+        _userActionError = null;
+        _inviteMessage = null;
+        _inviteError = null;
+        _seedDataMessage = null;
+        _seedDataError = null;
+    }
+}

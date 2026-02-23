@@ -1,0 +1,314 @@
+/* Enterprise UI refresh layer (loads last) */
+
+:root {
+    --enterprise-shell-bg: linear-gradient(180deg, #f8fafc 0%, #f4f7fb 100%);
+    --enterprise-surface: rgba(255, 255, 255, 0.88);
+    --enterprise-surface-strong: #ffffff;
+    --enterprise-border: rgba(15, 23, 42, 0.08);
+    --enterprise-shadow: 0 10px 28px -18px rgba(15, 23, 42, 0.35);
+    --enterprise-shadow-lg: 0 24px 48px -28px rgba(15, 23, 42, 0.45);
+}
+
+[data-theme="dark"] {
+    --enterprise-shell-bg: radial-gradient(circle at top, #0f172a 0%, #020617 65%);
+    --enterprise-surface: rgba(15, 23, 42, 0.78);
+    --enterprise-surface-strong: #0f172a;
+    --enterprise-border: rgba(148, 163, 184, 0.18);
+    --enterprise-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.55);
+    --enterprise-shadow-lg: 0 28px 52px -26px rgba(0, 0, 0, 0.65);
+}
+
+body {
+    background: var(--enterprise-shell-bg);
+}
+
+.growit-app {
+    background: transparent;
+}
+
+.growit-sidebar {
+    background: color-mix(in srgb, var(--enterprise-surface-strong) 95%, transparent);
+    border-right-color: var(--enterprise-border);
+    box-shadow: var(--enterprise-shadow);
+}
+
+.growit-topbar {
+    background: var(--enterprise-surface);
+    border-bottom-color: var(--enterprise-border);
+    box-shadow: 0 8px 20px -18px rgba(15, 23, 42, 0.45);
+}
+
+.growit-content {
+    background:
+        radial-gradient(circle at 100% 0%, rgba(5, 150, 105, 0.06), transparent 35%),
+        radial-gradient(circle at 0% 100%, rgba(14, 165, 233, 0.05), transparent 40%),
+        var(--growit-bg-primary);
+}
+
+.card-growit,
+.dashboard-card,
+.summary-card,
+.season-card {
+    border-color: var(--enterprise-border);
+    box-shadow: var(--enterprise-shadow);
+    background: color-mix(in srgb, var(--enterprise-surface-strong) 98%, transparent);
+}
+
+.card-growit:hover,
+.dashboard-card:hover,
+.summary-card:hover,
+.season-card:hover {
+    box-shadow: var(--enterprise-shadow-lg);
+}
+
+.page-header-wrapper {
+    border-bottom-color: var(--enterprise-border);
+}
+
+.page-title {
+    letter-spacing: -0.03em;
+}
+
+.page-subtitle {
+    max-width: 70ch;
+}
+
+.nav-item,
+.nav-link {
+    border: 1px solid transparent;
+}
+
+.nav-item:hover,
+.nav-link:hover {
+    border-color: var(--enterprise-border);
+}
+
+.nav-item.active {
+    border-color: color-mix(in srgb, var(--growit-green) 35%, var(--enterprise-border));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--growit-green) 15%, transparent);
+}
+
+.topbar-btn,
+.user-profile-btn,
+.fiscal-select-input,
+.search-input-wrapper input {
+    border-color: var(--enterprise-border);
+    background: color-mix(in srgb, var(--enterprise-surface-strong) 96%, transparent);
+}
+
+.search-input-wrapper input::placeholder {
+    color: color-mix(in srgb, var(--growit-text-dim) 85%, transparent);
+}
+
+.topbar-dropdown {
+    border-color: var(--enterprise-border);
+    background: color-mix(in srgb, var(--enterprise-surface-strong) 98%, transparent);
+    box-shadow: var(--enterprise-shadow-lg);
+}
+
+.dropdown-header,
+.dropdown-footer,
+.user-dropdown-header {
+    background: color-mix(in srgb, var(--growit-bg-primary) 80%, var(--enterprise-surface-strong));
+    border-color: var(--enterprise-border);
+}
+
+.btn,
+.btn-growit,
+.btn-primary-growit,
+.btn-secondary-growit,
+.btn-outline-growit {
+    border-radius: 10px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+}
+
+.btn-icon {
+    margin-right: 0.45rem;
+}
+
+.btn-icon-only {
+    width: 34px;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--enterprise-border);
+    background: color-mix(in srgb, var(--enterprise-surface-strong) 96%, transparent);
+    color: var(--growit-text-secondary);
+    border-radius: 10px;
+    transition: all var(--transition-fast);
+}
+
+.btn-icon-only:hover {
+    background: var(--growit-bg-card-hover);
+    color: var(--growit-text-primary);
+}
+
+.btn-icon-only.danger:hover {
+    color: var(--growit-danger);
+    border-color: color-mix(in srgb, var(--growit-danger) 30%, var(--enterprise-border));
+    background: color-mix(in srgb, var(--growit-danger) 6%, transparent);
+}
+
+.btn-icon-only .bi {
+    font-size: 0.95rem;
+}
+
+.btn-primary-growit,
+.btn.btn-primary {
+    box-shadow: 0 10px 20px -16px rgba(5, 150, 105, 0.65);
+}
+
+.btn-plant {
+    box-shadow: 0 10px 22px -16px rgba(5, 150, 105, 0.7);
+}
+
+.form-control,
+.form-select,
+.form-input-growit,
+.form-select-growit,
+.form-textarea-growit {
+    border-color: var(--enterprise-border);
+    border-radius: 10px;
+}
+
+.table,
+table {
+    --bs-table-bg: transparent;
+}
+
+.table > :not(caption) > * > * {
+    border-bottom-color: color-mix(in srgb, var(--enterprise-border) 85%, transparent);
+}
+
+.badge,
+.badge-growit {
+    border-radius: 999px;
+    font-weight: 600;
+}
+
+.modal-content,
+.modal-growit,
+.modal-panel,
+.topbar-dropdown,
+.card-growit {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.empty-state {
+    border: 1px dashed color-mix(in srgb, var(--enterprise-border) 85%, transparent);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--enterprise-surface-strong) 92%, transparent);
+}
+
+.notification-item {
+    border-radius: 10px;
+    margin: 0 8px;
+}
+
+.notification-item.unread {
+    background: color-mix(in srgb, var(--growit-green) 7%, transparent);
+    border-left-width: 2px;
+}
+
+.kpi-card,
+.summary-card,
+.dashboard-card {
+    position: relative;
+    isolation: isolate;
+}
+
+.kpi-card::before,
+.summary-card::before,
+.dashboard-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 1px solid color-mix(in srgb, white 12%, transparent);
+    pointer-events: none;
+    opacity: 0.4;
+}
+
+[data-theme="dark"] .kpi-card::before,
+[data-theme="dark"] .summary-card::before,
+[data-theme="dark"] .dashboard-card::before {
+    border-color: color-mix(in srgb, white 8%, transparent);
+}
+
+.bi {
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-icon .bi {
+    font-size: 1rem;
+}
+
+.topbar-btn .bi,
+.user-menu-btn .bi,
+.mobile-menu-btn .bi {
+    font-size: 1.05rem;
+}
+
+.search-input-wrapper .bi {
+    position: absolute;
+    left: 14px;
+    color: var(--growit-text-dim);
+    font-size: 0.95rem;
+    pointer-events: none;
+}
+
+.breadcrumb-separator .bi,
+.select-chevron.bi {
+    font-size: 0.8rem;
+}
+
+.dropdown-item .bi {
+    width: 18px;
+    color: var(--growit-text-dim);
+}
+
+.notification-icon .bi {
+    font-size: 1rem;
+}
+
+.btn-plant .bi {
+    font-size: 1rem;
+}
+
+.report-icon .bi {
+    font-size: 1.15rem;
+}
+
+.report-action .bi {
+    font-size: 1rem;
+    color: var(--growit-text-dim);
+}
+
+.report-file-icon .bi {
+    font-size: 1rem;
+}
+
+@media (max-width: 768px) {
+    .growit-content {
+        padding: 16px;
+    }
+
+    .page-header-wrapper {
+        margin-bottom: 1.25rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

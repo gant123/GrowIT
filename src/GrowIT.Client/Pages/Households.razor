@@ -1,0 +1,386 @@
+@page "/households"
+@using GrowIT.Shared.DTOs
+@using GrowIT.Shared.Enums
+@inject IHouseholdService HouseholdService
+@inject IClientService ClientService
+
+<PageTitle>Households - grow.IT</PageTitle>
+
+<div class="households-page">
+    <PageHeader Title="Households" Subtitle="Group case files into households so service, planning, and impact can be tracked with real context." />
+
+    @if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
+            <div>@_error</div>
+            <button class="btn btn-sm btn-outline-light" @onclick="LoadAllAsync">Retry</button>
+        </div>
+    }
+
+    <div class="household-kpis">
+        <div class="household-kpi-card">
+            <div class="household-kpi-icon total"><i class="bi bi-house-door"></i></div>
+            <div>
+                <div class="household-kpi-label">Households</div>
+                <div class="household-kpi-value">@_households.Count</div>
+            </div>
+        </div>
+        <div class="household-kpi-card">
+            <div class="household-kpi-icon members"><i class="bi bi-people"></i></div>
+            <div>
+                <div class="household-kpi-label">Members Linked</div>
+                <div class="household-kpi-value">@TotalMembers</div>
+            </div>
+        </div>
+        <div class="household-kpi-card">
+            <div class="household-kpi-icon head"><i class="bi bi-person-badge"></i></div>
+            <div>
+                <div class="household-kpi-label">With Head Assigned</div>
+                <div class="household-kpi-value">@HouseholdsWithPrimaryClient</div>
+            </div>
+        </div>
+        <div class="household-kpi-card">
+            <div class="household-kpi-icon avg"><i class="bi bi-bar-chart"></i></div>
+            <div>
+                <div class="household-kpi-label">Avg Household Size</div>
+                <div class="household-kpi-value">@AverageHouseholdSizeLabel</div>
+            </div>
+        </div>
+    </div>
+
+    <section class="household-create-panel">
+        <div class="panel-heading">
+            <div>
+                <h2>Create Household</h2>
+                <p>Set up a household grouping before assigning family members and tracking service context.</p>
+            </div>
+        </div>
+        <div class="panel-body">
+            <EditForm Model="_createRequest" OnValidSubmit="CreateHouseholdAsync">
+                <DataAnnotationsValidator />
+                <div class="row g-3 align-items-end">
+                    <div class="col-lg-5 col-md-6">
+                        <label class="form-label">Household Name</label>
+                        <InputText class="form-control" @bind-Value="_createRequest.Name" placeholder="Example: Williams Household" />
+                    </div>
+                    <div class="col-lg-5 col-md-6">
+                        <label class="form-label">Primary Client (Optional)</label>
+                        <InputSelect class="form-select" @bind-Value="_createRequest.PrimaryClientId">
+                            <option value="">Select a client</option>
+                            @foreach (var client in _clients.OrderBy(c => c.Name))
+                            {
+                                <option value="@client.Id">@client.Name</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div class="col-lg-2 col-md-12">
+                        <button type="submit" class="btn btn-primary w-100" disabled="@_isSavingCreate">
+                            @if (_isSavingCreate)
+                            {
+                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            }
+                            <span>Create</span>
+                        </button>
+                    </div>
+                </div>
+            </EditForm>
+        </div>
+    </section>
+
+    <section class="household-directory-panel">
+        <div class="panel-heading">
+            <div>
+                <h2>Household Directory</h2>
+                <p>Maintain household composition and member roles for case coordination and reporting clarity.</p>
+            </div>
+            <div class="panel-meta">@_households.Count household(s)</div>
+        </div>
+
+        @if (_isLoading)
+        {
+            <div class="panel-loading">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p>Loading households...</p>
+            </div>
+        }
+        else if (!_households.Any())
+        {
+            <div class="panel-empty">
+                <div class="empty-icon"><i class="bi bi-house-x"></i></div>
+                <h3>No households created yet</h3>
+                <p>Create a household to organize related case files and capture family-level service context.</p>
+            </div>
+        }
+        else
+        {
+            <div class="household-grid">
+                @foreach (var household in _households.OrderBy(h => h.Name))
+                {
+                    <article class="household-card" @key="household.Id">
+                        <div class="household-card-header">
+                            <div>
+                                <h3>@household.Name</h3>
+                                <div class="household-card-subtitle">
+                                    @if (!string.IsNullOrWhiteSpace(household.PrimaryClientName))
+                                    {
+                                        <span><i class="bi bi-person-badge"></i> Head: @household.PrimaryClientName</span>
+                                    }
+                                    else
+                                    {
+                                        <span><i class="bi bi-person-dash"></i> No primary client assigned</span>
+                                    }
+                                </div>
+                            </div>
+                            <span class="member-count-chip">@household.MemberCount member(s)</span>
+                        </div>
+
+                        <div class="household-card-body">
+                            <div class="member-table-wrap">
+                                @if (household.Members.Any())
+                                {
+                                    <table class="table member-table align-middle mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Role</th>
+                                                <th>Email</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var member in household.Members.OrderBy(m => m.Role).ThenBy(m => m.Name))
+                                            {
+                                                <tr>
+                                                    <td>
+                                                        <div class="member-name-cell">
+                                                            <span class="member-avatar">@GetInitials(member.Name)</span>
+                                                            <span>@member.Name</span>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="role-pill role-@member.Role.ToString().ToLowerInvariant()">@member.Role</span>
+                                                    </td>
+                                                    <td class="member-email">@(!string.IsNullOrWhiteSpace(member.Email) ? member.Email : "No email")</td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                }
+                                else
+                                {
+                                    <div class="member-empty-state">No members linked yet.</div>
+                                }
+                            </div>
+
+                            <div class="add-member-panel">
+                                <div class="add-member-title">
+                                    <i class="bi bi-person-plus"></i>
+                                    <span>Add Member</span>
+                                </div>
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-md-6">
+                                        <label class="form-label small">Client</label>
+                                        <select class="form-select form-select-sm"
+                                                value="@GetSelectedClientForHousehold(household.Id)"
+                                                @onchange="(e) => OnMemberClientChanged(household.Id, e)">
+                                            <option value="">Select client</option>
+                                            @foreach (var client in _clients.OrderBy(c => c.Name))
+                                            {
+                                                <option value="@client.Id">@client.Name</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small">Role</label>
+                                        <select class="form-select form-select-sm"
+                                                value="@GetSelectedRoleForHousehold(household.Id)"
+                                                @onchange="(e) => OnMemberRoleChanged(household.Id, e)">
+                                            @foreach (var role in Enum.GetValues<HouseholdRole>())
+                                            {
+                                                <option value="@role">@role</option>
+                                            }
+                                        </select>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button class="btn btn-sm btn-outline-primary w-100"
+                                                disabled="@(_isAddingMemberHouseholdId == household.Id)"
+                                                @onclick="() => AddMemberAsync(household.Id)">
+                                            @if (_isAddingMemberHouseholdId == household.Id)
+                                            {
+                                                <span class="spinner-border spinner-border-sm" role="status"></span>
+                                            }
+                                            else
+                                            {
+                                                <span>Add</span>
+                                            }
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+</div>
+
+@code {
+    private List<HouseholdDto> _households = new();
+    private List<ClientDto> _clients = new();
+    private bool _isLoading = true;
+    private bool _isSavingCreate;
+    private Guid? _isAddingMemberHouseholdId;
+    private string? _error;
+    private CreateHouseholdRequest _createRequest = new();
+
+    private readonly Dictionary<Guid, Guid?> _pendingMemberByHousehold = new();
+    private readonly Dictionary<Guid, HouseholdRole> _pendingRoleByHousehold = new();
+
+    private int TotalMembers => _households.Sum(h => h.MemberCount);
+    private int HouseholdsWithPrimaryClient => _households.Count(h => h.PrimaryClientId.HasValue);
+    private string AverageHouseholdSizeLabel => _households.Count == 0 ? "0.0" : _households.Average(h => h.MemberCount).ToString("F1");
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAllAsync();
+    }
+
+    private async Task LoadAllAsync()
+    {
+        _isLoading = true;
+        _error = null;
+        try
+        {
+            var householdsTask = HouseholdService.GetHouseholdsAsync();
+            var clientsTask = ClientService.GetAllClientsAsync();
+            await Task.WhenAll(householdsTask, clientsTask);
+
+            _households = (await householdsTask).OrderBy(h => h.Name).ToList();
+            _clients = await clientsTask;
+
+            foreach (var household in _households)
+            {
+                if (!_pendingRoleByHousehold.ContainsKey(household.Id))
+                    _pendingRoleByHousehold[household.Id] = HouseholdRole.Dependent;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _households = new();
+            _clients = new();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task CreateHouseholdAsync()
+    {
+        _error = null;
+        if (string.IsNullOrWhiteSpace(_createRequest.Name))
+        {
+            _error = "Household name is required.";
+            return;
+        }
+
+        _isSavingCreate = true;
+        try
+        {
+            var householdId = await HouseholdService.CreateHouseholdAsync(_createRequest);
+            if (householdId == Guid.Empty)
+            {
+                _error = "Failed to create household.";
+                return;
+            }
+
+            _createRequest = new CreateHouseholdRequest();
+            await LoadAllAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isSavingCreate = false;
+        }
+    }
+
+    private async Task AddMemberAsync(Guid householdId)
+    {
+        _error = null;
+        if (!_pendingMemberByHousehold.TryGetValue(householdId, out var clientId) || !clientId.HasValue || clientId == Guid.Empty)
+        {
+            _error = "Select a client before adding to the household.";
+            return;
+        }
+
+        var role = _pendingRoleByHousehold.TryGetValue(householdId, out var selectedRole)
+            ? selectedRole
+            : HouseholdRole.Dependent;
+
+        _isAddingMemberHouseholdId = householdId;
+        try
+        {
+            await HouseholdService.AddMemberAsync(householdId, clientId.Value, role);
+            _pendingMemberByHousehold[householdId] = null;
+            await LoadAllAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isAddingMemberHouseholdId = null;
+        }
+    }
+
+    private void OnMemberClientChanged(Guid householdId, ChangeEventArgs e)
+    {
+        if (Guid.TryParse(e.Value?.ToString(), out var clientId))
+        {
+            _pendingMemberByHousehold[householdId] = clientId;
+        }
+        else
+        {
+            _pendingMemberByHousehold[householdId] = null;
+        }
+    }
+
+    private void OnMemberRoleChanged(Guid householdId, ChangeEventArgs e)
+    {
+        if (Enum.TryParse<HouseholdRole>(e.Value?.ToString(), out var role))
+        {
+            _pendingRoleByHousehold[householdId] = role;
+        }
+    }
+
+    private string GetSelectedClientForHousehold(Guid householdId)
+    {
+        return _pendingMemberByHousehold.TryGetValue(householdId, out var clientId) && clientId.HasValue
+            ? clientId.Value.ToString()
+            : string.Empty;
+    }
+
+    private string GetSelectedRoleForHousehold(Guid householdId)
+    {
+        return _pendingRoleByHousehold.TryGetValue(householdId, out var role)
+            ? role.ToString()
+            : HouseholdRole.Dependent.ToString();
+    }
+
+    private static string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => "?",
+            1 => parts[0][0].ToString().ToUpperInvariant(),
+            _ => $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant()
+        };
+    }
+}

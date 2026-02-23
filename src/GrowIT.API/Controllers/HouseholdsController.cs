@@ -25,12 +25,22 @@ public class HouseholdsController : ControllerBase
 
     // 1. Create a Family
     [HttpPost]
-    public async Task<IActionResult> CreateHousehold(CreateHouseholdRequest request)
+    public async Task<ActionResult<CreateHouseholdResponseDto>> CreateHousehold(CreateHouseholdRequest request)
     {
         var tenantId = _tenantService.TenantId;
         if (!tenantId.HasValue || tenantId == Guid.Empty)
         {
             return Unauthorized("No valid tenant context found.");
+        }
+
+        Client? primaryClient = null;
+        if (request.PrimaryClientId.HasValue)
+        {
+            primaryClient = await _context.Clients.FirstOrDefaultAsync(c => c.Id == request.PrimaryClientId.Value);
+            if (primaryClient == null)
+            {
+                return BadRequest("Primary client not found.");
+            }
         }
 
         var household = new Household
@@ -43,18 +53,57 @@ public class HouseholdsController : ControllerBase
         _context.Households.Add(household);
         await _context.SaveChangesAsync();
 
-        return Ok(new { Message = "Household Created", HouseholdId = household.Id });
+        // Keep the relationship consistent if a primary client was specified at creation time.
+        if (primaryClient != null)
+        {
+            primaryClient.HouseholdId = household.Id;
+            primaryClient.HouseholdRole = HouseholdRole.Head;
+            await _context.SaveChangesAsync();
+        }
+
+        return Ok(new CreateHouseholdResponseDto
+        {
+            Message = "Household Created",
+            HouseholdId = household.Id
+        });
     }
 
     // 2. Get All Families (With Members!)
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<ActionResult<List<HouseholdDto>>> GetAll()
     {
         var households = await _context.Households
             .Include(h => h.Members) // This pulls in the Clients automatically
             .ToListAsync();
 
-        return Ok(households);
+        var items = households
+            .Select(h =>
+            {
+                var primary = h.Members.FirstOrDefault(m => m.Id == h.PrimaryClientId);
+                return new HouseholdDto
+                {
+                    Id = h.Id,
+                    Name = h.Name,
+                    PrimaryClientId = h.PrimaryClientId,
+                    PrimaryClientName = primary != null ? $"{primary.FirstName} {primary.LastName}".Trim() : null,
+                    MemberCount = h.Members.Count,
+                    Members = h.Members
+                        .OrderBy(m => m.FirstName)
+                        .ThenBy(m => m.LastName)
+                        .Select(m => new HouseholdMemberSummaryDto
+                        {
+                            ClientId = m.Id,
+                            Name = $"{m.FirstName} {m.LastName}".Trim(),
+                            Role = m.HouseholdRole,
+                            Email = m.Email
+                        })
+                        .ToList()
+                };
+            })
+            .OrderBy(h => h.Name)
+            .ToList();
+
+        return Ok(items);
     }
 
     // 3. Add a Person to a Family

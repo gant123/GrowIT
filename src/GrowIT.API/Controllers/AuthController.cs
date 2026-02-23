@@ -15,6 +15,7 @@ namespace GrowIT.API.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
+    private const string InviteAuditLink = "/settings?tab=invites";
     private readonly ApplicationDbContext _context;
     private readonly TokenService _tokenService;
     private readonly IEmailService _emailService;
@@ -67,6 +68,7 @@ public class AuthController : ControllerBase
             LastName = request.LastName,
             Email = request.Email,
             Role = string.IsNullOrEmpty(request.Role) ? "Admin" : request.Role, // Ensure a role is set
+            IsActive = true,
             // Hash the password immediately!
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
         };
@@ -107,6 +109,11 @@ public class AuthController : ControllerBase
         if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {
             return Unauthorized("Invalid email or password");
+        }
+
+        if (!user.IsActive)
+        {
+            return Unauthorized("This account has been deactivated. Contact your organization administrator.");
         }
 
         // 3. Generate Token
@@ -167,6 +174,111 @@ public class AuthController : ControllerBase
         return Ok(new { Message = "If your email is in our system, you will receive a reset link." });
     }
 
+    [HttpGet("invites/validate")]
+    public async Task<ActionResult<InviteValidationDto>> ValidateInvite([FromQuery] string token, [FromQuery] string email)
+    {
+        if (string.IsNullOrWhiteSpace(token) || string.IsNullOrWhiteSpace(email))
+        {
+            return BadRequest(new InviteValidationDto { IsValid = false, Message = "Invite token and email are required." });
+        }
+
+        var tokenHash = HashToken(token);
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+
+        var invite = await _context.OrganizationInvites
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(i => i.TokenHash == tokenHash && i.Email.ToLower() == normalizedEmail);
+
+        if (invite is null)
+        {
+            return NotFound(new InviteValidationDto { IsValid = false, Message = "Invite not found." });
+        }
+
+        if (invite.RevokedAt != null)
+        {
+            return BadRequest(new InviteValidationDto { IsValid = false, Message = "This invite has been revoked." });
+        }
+
+        if (invite.AcceptedAt != null)
+        {
+            return BadRequest(new InviteValidationDto { IsValid = false, Message = "This invite has already been accepted." });
+        }
+
+        if (invite.ExpiresAt < DateTime.UtcNow)
+        {
+            return BadRequest(new InviteValidationDto { IsValid = false, Message = "This invite has expired." });
+        }
+
+        var tenant = await _context.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == invite.TenantId);
+
+        return Ok(new InviteValidationDto
+        {
+            IsValid = true,
+            Message = "Invite is valid.",
+            Email = invite.Email,
+            OrganizationName = tenant?.Name ?? "Organization",
+            Role = invite.Role,
+            ExpiresAt = invite.ExpiresAt
+        });
+    }
+
+    [HttpPost("accept-invite")]
+    public async Task<ActionResult<AuthResponseDto>> AcceptInvite(AcceptInviteRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Token) || string.IsNullOrWhiteSpace(request.Email))
+            return BadRequest("Invite token and email are required.");
+
+        if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
+            return BadRequest("Password must be at least 8 characters.");
+
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        var tokenHash = HashToken(request.Token);
+
+        var invite = await _context.OrganizationInvites
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(i => i.TokenHash == tokenHash && i.Email.ToLower() == normalizedEmail);
+
+        if (invite is null) return BadRequest("Invalid invite.");
+        if (invite.RevokedAt != null) return BadRequest("Invite has been revoked.");
+        if (invite.AcceptedAt != null) return BadRequest("Invite has already been accepted.");
+        if (invite.ExpiresAt < DateTime.UtcNow) return BadRequest("Invite has expired.");
+
+        var existingUser = await _context.Users
+            .IgnoreQueryFilters()
+            .AnyAsync(u => u.Email.ToLower() == normalizedEmail);
+        if (existingUser)
+            return BadRequest("A user with this email already exists.");
+
+        var user = new User
+        {
+            TenantId = invite.TenantId,
+            FirstName = string.IsNullOrWhiteSpace(request.FirstName) ? invite.FirstName : request.FirstName.Trim(),
+            LastName = string.IsNullOrWhiteSpace(request.LastName) ? invite.LastName : request.LastName.Trim(),
+            Email = normalizedEmail,
+            Role = string.IsNullOrWhiteSpace(invite.Role) ? "Member" : invite.Role,
+            IsActive = true,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
+        };
+
+        if (string.IsNullOrWhiteSpace(user.FirstName) || string.IsNullOrWhiteSpace(user.LastName))
+            return BadRequest("First name and last name are required.");
+
+        _context.Users.Add(user);
+        invite.AcceptedAt = DateTime.UtcNow;
+        invite.AcceptedUserId = user.Id;
+        await AddInviteAcceptedNotificationsAsync(invite, user);
+        await _context.SaveChangesAsync();
+
+        var token = _tokenService.CreateToken(user, user.TenantId);
+
+        return Ok(new AuthResponseDto
+        {
+            Token = token,
+            UserId = user.Id,
+            TenantId = user.TenantId
+        });
+    }
+
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
     {
@@ -187,5 +299,42 @@ public class AuthController : ControllerBase
         await _context.SaveChangesAsync();
 
         return Ok(new { Message = "Password has been reset successfully." });
+    }
+
+    private static string HashToken(string token)
+    {
+        var bytes = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token));
+        return Convert.ToHexString(bytes);
+    }
+
+    private async Task AddInviteAcceptedNotificationsAsync(OrganizationInvite invite, User acceptedUser)
+    {
+        var recipientIds = await _context.Users
+            .IgnoreQueryFilters()
+            .Where(u => u.TenantId == invite.TenantId && u.IsActive)
+            .Select(u => u.Id)
+            .ToListAsync();
+
+        if (recipientIds.Count == 0)
+            return;
+
+        var displayName = string.Join(" ", new[] { acceptedUser.FirstName, acceptedUser.LastName }.Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
+        if (string.IsNullOrWhiteSpace(displayName))
+            displayName = acceptedUser.Email;
+
+        var now = DateTime.UtcNow;
+        foreach (var userId in recipientIds)
+        {
+            _context.Notifications.Add(new Notification
+            {
+                TenantId = invite.TenantId,
+                UserId = userId,
+                Title = "Invite accepted",
+                Message = $"{displayName} joined the organization as {acceptedUser.Role}.",
+                Link = InviteAuditLink,
+                IsRead = false,
+                CreatedAt = now
+            });
+        }
     }
 }

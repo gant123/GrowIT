@@ -2,82 +2,137 @@
 @attribute [Authorize]
 @using GrowIT.Shared.DTOs
 @using GrowIT.Client.Shared 
-@inject HttpClient Http
+@inject IClientService ClientService
 @inject NavigationManager Nav
 
-@if (client == null)
+@if (_isLoading)
 {
-    <div class="text-center py-5">
-        <div class="spinner-border text-success" role="status"></div>
-        <p class="mt-2 text-muted">Loading case file...</p>
+    <div class="loading-state">
+        <div class="spinner-growit"></div>
+        <p class="loading-state-text">Loading case file...</p>
+    </div>
+}
+else if (!string.IsNullOrWhiteSpace(_loadError))
+{
+    <div class="alert alert-danger d-flex justify-content-between align-items-center mb-4">
+        <span>@_loadError</span>
+        <button class="btn btn-sm btn-outline-light" @onclick="ReloadProfile">Retry</button>
     </div>
 }
 else
 {
-    <PageHeader Title="@client.FullName" Subtitle="Case File & Household Impact Analysis">
+    <div class="client-profile-page fade-in">
+    <PageHeader Title="@client!.FullName" Subtitle="Household service record, financial visibility, and documented growth timeline.">
         <Actions>
-            <a href="clients" class="btn-growit btn-secondary-growit">
-                <span class="oi oi-arrow-left me-1"></span> Back
+            <a href="/clients" class="btn-growit btn-secondary-growit">
+                <i class="bi bi-arrow-left me-1"></i> Back
             </a>
-            <button class="btn-growit btn-primary-growit" @onclick="OpenEditClientModal">
-                <span class="oi oi-pencil me-2"></span>Edit Profile
+            <button class="btn-growit btn-primary-growit" @onclick="OpenAddMemberModal">
+                <i class="bi bi-person-plus me-2"></i>Add Household Member
             </button>
         </Actions>
     </PageHeader>
 
+    <div class="grid-4 mb-4">
+        <div class="client-profile-metric">
+            <div class="metric-icon success"><i class="bi bi-cash-stack"></i></div>
+            <div class="metric-content">
+                <div class="metric-label">Verified Service Value</div>
+                <div class="metric-value">@client.TotalInvestment.ToString("C0")</div>
+                <div class="metric-subtext">Total documented investments</div>
+            </div>
+        </div>
+        <div class="client-profile-metric">
+            <div class="metric-icon info"><i class="bi bi-calendar-event"></i></div>
+            <div class="metric-content">
+                <div class="metric-label">Last Investment</div>
+                <div class="metric-value-sm">@(client.LastInvestmentDate?.ToString("MMM dd, yyyy") ?? "No record")</div>
+                <div class="metric-subtext">Recent capital deployment date</div>
+            </div>
+        </div>
+        <div class="client-profile-metric">
+            <div class="metric-icon warning"><i class="bi bi-people"></i></div>
+            <div class="metric-content">
+                <div class="metric-label">Household Members</div>
+                <div class="metric-value">@client.HouseholdMembers.Count</div>
+                <div class="metric-subtext">People in this service record</div>
+            </div>
+        </div>
+        <div class="client-profile-metric">
+            <div class="metric-icon primary"><i class="bi bi-diagram-3"></i></div>
+            <div class="metric-content">
+                <div class="metric-label">Readiness Signal</div>
+                <div class="metric-value-sm">@GetReadinessLabel()</div>
+                <div class="metric-subtext">@GetReadinessHint()</div>
+            </div>
+        </div>
+    </div>
+
     <div class="row g-4">
             <div class="col-lg-4">
-                <div class="card border-0 shadow-sm mb-4" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
-                    <div class="card-header bg-transparent fw-bold py-3" style="border-color: var(--growit-border);">
-                        Financial Impact
+                <div class="card-growit mb-4">
+                    <div class="card-header">
+                        <h3 class="section-title">Financial Visibility</h3>
                     </div>
                     <div class="card-body">
-                        <div class="text-center py-4">
-                            <div class="display-4 fw-bold text-success mb-1">@client.TotalInvestment.ToString("C0")</div>
-                            <div class="small text-muted text-uppercase" style="color: var(--growit-text-muted) !important;">Total Invested Lifetime</div>
+                        <div class="profile-hero-value">
+                            <div class="hero-value-number text-success">@client.TotalInvestment.ToString("C0")</div>
+                            <div class="hero-value-label">Lifetime documented service value</div>
                         </div>
-                        <hr style="color: var(--growit-border);" />
-                        <div class="d-flex justify-content-between py-2">
-                            <span class="text-secondary" style="color: var(--growit-text-secondary) !important;">Last Investment</span>
-                            <span class="fw-bold">@(client.LastInvestmentDate?.ToString("MMM dd, yyyy") ?? "Never")</span>
-                        </div>
-                        <div class="d-flex justify-content-between py-2">
-                            <span class="text-secondary" style="color: var(--growit-text-secondary) !important;">Seeds Planted</span>
-                            <span class="fw-bold">@client.Timeline.Count(t => t.Type == "Investment")</span>
+                        <div class="detail-list">
+                            <div class="detail-row">
+                                <span>Life phase</span>
+                                <span class="badge-growit @GetPhaseBadgeClass(client.LifePhase)">@client.LifePhase</span>
+                            </div>
+                            <div class="detail-row">
+                                <span>Stability score</span>
+                                <strong>@client.StabilityScore / 10</strong>
+                            </div>
+                            <div class="detail-row">
+                                <span>Last investment</span>
+                                <strong>@(client.LastInvestmentDate?.ToString("MMM dd, yyyy") ?? "Never")</strong>
+                            </div>
+                            <div class="detail-row">
+                                <span>Seeds planted</span>
+                                <strong>@client.Timeline.Count(t => t.Type == "Investment")</strong>
+                            </div>
+                            <div class="detail-row">
+                                <span>Imprints documented</span>
+                                <strong>@client.Timeline.Count(t => t.Type != "Investment")</strong>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="card border-0 shadow-sm" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
-                    <div class="card-header bg-transparent fw-bold py-3 d-flex justify-content-between align-items-center" style="border-color: var(--growit-border);">
-                        <span>Household (@client.HouseholdMembers.Count)</span>
-                        <button class="btn btn-sm btn-link text-success text-decoration-none fw-bold" @onclick="OpenAddMemberModal">
-                            <span class="oi oi-plus me-1"></span>Add
+                <div class="card-growit">
+                    <div class="card-header">
+                        <h3 class="section-title">Household (@client.HouseholdMembers.Count)</h3>
+                        <button class="btn-growit btn-ghost-growit btn-sm" @onclick="OpenAddMemberModal">
+                            <i class="bi bi-plus-lg me-1"></i>Add Member
                         </button>
                     </div>
                     <div class="card-body p-0">
                         @if (client.HouseholdMembers.Any())
                         {
-                            <ul class="list-group list-group-flush">
+                            <ul class="list-group list-group-flush household-list">
                                 @foreach (var member in client.HouseholdMembers)
                                 {
-                                    <li class="list-group-item px-3 py-3" style="cursor: pointer;" @onclick="() => NavigateToMember(member.Id)">
+                                    <li class="list-group-item px-3 py-3 household-list-item" @onclick="() => NavigateToMember(member.Id)">
                                         <div class="d-flex justify-content-between align-items-center">
                                             <div class="d-flex align-items-center gap-3">
-                                                <div class="rounded-circle d-flex align-items-center justify-content-center border" 
-                                                     style="width: 36px; height: 36px; background-color: var(--growit-bg-primary); border-color: var(--growit-border);">
-                                                    <span class="oi @GetRelationshipIcon(member.Relationship) small text-secondary" style="color: var(--growit-text-secondary) !important;"></span>
+                                                <div class="household-avatar">
+                                                    <i class="@GetRelationshipIconClass(member.Relationship)"></i>
                                                 </div>
                                                 <div>
                                                     <div class="fw-bold text-sm">@member.Name</div>
-                                                    <div class="small text-secondary" style="font-size: 0.8rem; color: var(--growit-text-secondary) !important;">
+                                                    <div class="small text-secondary household-meta">
                                                         @member.Relationship • @member.Age yrs
                                                     </div>
                                                 </div>
                                             </div>
                                             @if (!string.IsNullOrEmpty(member.School))
                                             {
-                                                <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary-subtle">
+                                                <span class="badge-growit badge-neutral household-tag">
                                                     @member.School
                                                 </span>
                                             }
@@ -88,9 +143,10 @@ else
                         }
                         else
                         {
-                            <div class="text-center py-4 small opacity-50">
-                                <span class="oi oi-people d-block mb-2 fs-5"></span>
-                                No family members listed.
+                            <div class="empty-state">
+                                <i class="bi bi-people empty-state-icon"></i>
+                                <div class="empty-state-title">No household members listed</div>
+                                <div class="empty-state-description">Add household members to track person-level service and imprints.</div>
                             </div>
                         }
                     </div>
@@ -98,45 +154,44 @@ else
             </div>
 
             <div class="col-lg-8">
-                <div class="card border-0 shadow-sm h-100" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
-                    <div class="card-header bg-transparent fw-bold py-3 d-flex justify-content-between align-items-center" style="border-color: var(--growit-border);">
-                        <span>Activity Timeline</span>
-                        <span class="badge bg-secondary rounded-pill">@client.Timeline.Count Items</span>
+                <div class="card-growit h-100">
+                    <div class="card-header">
+                        <h3 class="section-title">Service Timeline</h3>
+                        <span class="badge-growit badge-neutral">@client.Timeline.Count Entries</span>
                     </div>
                     <div class="card-body p-0">
                         @if (client.Timeline.Any())
                         {
-                            <div class="list-group list-group-flush">
+                            <div class="list-group list-group-flush timeline-list">
                                 @foreach (var item in client.Timeline)
                                 {
-                                    <div class="list-group-item p-4 d-flex gap-3" style="background-color: transparent; border-color: var(--growit-border);">
-                                        <div class="d-flex flex-column align-items-center" style="min-width: 50px;">
-                                            <div class="rounded-circle d-flex align-items-center justify-content-center border" 
-                                                 style="width: 40px; height: 40px; border-color: var(--growit-border);">
-                                                <span class="oi @item.Icon @item.ColorClass"></span>
+                                    <div class="list-group-item p-4 d-flex gap-3 timeline-item">
+                                        <div class="d-flex flex-column align-items-center timeline-rail">
+                                            <div class="timeline-dot @MapTimelineTone(item.ColorClass)">
+                                                <i class="@MapTimelineIcon(item.Icon)"></i>
                                             </div>
-                                            <div class="h-100 border-start mt-2" style="width: 2px; border-color: var(--growit-border); opacity: 0.5;"></div>
+                                            <div class="timeline-line"></div>
                                         </div>
 
                                         <div class="flex-grow-1 pb-3">
                                             <div class="d-flex justify-content-between align-items-start">
                                                 <h6 class="fw-bold mb-1">@item.Title</h6>
                                                 <div>
-                                                    <small class="text-muted" style="color: var(--growit-text-muted) !important;">@item.Date.ToString("MMM dd, yyyy")</small>
+                                                    <small class="text-muted">@item.Date.ToString("MMM dd, yyyy")</small>
                                                     @if (item.Type == "Investment")
                                                     {
-                                                        <button class="btn btn-sm btn-link text-info p-0 ms-2" @onclick="() => OpenReassignModal(item.Id)">
-                                                            <span class="oi oi-transfer"></span>
+                                                        <button class="btn btn-sm btn-link text-info p-0 ms-2" title="Reassign investment" @onclick="() => OpenReassignModal(item.Id)">
+                                                            <i class="bi bi-arrow-left-right"></i>
                                                         </button>
                                                     }
                                                 </div>
                                             </div>
-                                            <p class="mb-1 text-secondary small" style="color: var(--growit-text-secondary) !important;">@item.Description</p>
+                                            <p class="mb-1 text-secondary small">@item.Description</p>
                                             
                                             @if (item.Amount.HasValue && item.Amount > 0)
                                             {
                                                 <div class="mt-2">
-                                                    <span class="badge bg-success bg-opacity-10 text-success fw-bold px-3 py-2 border border-success border-opacity-25">
+                                                    <span class="badge-growit bg-success text-white">
                                                         @item.Amount.Value.ToString("C2")
                                                     </span>
                                                 </div>
@@ -148,15 +203,17 @@ else
                         }
                         else
                         {
-                            <div class="text-center py-5 opacity-50">
-                                <span class="oi oi-pencil fs-1 mb-3 d-block"></span>
-                                <p>No history recorded yet.</p>
+                            <div class="empty-state">
+                                <i class="bi bi-journal-text empty-state-icon"></i>
+                                <div class="empty-state-title">No service timeline yet</div>
+                                <div class="empty-state-description">Investments and imprints will appear here as work is documented.</div>
                             </div>
                         }
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
         <AddFamilyMemberModal @bind-Show="showAddMemberModal" 
                               ClientId="@Id" 
@@ -173,9 +230,10 @@ else
     [Parameter] public Guid Id { get; set; }
     private ClientDetailDto? client;
     private bool showAddMemberModal = false;
-    private bool showEditClientModal = false;
     private bool showReassignModal = false;
     private Guid selectedInvestmentId;
+    private bool _isLoading = true;
+    private string? _loadError;
 
     protected override async Task OnInitializedAsync()
     {
@@ -184,13 +242,21 @@ else
 
     private async Task ReloadProfile()
     {
+        _isLoading = true;
+        _loadError = null;
         try
         {
-            client = await Http.GetFromJsonAsync<ClientDetailDto>($"api/clients/{Id}");
+            client = await ClientService.GetClientDetailAsync(Id);
         }
         catch (Exception ex)
         {
+            client = null;
+            _loadError = ex.Message;
             Console.WriteLine($"Error loading profile: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
         }
     }
 
@@ -200,8 +266,6 @@ else
     }
 
     private void OpenAddMemberModal() => showAddMemberModal = true;
-    
-    private void OpenEditClientModal() => showEditClientModal = true;
 
     private void OpenReassignModal(Guid investmentId)
     {
@@ -209,20 +273,55 @@ else
         showReassignModal = true;
     }
 
-    private string GetInitials(string name)
-    {
-        if (string.IsNullOrEmpty(name)) return "??";
-        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length == 0) return "??";
-        if (parts.Length == 1) return parts[0].Substring(0, 1).ToUpper();
-        return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
-    }
-
-    private string GetRelationshipIcon(string relationship)
+    private string GetRelationshipIconClass(string relationship)
     {
         var rel = relationship?.ToLower() ?? "";
-        if (rel.Contains("spouse") || rel.Contains("wife") || rel.Contains("husband")) return "oi-heart text-danger";
-        if (rel.Contains("pet") || rel.Contains("dog") || rel.Contains("cat")) return "oi-star text-warning";
-        return "oi-person";
+        if (rel.Contains("spouse") || rel.Contains("wife") || rel.Contains("husband")) return "bi bi-heart";
+        if (rel.Contains("child") || rel.Contains("son") || rel.Contains("daughter")) return "bi bi-balloon-heart";
+        if (rel.Contains("pet") || rel.Contains("dog") || rel.Contains("cat")) return "bi bi-stars";
+        if (rel.Contains("parent") || rel.Contains("mother") || rel.Contains("father")) return "bi bi-person-hearts";
+        return "bi bi-person";
     }
+
+    private string GetReadinessLabel()
+    {
+        if (client is null) return "N/A";
+        if (client.StabilityScore >= 8 && client.LifePhase == GrowIT.Shared.Enums.LifePhase.Thriving) return "Funding-ready";
+        if (client.StabilityScore >= 5) return "Building";
+        return "Stabilize";
+    }
+
+    private string GetReadinessHint()
+    {
+        if (client is null) return "No data";
+        if (client.LifePhase == GrowIT.Shared.Enums.LifePhase.Crisis) return "Prioritize support and rapid follow-up";
+        if (client.LifePhase == GrowIT.Shared.Enums.LifePhase.Stable) return "Track repeatable progress and needs";
+        return "Document outcomes and long-term gains";
+    }
+
+    private string GetPhaseBadgeClass(GrowIT.Shared.Enums.LifePhase phase) => phase switch
+    {
+        GrowIT.Shared.Enums.LifePhase.Crisis => "badge-phase-crisis",
+        GrowIT.Shared.Enums.LifePhase.Stable => "badge-phase-stable",
+        GrowIT.Shared.Enums.LifePhase.Thriving => "badge-phase-thriving",
+        _ => "badge-neutral"
+    };
+
+    private static string MapTimelineIcon(string icon) => icon switch
+    {
+        var value when value.Contains("dollar", StringComparison.OrdinalIgnoreCase) => "bi bi-cash-stack",
+        var value when value.Contains("flag", StringComparison.OrdinalIgnoreCase) => "bi bi-flag",
+        var value when value.Contains("check", StringComparison.OrdinalIgnoreCase) => "bi bi-check2-circle",
+        var value when value.Contains("people", StringComparison.OrdinalIgnoreCase) || value.Contains("person", StringComparison.OrdinalIgnoreCase) => "bi bi-people",
+        _ => "bi bi-activity"
+    };
+
+    private static string MapTimelineTone(string colorClass) => colorClass switch
+    {
+        var value when value.Contains("success", StringComparison.OrdinalIgnoreCase) => "success",
+        var value when value.Contains("warning", StringComparison.OrdinalIgnoreCase) => "warning",
+        var value when value.Contains("danger", StringComparison.OrdinalIgnoreCase) => "danger",
+        var value when value.Contains("info", StringComparison.OrdinalIgnoreCase) => "info",
+        _ => "neutral"
+    };
 }

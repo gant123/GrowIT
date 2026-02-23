@@ -1,78 +1,367 @@
 @page "/growth-plans"
 @using GrowIT.Shared.DTOs
 @using GrowIT.Shared.Enums
-@inject HttpClient Http
+@inject IGrowthPlanService GrowthPlanService
+@inject IClientService ClientService
 
 <PageTitle>Growth Plans - grow.IT</PageTitle>
 
-<div class="page-growth-plans">
-    <PageHeader Title="Growth Plans" Subtitle="Track progress and goals for people in your community.">
+<div class="growth-plans-page">
+    <PageHeader Title="Growth Plans" Subtitle="Turn service patterns into realistic capacity plans and sustainable next-step pathways.">
         <Actions>
-            <button class="btn btn-primary" disabled title="Growth plan APIs are not implemented yet">
-                <span class="oi oi-plus me-2"></span>New Growth Plan
+            <button class="btn btn-primary" @onclick="OpenCreateModal">
+                <i class="bi bi-plus-lg"></i>
+                <span>New Growth Plan</span>
             </button>
         </Actions>
     </PageHeader>
 
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <input type="text" class="form-control" placeholder="Search..." @bind="SearchQuery" @bind:event="oninput" />
+    @if (!string.IsNullOrWhiteSpace(_listError))
+    {
+        <div class="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
+            <div>@_listError</div>
+            <button class="btn btn-sm btn-outline-light" @onclick="ReloadPlansAsync">Retry</button>
+        </div>
+    }
+
+    <div class="growth-kpis">
+        <div class="growth-kpi-card">
+            <div class="growth-kpi-icon total"><i class="bi bi-diagram-3"></i></div>
+            <div>
+                <div class="growth-kpi-label">Plans</div>
+                <div class="growth-kpi-value">@_allPlans.Count</div>
+            </div>
+        </div>
+        <div class="growth-kpi-card">
+            <div class="growth-kpi-icon active"><i class="bi bi-play-circle"></i></div>
+            <div>
+                <div class="growth-kpi-label">Active / Draft</div>
+                <div class="growth-kpi-value">@ActivePipelineCount</div>
+            </div>
+        </div>
+        <div class="growth-kpi-card">
+            <div class="growth-kpi-icon completed"><i class="bi bi-check2-circle"></i></div>
+            <div>
+                <div class="growth-kpi-label">Completed / Graduated</div>
+                <div class="growth-kpi-value">@CompletedOutcomeCount</div>
+            </div>
+        </div>
+        <div class="growth-kpi-card">
+            <div class="growth-kpi-icon progress"><i class="bi bi-graph-up"></i></div>
+            <div>
+                <div class="growth-kpi-label">Avg Progress</div>
+                <div class="growth-kpi-value">@AverageProgressLabel</div>
+            </div>
         </div>
     </div>
 
-    <div class="plans-grid">
+    <section class="growth-panel">
+        <div class="growth-panel-header">
+            <div>
+                <h2>Plan Portfolio</h2>
+                <p>Review status, season, and completion progress to manage pacing and support needs.</p>
+            </div>
+            <div class="growth-results-count">@FilteredPlans.Count() plan(s)</div>
+        </div>
+
+        <div class="growth-toolbar">
+            <div class="growth-search">
+                <i class="bi bi-search"></i>
+                <input type="text" class="form-control" placeholder="Search by person or plan title" @bind="SearchQuery" @bind:event="oninput" />
+            </div>
+            <div class="growth-status-filters">
+                @foreach (var option in _statusFilterOptions)
+                {
+                    <button class="status-chip @(SelectedStatusFilter == option.Value ? "active" : null)"
+                            @onclick="() => SelectedStatusFilter = option.Value">
+                        @option.Label
+                    </button>
+                }
+            </div>
+        </div>
+
         @if (_isLoading)
         {
-            <div class="alert alert-secondary">Loading growth plans...</div>
+            <div class="growth-loading">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p>Loading growth plans...</p>
+            </div>
         }
         else if (!FilteredPlans.Any())
         {
-            <div class="alert alert-info">
-                No growth plans have been created yet. This page reads from the backend API and persisted database records.
+            <div class="growth-empty">
+                <div class="growth-empty-icon"><i class="bi bi-diagram-3"></i></div>
+                <h3>No growth plans found</h3>
+                <p>Create a plan to document capacity pacing, milestones, and the support needed to keep service sustainable.</p>
+                <button class="btn btn-outline-primary" @onclick="OpenCreateModal">
+                    <i class="bi bi-plus-lg"></i>
+                    <span>Create Growth Plan</span>
+                </button>
             </div>
         }
-        else 
+        else
         {
-            @foreach (var plan in FilteredPlans)
-            {
-                <div class="card shadow-sm mb-3">
-                    <div class="card-body">
-                        <div class="d-flex justify-content-between">
-                            <h5 class="card-title">@plan.Title</h5>
-                            <span class="badge bg-primary">@plan.Season</span>
+            <div class="plans-grid">
+                @foreach (var plan in FilteredPlans.OrderByDescending(p => p.StartDate))
+                {
+                    <article class="plan-card" @key="plan.Id">
+                        <div class="plan-card-header">
+                            <div>
+                                <h3>@plan.Title</h3>
+                                <div class="plan-person"><i class="bi bi-person"></i> @plan.PersonName</div>
+                            </div>
+                            <div class="plan-badges">
+                                <span class="season-badge @GetSeasonTone(plan.Season)">@plan.Season</span>
+                                <span class="status-badge @GetStatusTone(plan.Status)">@FormatEnumLabel(plan.Status.ToString())</span>
+                            </div>
                         </div>
-                        <h6 class="card-subtitle mb-2 text-muted">@plan.PersonName</h6>
-                        
-                        <div class="progress mt-3" style="height: 10px;">
-                            <div class="progress-bar bg-success" style="width: @($"{plan.ProgressPercentage}%")"></div>
+
+                        <div class="plan-card-body">
+                            <div class="plan-meta-grid">
+                                <div class="plan-meta-item">
+                                    <span class="label">Start</span>
+                                    <span class="value">@plan.StartDate.ToLocalTime().ToString("MMM d, yyyy")</span>
+                                </div>
+                                <div class="plan-meta-item">
+                                    <span class="label">Target</span>
+                                    <span class="value">@(plan.TargetEndDate?.ToLocalTime().ToString("MMM d, yyyy") ?? "Not set")</span>
+                                </div>
+                                <div class="plan-meta-item">
+                                    <span class="label">Goals</span>
+                                    <span class="value">@plan.CompletedGoals / @plan.TotalGoals</span>
+                                </div>
+                                <div class="plan-meta-item">
+                                    <span class="label">Owner</span>
+                                    <span class="value">@(string.IsNullOrWhiteSpace(plan.AssignedToUserName) ? "Unassigned" : plan.AssignedToUserName)</span>
+                                </div>
+                            </div>
+
+                            <div class="plan-progress-wrap">
+                                <div class="plan-progress-header">
+                                    <span>Completion Progress</span>
+                                    <strong>@plan.ProgressPercentage.ToString("F0")%</strong>
+                                </div>
+                                <div class="plan-progress-track" role="progressbar" aria-valuenow="@plan.ProgressPercentage" aria-valuemin="0" aria-valuemax="100">
+                                    <div class="plan-progress-fill" style="width: @GetProgressWidth(plan.ProgressPercentage)"></div>
+                                </div>
+                            </div>
                         </div>
-                        <small class="text-muted">@plan.ProgressPercentage.ToString("F0")% Complete</small>
-                        
-                        <div class="mt-3 text-end">
-                            <button class="btn btn-sm btn-outline-secondary" disabled title="Growth plan detail API not implemented">View</button>
+
+                        <div class="plan-card-actions">
+                            <button class="btn btn-sm btn-outline-secondary" @onclick="() => OpenEditModal(plan)">
+                                <i class="bi bi-pencil"></i>
+                                <span>Edit</span>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeletePlanAsync(plan.Id)">
+                                <i class="bi bi-trash3"></i>
+                                <span>Delete</span>
+                            </button>
                         </div>
-                    </div>
-                </div>
-            }
+                    </article>
+                }
+            </div>
         }
-    </div>
+    </section>
 </div>
 
+@if (_showCreateModal)
+{
+    <div class="modal fade show d-block growth-modal-backdrop" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content growth-modal-shell">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title">Create Growth Plan</h5>
+                        <div class="modal-subtitle">Map a realistic pathway that protects the founder and supports long-term continuity.</div>
+                    </div>
+                    <button type="button" class="btn-close" @onclick="CloseCreateModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(_createError))
+                    {
+                        <div class="alert alert-danger">@_createError</div>
+                    }
+
+                    @if (_isCreateLoading)
+                    {
+                        <div class="text-center py-4 text-muted">Loading people...</div>
+                    }
+                    else
+                    {
+                        <EditForm Model="_createRequest" OnValidSubmit="CreatePlanAsync">
+                            <DataAnnotationsValidator />
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Person</label>
+                                    <select class="form-select" value="@_selectedClientId" @onchange="OnSelectedClientChanged">
+                                        <option value="">Select a client</option>
+                                        @foreach (var client in _clients.OrderBy(c => c.Name))
+                                        {
+                                            <option value="@client.Id">@client.Name</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Season</label>
+                                    <InputSelect class="form-select" @bind-Value="_createRequest.Season">
+                                        @foreach (var season in Enum.GetValues<Season>())
+                                        {
+                                            <option value="@season">@season</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Title</label>
+                                    <InputText class="form-control" @bind-Value="_createRequest.Title" placeholder="Example: Stabilize household income and housing continuity" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Start Date</label>
+                                    <InputDate class="form-control" @bind-Value="_createRequest.StartDate" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Target End Date (Optional)</label>
+                                    <InputDate class="form-control" @bind-Value="_createRequest.TargetEndDate" />
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end gap-2 mt-4">
+                                <button type="button" class="btn btn-outline-secondary" @onclick="CloseCreateModal">Cancel</button>
+                                <button type="submit" class="btn btn-primary" disabled="@_isSavingCreate">
+                                    @if (_isSavingCreate)
+                                    {
+                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    }
+                                    <span>Create Plan</span>
+                                </button>
+                            </div>
+                        </EditForm>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showEditModal)
+{
+    <div class="modal fade show d-block growth-modal-backdrop" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content growth-modal-shell">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title">Edit Growth Plan</h5>
+                        <div class="modal-subtitle">Adjust status and timing as capacity changes in real time.</div>
+                    </div>
+                    <button type="button" class="btn-close" @onclick="CloseEditModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(_editError))
+                    {
+                        <div class="alert alert-danger">@_editError</div>
+                    }
+
+                    <EditForm Model="_editRequest" OnValidSubmit="SaveEditAsync">
+                        <DataAnnotationsValidator />
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label">Title</label>
+                                <InputText class="form-control" @bind-Value="_editRequest.Title" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Season</label>
+                                <InputSelect class="form-select" @bind-Value="_editRequest.Season">
+                                    @foreach (var season in Enum.GetValues<Season>())
+                                    {
+                                        <option value="@season">@season</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Status</label>
+                                <InputSelect class="form-select" @bind-Value="_editRequest.Status">
+                                    @foreach (var status in Enum.GetValues<GrowthPlanStatus>())
+                                    {
+                                        <option value="@status">@FormatEnumLabel(status.ToString())</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Target End Date (Optional)</label>
+                                <InputDate class="form-control" @bind-Value="_editRequest.TargetEndDate" />
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2 mt-4">
+                            <button type="button" class="btn btn-outline-secondary" @onclick="CloseEditModal">Cancel</button>
+                            <button type="submit" class="btn btn-primary" disabled="@_isSavingEdit">
+                                @if (_isSavingEdit)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                <span>Save Changes</span>
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
-    // Now uses Shared DTOs
+    private readonly record struct StatusFilterOption(string Label, string Value);
+
+    private static readonly List<StatusFilterOption> _statusFilterOptions =
+    [
+        new("All", "all"),
+        new("Active", "active"),
+        new("Paused", "onhold"),
+        new("Completed", "completed"),
+        new("Graduated", "graduated")
+    ];
+
     private List<GrowthPlanListDto> _allPlans = new();
+    private List<ClientDto> _clients = new();
     private bool _isLoading = true;
+    private bool _showCreateModal;
+    private bool _showEditModal;
+    private bool _isCreateLoading;
+    private bool _isSavingCreate;
+    private bool _isSavingEdit;
+    private string _createError = "";
+    private string _editError = "";
+    private string? _listError;
+    private string _selectedClientId = "";
+    private Guid _editingPlanId;
+    private CreateGrowthPlanRequest _createRequest = new()
+    {
+        StartDate = DateTime.UtcNow,
+        Season = Season.Planting
+    };
+    private UpdateGrowthPlanRequest _editRequest = new();
     private string SearchQuery { get; set; } = "";
+    private string SelectedStatusFilter { get; set; } = "all";
+
+    private int ActivePipelineCount => _allPlans.Count(p => p.Status is GrowthPlanStatus.Draft or GrowthPlanStatus.Active);
+    private int CompletedOutcomeCount => _allPlans.Count(p => p.Status is GrowthPlanStatus.Completed or GrowthPlanStatus.Graduated);
+    private string AverageProgressLabel => _allPlans.Count == 0 ? "0%" : $"{_allPlans.Average(p => p.ProgressPercentage):F0}%";
 
     protected override async Task OnInitializedAsync()
     {
+        await ReloadPlansAsync();
+    }
+
+    private async Task ReloadPlansAsync()
+    {
+        _isLoading = true;
+        _listError = null;
         try
         {
-            _allPlans = await Http.GetFromJsonAsync<List<GrowthPlanListDto>>("api/growthplans") ?? new();
+            _allPlans = await GrowthPlanService.GetGrowthPlansAsync();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error loading growth plans: {ex.Message}");
+            _listError = ex.Message;
             _allPlans = new();
         }
         finally
@@ -81,14 +370,221 @@
         }
     }
 
+    private async Task OpenCreateModal()
+    {
+        _showCreateModal = true;
+        _isCreateLoading = true;
+        _createError = "";
+        _selectedClientId = "";
+        _createRequest = new CreateGrowthPlanRequest
+        {
+            StartDate = DateTime.UtcNow,
+            Season = Season.Planting
+        };
+
+        try
+        {
+            _clients = await ClientService.GetAllClientsAsync();
+        }
+        catch (Exception ex)
+        {
+            _createError = $"Failed to load clients: {ex.Message}";
+        }
+        finally
+        {
+            _isCreateLoading = false;
+        }
+    }
+
+    private void CloseCreateModal()
+    {
+        _showCreateModal = false;
+        _createError = "";
+    }
+
+    private void OpenEditModal(GrowthPlanListDto plan)
+    {
+        _editingPlanId = plan.Id;
+        _editError = "";
+        _showEditModal = true;
+        _editRequest = new UpdateGrowthPlanRequest
+        {
+            Title = plan.Title,
+            Season = plan.Season,
+            Status = plan.Status,
+            TargetEndDate = plan.TargetEndDate
+        };
+    }
+
+    private void CloseEditModal()
+    {
+        _showEditModal = false;
+        _editError = "";
+        _editingPlanId = Guid.Empty;
+    }
+
+    private void OnSelectedClientChanged(ChangeEventArgs e)
+    {
+        _selectedClientId = e.Value?.ToString() ?? "";
+
+        if (!Guid.TryParse(_selectedClientId, out var clientId))
+        {
+            _createRequest.PersonId = Guid.Empty;
+            _createRequest.PersonName = string.Empty;
+            return;
+        }
+
+        _createRequest.PersonId = clientId;
+        _createRequest.PersonName = _clients.FirstOrDefault(c => c.Id == clientId)?.Name ?? string.Empty;
+    }
+
+    private async Task CreatePlanAsync()
+    {
+        _createError = "";
+
+        if (_createRequest.PersonId == Guid.Empty)
+        {
+            _createError = "Please select a client.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_createRequest.Title))
+        {
+            _createError = "Title is required.";
+            return;
+        }
+
+        _isSavingCreate = true;
+        try
+        {
+            var created = await GrowthPlanService.CreateGrowthPlanAsync(_createRequest);
+            if (created == null)
+            {
+                _createError = "Failed to create growth plan.";
+                return;
+            }
+
+            _allPlans.Insert(0, created);
+            _allPlans = _allPlans.OrderByDescending(p => p.StartDate).ToList();
+            CloseCreateModal();
+        }
+        catch (Exception ex)
+        {
+            _createError = ex.Message;
+        }
+        finally
+        {
+            _isSavingCreate = false;
+        }
+    }
+
+    private async Task DeletePlanAsync(Guid id)
+    {
+        try
+        {
+            await GrowthPlanService.DeleteGrowthPlanAsync(id);
+            _allPlans = _allPlans.Where(p => p.Id != id).ToList();
+        }
+        catch (Exception ex)
+        {
+            _listError = ex.Message;
+        }
+    }
+
+    private async Task SaveEditAsync()
+    {
+        _editError = "";
+
+        if (_editingPlanId == Guid.Empty)
+        {
+            _editError = "No growth plan selected.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_editRequest.Title))
+        {
+            _editError = "Title is required.";
+            return;
+        }
+
+        _isSavingEdit = true;
+        try
+        {
+            var updated = await GrowthPlanService.UpdateGrowthPlanAsync(_editingPlanId, _editRequest);
+            if (updated == null)
+            {
+                _editError = "Failed to update growth plan.";
+                return;
+            }
+
+            var index = _allPlans.FindIndex(p => p.Id == _editingPlanId);
+            if (index >= 0)
+            {
+                _allPlans[index] = updated;
+                _allPlans = _allPlans.OrderByDescending(p => p.StartDate).ToList();
+            }
+
+            CloseEditModal();
+        }
+        catch (Exception ex)
+        {
+            _editError = ex.Message;
+        }
+        finally
+        {
+            _isSavingEdit = false;
+        }
+    }
+
     private IEnumerable<GrowthPlanListDto> FilteredPlans
     {
         get
         {
-            if (string.IsNullOrWhiteSpace(SearchQuery)) return _allPlans;
-            return _allPlans.Where(p => 
-                (p.PersonName?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ?? false) || 
-                (p.Title?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ?? false));
+            IEnumerable<GrowthPlanListDto> query = _allPlans;
+
+            if (!string.IsNullOrWhiteSpace(SearchQuery))
+            {
+                query = query.Where(p =>
+                    (p.PersonName?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (p.Title?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ?? false));
+            }
+
+            query = SelectedStatusFilter switch
+            {
+                "active" => query.Where(p => p.Status == GrowthPlanStatus.Active || p.Status == GrowthPlanStatus.Draft),
+                "onhold" => query.Where(p => p.Status == GrowthPlanStatus.OnHold),
+                "completed" => query.Where(p => p.Status == GrowthPlanStatus.Completed),
+                "graduated" => query.Where(p => p.Status == GrowthPlanStatus.Graduated),
+                _ => query
+            };
+
+            return query;
         }
+    }
+
+    private static string GetProgressWidth(decimal percent) => $"{Math.Clamp(percent, 0m, 100m):F0}%";
+
+    private static string GetSeasonTone(Season season) => season switch
+    {
+        Season.Crisis => "season-crisis",
+        Season.Planting => "season-planting",
+        Season.Growing => "season-growing",
+        Season.Harvest => "season-harvest",
+        _ => "season-neutral"
+    };
+
+    private static string GetStatusTone(GrowthPlanStatus status) => status switch
+    {
+        GrowthPlanStatus.Active => "status-active",
+        GrowthPlanStatus.Completed or GrowthPlanStatus.Graduated => "status-success",
+        GrowthPlanStatus.OnHold => "status-hold",
+        GrowthPlanStatus.Closed => "status-closed",
+        _ => "status-draft"
+    };
+
+    private static string FormatEnumLabel(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return value;
+        return System.Text.RegularExpressions.Regex.Replace(value, "([a-z])([A-Z])", "$1 $2");
     }
 }

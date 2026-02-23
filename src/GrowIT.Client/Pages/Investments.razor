@@ -4,14 +4,15 @@
 @using GrowIT.Shared.DTOs
 @using GrowIT.Shared.Enums
 @inject IInvestmentService InvestmentService
+@inject IJSRuntime JS
 
 <PageTitle>Investments - grow.IT</PageTitle>
 
 <div class="dashboard fade-in mt-4">
-    <PageHeader Title="Investments" Subtitle="Track aid and resources distributed to people.">
+    <PageHeader Title="Service Investments" Subtitle="Document real-time service costs to build capacity, repeatability, and funding readiness.">
         <Actions>
             <button class="btn-growit btn-primary-growit" @onclick="OpenNewInvestment">
-                <span class="oi oi-plus me-2"></span>New Investment
+                <i class="bi bi-plus-lg me-2"></i>Plant Seed
             </button>
         </Actions>
     </PageHeader>
@@ -21,7 +22,7 @@
             <div class="row g-3">
                 <div class="col-md-8">
                     <div class="search-box">
-                        <span class="oi oi-magnifying-glass search-icon"></span>
+                        <i class="bi bi-search search-icon"></i>
                         <input type="text" placeholder="Search by person or purpose..." @bind="SearchQuery" @bind:event="oninput" />
                     </div>
                 </div>
@@ -47,6 +48,11 @@
     }
     else
     {
+        @if (!string.IsNullOrWhiteSpace(_actionError))
+        {
+            <div class="alert alert-danger mb-3">@_actionError</div>
+        }
+
         <div class="card-growit">
             <div class="table-responsive">
                 <table class="table-growit">
@@ -74,9 +80,17 @@
                                 <td class="text-end pe-4">
                                     @if (inv.Status == GrowIT.Shared.Enums.InvestmentStatus.Pending)
                                     {
-                                        <button class="btn-growit btn-primary-growit btn-sm me-1" @onclick="() => Approve(inv.Id)">Approve</button>
+                                        <button class="btn-growit btn-primary-growit btn-sm me-1"
+                                                disabled="@(_busyInvestmentId == inv.Id)"
+                                                @onclick="() => Approve(inv.Id)">Approve</button>
                                     }
-                                    <button class="btn-growit btn-ghost-growit btn-sm" disabled title="Investment detail page not implemented yet">Details</button>
+                                    @if (inv.Status == GrowIT.Shared.Enums.InvestmentStatus.Approved)
+                                    {
+                                        <button class="btn-growit btn-secondary-growit btn-sm me-1"
+                                                disabled="@(_busyInvestmentId == inv.Id)"
+                                                @onclick="() => Disburse(inv.Id)">Disburse</button>
+                                    }
+                                    <button class="btn-growit btn-ghost-growit btn-sm" @onclick="() => OpenDetails(inv.Id)">Details</button>
                                 </td>
                             </tr>
                         }
@@ -88,11 +102,18 @@
 </div>
 
 <PlantSeedModal @bind-Show="showPlantSeedModal" OnSeedPlanted="ReloadInvestments" />
+<InvestmentDetailModal @bind-Show="showInvestmentDetailModal"
+                       InvestmentId="selectedInvestmentId"
+                       OnChanged="ReloadInvestments" />
 
 @code {
     private List<InvestmentListDto> _investments = new();
     private bool _isLoading = true;
     private bool showPlantSeedModal;
+    private bool showInvestmentDetailModal;
+    private Guid selectedInvestmentId;
+    private Guid? _busyInvestmentId;
+    private string? _actionError;
     private string SearchQuery { get; set; } = "";
     private string StatusFilter { get; set; } = "";
 
@@ -129,17 +150,59 @@
 
  private async Task Approve(Guid id)
 {
-    // Ensure you provide the required 'approvedBy' parameter
-    await InvestmentService.ApproveInvestmentAsync(id, "Current User"); 
-    await ReloadInvestments(); 
+    _actionError = null;
+    _busyInvestmentId = id;
+    try
+    {
+        await InvestmentService.ApproveInvestmentAsync(id, "Current User");
+        await ReloadInvestments();
+    }
+    catch (Exception ex)
+    {
+        _actionError = ex.Message;
+    }
+    finally
+    {
+        _busyInvestmentId = null;
+    }
 }
 
+    private async Task Disburse(Guid id)
+    {
+        _actionError = null;
+        _busyInvestmentId = id;
+        try
+        {
+            if (!await JS.InvokeAsync<bool>("confirm", "Mark this investment as disbursed?"))
+            {
+                return;
+            }
+
+            await InvestmentService.DisburseInvestmentAsync(id);
+            await ReloadInvestments();
+        }
+        catch (Exception ex)
+        {
+            _actionError = ex.Message;
+        }
+        finally
+        {
+            _busyInvestmentId = null;
+        }
+    }
+
     private void OpenNewInvestment() => showPlantSeedModal = true;
+    private void OpenDetails(Guid id)
+    {
+        selectedInvestmentId = id;
+        showInvestmentDetailModal = true;
+    }
 
     // FIXED: Fully qualified name
     private string GetBadge(GrowIT.Shared.Enums.InvestmentStatus status) => status switch
     {
         GrowIT.Shared.Enums.InvestmentStatus.Approved => "bg-success",
+        GrowIT.Shared.Enums.InvestmentStatus.Disbursed => "bg-info",
         GrowIT.Shared.Enums.InvestmentStatus.Pending => "bg-warning text-dark",
         GrowIT.Shared.Enums.InvestmentStatus.Cancelled => "bg-danger",
         _ => "bg-secondary"

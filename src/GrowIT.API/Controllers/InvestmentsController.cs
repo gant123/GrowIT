@@ -29,6 +29,7 @@ public class InvestmentsController : ControllerBase
         var dbQuery = _context.Investments
             .Include(i => i.Client)
             .Include(i => i.FamilyMember)
+            .Include(i => i.Program)
             .AsQueryable();
 
         // Filtering
@@ -61,6 +62,7 @@ public class InvestmentsController : ControllerBase
                     ? i.FamilyMember.FirstName + " " + i.FamilyMember.LastName
                     : (i.Client != null ? i.Client.FirstName + " " + i.Client.LastName : "Unknown"),
                 Purpose = i.Reason,
+                Category = i.Program != null ? i.Program.Name : string.Empty,
                 Amount = i.Amount,
                 Status = i.Status
             })
@@ -81,6 +83,7 @@ public class InvestmentsController : ControllerBase
         var investment = await _context.Investments
             .Include(i => i.Client)
             .Include(i => i.FamilyMember)
+            .Include(i => i.Program)
             .FirstOrDefaultAsync(i => i.Id == id);
 
         if (investment == null) return NotFound();
@@ -93,6 +96,7 @@ public class InvestmentsController : ControllerBase
                 ? investment.FamilyMember.FirstName + " " + investment.FamilyMember.LastName
                 : (investment.Client != null ? investment.Client.FirstName + " " + investment.Client.LastName : "Unknown"),
             Purpose = investment.Reason,
+            Category = investment.Program?.Name ?? string.Empty,
             Amount = investment.Amount,
             Status = investment.Status,
             Notes = investment.Reason // Mapping Reason to Notes/Description for now

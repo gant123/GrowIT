@@ -25,48 +25,66 @@ public abstract class BaseApiService
     protected async Task<T?> GetAsync<T>(string endpoint)
     {
         var response = await _http.GetAsync(endpoint);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessWithDetailsAsync(response);
         return await response.Content.ReadFromJsonAsync<T>(_jsonOptions);
     }
 
     protected async Task<TResponse?> PostAsync<TRequest, TResponse>(string endpoint, TRequest data)
     {
         var response = await _http.PostAsJsonAsync(endpoint, data, _jsonOptions);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessWithDetailsAsync(response);
         return await response.Content.ReadFromJsonAsync<TResponse>(_jsonOptions);
     }
 
     protected async Task PostAsync<TRequest>(string endpoint, TRequest data)
     {
         var response = await _http.PostAsJsonAsync(endpoint, data, _jsonOptions);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessWithDetailsAsync(response);
     }
 
     protected async Task<TResponse?> PutAsync<TRequest, TResponse>(string endpoint, TRequest data)
     {
         var response = await _http.PutAsJsonAsync(endpoint, data, _jsonOptions);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessWithDetailsAsync(response);
         return await response.Content.ReadFromJsonAsync<TResponse>(_jsonOptions);
     }
 
     protected async Task PutAsync<TRequest>(string endpoint, TRequest data)
     {
         var response = await _http.PutAsJsonAsync(endpoint, data, _jsonOptions);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessWithDetailsAsync(response);
     }
 
     protected async Task<TResponse?> PatchAsync<TRequest, TResponse>(string endpoint, TRequest data)
     {
         var content = JsonContent.Create(data, options: _jsonOptions);
         var response = await _http.PatchAsync(endpoint, content);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessWithDetailsAsync(response);
         return await response.Content.ReadFromJsonAsync<TResponse>(_jsonOptions);
     }
 
     protected async Task DeleteAsync(string endpoint)
     {
         var response = await _http.DeleteAsync(endpoint);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessWithDetailsAsync(response);
+    }
+
+    private static async Task EnsureSuccessWithDetailsAsync(HttpResponseMessage response)
+    {
+        if (response.IsSuccessStatusCode)
+        {
+            return;
+        }
+
+        var body = response.Content == null
+            ? null
+            : (await response.Content.ReadAsStringAsync()).Trim();
+
+        var message = string.IsNullOrWhiteSpace(body)
+            ? $"API request failed with status {(int)response.StatusCode} ({response.ReasonPhrase})."
+            : body;
+
+        throw new ApiException(message, (int)response.StatusCode);
     }
 }
 

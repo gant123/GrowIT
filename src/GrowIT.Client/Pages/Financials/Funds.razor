@@ -1,14 +1,17 @@
 @page "/funds"
 @using GrowIT.Shared.DTOs
 @using GrowIT.Client.Shared
-@inject HttpClient Http
+@inject IFinancialService FinancialService
 @inject ILogger<Funds> Logger
 
-<div class="container-fluid mt-4">
-    <PageHeader Title="Financial Funds" Subtitle="Manage budget sources and track utilization.">
+<PageTitle>Funds - grow.IT</PageTitle>
+
+<div class="funds-page">
+    <PageHeader Title="Funds" Subtitle="Manage capital sources, monitor deployment, and protect service capacity with real-time balance visibility.">
         <Actions>
-            <button class="btn shadow-sm text-white fw-bold" style="background-color: var(--growit-success);" @onclick="CreateNew">
-                <span class="oi oi-plus me-2"></span>Create New Fund
+            <button class="btn btn-primary" @onclick="CreateNew">
+                <i class="bi bi-plus-lg"></i>
+                <span>Create Fund</span>
             </button>
         </Actions>
     </PageHeader>
@@ -20,58 +23,126 @@
             <button class="btn btn-sm btn-outline-light" @onclick="ReloadFunds">Retry</button>
         </div>
     }
-    else if (funds == null)
-    {
-        <div class="text-center py-5">
-            <div class="spinner-border text-success" role="status"></div>
-            <p class="mt-2 text-muted">Auditing accounts...</p>
+
+    <div class="funds-kpis">
+        <div class="funds-kpi-card">
+            <div class="funds-kpi-icon total"><i class="bi bi-wallet2"></i></div>
+            <div>
+                <div class="funds-kpi-label">Fund Sources</div>
+                <div class="funds-kpi-value">@(funds?.Count ?? 0)</div>
+            </div>
         </div>
-    }
-    else if (!funds.Any())
-    {
-        <KpiCard Label="Funds" Value="No Funds Configured" Icon="oi-inbox" Class="text-center py-5">
-            <p class="small text-secondary mb-4" style="color: var(--growit-text-secondary) !important;">You need to define a funding source before you can serve clients.</p>
-            <button class="btn btn-outline-success" @onclick="CreateNew">
-                Initialize First Fund
-            </button>
-        </KpiCard>
-    }
-    else
-    {
-        <div class="row">
-            @foreach (var fund in funds)
+        <div class="funds-kpi-card">
+            <div class="funds-kpi-icon available"><i class="bi bi-piggy-bank"></i></div>
+            <div>
+                <div class="funds-kpi-label">Available Capital</div>
+                <div class="funds-kpi-value">@TotalAvailable.ToString("C0")</div>
+            </div>
+        </div>
+        <div class="funds-kpi-card">
+            <div class="funds-kpi-icon deployed"><i class="bi bi-arrow-up-right-circle"></i></div>
+            <div>
+                <div class="funds-kpi-label">Deployed</div>
+                <div class="funds-kpi-value">@TotalDeployed.ToString("C0")</div>
+            </div>
+        </div>
+        <div class="funds-kpi-card">
+            <div class="funds-kpi-icon coverage"><i class="bi bi-shield-check"></i></div>
+            <div>
+                <div class="funds-kpi-label">Healthy Funds</div>
+                <div class="funds-kpi-value">@HealthyFundCount</div>
+            </div>
+        </div>
+    </div>
+
+    <section class="funds-panel">
+        <div class="funds-panel-header">
+            <div>
+                <h2>Funding Sources</h2>
+                <p>Track total budget, deployed amount, and remaining capacity for each source.</p>
+            </div>
+            @if (funds != null)
             {
-                var percent = GetPercent(fund);
-
-                <div class="col-xl-4 col-md-6 mb-4" @key="fund">
-                    <KpiCard Label="@fund.Name"
-                             Value="@fund.AvailableAmount.ToString("C0")"
-                             Icon="oi-briefcase"
-                             Color="success"
-                             Class="h-100">
-                        <div class="position-absolute top-0 end-0 p-2">
-                            <button class="btn btn-sm btn-link" style="color: var(--growit-text-muted);" @onclick="() => EditFund(fund)" title="Edit Budget">
-                                <span class="oi oi-pencil"></span>
-                            </button>
-                        </div>
-
-                        <div class="mt-2">
-                            <div class="small fw-normal opacity-50 mb-2">Total Budget: @fund.TotalAmount.ToString("C0")</div>
-                            <div class="d-flex justify-content-between small mb-1 opacity-75">
-                                <span>Utilization</span>
-                                <span>@percent%</span>
-                            </div>
-                            <div class="progress" style="height: 6px; background-color: var(--growit-bg-primary);">
-                                <div class="progress-bar" role="progressbar"
-                                     style="width: @($"{percent}%"); background-color: var(--growit-success);"
-                                     aria-valuenow="@percent" aria-valuemin="0" aria-valuemax="100"></div>
-                            </div>
-                        </div>
-                    </KpiCard>
-                </div>
+                <div class="funds-panel-meta">@funds.Count source(s)</div>
             }
         </div>
-    }
+
+        @if (funds == null)
+        {
+            <div class="funds-loading">
+                <div class="spinner-border text-success" role="status"></div>
+                <p>Auditing funds...</p>
+            </div>
+        }
+        else if (!funds.Any())
+        {
+            <div class="funds-empty">
+                <div class="funds-empty-icon"><i class="bi bi-wallet2"></i></div>
+                <h3>No funds configured</h3>
+                <p>Create a fund source before documenting service investments so costs and capacity remain measurable from day one.</p>
+                <button class="btn btn-outline-primary" @onclick="CreateNew">
+                    <i class="bi bi-plus-lg"></i>
+                    <span>Initialize First Fund</span>
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="fund-cards-grid">
+                @foreach (var fund in funds.OrderBy(f => f.Name))
+                {
+                    var percent = GetPercent(fund);
+                    var used = GetUsedAmount(fund);
+
+                    <article class="fund-card" @key="fund.Id">
+                        <div class="fund-card-header">
+                            <div>
+                                <h3>@fund.Name</h3>
+                                <div class="fund-card-subtitle">@GetStatusLabel(percent)</div>
+                            </div>
+                            <div class="fund-card-actions">
+                                <span class="fund-status-pill @GetStatusClass(percent)">@GetStatusLabel(percent)</span>
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => EditFund(fund)" title="Edit Fund">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="fund-card-body">
+                            <div class="fund-money-grid">
+                                <div class="money-block">
+                                    <span class="label">Available</span>
+                                    <strong>@fund.AvailableAmount.ToString("C0")</strong>
+                                </div>
+                                <div class="money-block">
+                                    <span class="label">Deployed</span>
+                                    <strong>@used.ToString("C0")</strong>
+                                </div>
+                                <div class="money-block">
+                                    <span class="label">Total Budget</span>
+                                    <strong>@fund.TotalAmount.ToString("C0")</strong>
+                                </div>
+                                <div class="money-block">
+                                    <span class="label">Utilization</span>
+                                    <strong>@percent%</strong>
+                                </div>
+                            </div>
+
+                            <div class="utilization-wrap">
+                                <div class="utilization-header">
+                                    <span>Utilization</span>
+                                    <span>@percent%</span>
+                                </div>
+                                <div class="utilization-track" role="progressbar" aria-valuenow="@percent" aria-valuemin="0" aria-valuemax="100">
+                                    <div class="utilization-fill @GetStatusClass(percent)" style="width: @($"{percent}%")"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </section>
 </div>
 
 <CreateFundModal @bind-Show="showCreateModal"
@@ -84,6 +155,11 @@
     private bool showCreateModal;
     private string? errorMessage;
 
+    private decimal TotalAvailable => funds?.Sum(f => f.AvailableAmount) ?? 0m;
+    private decimal TotalBudget => funds?.Sum(f => f.TotalAmount) ?? 0m;
+    private decimal TotalDeployed => TotalBudget - TotalAvailable;
+    private int HealthyFundCount => funds?.Count(f => GetPercent(f) < 80) ?? 0;
+
     protected override async Task OnInitializedAsync()
     {
         await ReloadFunds();
@@ -94,7 +170,7 @@
         try
         {
             errorMessage = null;
-            funds = await Http.GetFromJsonAsync<List<FundDto>>("api/financials/funds");
+            funds = await FinancialService.GetFundsAsync();
         }
         catch (Exception ex)
         {
@@ -112,7 +188,7 @@
 
     private void CreateNew()
     {
-        selectedFund = null; // Ensure we are in Create Mode
+        selectedFund = null;
         showCreateModal = true;
     }
 
@@ -121,9 +197,23 @@
         if (f.TotalAmount <= 0) return 0;
 
         var used = f.TotalAmount - f.AvailableAmount;
-
-        // Ensure decimal math + clamp to keep UI sane even if inputs drift slightly.
-        var percent = (decimal)used / f.TotalAmount * 100m;
+        var percent = used / f.TotalAmount * 100m;
         return (int)Math.Clamp(decimal.Round(percent, 0, MidpointRounding.AwayFromZero), 0m, 100m);
     }
+
+    private static decimal GetUsedAmount(FundDto f) => Math.Max(0m, f.TotalAmount - f.AvailableAmount);
+
+    private static string GetStatusClass(int percent) => percent switch
+    {
+        >= 90 => "critical",
+        >= 70 => "warning",
+        _ => "healthy"
+    };
+
+    private static string GetStatusLabel(int percent) => percent switch
+    {
+        >= 90 => "Near Capacity",
+        >= 70 => "Watch Utilization",
+        _ => "Healthy Capacity"
+    };
 }
