@@ -654,7 +654,7 @@
     {
         _userMenuOpen = false;
         await AuthService.Logout();
-        Navigation.NavigateTo("/welcome");
+        Navigation.NavigateTo("/welcome", forceLoad: true);
     }
 
     private void ToggleSidebar()

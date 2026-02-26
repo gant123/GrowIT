@@ -962,6 +962,31 @@
         showToast: function(message, type, duration) {
             toastManager.show(message, type || 'info', duration || 3000);
         },
+
+        authPostJson: async function(url, payload) {
+            const response = await fetch(url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: payload == null ? null : JSON.stringify(payload)
+            });
+
+            let body = '';
+            try {
+                body = await response.text();
+            } catch (_) {
+                body = '';
+            }
+
+            return {
+                ok: response.ok,
+                status: response.status,
+                body: body
+            };
+        },
         
         copyToClipboard: async function(text) {
             return await growITUtils.copyToClipboard(text);

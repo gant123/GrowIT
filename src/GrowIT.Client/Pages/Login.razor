@@ -215,12 +215,12 @@
                 return;
             }
 
-            var request = new LoginRequest { Email = _email, Password = _password };
+            var request = new LoginRequest { Email = _email, Password = _password, RememberMe = _rememberMe };
             var result = await AuthService.Login(request);
 
             if (result != null)
             {
-                Navigation.NavigateTo("/");
+                Navigation.NavigateTo("/", forceLoad: true);
             }
             else
             {

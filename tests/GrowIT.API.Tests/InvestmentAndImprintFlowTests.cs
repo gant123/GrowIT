@@ -1,11 +1,12 @@
 using System.Net;
 using System.Net.Http.Json;
-using GrowIT.API.Tests.Infrastructure;
+using GrowIT.Backend.Tests.Infrastructure;
 using GrowIT.Core.Entities;
 using GrowIT.Shared.DTOs;
 using GrowIT.Shared.Enums;
+using ClientEntity = GrowIT.Core.Entities.Client;
 
-namespace GrowIT.API.Tests;
+namespace GrowIT.Backend.Tests;
 
 public class InvestmentAndImprintFlowTests
 {
@@ -21,7 +22,7 @@ public class InvestmentAndImprintFlowTests
 
         await factory.SeedAsync(db =>
         {
-            db.Clients.Add(new Client
+            db.Clients.Add(new ClientEntity
             {
                 Id = clientId,
                 TenantId = tenantId,
@@ -99,7 +100,7 @@ public class InvestmentAndImprintFlowTests
         await factory.SeedAsync(db =>
         {
             db.Clients.AddRange(
-                new Client
+                new ClientEntity
                 {
                     Id = clientAId,
                     TenantId = tenantId,
@@ -111,7 +112,7 @@ public class InvestmentAndImprintFlowTests
                     StabilityScore = 5,
                     LifePhase = LifePhase.Stable
                 },
-                new Client
+                new ClientEntity
                 {
                     Id = clientBId,
                     TenantId = tenantId,

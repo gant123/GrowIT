@@ -1,36 +1,180 @@
-using Microsoft.AspNetCore.Components.Web;
-using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using System.Security.Claims;
+using System.Text;
+using GrowIT.Backend.Controllers;
+using GrowIT.Backend.Middleware;
+using GrowIT.Backend.Services;
 using GrowIT.Client;
-using Blazored.LocalStorage;
-using Microsoft.AspNetCore.Components.Authorization;
 using GrowIT.Client.Auth;
+using GrowIT.Client.Services;
+using GrowIT.Core.Interfaces;
+using GrowIT.Infrastructure.Data;
+using GrowIT.Infrastructure.Data.Interceptors;
+using GrowIT.Infrastructure.Services;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.IdentityModel.Tokens;
+using QuestPDF.Infrastructure;
 using Syncfusion.Blazor;
 using Syncfusion.Licensing;
-using GrowIT.Client.Services;
-var builder = WebAssemblyHostBuilder.CreateDefault(args);
-var config = builder.Configuration;
-var syncfusionKey = config["SyncfusionLicense"];
 
-if (!string.IsNullOrEmpty(syncfusionKey))
+var builder = WebApplication.CreateBuilder(args);
+
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
+// Preserve the existing client config model while moving to a server host.
+builder.Configuration.AddJsonFile("wwwroot/appsettings.json", optional: true, reloadOnChange: true);
+builder.Configuration.AddJsonFile($"wwwroot/appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
+
+var syncfusionKey = builder.Configuration["SyncfusionLicense"];
+if (!string.IsNullOrWhiteSpace(syncfusionKey))
 {
     SyncfusionLicenseProvider.RegisterLicense(syncfusionKey);
 }
 else
 {
-    Console.WriteLine("WARNING: Syncfusion License Key not found in appsettings.json");
+    Console.WriteLine("WARNING: Syncfusion License Key not found in configuration.");
 }
-builder.RootComponents.Add<App>("#app");
-builder.RootComponents.Add<HeadOutlet>("head::after");
 
-// 1. Storage: Lets us save the token in the browser
-builder.Services.AddBlazoredLocalStorage();
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents();
 
-// 2. Auth Core: Enables the <AuthorizeView> tags
-builder.Services.AddAuthorizationCore();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddScoped<ApiAuthorizationHandler>();
 
-// 3. The Security Guard: Uses our Custom provider to check the token
-builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
-builder.Services.AddScoped<IClientService, ClientService>(); // New!
+// Backend services now run in-process with the Blazor Web App host.
+builder.Services.AddScoped<ICurrentTenantService, CurrentTenantService>();
+builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
+builder.Services.Configure<ReportSchedulerOptions>(builder.Configuration.GetSection("Reports:Scheduler"));
+builder.Services.AddSingleton<ReportSchedulerState>();
+var schedulerEnabled = builder.Configuration.GetValue("Reports:Scheduler:Enabled", !builder.Environment.IsDevelopment());
+if (schedulerEnabled)
+{
+    builder.Services.AddHostedService<ScheduledReportRunnerService>();
+}
+builder.Services.AddScoped<AuditInterceptor>();
+
+builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
+{
+    var auditInterceptor = sp.GetRequiredService<AuditInterceptor>();
+    options.UseNpgsql(
+            builder.Configuration.GetConnectionString("DefaultConnection")
+            ?? "Host=localhost;Port=5433;Database=GrowIT;Username=postgres;Password=password")
+        .AddInterceptors(auditInterceptor);
+});
+
+builder.Services.AddControllers()
+    .AddApplicationPart(typeof(AuthController).Assembly);
+builder.Services.AddHealthChecks();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
+var jwtKey = builder.Configuration["Jwt:Key"] ?? "ThisIsMySuperSecretKeyForGrowITLocalDevelopment123!";
+const string CompositeAuthScheme = "GrowITCompositeAuth";
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultScheme = CompositeAuthScheme;
+        options.DefaultAuthenticateScheme = CompositeAuthScheme;
+        options.DefaultChallengeScheme = CompositeAuthScheme;
+    })
+    .AddPolicyScheme(CompositeAuthScheme, CompositeAuthScheme, options =>
+    {
+        options.ForwardDefaultSelector = context =>
+        {
+            var authHeader = context.Request.Headers.Authorization.ToString();
+            if (!string.IsNullOrWhiteSpace(authHeader) &&
+                authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            {
+                return JwtBearerDefaults.AuthenticationScheme;
+            }
+
+            // Keep API endpoints bearer-first to avoid opening all existing API writes to browser cookie CSRF.
+            if (context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
+            {
+                return JwtBearerDefaults.AuthenticationScheme;
+            }
+
+            return CookieAuthenticationDefaults.AuthenticationScheme;
+        };
+    })
+    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
+    {
+        options.Cookie.Name = "growit.auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
+        options.SlidingExpiration = true;
+        options.ExpireTimeSpan = TimeSpan.FromHours(12);
+        options.LoginPath = "/login";
+        options.AccessDeniedPath = "/login";
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnRedirectToLogin = context =>
+            {
+                if (IsApiOrBffRequest(context.Request))
+                {
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    return Task.CompletedTask;
+                }
+
+                context.Response.Redirect(context.RedirectUri);
+                return Task.CompletedTask;
+            },
+            OnRedirectToAccessDenied = context =>
+            {
+                if (IsApiOrBffRequest(context.Request))
+                {
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    return Task.CompletedTask;
+                }
+
+                context.Response.Redirect(context.RedirectUri);
+                return Task.CompletedTask;
+            }
+        };
+    })
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            ValidateIssuer = false,
+            ValidateAudience = false
+        };
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("AdminOnly", policy => policy.RequireAssertion(context =>
+        HasAnyRole(context.User, "Admin", "Owner")));
+    options.AddPolicy("AdminOrManager", policy => policy.RequireAssertion(context =>
+        HasAnyRole(context.User, "Admin", "Manager", "Owner")));
+    options.AddPolicy("ServiceWriter", policy => policy.RequireAssertion(context =>
+        HasAnyRole(context.User, "Admin", "Manager", "Owner", "Case Manager")));
+});
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo { Title = "GrowIT API (Hosted)", Version = "v1" });
+});
+
+builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IInvestmentService, InvestmentService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -44,20 +188,71 @@ builder.Services.AddScoped<IProfileService, ProfileService>();
 builder.Services.AddScoped<IFinancialService, FinancialService>();
 builder.Services.AddScoped<IRoleAccessService, RoleAccessService>();
 builder.Services.AddScoped<IFeedbackService, FeedbackService>();
-// 4. API Connection: Points specifically to your Backend API
-//    Make sure this matches the port your API is running on (likely 5286 or 5000)
-var apiBaseAddress = ResolveApiBaseAddress(builder);
-builder.Services.AddScoped(sp => new HttpClient
+
+builder.Services.AddHttpClient("GrowITApi")
+    .AddHttpMessageHandler<ApiAuthorizationHandler>();
+
+builder.Services.AddScoped(sp =>
 {
-    BaseAddress = apiBaseAddress
+    var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient("GrowITApi");
+
+    var nav = sp.GetService<NavigationManager>();
+    var baseUri = nav?.BaseUri;
+
+    if (string.IsNullOrWhiteSpace(baseUri))
+    {
+        var httpContext = sp.GetService<IHttpContextAccessor>()?.HttpContext;
+        if (httpContext is not null)
+        {
+            baseUri = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.PathBase}/";
+        }
+        else
+        {
+            baseUri = builder.Configuration["ClientUrl"]
+                ?? (builder.Environment.IsDevelopment() ? "http://localhost:5245/" : "http://localhost/");
+        }
+    }
+
+    client.BaseAddress = ResolveApiBaseAddress(builder.Configuration, builder.Environment, baseUri);
+    return client;
 });
 
 builder.Services.AddSyncfusionBlazor();
-await builder.Build().RunAsync();
 
-static Uri ResolveApiBaseAddress(WebAssemblyHostBuilder builder)
+var app = builder.Build();
+
+if (!app.Environment.IsDevelopment())
 {
-    var configured = builder.Configuration["ApiBaseUrl"]?.Trim();
+    app.UseExceptionHandler("/Error", createScopeForErrors: true);
+    app.UseHsts();
+}
+
+// API middleware (also handles controller exceptions when backend runs in this host).
+app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
+app.UseForwardedHeaders();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseStaticFiles();
+app.UseAntiforgery();
+app.UseAuthentication();
+app.UseAuthorization();
+
+app.MapControllers();
+app.MapHealthChecks("/healthz");
+
+app.MapRazorComponents<App>()
+    .AddInteractiveServerRenderMode();
+
+app.Run();
+
+static Uri ResolveApiBaseAddress(IConfiguration config, IWebHostEnvironment env, string baseUri)
+{
+    var configured = config["ApiBaseUrl"]?.Trim();
     if (!string.IsNullOrWhiteSpace(configured))
     {
         if (Uri.TryCreate(configured, UriKind.Absolute, out var absolute))
@@ -65,15 +260,24 @@ static Uri ResolveApiBaseAddress(WebAssemblyHostBuilder builder)
             return absolute;
         }
 
-        return new Uri(new Uri(builder.HostEnvironment.BaseAddress), configured);
+        return new Uri(new Uri(baseUri), configured);
     }
 
-    // Local dev fallback when running the WASM dev server without a reverse proxy.
-    if (builder.HostEnvironment.BaseAddress.Contains("localhost:5245", StringComparison.OrdinalIgnoreCase))
-    {
-        return new Uri("http://localhost:5286");
-    }
-
-    // Container/proxy fallback: same-origin (/api/* proxied by nginx).
-    return new Uri(builder.HostEnvironment.BaseAddress);
+    return new Uri(baseUri);
 }
+
+static bool HasAnyRole(ClaimsPrincipal user, params string[] allowedRoles)
+{
+    var allowed = new HashSet<string>(allowedRoles, StringComparer.OrdinalIgnoreCase);
+
+    return user.Claims.Any(c =>
+        (c.Type == ClaimTypes.Role || c.Type == "role") &&
+        !string.IsNullOrWhiteSpace(c.Value) &&
+        allowed.Contains(c.Value.Trim()));
+}
+
+static bool IsApiOrBffRequest(HttpRequest request) =>
+    request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase) ||
+    request.Path.StartsWithSegments("/bff", StringComparison.OrdinalIgnoreCase);
+
+public partial class Program;

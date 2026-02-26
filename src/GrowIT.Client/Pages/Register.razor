@@ -542,7 +542,7 @@
             var result = await AuthService.Register(_registerRequest);
             if (result != null)
             {
-                Navigation.NavigateTo("/");
+                Navigation.NavigateTo("/", forceLoad: true);
             }
             else
             {

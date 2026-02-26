@@ -11,7 +11,7 @@
 
 ## Database
 - [ ] Run migrations:
-  - `dotnet ef database update --project src/GrowIT.Infrastructure --startup-project src/GrowIT.API`
+  - `dotnet ef database update --project src/GrowIT.Infrastructure --startup-project src/GrowIT.Client`
 - [ ] Confirm `System Diagnostics -> Pending Migrations = 0`
 
 ## Storage / Files

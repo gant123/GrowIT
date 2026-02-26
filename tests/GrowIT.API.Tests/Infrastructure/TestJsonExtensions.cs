@@ -1,7 +1,7 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 
-namespace GrowIT.API.Tests.Infrastructure;
+namespace GrowIT.Backend.Tests.Infrastructure;
 
 public static class TestJsonExtensions
 {

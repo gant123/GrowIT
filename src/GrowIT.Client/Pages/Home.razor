@@ -1,5 +1,4 @@
 ﻿@page "/"
-@attribute [Authorize]
 @using GrowIT.Shared.DTOs
 @using GrowIT.Client.Services
 @using Syncfusion.Blazor.Charts 
@@ -139,7 +138,7 @@ else
             <div class="card-growit">
                 <div class="card-header">
                     <h3 class="section-title">Founder Follow-Ups</h3>
-                    <span class="badge-growit badge-warning">@stats.PendingFollowUps.Count Action Items</span>
+                    <span class="badge-growit badge-warning">@stats!.PendingFollowUps.Count Action Items</span>
                 </div>
                 <div class="card-body p-0">
                     <div class="tasks-list">

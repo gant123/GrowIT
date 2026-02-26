@@ -1,8 +1,6 @@
 using System.Net.Http.Json;
 using GrowIT.Shared.DTOs;
-using Microsoft.AspNetCore.Components.Authorization;
-using Blazored.LocalStorage;
-using GrowIT.Client.Auth;
+using Microsoft.JSInterop;
 
 namespace GrowIT.Client.Services;
 
@@ -19,43 +17,34 @@ public interface IAuthService
 
 public class AuthService : BaseApiService, IAuthService
 {
-    private readonly AuthenticationStateProvider _authStateProvider;
-    private readonly ILocalStorageService _localStorage;
+    private readonly IJSRuntime _js;
 
-    public AuthService(HttpClient http, 
-                       AuthenticationStateProvider authStateProvider, 
-                       ILocalStorageService localStorage) : base(http)
+    public AuthService(HttpClient http, IJSRuntime js) : base(http)
     {
-        _authStateProvider = authStateProvider;
-        _localStorage = localStorage;
+        _js = js;
     }
 
     public async Task<AuthResponseDto?> Login(LoginRequest request)
     {
-        var response = await _http.PostAsJsonAsync("api/auth/login", request, _jsonOptions);
-        
-        if (response.IsSuccessStatusCode)
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
         {
-            var result = await response.Content.ReadFromJsonAsync<AuthResponseDto>(_jsonOptions);
-            if (result != null && !string.IsNullOrEmpty(result.Token))
-            {
-                await _localStorage.SetItemAsync("authToken", result.Token);
-                await ((CustomAuthStateProvider)_authStateProvider).MarkUserAsAuthenticated(request.Email);
-                _http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", result.Token);
-                return result;
-            }
+            return null;
         }
-        else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+
+        var result = await PostBrowserAuthAsync("bff/auth/login", request);
+        if (result.Ok)
         {
-            return null; // Known failure case for UI to handle
+            return new AuthResponseDto();
         }
-        else
+
+        if (result.Status == 401)
         {
-            var errorContent = await response.Content.ReadAsStringAsync();
-            throw new Exception($"Login failed: {response.StatusCode}. {errorContent}");
+            return null;
         }
-        
-        return null;
+
+        throw new Exception(string.IsNullOrWhiteSpace(result.Body)
+            ? $"Login failed ({result.Status})."
+            : result.Body);
     }
 
     public async Task<AuthResponseDto?> Register(RegisterRequest request)
@@ -67,7 +56,11 @@ public class AuthService : BaseApiService, IAuthService
         if (response.IsSuccessStatusCode)
         {
             // Auto login after registration
-            return await Login(new LoginRequest { Email = request.Email, Password = request.Password });
+            return await Login(new LoginRequest
+            {
+                Email = request.Email,
+                Password = request.Password
+            });
         }
         else
         {
@@ -78,9 +71,13 @@ public class AuthService : BaseApiService, IAuthService
 
     public async Task Logout()
     {
-        await _localStorage.RemoveItemAsync("authToken");
-        await ((CustomAuthStateProvider)_authStateProvider).MarkUserAsLoggedOut();
-        _http.DefaultRequestHeaders.Authorization = null;
+        var result = await PostBrowserAuthAsync("bff/auth/logout", payload: null);
+        if (!result.Ok && result.Status != 401)
+        {
+            throw new Exception(string.IsNullOrWhiteSpace(result.Body)
+                ? $"Logout failed ({result.Status})."
+                : result.Body);
+        }
     }
 
     public async Task<bool> ForgotPassword(ForgotPasswordRequest request)
@@ -117,13 +114,22 @@ public class AuthService : BaseApiService, IAuthService
             throw new Exception(string.IsNullOrWhiteSpace(body) ? "Invite acceptance failed." : body);
         }
 
-        var result = await response.Content.ReadFromJsonAsync<AuthResponseDto>(_jsonOptions);
-        if (result != null && !string.IsNullOrEmpty(result.Token))
+        await response.Content.ReadFromJsonAsync<AuthResponseDto>(_jsonOptions);
+
+        return await Login(new LoginRequest
         {
-            await _localStorage.SetItemAsync("authToken", result.Token);
-            await ((CustomAuthStateProvider)_authStateProvider).MarkUserAsAuthenticated(request.Email);
-            _http.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", result.Token);
-        }
-        return result;
+            Email = request.Email,
+            Password = request.Password
+        });
+    }
+
+    private Task<BrowserAuthResult> PostBrowserAuthAsync(string relativeUrl, object? payload) =>
+        _js.InvokeAsync<BrowserAuthResult>("blazorInterop.authPostJson", relativeUrl, payload).AsTask();
+
+    private sealed class BrowserAuthResult
+    {
+        public bool Ok { get; set; }
+        public int Status { get; set; }
+        public string? Body { get; set; }
     }
 }

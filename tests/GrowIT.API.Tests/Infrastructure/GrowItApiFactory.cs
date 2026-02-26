@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
-namespace GrowIT.API.Tests.Infrastructure;
+namespace GrowIT.Backend.Tests.Infrastructure;
 
 public sealed class GrowItApiFactory : WebApplicationFactory<Program>
 {

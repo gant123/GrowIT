@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
-using GrowIT.API.Tests.Infrastructure;
+using GrowIT.Backend.Tests.Infrastructure;
 
-namespace GrowIT.API.Tests;
+namespace GrowIT.Backend.Tests;
 
 public class AuthorizationPolicyTests
 {

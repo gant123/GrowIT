@@ -18,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\GrowIT.API\GrowIT.API.csproj" />
+    <ProjectReference Include="..\..\src\GrowIT.Client\GrowIT.Client.csproj" />
     <ProjectReference Include="..\..\src\GrowIT.Core\GrowIT.Core.csproj" />
     <ProjectReference Include="..\..\src\GrowIT.Infrastructure\GrowIT.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\GrowIT.Shared\GrowIT.Shared.csproj" />

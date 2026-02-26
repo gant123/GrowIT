@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -8,24 +8,27 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Blazored.LocalStorage" Version="4.3.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.2" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.0" PrivateAssets="all" />
     <PackageReference Include="MudBlazor" Version="8.15.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.2" />
+    <PackageReference Include="QuestPDF" Version="2024.12.1" />
     <PackageReference Include="Syncfusion.Blazor.Charts" Version="32.1.24" />
     <PackageReference Include="Syncfusion.Blazor.Grid" Version="32.1.24" />
     <PackageReference Include="Syncfusion.Blazor.Themes" Version="32.1.24" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\GrowIT.Backend\GrowIT.Backend.csproj" />
     <ProjectReference Include="..\GrowIT.Core\GrowIT.Core.csproj" />
     <ProjectReference Include="..\GrowIT.Shared\GrowIT.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <Content Update="wwwroot\appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Update="wwwroot\appsettings.Production.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

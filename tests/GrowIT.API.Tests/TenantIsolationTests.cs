@@ -1,9 +1,10 @@
-using GrowIT.API.Tests.Infrastructure;
+using GrowIT.Backend.Tests.Infrastructure;
 using GrowIT.Core.Entities;
 using GrowIT.Shared.DTOs;
 using GrowIT.Shared.Enums;
+using ClientEntity = GrowIT.Core.Entities.Client;
 
-namespace GrowIT.API.Tests;
+namespace GrowIT.Backend.Tests;
 
 public class TenantIsolationTests
 {
@@ -17,7 +18,7 @@ public class TenantIsolationTests
         await factory.SeedAsync(db =>
         {
             db.Clients.AddRange(
-                new Client
+                new ClientEntity
                 {
                     Id = Guid.NewGuid(),
                     TenantId = tenantA,
@@ -29,7 +30,7 @@ public class TenantIsolationTests
                     StabilityScore = 5,
                     LifePhase = LifePhase.Crisis
                 },
-                new Client
+                new ClientEntity
                 {
                     Id = Guid.NewGuid(),
                     TenantId = tenantB,
@@ -73,7 +74,7 @@ public class TenantIsolationTests
 
         await factory.SeedAsync(db =>
         {
-            db.Clients.Add(new Client
+            db.Clients.Add(new ClientEntity
             {
                 Id = clientId,
                 TenantId = tenantA,

@@ -1,5 +1,4 @@
 @page "/clients"
-@attribute [Authorize]
 @using GrowIT.Shared.DTOs
 @using GrowIT.Shared.Enums
 @using Syncfusion.Blazor.Grids
@@ -153,7 +152,7 @@
                             <GridColumn Field=@nameof(ClientDto.Name) HeaderText="Client Name" Width="260" ClipMode="ClipMode.EllipsisWithTooltip">
                                 <Template>
                                 @{
-                                    var client = (context as ClientDto);
+                                    var client = (ClientDto)context;
                                     <div class="client-name-cell" @onclick="() => NavigateToClient(client.Id)">
                                         <div class="avatar-growit avatar-md client-avatar">
                                             @GetInitials(client.Name)
@@ -170,7 +169,7 @@
                         <GridColumn Field=@nameof(ClientDto.LifePhase) HeaderText="Life Phase" Width="140" TextAlign="TextAlign.Center">
                             <Template>
                                 @{
-                                    var phase = (context as ClientDto).LifePhase;
+                                    var phase = ((ClientDto)context).LifePhase;
                                     <span class="badge-growit @GetPhaseBadgeClass(phase)">
                                         @phase
                                     </span>
@@ -181,7 +180,7 @@
                         <GridColumn Field=@nameof(ClientDto.StabilityScore) HeaderText="Stability" Width="160" TextAlign="TextAlign.Center">
                             <Template>
                                 @{
-                                    var score = (context as ClientDto).StabilityScore;
+                                    var score = ((ClientDto)context).StabilityScore;
                                     <div class="stability-cell">
                                         <div class="stability-row-label">
                                             <span class="fw-bold text-muted">Score</span>
@@ -198,7 +197,7 @@
                             <GridColumn HeaderText="Contact" Width="220">
                             <Template>
                                 @{
-                                    var client = (context as ClientDto);
+                                    var client = (ClientDto)context;
                                     <div class="contact-cell">
                                         <div class="contact-line"><i class="bi bi-telephone"></i> @GetDisplayPhone(client)</div>
                                         <div class="contact-line muted"><i class="bi bi-envelope"></i> @GetContactStatus(client)</div>
@@ -210,7 +209,7 @@
                             <GridColumn HeaderText="Readiness" Width="220">
                             <Template>
                                 @{
-                                    var client = (context as ClientDto);
+                                    var client = (ClientDto)context;
                                     <div class="readiness-cell">
                                         <span class="badge-growit @GetReadinessBadgeClass(client)">@GetReadinessLabel(client)</span>
                                         <div class="small text-muted mt-1">@GetReadinessHint(client)</div>
@@ -222,7 +221,7 @@
                         <GridColumn Width="140" TextAlign="TextAlign.Center">
                             <Template>
                                 @{
-                                    var client = (context as ClientDto);
+                                    var client = (ClientDto)context;
                                     <div class="directory-actions-cell">
                                         <button class="btn-growit btn-ghost-growit btn-sm" @onclick="() => NavigateToClient(client.Id)">
                                             <i class="bi bi-folder2-open me-1"></i>View File
