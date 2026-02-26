@@ -2990,3 +2990,787 @@
         justify-content: flex-start;
     }
 }
+
+/* ========================================
+   WELCOME PAGE CONVERSION FLOW (v5)
+   ======================================== */
+.landing-page .proof-section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: clamp(28px, 4vw, 48px) 24px clamp(40px, 5vw, 64px);
+}
+
+.landing-page .proof-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+    gap: 18px;
+    align-items: start;
+}
+
+.landing-page .proof-panel,
+.landing-page .proof-cta-card {
+    border: 1px solid color-mix(in srgb, var(--growit-border) 68%, var(--growit-primary) 32%);
+    border-radius: 20px;
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--growit-bg-card) 96%, white 4%), color-mix(in srgb, var(--growit-bg-card) 100%, transparent));
+    box-shadow: 0 12px 26px rgba(15, 23, 42, 0.05);
+}
+
+.landing-page .proof-panel {
+    padding: clamp(20px, 3vw, 30px);
+}
+
+.landing-page .proof-header {
+    margin-bottom: 1rem;
+}
+
+.landing-page .proof-header .section-title {
+    text-align: left;
+    font-size: clamp(1.45rem, 2.8vw, 2.15rem);
+    margin-bottom: 0.7rem;
+}
+
+.landing-page .proof-header .section-subtitle {
+    text-align: left;
+    margin-inline: 0;
+    max-width: 100%;
+    font-size: 1rem;
+}
+
+.landing-page .proof-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.landing-page .proof-stat {
+    padding: 14px;
+    border-radius: 14px;
+    border: 1px solid color-mix(in srgb, var(--growit-border) 70%, transparent);
+    background: color-mix(in srgb, var(--growit-bg-primary) 88%, white 12%);
+    display: grid;
+    gap: 0.35rem;
+}
+
+.landing-page .proof-stat .label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--growit-text-muted);
+}
+
+.landing-page .proof-stat .value {
+    font-size: 0.92rem;
+    line-height: 1.5;
+    color: var(--growit-text-primary);
+    font-weight: 600;
+}
+
+.landing-page .proof-cta-card {
+    padding: 18px;
+    position: sticky;
+    top: 88px;
+}
+
+.landing-page .proof-cta-card h3 {
+    margin: 0 0 0.75rem 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--growit-text-primary);
+}
+
+.landing-page .proof-checklist {
+    list-style: none;
+    margin: 0 0 0.9rem 0;
+    padding: 0;
+    display: grid;
+    gap: 0.55rem;
+}
+
+.landing-page .proof-checklist li {
+    position: relative;
+    padding-left: 1.25rem;
+    color: var(--growit-text-secondary);
+    font-size: 0.92rem;
+    line-height: 1.45;
+}
+
+.landing-page .proof-checklist li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.45rem;
+    width: 0.42rem;
+    height: 0.42rem;
+    border-radius: 999px;
+    background: var(--growit-green);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--growit-green) 16%, transparent);
+}
+
+.landing-page .proof-cta-actions {
+    display: grid;
+    gap: 10px;
+}
+
+.landing-page .proof-cta-actions .btn {
+    min-height: 46px;
+    font-weight: 700;
+}
+
+.landing-page .proof-cta-note {
+    margin: 0.75rem 0 0;
+    font-size: 0.82rem;
+    color: var(--growit-text-muted);
+}
+
+.landing-page .pricing-guidance {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin: 0 auto 22px;
+    max-width: 1100px;
+}
+
+.landing-page .guidance-card {
+    padding: 16px 18px;
+    border-radius: 16px;
+    border: 1px solid color-mix(in srgb, var(--growit-border) 70%, transparent);
+    background: color-mix(in srgb, var(--growit-bg-card) 92%, white 8%);
+}
+
+.landing-page .guidance-card.highlight {
+    border-color: color-mix(in srgb, var(--growit-green) 35%, var(--growit-border));
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--growit-green) 6%, var(--growit-bg-card) 94%), color-mix(in srgb, var(--growit-bg-card) 100%, transparent));
+}
+
+.landing-page .guidance-card h3 {
+    margin: 0 0 0.4rem 0;
+    font-size: 1rem;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    color: var(--growit-text-primary);
+}
+
+.landing-page .guidance-card p {
+    margin: 0;
+    color: var(--growit-text-secondary);
+    line-height: 1.55;
+    font-size: 0.9rem;
+}
+
+.landing-page .cta-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.landing-page .cta-secondary-link {
+    min-height: 52px;
+    font-weight: 700;
+}
+
+.landing-page .cta-actions .btn-outline.cta-secondary-link {
+    color: #fff;
+    border-color: rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.landing-page .cta-actions .btn-outline.cta-secondary-link:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.65);
+    color: #fff;
+}
+
+.landing-page .cta-actions .btn-ghost.cta-secondary-link {
+    color: rgba(255, 255, 255, 0.94);
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.landing-page .cta-actions .btn-ghost.cta-secondary-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.32);
+    color: #fff;
+}
+
+[data-theme="dark"] .landing-page .proof-panel,
+[data-theme="dark"] .landing-page .proof-cta-card,
+[data-theme="dark"] .landing-page .guidance-card {
+    box-shadow: 0 12px 26px rgba(2, 6, 23, 0.22);
+}
+
+@media (max-width: 1080px) {
+    .landing-page .proof-shell {
+        grid-template-columns: 1fr;
+    }
+
+    .landing-page .proof-cta-card {
+        position: static;
+    }
+}
+
+@media (max-width: 900px) {
+    .landing-page .proof-header .section-title,
+    .landing-page .proof-header .section-subtitle {
+        text-align: left;
+    }
+
+    .landing-page .proof-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .landing-page .pricing-guidance {
+        grid-template-columns: 1fr;
+        margin-bottom: 18px;
+    }
+}
+
+@media (max-width: 640px) {
+    .landing-page .proof-section {
+        padding-inline: 16px;
+    }
+
+    .landing-page .proof-panel,
+    .landing-page .proof-cta-card {
+        border-radius: 16px;
+        padding: 16px;
+    }
+
+    .landing-page .proof-stat {
+        padding: 12px;
+        border-radius: 12px;
+    }
+
+    .landing-page .cta-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .landing-page .cta-actions .btn {
+        width: 100%;
+    }
+}
+
+/* ========================================
+   WELCOME PAGE TRUST / COMPLIANCE SIGNALS (v6)
+   ======================================== */
+.landing-page .trust-signals-section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: clamp(44px, 6vw, 76px) 24px clamp(44px, 6vw, 72px);
+}
+
+.landing-page .trust-signals-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 6px;
+}
+
+.landing-page .trust-signal-card {
+    display: grid;
+    align-content: start;
+    gap: 0;
+    padding: 18px 18px 16px;
+    border-radius: 18px;
+    border: 1px solid color-mix(in srgb, var(--growit-border) 68%, var(--growit-primary) 32%);
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--growit-bg-card) 95%, white 5%), color-mix(in srgb, var(--growit-bg-card) 100%, transparent));
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+    position: relative;
+    overflow: hidden;
+}
+
+.landing-page .trust-signal-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(
+        to right,
+        color-mix(in srgb, var(--growit-green) 85%, white 15%),
+        color-mix(in srgb, var(--growit-primary) 35%, transparent)
+    );
+    opacity: 0.9;
+}
+
+.landing-page .signal-icon {
+    width: 46px;
+    height: 46px;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--growit-border) 65%, transparent);
+    background: color-mix(in srgb, var(--growit-green) 7%, var(--growit-bg-primary) 93%);
+    color: var(--growit-green);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+}
+
+.landing-page .signal-icon svg {
+    width: 22px;
+    height: 22px;
+}
+
+.landing-page .trust-signal-card h3 {
+    margin: 0 0 0.45rem 0;
+    font-size: 1.02rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    color: var(--growit-text-primary);
+}
+
+.landing-page .trust-signal-card p {
+    margin: 0;
+    font-size: 0.92rem;
+    line-height: 1.55;
+    color: var(--growit-text-secondary);
+}
+
+.landing-page .trust-assurance-row {
+    margin-top: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.landing-page .assurance-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--growit-border) 70%, transparent);
+    background: color-mix(in srgb, var(--growit-bg-secondary) 76%, transparent);
+    color: var(--growit-text-secondary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+.landing-page .assurance-pill::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: var(--growit-green);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--growit-green) 14%, transparent);
+    flex-shrink: 0;
+}
+
+[data-theme="dark"] .landing-page .trust-signal-card {
+    box-shadow: 0 12px 24px rgba(2, 6, 23, 0.22);
+}
+
+[data-theme="dark"] .landing-page .signal-icon {
+    background: rgba(15, 23, 42, 0.75);
+    border-color: rgba(148, 163, 184, 0.18);
+}
+
+[data-theme="dark"] .landing-page .assurance-pill {
+    background: rgba(15, 23, 42, 0.55);
+    border-color: rgba(148, 163, 184, 0.18);
+    color: rgba(226, 232, 240, 0.88);
+}
+
+@media (max-width: 900px) {
+    .landing-page .trust-signals-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .landing-page .trust-assurance-row {
+        gap: 8px;
+    }
+}
+
+@media (max-width: 640px) {
+    .landing-page .trust-signals-section {
+        padding-inline: 16px;
+    }
+
+    .landing-page .trust-signal-card {
+        padding: 16px 14px 14px;
+        border-radius: 15px;
+    }
+
+    .landing-page .signal-icon {
+        width: 42px;
+        height: 42px;
+        margin-bottom: 10px;
+    }
+
+    .landing-page .trust-signal-card h3 {
+        font-size: 0.97rem;
+    }
+
+    .landing-page .trust-signal-card p {
+        font-size: 0.88rem;
+    }
+
+    .landing-page .assurance-pill {
+        width: 100%;
+        border-radius: 12px;
+        justify-content: flex-start;
+    }
+}
+
+/* ========================================
+   AUTH PAGES ENTERPRISE PASS (v3)
+   Login + Register refresh
+   ======================================== */
+.login-page,
+.register-page {
+    background:
+        radial-gradient(circle at 8% 0%, color-mix(in srgb, var(--growit-green) 10%, transparent) 0%, transparent 42%),
+        radial-gradient(circle at 100% 8%, color-mix(in srgb, var(--growit-primary) 10%, transparent) 0%, transparent 38%),
+        var(--growit-bg-primary);
+}
+
+.auth-container-enterprise {
+    border-radius: 24px;
+    border-color: color-mix(in srgb, var(--growit-border) 70%, var(--growit-primary) 30%);
+    box-shadow:
+        0 20px 52px rgba(15, 23, 42, 0.08),
+        0 1px 0 rgba(255, 255, 255, 0.55) inset;
+}
+
+.auth-card-enterprise {
+    background:
+        linear-gradient(180deg, color-mix(in srgb, var(--growit-bg-card) 97%, white 3%), color-mix(in srgb, var(--growit-bg-card) 100%, transparent));
+}
+
+.auth-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.7rem;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--growit-green) 28%, transparent);
+    background: color-mix(in srgb, var(--growit-green) 7%, transparent);
+    color: var(--growit-green);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 0.85rem;
+}
+
+.auth-header h1 {
+    letter-spacing: -0.03em;
+    line-height: 1.08;
+}
+
+.auth-header p {
+    line-height: 1.6;
+    max-width: 46ch;
+    margin-inline: auto;
+}
+
+.auth-context-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 0 0 18px;
+}
+
+.context-chip {
+    padding: 11px 12px;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--growit-border) 72%, transparent);
+    background: color-mix(in srgb, var(--growit-bg-primary) 86%, white 14%);
+    display: grid;
+    gap: 0.15rem;
+}
+
+.context-chip .label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--growit-text-muted);
+}
+
+.context-chip .value {
+    font-size: 0.86rem;
+    line-height: 1.35;
+    color: var(--growit-text-primary);
+    font-weight: 600;
+}
+
+.auth-inline-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 2px 0 2px;
+}
+
+.auth-inline-option input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--growit-green);
+}
+
+.auth-inline-option label {
+    font-size: 0.875rem;
+    color: var(--growit-text-secondary);
+}
+
+.form-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.auth-side-enterprise {
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-side-enterprise::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 15% 10%, rgba(255, 255, 255, 0.16), transparent 42%),
+        radial-gradient(circle at 100% 100%, rgba(255, 255, 255, 0.1), transparent 45%);
+    pointer-events: none;
+}
+
+.auth-side-enterprise .auth-side-content {
+    position: relative;
+    z-index: 1;
+}
+
+.auth-side-enterprise h2 {
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+}
+
+.auth-side-enterprise .side-kicker {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+}
+
+.auth-side-enterprise .side-intro {
+    margin: 0 0 16px 0;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.side-proof-panel {
+    margin: 0 0 18px 0;
+    padding: 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: rgba(255, 255, 255, 0.07);
+    display: grid;
+    gap: 10px;
+}
+
+.side-proof-panel .proof-row {
+    display: grid;
+    gap: 0.1rem;
+}
+
+.side-proof-panel .proof-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.72);
+}
+
+.side-proof-panel .proof-value {
+    font-size: 0.9rem;
+    line-height: 1.4;
+    font-weight: 600;
+    color: #fff;
+}
+
+.auth-side-enterprise .benefits-list {
+    margin-bottom: 22px;
+}
+
+.auth-side-enterprise .benefits-list li {
+    padding: 10px 0;
+}
+
+.auth-side-enterprise .benefits-list span {
+    line-height: 1.45;
+}
+
+.auth-side-enterprise .auth-quote {
+    margin-top: 22px;
+    padding-top: 18px;
+}
+
+.auth-side-enterprise .auth-quote p {
+    font-size: 1rem;
+    line-height: 1.65;
+}
+
+.register-page .register-steps {
+    margin-bottom: 18px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid color-mix(in srgb, var(--growit-border) 70%, transparent);
+    background: color-mix(in srgb, var(--growit-bg-primary) 84%, white 16%);
+}
+
+.register-page .step-label {
+    font-weight: 600;
+}
+
+.register-page .checkbox-card {
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--growit-bg-card) 94%, white 6%);
+}
+
+.register-page .checkbox-card.selected {
+    box-shadow: 0 8px 16px color-mix(in srgb, var(--growit-green) 10%, transparent);
+}
+
+.register-page .setup-options {
+    padding: 14px;
+    border-radius: 14px;
+    border: 1px solid color-mix(in srgb, var(--growit-border) 70%, transparent);
+    background: color-mix(in srgb, var(--growit-bg-primary) 86%, white 14%);
+}
+
+.register-page .setup-options h3 {
+    letter-spacing: -0.02em;
+}
+
+.auth-footer {
+    margin-top: 20px;
+}
+
+.auth-footer p + p {
+    margin-top: 6px;
+}
+
+[data-theme="dark"] .auth-container-enterprise {
+    box-shadow:
+        0 20px 52px rgba(2, 6, 23, 0.28),
+        0 1px 0 rgba(148, 163, 184, 0.08) inset;
+}
+
+[data-theme="dark"] .auth-card-enterprise,
+[data-theme="dark"] .context-chip,
+[data-theme="dark"] .register-page .register-steps,
+[data-theme="dark"] .register-page .setup-options,
+[data-theme="dark"] .register-page .checkbox-card {
+    background: rgba(15, 23, 42, 0.72);
+}
+
+[data-theme="dark"] .context-chip {
+    border-color: rgba(148, 163, 184, 0.16);
+}
+
+@media (max-width: 900px) {
+    .auth-container-enterprise {
+        border-radius: 18px;
+    }
+
+    .auth-card-enterprise {
+        padding: 28px 20px;
+    }
+
+    .auth-context-strip {
+        grid-template-columns: 1fr;
+    }
+
+    .auth-header p {
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 640px) {
+    .auth-page.login-page,
+    .auth-page.register-page {
+        padding: 18px 10px;
+    }
+
+    .auth-container-enterprise {
+        border-radius: 16px;
+    }
+
+    .auth-card-enterprise {
+        padding: 20px 14px;
+    }
+
+    .auth-logo {
+        margin-bottom: 18px;
+    }
+
+    .auth-header {
+        margin-bottom: 16px;
+    }
+
+    .auth-header h1 {
+        font-size: 1.25rem;
+    }
+
+    .auth-kicker {
+        font-size: 0.66rem;
+        margin-bottom: 0.65rem;
+    }
+
+    .auth-context-strip {
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+
+    .context-chip {
+        border-radius: 10px;
+        padding: 10px 10px;
+    }
+
+    .register-page .register-steps {
+        padding: 8px 8px;
+        gap: 4px;
+        overflow-x: auto;
+        justify-content: flex-start;
+    }
+
+    .register-page .step {
+        min-width: 68px;
+    }
+
+    .register-page .step-line {
+        width: 20px;
+    }
+
+    .register-page .step-label {
+        font-size: 0.68rem;
+    }
+
+    .register-page .form-actions {
+        flex-direction: column;
+    }
+
+    .register-page .form-actions .btn {
+        width: 100%;
+    }
+
+    .trust-footer {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+}
