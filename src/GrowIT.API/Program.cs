@@ -12,6 +12,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.Extensions.FileProviders;
 using QuestPDF.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.HttpOverrides;
 
 
 // AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
@@ -52,6 +53,13 @@ builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
 
 builder.Services.AddControllers();
 builder.Services.AddHealthChecks();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // Docker/nginx reverse proxy addresses are dynamic in local networks.
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // D. CORS (The Bridge for Blazor)
 builder.Services.AddCors(options =>
@@ -117,13 +125,13 @@ app.Environment.WebRootFileProvider = new PhysicalFileProvider(webRootPath);
 // 3. PIPELINE
 // ==========================================
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
+app.UseForwardedHeaders();
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.UseHttpsRedirection();
 }
-
-app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseCors("AllowBlazorOrigin"); 

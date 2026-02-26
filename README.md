@@ -97,14 +97,13 @@ dotnet ef database update --project src/GrowIT.Infrastructure --startup-project 
 dotnet ef migrations add <MigrationName> --project src/GrowIT.Infrastructure --startup-project src/GrowIT.API
 ```
 
-## Docker Compose (Beta / Cloudflare Tunnel)
+## Docker Compose (Beta)
 
 This repository includes a container stack for:
 
 - `db` (PostgreSQL)
 - `api` (ASP.NET Core API)
 - `client` (Nginx serving the Blazor WebAssembly app, with `/api` reverse-proxied to the API container)
-- optional `cloudflared` service (profile-based)
 
 Files:
 
@@ -135,7 +134,7 @@ docker compose up -d --build
 
 Default container ports:
 
-- Client: `http://localhost:8080`
+- Client: `http://localhost:5180`
 - API: `http://localhost:5286`
 - Postgres: `localhost:5433`
 
@@ -150,23 +149,11 @@ dotnet ef database update --project src/GrowIT.Infrastructure --startup-project 
 
 ## 4. Cloudflare Tunnel (`beta-growit.ganthome.cloud`)
 
-Two options:
+Your Cloudflare tunnel is already set up, so just point the public hostname service target to:
 
-- Run `cloudflared` on the host and point it to `http://localhost:8080`
-- Run the optional compose `cloudflared` service
+- `http://localhost:5180`
 
-If using the compose service:
-
-```bash
-docker compose --profile tunnel up -d cloudflared
-```
-
-Set `CF_TUNNEL_TOKEN` in `.env`.
-
-In Cloudflare Tunnel, set the public hostname service target to:
-
-- `http://client:80` (if using compose `cloudflared`)
-- `http://localhost:8080` (if using host `cloudflared`)
+That routes requests to the `client` container, and nginx proxies `/api/*`, `/uploads/*`, `/healthz`, and `/swagger/*` to the `api` container.
 
 ## Testing
 

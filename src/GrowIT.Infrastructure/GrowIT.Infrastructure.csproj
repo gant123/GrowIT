@@ -22,6 +22,16 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Class1.cs" />
+    <Compile Include="Data/*.cs" />
+    <Compile Include="Data/Interceptors/*.cs" />
+    <Compile Include="Migrations/*.cs" />
+    <Compile Include="Services/*.cs" />
+  </ItemGroup>
 
 </Project>

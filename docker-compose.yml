@@ -9,6 +9,11 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
       - "${POSTGRES_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-GrowIT}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
     volumes:
       - growit-postgres-data:/var/lib/postgresql/data
 
@@ -19,7 +24,8 @@ services:
     container_name: growit-api
     restart: unless-stopped
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
@@ -27,7 +33,7 @@ services:
       Jwt__Key: ${JWT_KEY:-ChangeMe-Set-A-Long-Random-Key-Before-Beta}
       ClientUrl: ${CLIENT_URL:-https://beta-growit.ganthome.cloud}
       Cors__AllowedOrigins__0: ${CLIENT_URL:-https://beta-growit.ganthome.cloud}
-      Cors__AllowedOrigins__1: http://localhost:${CLIENT_PORT:-8080}
+      Cors__AllowedOrigins__1: http://localhost:${CLIENT_PORT:-5180}
       Email__SmtpHost: ${EMAIL_SMTP_HOST:-}
       Email__SmtpPort: ${EMAIL_SMTP_PORT:-587}
       Email__UseSsl: ${EMAIL_USE_SSL:-true}
@@ -57,22 +63,9 @@ services:
     depends_on:
       - api
     ports:
-      - "${CLIENT_PORT:-8080}:80"
-
-  # Optional: run Cloudflare Tunnel in the same compose network.
-  # Configure the public hostname in Cloudflare Tunnel to point to http://client:80
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: growit-cloudflared
-    restart: unless-stopped
-    depends_on:
-      - client
-    command: tunnel --no-autoupdate run --token ${CF_TUNNEL_TOKEN}
-    profiles:
-      - tunnel
+      - "${CLIENT_PORT:-5180}:80"
 
 volumes:
   growit-postgres-data:
   growit-api-uploads:
   growit-api-dev-emails:
-
