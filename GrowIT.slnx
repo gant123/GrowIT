@@ -7,6 +7,6 @@
     <Project Path="src/GrowIT.Shared/GrowIT.Shared.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/GrowIT.API.Tests/GrowIT.API.Tests.csproj" />
+    <Project Path="tests/GrowIT.IntegrationTests/GrowIT.IntegrationTests.csproj" />
   </Folder>
 </Solution>

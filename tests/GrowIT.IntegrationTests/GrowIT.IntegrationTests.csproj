@@ -4,6 +4,8 @@
     <IsPackable>false</IsPackable>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>GrowIT.IntegrationTests</AssemblyName>
+    <RootNamespace>GrowIT.IntegrationTests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

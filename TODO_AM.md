@@ -48,7 +48,7 @@ Check these screens for correct access (visible/hidden actions + backend enforce
 ## Tests
 
 - [ ] Run integration tests:
-  - `dotnet test tests/GrowIT.API.Tests/GrowIT.API.Tests.csproj -m:1 --disable-build-servers`
+  - `dotnet test tests/GrowIT.IntegrationTests/GrowIT.IntegrationTests.csproj -m:1 --disable-build-servers`
 - [ ] Confirm new authorization tests pass (`403` checks)
 
 ## Next Engineering Work (recommended order)

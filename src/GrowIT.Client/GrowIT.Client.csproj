@@ -5,6 +5,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
+    <UserSecretsId>GrowIT.Client-LocalDev</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>

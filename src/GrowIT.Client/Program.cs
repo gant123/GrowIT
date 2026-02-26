@@ -189,15 +189,22 @@ builder.Services.AddScoped<IFinancialService, FinancialService>();
 builder.Services.AddScoped<IRoleAccessService, RoleAccessService>();
 builder.Services.AddScoped<IFeedbackService, FeedbackService>();
 
-builder.Services.AddHttpClient("GrowITApi")
+builder.Services.AddHttpClient("GrowITApi", (sp, client) =>
+    {
+        var httpContext = sp.GetService<IHttpContextAccessor>()?.HttpContext;
+        var baseUri = httpContext is not null
+            ? $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.PathBase}/"
+            : builder.Configuration["ClientUrl"]
+                ?? (builder.Environment.IsDevelopment() ? "http://localhost:5245/" : "http://localhost/");
+
+        client.BaseAddress = ResolveApiBaseAddress(builder.Configuration, builder.Environment, baseUri);
+    })
     .AddHttpMessageHandler<ApiAuthorizationHandler>();
 
 builder.Services.AddScoped(sp =>
 {
     var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient("GrowITApi");
-
-    var nav = sp.GetService<NavigationManager>();
-    var baseUri = nav?.BaseUri;
+    string? baseUri = null;
 
     if (string.IsNullOrWhiteSpace(baseUri))
     {
@@ -252,18 +259,39 @@ app.Run();
 
 static Uri ResolveApiBaseAddress(IConfiguration config, IWebHostEnvironment env, string baseUri)
 {
+    static bool IsHttpScheme(Uri uri) =>
+        string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
+
+    var fallbackBase = config["ClientUrl"]
+        ?? (env.IsDevelopment() ? "http://localhost:5245/" : "http://localhost/");
+
+    if (!Uri.TryCreate(baseUri, UriKind.Absolute, out var candidateBase) || !IsHttpScheme(candidateBase))
+    {
+        baseUri = fallbackBase;
+    }
+
     var configured = config["ApiBaseUrl"]?.Trim();
     if (!string.IsNullOrWhiteSpace(configured))
     {
         if (Uri.TryCreate(configured, UriKind.Absolute, out var absolute))
         {
-            return absolute;
+            if (IsHttpScheme(absolute))
+            {
+                return absolute;
+            }
+
+            return new Uri(fallbackBase);
         }
 
-        return new Uri(new Uri(baseUri), configured);
+        var combined = new Uri(new Uri(baseUri), configured);
+        if (IsHttpScheme(combined))
+        {
+            return combined;
+        }
     }
 
-    return new Uri(baseUri);
+    return new Uri(fallbackBase);
 }
 
 static bool HasAnyRole(ClaimsPrincipal user, params string[] allowedRoles)

@@ -11,7 +11,7 @@ grow.IT is a founder survivability and funding-readiness platform for early-stag
 - `src/GrowIT.Infrastructure` — EF Core + PostgreSQL + migrations
 - `src/GrowIT.Core` — domain entities and core interfaces
 - `src/GrowIT.Shared` — shared DTOs/contracts
-- `tests/GrowIT.API.Tests` — integration tests (tenant isolation + core flow coverage)
+- `tests/GrowIT.IntegrationTests` — integration tests (tenant isolation + core flow coverage)
 - `docs/` — project docs (including permissions matrix)
 
 ## Current Product Scope (Implemented)
@@ -61,6 +61,16 @@ Default dev URLs:
 
 - `http://localhost:5245`
 - `https://localhost:7234`
+
+## 3. Configure local secrets (recommended)
+
+Keep SMTP/API credentials out of git by using user-secrets for the web app host:
+
+```bash
+dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpHost" "your-smtp-host"
+dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpUser" "your-user"
+dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpPass" "your-password"
+```
 
 ## Database / EF Core Workflow (Important)
 
@@ -140,7 +150,7 @@ That routes requests directly to the single `client` container (Blazor Web App h
 Run API integration tests:
 
 ```bash
-dotnet test tests/GrowIT.API.Tests/GrowIT.API.Tests.csproj -m:1 --disable-build-servers
+dotnet test tests/GrowIT.IntegrationTests/GrowIT.IntegrationTests.csproj -m:1 --disable-build-servers
 ```
 
 Coverage currently includes:

@@ -219,12 +219,21 @@ public class ProfileController : ControllerBase
         if (string.IsNullOrWhiteSpace(storedPhotoUrl))
             return null;
 
-        if (Uri.TryCreate(storedPhotoUrl, UriKind.Absolute, out _))
+        if (Uri.TryCreate(storedPhotoUrl, UriKind.Absolute, out var absolute))
+        {
+            // For locally-managed uploads, return a relative path so the current host
+            // (localhost/LAN/tunnel domain) always serves the image correctly.
+            if (absolute.AbsolutePath.StartsWith("/uploads/", StringComparison.OrdinalIgnoreCase))
+            {
+                return absolute.PathAndQuery;
+            }
+
             return storedPhotoUrl;
+        }
 
         if (!storedPhotoUrl.StartsWith('/'))
             storedPhotoUrl = "/" + storedPhotoUrl;
 
-        return $"{Request.Scheme}://{Request.Host}{storedPhotoUrl}";
+        return storedPhotoUrl;
     }
 }
