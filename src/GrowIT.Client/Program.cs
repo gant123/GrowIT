@@ -44,6 +44,11 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-CSRF-TOKEN";
+    options.Cookie.Name = "growit.csrf";
+});
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<ApiAuthorizationHandler>();
 

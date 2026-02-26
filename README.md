@@ -70,6 +70,7 @@ Keep SMTP/API credentials out of git by using user-secrets for the web app host:
 dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpHost" "your-smtp-host"
 dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpUser" "your-user"
 dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpPass" "your-password"
+dotnet user-secrets --project src/GrowIT.Client set "ConnectionStrings:DefaultConnection" "Host=10.0.0.6;Port=5433;Database=GrowIT;Username=postgres;Password=your-password"
 ```
 
 ## Database / EF Core Workflow (Important)

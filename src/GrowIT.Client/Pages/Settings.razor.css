@@ -558,6 +558,133 @@
     border-color: var(--growit-border);
 }
 
+@media (max-width: 992px) {
+    .settings-kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .email-diagnostics-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .security-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .settings-page {
+        gap: 1rem;
+    }
+
+    .settings-kpis {
+        grid-template-columns: 1fr;
+    }
+
+    .settings-kpi-card {
+        min-height: auto;
+        padding: .9rem;
+    }
+
+    .settings-tabbar {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: .5rem;
+    }
+
+    .settings-tab {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+        padding: .55rem .65rem;
+    }
+
+    .settings-panel-header,
+    .settings-panel-body {
+        padding: .85rem;
+    }
+
+    .module-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .invite-audit-header,
+    .audit-log-header,
+    .email-diagnostics-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .audit-log-actions {
+        width: 100%;
+    }
+
+    .audit-log-actions .form-select,
+    .audit-log-actions .btn {
+        width: 100%;
+    }
+
+    .seed-tools-card {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .seed-tools-card .btn {
+        width: 100%;
+    }
+
+    .security-card {
+        grid-template-columns: auto 1fr;
+    }
+
+    .security-status {
+        grid-column: 1 / -1;
+        justify-self: flex-start;
+    }
+
+    .grid-action-row {
+        gap: .35rem;
+    }
+
+    .grid-action-row .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .user-role-editor {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .user-role-editor .form-select {
+        min-width: 0;
+        width: 100%;
+    }
+
+    .user-role-editor .btn {
+        width: 100%;
+    }
+
+    .email-diagnostics-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 520px) {
+    .settings-tabbar {
+        grid-template-columns: 1fr;
+    }
+
+    .invite-audit-title-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .invite-audit-title-row span {
+        white-space: normal;
+    }
+}
+
 :deep(.e-grid .e-rowcell),
 :deep(.e-grid .e-gridcontent tr td) {
     color: var(--growit-text-primary);

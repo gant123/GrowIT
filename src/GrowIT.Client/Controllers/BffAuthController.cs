@@ -2,6 +2,7 @@ using System.Security.Claims;
 using GrowIT.Core.Entities;
 using GrowIT.Infrastructure.Data;
 using GrowIT.Shared.DTOs;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -15,16 +16,33 @@ namespace GrowIT.Client.Controllers;
 public class BffAuthController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly IAntiforgery _antiforgery;
 
-    public BffAuthController(ApplicationDbContext context)
+    public BffAuthController(ApplicationDbContext context, IAntiforgery antiforgery)
     {
         _context = context;
+        _antiforgery = antiforgery;
     }
 
     [AllowAnonymous]
+    [HttpGet("csrf")]
+    public IActionResult GetCsrfToken()
+    {
+        var tokens = _antiforgery.GetAndStoreTokens(HttpContext);
+        Response.Headers.CacheControl = "no-store, no-cache, max-age=0";
+        return Ok(new { token = tokens.RequestToken });
+    }
+
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
+        if (!IsSameOriginRequest())
+        {
+            return Forbid();
+        }
+
         if (!ModelState.IsValid)
         {
             return ValidationProblem(ModelState);
@@ -49,9 +67,15 @@ public class BffAuthController : ControllerBase
         return NoContent();
     }
 
+    [ValidateAntiForgeryToken]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()
     {
+        if (!IsSameOriginRequest())
+        {
+            return Forbid();
+        }
+
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return NoContent();
     }
@@ -110,5 +134,48 @@ public class BffAuthController : ControllerBase
         };
 
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProperties);
+    }
+
+    private bool IsSameOriginRequest()
+    {
+        var requestHost = Request.Host;
+        if (!requestHost.HasValue)
+        {
+            return false;
+        }
+
+        var origin = Request.Headers.Origin.ToString();
+        if (!string.IsNullOrWhiteSpace(origin) &&
+            Uri.TryCreate(origin, UriKind.Absolute, out var originUri))
+        {
+            return HostsMatch(requestHost, Request.Scheme, originUri);
+        }
+
+        var referer = Request.Headers.Referer.ToString();
+        if (!string.IsNullOrWhiteSpace(referer) &&
+            Uri.TryCreate(referer, UriKind.Absolute, out var refererUri))
+        {
+            return HostsMatch(requestHost, Request.Scheme, refererUri);
+        }
+
+        // Development tools and some non-browser clients may omit both headers.
+        return HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>().IsDevelopment();
+    }
+
+    private static bool HostsMatch(HostString requestHost, string requestScheme, Uri source)
+    {
+        var sourcePort = source.IsDefaultPort
+            ? (string.Equals(source.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ? 443 : 80)
+            : source.Port;
+
+        var requestPort = requestHost.Port
+            ?? (string.Equals(requestScheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ? 443 : 80);
+
+        if (!string.Equals(source.Host, requestHost.Host, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return sourcePort == requestPort;
     }
 }

@@ -183,6 +183,26 @@
 }
 
 @media (max-width: 768px) {
+    .report-section .card-growit .card-body .row.g-3 {
+        align-items: stretch;
+    }
+
+    .report-section .card-growit .card-body .row.g-3 > [class*="col-"] {
+        width: 100%;
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    .report-section .card-growit .card-body .row.g-3 .d-flex.align-items-end {
+        justify-content: stretch !important;
+        flex-wrap: wrap;
+    }
+
+    .report-section .card-growit .card-body .row.g-3 .d-flex.align-items-end .btn {
+        flex: 1 1 auto;
+        min-height: 42px;
+    }
+
     .growit-report-drawer {
         width: 100vw;
     }
@@ -197,5 +217,19 @@
 
     .growit-report-download-meta {
         text-align: left;
+    }
+}
+
+@media (max-width: 520px) {
+    .growit-report-drawer-header {
+        padding: 16px 14px 12px;
+    }
+
+    .growit-report-drawer-body {
+        padding: 12px 14px 20px;
+    }
+
+    .report-section .card-growit .card-body .row.g-3 .d-flex.align-items-end .btn {
+        width: 100%;
     }
 }
