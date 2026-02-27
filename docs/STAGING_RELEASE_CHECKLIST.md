@@ -21,11 +21,13 @@
 ## Security
 - [ ] HTTPS enabled end-to-end
 - [ ] JWT key set via secure secret management
+- [ ] Rate limiting enabled for `POST /bff/auth/login` and `POST /api/content/contact`
 - [ ] Swagger exposure reviewed for staging vs production
 - [ ] Admin account rotation plan documented
 
 ## Validation
 - [ ] Run smoke test checklist (`docs/BETA_SMOKE_TEST_CHECKLIST.md`)
+- [ ] Run Playwright smoke suite (`tests/Playwright`)
 - [ ] Validate invite acceptance with real inbox
 - [ ] Validate scheduled report runner produces runs
 - [ ] Validate report downloads (PDF/XLSX/CSV)
@@ -34,3 +36,7 @@
 - [ ] Logs captured centrally (or persisted on host)
 - [ ] Error alerting path established (email/Slack/Sentry/etc.)
 - [ ] Team knows where to review `Audit Trail` and `System Diagnostics`
+
+## Backup / Restore
+- [ ] Nightly backup job enabled
+- [ ] Restore drill completed this week (`docs/DB_BACKUP_RESTORE_RUNBOOK.md`)

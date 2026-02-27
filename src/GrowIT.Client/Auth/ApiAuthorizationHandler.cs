@@ -1,6 +1,5 @@
 using System.Net.Http.Headers;
 using GrowIT.Backend.Services;
-using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -14,20 +13,17 @@ namespace GrowIT.Client.Auth;
 public sealed class ApiAuthorizationHandler : DelegatingHandler
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly AuthenticationStateProvider _authStateProvider;
     private readonly TokenService _tokenService;
     private readonly IConfiguration _configuration;
     private readonly IWebHostEnvironment _environment;
 
     public ApiAuthorizationHandler(
         IHttpContextAccessor httpContextAccessor,
-        AuthenticationStateProvider authStateProvider,
         TokenService tokenService,
         IConfiguration configuration,
         IWebHostEnvironment environment)
     {
         _httpContextAccessor = httpContextAccessor;
-        _authStateProvider = authStateProvider;
         _tokenService = tokenService;
         _configuration = configuration;
         _environment = environment;
@@ -40,11 +36,6 @@ public sealed class ApiAuthorizationHandler : DelegatingHandler
         if (request.Headers.Authorization is null)
         {
             var user = _httpContextAccessor.HttpContext?.User;
-            if (user?.Identity?.IsAuthenticated != true)
-            {
-                var authState = await _authStateProvider.GetAuthenticationStateAsync();
-                user = authState.User;
-            }
 
             var isAuthenticated = user?.Identity?.IsAuthenticated == true;
             if (isAuthenticated)

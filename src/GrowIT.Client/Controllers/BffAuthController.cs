@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace GrowIT.Client.Controllers;
@@ -34,11 +35,16 @@ public class BffAuthController : ControllerBase
     }
 
     [AllowAnonymous]
-    [ValidateAntiForgeryToken]
+    [EnableRateLimiting("auth-submit")]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         if (!IsSameOriginRequest())
+        {
+            return Forbid();
+        }
+
+        if (!await IsValidAntiforgeryRequestAsync())
         {
             return Forbid();
         }
@@ -64,14 +70,19 @@ public class BffAuthController : ControllerBase
         }
 
         await SignInAsync(user, request.RememberMe);
+        await RecordSignInEventAsync(user);
         return NoContent();
     }
 
-    [ValidateAntiForgeryToken]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout()
     {
         if (!IsSameOriginRequest())
+        {
+            return Forbid();
+        }
+
+        if (!await IsValidAntiforgeryRequestAsync())
         {
             return Forbid();
         }
@@ -136,6 +147,43 @@ public class BffAuthController : ControllerBase
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProperties);
     }
 
+    private async Task RecordSignInEventAsync(User user)
+    {
+        try
+        {
+            var displayName = string.Join(" ", new[] { user.FirstName, user.LastName }.Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
+            if (string.IsNullOrWhiteSpace(displayName))
+            {
+                displayName = user.Email;
+            }
+
+            var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var userAgent = Request.Headers.UserAgent.ToString();
+            if (string.IsNullOrWhiteSpace(userAgent))
+            {
+                userAgent = null;
+            }
+
+            _context.UserSignInEvents.Add(new UserSignInEvent
+            {
+                Id = Guid.NewGuid(),
+                UserId = user.Id,
+                TenantId = user.TenantId,
+                Email = user.Email,
+                DisplayName = displayName,
+                ClientIp = clientIp,
+                UserAgent = userAgent,
+                OccurredAt = DateTime.UtcNow
+            });
+
+            await _context.SaveChangesAsync();
+        }
+        catch
+        {
+            // Sign-in should not fail if telemetry persistence fails.
+        }
+    }
+
     private bool IsSameOriginRequest()
     {
         var requestHost = Request.Host;
@@ -177,5 +225,18 @@ public class BffAuthController : ControllerBase
         }
 
         return sourcePort == requestPort;
+    }
+
+    private async Task<bool> IsValidAntiforgeryRequestAsync()
+    {
+        try
+        {
+            await _antiforgery.ValidateRequestAsync(HttpContext);
+            return true;
+        }
+        catch (AntiforgeryValidationException)
+        {
+            return false;
+        }
     }
 }

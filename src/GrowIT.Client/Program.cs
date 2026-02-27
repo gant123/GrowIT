@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text;
+using System.Threading.RateLimiting;
 using GrowIT.Backend.Controllers;
 using GrowIT.Backend.Middleware;
 using GrowIT.Backend.Services;
@@ -15,6 +16,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.Tokens;
@@ -84,6 +86,48 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
     options.KnownIPNetworks.Clear();
     options.KnownProxies.Clear();
+});
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.Headers.TryAdd("Retry-After", "60");
+
+        if (!context.HttpContext.Response.HasStarted)
+        {
+            await context.HttpContext.Response.WriteAsJsonAsync(new ProblemDetails
+            {
+                Title = "Too Many Requests",
+                Status = StatusCodes.Status429TooManyRequests,
+                Detail = "Rate limit exceeded. Please retry in a minute."
+            }, cancellationToken: token);
+        }
+    };
+
+    options.AddPolicy("auth-submit", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: GetClientIpPartitionKey(httpContext),
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 8,
+                Window = TimeSpan.FromMinutes(5),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                AutoReplenishment = true
+            }));
+
+    options.AddPolicy("contact-submit", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: GetClientIpPartitionKey(httpContext),
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 6,
+                Window = TimeSpan.FromMinutes(10),
+                QueueLimit = 0,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                AutoReplenishment = true
+            }));
 });
 
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "ThisIsMySuperSecretKeyForGrowITLocalDevelopment123!";
@@ -165,6 +209,8 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization(options =>
 {
+    options.AddPolicy("SuperAdminOnly", policy => policy.RequireAssertion(context =>
+        HasAnyRole(context.User, "SuperAdmin", "Owner")));
     options.AddPolicy("AdminOnly", policy => policy.RequireAssertion(context =>
         HasAnyRole(context.User, "Admin", "Owner")));
     options.AddPolicy("AdminOrManager", policy => policy.RequireAssertion(context =>
@@ -193,6 +239,7 @@ builder.Services.AddScoped<IProfileService, ProfileService>();
 builder.Services.AddScoped<IFinancialService, FinancialService>();
 builder.Services.AddScoped<IRoleAccessService, RoleAccessService>();
 builder.Services.AddScoped<IFeedbackService, FeedbackService>();
+builder.Services.AddScoped<IContentService, ContentService>();
 
 builder.Services.AddHttpClient("GrowITApi", (sp, client) =>
     {
@@ -242,14 +289,31 @@ if (!app.Environment.IsDevelopment())
 // API middleware (also handles controller exceptions when backend runs in this host).
 app.UseMiddleware<GlobalExceptionHandlerMiddleware>();
 app.UseForwardedHeaders();
+var enforceContentSecurityPolicy = !app.Environment.IsDevelopment();
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        ApplySecurityHeaders(context, enforceContentSecurityPolicy);
+        return Task.CompletedTask;
+    });
+
+    await next();
+});
 
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+else
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseStaticFiles();
+app.UseRouting();
+app.UseRateLimiter();
 app.UseAntiforgery();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -312,5 +376,39 @@ static bool HasAnyRole(ClaimsPrincipal user, params string[] allowedRoles)
 static bool IsApiOrBffRequest(HttpRequest request) =>
     request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase) ||
     request.Path.StartsWithSegments("/bff", StringComparison.OrdinalIgnoreCase);
+
+static string GetClientIpPartitionKey(HttpContext context)
+{
+    var ip = context.Connection.RemoteIpAddress?.ToString();
+    return string.IsNullOrWhiteSpace(ip) ? "unknown" : ip;
+}
+
+static void ApplySecurityHeaders(HttpContext context, bool enforceContentSecurityPolicy)
+{
+    var headers = context.Response.Headers;
+
+    headers.Remove("Server");
+    headers["X-Content-Type-Options"] = "nosniff";
+    headers["X-Frame-Options"] = "DENY";
+    headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=(), usb=()";
+    headers["Cross-Origin-Opener-Policy"] = "same-origin";
+    headers["Cross-Origin-Resource-Policy"] = "same-site";
+
+    if (enforceContentSecurityPolicy &&
+        !context.Request.Path.StartsWithSegments("/swagger", StringComparison.OrdinalIgnoreCase))
+    {
+        headers["Content-Security-Policy"] =
+            "default-src 'self'; " +
+            "base-uri 'self'; " +
+            "frame-ancestors 'none'; " +
+            "form-action 'self'; " +
+            "img-src 'self' data: https:; " +
+            "font-src 'self' data: https://fonts.gstatic.com; " +
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+            "script-src 'self' 'unsafe-inline'; " +
+            "connect-src 'self' ws: wss:;";
+    }
+}
 
 public partial class Program;

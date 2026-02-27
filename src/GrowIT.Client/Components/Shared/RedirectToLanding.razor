@@ -1,5 +1,10 @@
 @using Microsoft.AspNetCore.Components.Authorization
+@using GrowIT.Core.Entities
+@using GrowIT.Infrastructure.Data
 @inject NavigationManager Navigation
+@inject ILogger<RedirectToLanding> Logger
+@inject IHttpContextAccessor HttpContextAccessor
+@inject ApplicationDbContext DbContext
 
 @code {
     [CascadingParameter]
@@ -12,7 +17,56 @@
             var authState = await AuthStateTask;
             if (authState.User.Identity == null || !authState.User.Identity.IsAuthenticated)
             {
-                Navigation.NavigateTo("/welcome");
+                var attemptedRelativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
+                var attemptedPath = string.IsNullOrWhiteSpace(attemptedRelativePath) ? "/" : $"/{attemptedRelativePath}";
+
+                var context = HttpContextAccessor.HttpContext;
+                var remoteIp = context?.Connection?.RemoteIpAddress?.ToString() ?? "unknown";
+                var userAgent = context?.Request.Headers.UserAgent.ToString();
+                if (string.IsNullOrWhiteSpace(userAgent))
+                {
+                    userAgent = "unknown";
+                }
+
+                Logger.LogWarning(
+                    "Unauthorized anonymous route access attempt. Path: {Path}; RemoteIp: {RemoteIp}; UserAgent: {UserAgent}",
+                    attemptedPath,
+                    remoteIp,
+                    userAgent);
+
+                try
+                {
+                    var referer = context?.Request.Headers.Referer.ToString();
+                    if (string.IsNullOrWhiteSpace(referer))
+                    {
+                        referer = null;
+                    }
+
+                    var userIdClaim = authState.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+                    Guid? userId = Guid.TryParse(userIdClaim, out var parsedUserId) ? parsedUserId : null;
+
+                    var attempt = new UnauthorizedAccessAttempt
+                    {
+                        Id = Guid.NewGuid(),
+                        Path = attemptedPath,
+                        ClientIp = string.Equals(remoteIp, "unknown", StringComparison.OrdinalIgnoreCase) ? null : remoteIp,
+                        UserAgent = string.Equals(userAgent, "unknown", StringComparison.OrdinalIgnoreCase) ? null : userAgent,
+                        Referer = referer,
+                        OccurredAt = DateTime.UtcNow,
+                        IsAuthenticated = authState.User.Identity?.IsAuthenticated == true,
+                        UserId = userId
+                    };
+
+                    DbContext.UnauthorizedAccessAttempts.Add(attempt);
+                    await DbContext.SaveChangesAsync();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Failed to persist unauthorized access attempt for path {Path}", attemptedPath);
+                }
+
+                var encodedReturnUrl = Uri.EscapeDataString(attemptedPath);
+                Navigation.NavigateTo($"/access-denied?returnUrl={encodedReturnUrl}", forceLoad: true);
             }
         }
     }

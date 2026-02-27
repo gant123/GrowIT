@@ -39,7 +39,7 @@ grow.IT is a founder survivability and funding-readiness platform for early-stag
 
 - .NET SDK `10.x`
 - PostgreSQL
-- Node is not required for the current Blazor workflow
+- Node `20+` (required for Playwright smoke tests)
 
 ## Quick Start (Local Development)
 
@@ -161,6 +161,24 @@ Coverage currently includes:
 - investment + fund balance integrity
 - imprint validation
 - authorization policy `403` checks for restricted endpoints
+
+Run browser smoke tests:
+
+```bash
+cd tests/Playwright
+npm install
+npx playwright install chromium
+npx playwright test --project=chromium
+```
+
+CI gate:
+- `/.github/workflows/beta-gate.yml` runs build + migrations + Playwright smoke tests
+
+Beta readiness checklist:
+- `/Users/robertgant/workspace/GrowIT/BETA.md`
+
+Backup/restore runbook:
+- `/Users/robertgant/workspace/GrowIT/docs/DB_BACKUP_RESTORE_RUNBOOK.md`
 
 ## Security + Tenancy Notes
 

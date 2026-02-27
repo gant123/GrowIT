@@ -10,12 +10,14 @@ public sealed class RoleAccessSnapshot
     public IReadOnlyList<string> Roles { get; init; } = [];
 
     public bool IsOwner { get; init; }
+    public bool IsSuperAdmin { get; init; }
     public bool IsAdmin { get; init; }
     public bool IsManager { get; init; }
     public bool IsCaseManager { get; init; }
     public bool IsAnalyst { get; init; }
 
     public bool CanManageAdminWorkspace => IsOwner || IsAdmin || IsManager;
+    public bool CanManageSiteContent => IsSuperAdmin || IsOwner;
     public bool CanAccessReports => IsOwner || IsAdmin || IsManager;
     public bool CanManageFinancials => IsOwner || IsAdmin || IsManager;
     public bool CanSeedDemoData => IsOwner || IsAdmin;
@@ -64,6 +66,7 @@ public sealed class RoleAccessService : IRoleAccessService
             PrimaryRole = primaryRole,
             Roles = roles,
             IsOwner = ContainsRole(roles, "Owner"),
+            IsSuperAdmin = ContainsRole(roles, "SuperAdmin"),
             IsAdmin = ContainsRole(roles, "Admin"),
             IsManager = ContainsRole(roles, "Manager"),
             IsCaseManager = ContainsRole(roles, "Case Manager"),
