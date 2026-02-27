@@ -1,6 +1,0 @@
-@GrowIT.API_HostAddress = http://localhost:5286
-
-GET {{GrowIT.API_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

@@ -5,8 +5,8 @@
 - [ ] Pull latest changes and run:
   - `dotnet build GrowIT.slnx`
 - [ ] Apply any pending migrations:
-  - `dotnet ef database update --project src/GrowIT.Infrastructure --startup-project src/GrowIT.API`
-- [ ] Start API + Client and confirm both boot cleanly
+  - `dotnet ef database update --project src/GrowIT.Infrastructure --startup-project src/GrowIT.Client`
+- [ ] Start app host + DB and confirm both boot cleanly
 - [ ] Hard refresh browser cache before UI review
 
 ## QA Pass (high value)
@@ -48,7 +48,7 @@ Check these screens for correct access (visible/hidden actions + backend enforce
 ## Tests
 
 - [ ] Run integration tests:
-  - `dotnet test tests/GrowIT.API.Tests/GrowIT.API.Tests.csproj -m:1 --disable-build-servers`
+  - `dotnet test tests/GrowIT.IntegrationTests/GrowIT.IntegrationTests.csproj -m:1 --disable-build-servers`
 - [ ] Confirm new authorization tests pass (`403` checks)
 
 ## Next Engineering Work (recommended order)
@@ -81,6 +81,6 @@ Check these screens for correct access (visible/hidden actions + backend enforce
 
 ## Notes For Tomorrow
 
-- Use `http://localhost:5245` during local image upload testing if API is on `http://localhost:5286`
+- `GrowIT.Client` is now the single host (UI + backend controllers/services)
 - If anything looks weird in UI after code changes: hard refresh first
 - If build output paths recurse again: clean `bin/obj` folders before debugging deeper

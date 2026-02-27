@@ -6,6 +6,8 @@ Use this checklist before inviting external beta testers and after each deployme
 - [ ] API starts without exceptions.
 - [ ] Client loads and authenticates.
 - [ ] `/healthz` returns healthy HTTP status (`200`).
+- [ ] Public marketing routes load (`/welcome`, `/blog`, `/contact`).
+- [ ] Anonymous visit to `/` redirects to `/access-denied` with styled UI.
 - [ ] `Settings -> Security -> System Diagnostics` loads.
 - [ ] `System Diagnostics` overall status is `Healthy` or only expected `Warning` items.
 - [ ] `Pending Migrations` check shows `No pending migrations`.
@@ -40,17 +42,21 @@ Use this checklist before inviting external beta testers and after each deployme
 - [ ] `Send Test Email` succeeds (or expected dev fallback file is written).
 - [ ] Invite create/resend/revoke creates notifications in header bell and `/notifications`.
 
-## 6. Uploads / Branding
+## 6. Public Demo Funnel
+- [ ] `/welcome#demo` renders and `Request Demo` CTA navigates to `/contact?demo=1...`.
+- [ ] Contact form submission creates a record visible in `Super Admin Content`.
+
+## 7. Uploads / Branding
 - [ ] Profile photo upload works.
 - [ ] Profile photo displays in header/sidebar.
 - [ ] Remove photo works.
 - [ ] `grow.IT` wordmark looks correct in light and dark mode.
 
-## 7. Data / Seed
+## 8. Data / Seed
 - [ ] `Seed Demo Data` works (or confirms data already exists).
 - [ ] Syncfusion grids render correctly (no raw IDs / broken pager/icons).
 
-## 8. Browser Sanity
+## 9. Browser Sanity
 - [ ] Chrome (latest)
 - [ ] Safari (latest)
 - [ ] Edge (latest)

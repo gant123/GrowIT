@@ -962,6 +962,69 @@
         showToast: function(message, type, duration) {
             toastManager.show(message, type || 'info', duration || 3000);
         },
+
+        _csrfToken: null,
+
+        getAuthCsrfToken: async function(forceRefresh) {
+            if (!forceRefresh && this._csrfToken) {
+                return this._csrfToken;
+            }
+
+            const response = await fetch('/bff/auth/csrf', {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to get CSRF token (${response.status}).`);
+            }
+
+            const data = await response.json();
+            this._csrfToken = data?.token || null;
+            if (!this._csrfToken) {
+                throw new Error('CSRF token was not returned by the server.');
+            }
+
+            return this._csrfToken;
+        },
+
+        authPostJson: async function(url, payload) {
+            const send = async (csrfToken) => fetch(url, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': csrfToken
+                },
+                body: payload == null ? null : JSON.stringify(payload)
+            });
+
+            let csrfToken = await this.getAuthCsrfToken(false);
+            let response = await send(csrfToken);
+
+            // Retry once in case the antiforgery cookie/token pair rotated.
+            if (response.status === 400) {
+                csrfToken = await this.getAuthCsrfToken(true);
+                response = await send(csrfToken);
+            }
+
+            let body = '';
+            try {
+                body = await response.text();
+            } catch (_) {
+                body = '';
+            }
+
+            return {
+                ok: response.ok,
+                status: response.status,
+                body: body
+            };
+        },
         
         copyToClipboard: async function(text) {
             return await growITUtils.copyToClipboard(text);

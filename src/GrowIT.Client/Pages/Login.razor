@@ -8,9 +8,9 @@
 
 <PageTitle>Sign In - grow.IT</PageTitle>
 
-<div class="auth-page">
-    <div class="auth-container">
-        <div class="auth-card">
+<div class="auth-page login-page">
+    <div class="auth-container auth-container-enterprise">
+        <div class="auth-card auth-card-enterprise">
             <div class="auth-logo">
                 <a href="/welcome">
                     <img src="images/logo-@(_currentTheme == "dark" ? "light" : "dark").png" alt="GrowIT" class="brand-icon" />
@@ -19,8 +19,20 @@
             </div>
 
             <div class="auth-header">
+                <span class="auth-kicker">Secure Workspace Access</span>
                 <h1>Sign In to grow.IT</h1>
-                <p>Access your organization workspace and continue documenting service, capacity, and outcomes.</p>
+                <p>Access your organization workspace to continue documenting service delivery, tracking operational capacity, and producing funder-ready evidence.</p>
+            </div>
+
+            <div class="auth-context-strip">
+                <div class="context-chip">
+                    <span class="label">Access</span>
+                    <span class="value">Role-based workspace</span>
+                </div>
+                <div class="context-chip">
+                    <span class="label">Focus</span>
+                    <span class="value">Service + funding readiness</span>
+                </div>
             </div>
 
             @if (!string.IsNullOrEmpty(_errorMessage))
@@ -74,7 +86,7 @@
                     </div>
                 </div>
 
-                <div class="form-check">
+                <div class="form-check auth-inline-option">
                     <input type="checkbox" id="remember" @bind="_rememberMe" />
                     <label for="remember">Remember me for 30 days</label>
                 </div>
@@ -144,35 +156,51 @@
         </div>
 
         <!-- Side Content -->
-        <div class="auth-side login-side">
+        <div class="auth-side login-side auth-side-enterprise">
             <div class="auth-side-content">
-                <h2>Welcome back to GrowIT</h2>
-                <p class="side-intro">Access your enterprise dashboard and continue your mission.</p>
+                <div class="side-kicker">Operational Command Center</div>
+                <h2>Welcome back to grow.IT</h2>
+                <p class="side-intro">Return to the work with the records, evidence, and reporting context your team needs to operate with confidence.</p>
+
+                <div class="side-proof-panel">
+                    <div class="proof-row">
+                        <span class="proof-label">Track</span>
+                        <span class="proof-value">Service, investments, milestones, households</span>
+                    </div>
+                    <div class="proof-row">
+                        <span class="proof-label">Prove</span>
+                        <span class="proof-value">Capacity, costs, outcomes, report history</span>
+                    </div>
+                    <div class="proof-row">
+                        <span class="proof-label">Protect</span>
+                        <span class="proof-value">Founder energy with operational visibility</span>
+                    </div>
+                </div>
                 
                 <ul class="benefits-list">
                     <li>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="20 6 9 17 4 12"/>
                         </svg>
-                        <span><strong>Real-time insights</strong> into program performance</span>
+                        <span><strong>Real-time operating signals</strong> across programs and service records</span>
                     </li>
                     <li>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="20 6 9 17 4 12"/>
                         </svg>
-                        <span><strong>Secure collaboration</strong> across your entire team</span>
+                        <span><strong>Controlled collaboration</strong> with role-based access for your team</span>
                     </li>
                     <li>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="20 6 9 17 4 12"/>
                         </svg>
-                        <span><strong>Automated reporting</strong> for donors and stakeholders</span>
+                        <span><strong>Report-ready exports</strong> for boards, funders, and stakeholders</span>
                     </li>
                 </ul>
 
                 <div class="auth-quote">
-                    <p>"GrowIT has transformed how we measure our success. We can now prove our impact in seconds, not weeks."</p>
-                    <cite>— Sarah Chen, Director of Hope Works</cite>
+                    <p>"grow.IT gave us operating proof we could actually use in board and funding conversations. We spend less time reconstructing the work and more time improving it."</p>
+                    <cite>— Sarah Chen, Executive Director, Hope Works</cite>
                 </div>
             </div>
         </div>
@@ -215,7 +243,7 @@
                 return;
             }
 
-            var request = new LoginRequest { Email = _email, Password = _password };
+            var request = new LoginRequest { Email = _email, Password = _password, RememberMe = _rememberMe };
             var result = await AuthService.Login(request);
 
             if (result != null)

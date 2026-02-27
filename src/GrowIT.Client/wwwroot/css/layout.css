@@ -1248,8 +1248,11 @@
 
     .growit-sidebar {
         transform: translateX(-100%);
-        width: var(--sidebar-width);
+        width: min(88vw, 340px);
+        min-width: min(88vw, 340px);
+        max-width: calc(100vw - 24px);
         display: flex;
+        box-shadow: 0 20px 60px rgba(2, 6, 23, 0.28);
     }
     
     .growit-sidebar.mobile-expanded {
@@ -1287,20 +1290,57 @@
         display: none;
     }
     
-    .sidebar-brand .brand-text,
+    .sidebar-brand .brand-text {
+        display: inline-block !important;
+    }
+
     .nav-text,
-    .nav-section-label,
-    .sidebar-user-info,
+    .nav-section-label {
+        display: block !important;
+    }
+
+    .sidebar-user-info {
+        display: block !important;
+    }
+
     .user-menu-btn {
-        display: flex !important;
+        display: inline-flex !important;
     }
 
     .nav-item {
         justify-content: flex-start;
+        min-height: 44px;
+        padding: 12px 14px;
     }
 
     .sidebar-user {
         justify-content: flex-start;
+    }
+
+    .sidebar-nav {
+        padding: 16px 12px 24px;
+    }
+
+    .nav-section {
+        margin-bottom: 22px;
+    }
+
+    .nav-section-label {
+        margin-bottom: 10px;
+    }
+
+    .topbar-dropdown {
+        position: fixed;
+        top: calc(var(--topbar-height) + 8px);
+        right: 8px;
+        left: 8px;
+        width: auto;
+        max-width: none;
+        z-index: 120;
+    }
+
+    .dropdown-body {
+        max-height: min(52vh, 380px);
     }
 }
 
@@ -1333,9 +1373,11 @@
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(2, 6, 23, 0.56);
     z-index: 99;
     pointer-events: none;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
 }
 
 .sidebar-overlay.active {
@@ -1346,7 +1388,8 @@
 /* Expanded sidebar on mobile */
 .growit-sidebar.mobile-expanded {
     display: flex;
-    width: var(--sidebar-width);
+    width: min(88vw, 340px);
+    min-width: min(88vw, 340px);
     z-index: 101;
 }
 
@@ -1429,13 +1472,24 @@
         display: none;
     }
 
-    .topbar-dropdown {
-        right: -8px;
+    .breadcrumbs {
+        max-width: calc(100vw - 140px);
     }
 
-    .notifications-dropdown,
-    .user-dropdown {
-        max-width: calc(100vw - 16px);
+    .breadcrumbs .breadcrumb-item:not(.active),
+    .breadcrumbs .breadcrumb-separator {
+        display: none;
+    }
+
+    .breadcrumb-item.active {
+        padding-left: 0;
+        padding-right: 0;
+        font-size: 0.95rem;
+    }
+
+    .btn-plant {
+        min-width: 42px;
+        padding: 0 12px;
     }
 }
 

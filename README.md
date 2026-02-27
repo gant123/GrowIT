@@ -6,12 +6,12 @@ grow.IT is a founder survivability and funding-readiness platform for early-stag
 
 ## What This Repository Contains
 
-- `src/GrowIT.API` — ASP.NET Core API (`.NET 10`)
-- `src/GrowIT.Client` — Blazor WebAssembly frontend
+- `src/GrowIT.Client` — Blazor Web App host (UI + embedded backend controllers/services)
+- `src/GrowIT.Backend` — backend controllers/services/middleware/validators (loaded by `GrowIT.Client`)
 - `src/GrowIT.Infrastructure` — EF Core + PostgreSQL + migrations
 - `src/GrowIT.Core` — domain entities and core interfaces
 - `src/GrowIT.Shared` — shared DTOs/contracts
-- `tests/GrowIT.API.Tests` — integration tests (tenant isolation + core flow coverage)
+- `tests/GrowIT.IntegrationTests` — integration tests (tenant isolation + core flow coverage)
 - `docs/` — project docs (including permissions matrix)
 
 ## Current Product Scope (Implemented)
@@ -39,7 +39,7 @@ grow.IT is a founder survivability and funding-readiness platform for early-stag
 
 - .NET SDK `10.x`
 - PostgreSQL
-- Node is not required for the current Blazor workflow
+- Node `20+` (required for Playwright smoke tests)
 
 ## Quick Start (Local Development)
 
@@ -49,19 +49,7 @@ grow.IT is a founder survivability and funding-readiness platform for early-stag
 dotnet build GrowIT.slnx
 ```
 
-## 2. Run the API
-
-From repo root:
-
-```bash
-dotnet run --project src/GrowIT.API
-```
-
-Default dev API URL is typically:
-
-- `http://localhost:5286`
-
-## 3. Run the Client
+## 2. Run the App (single host)
 
 From repo root:
 
@@ -69,32 +57,39 @@ From repo root:
 dotnet run --project src/GrowIT.Client
 ```
 
-Default dev client URLs:
+Default dev URLs:
 
 - `http://localhost:5245`
 - `https://localhost:7234`
 
-## Dev Tip (important for profile images)
+## 3. Configure local secrets (recommended)
 
-If your API is running on `http://localhost:5286`, use the client at `http://localhost:5245` while testing image uploads to avoid mixed-content/image loading issues.
+Keep SMTP/API credentials out of git by using user-secrets for the web app host:
+
+```bash
+dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpHost" "your-smtp-host"
+dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpUser" "your-user"
+dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpPass" "your-password"
+dotnet user-secrets --project src/GrowIT.Client set "ConnectionStrings:DefaultConnection" "Host=10.0.0.6;Port=5433;Database=GrowIT;Username=postgres;Password=your-password"
+```
 
 ## Database / EF Core Workflow (Important)
 
 Run EF commands from the repository root and always target:
 
 - `--project src/GrowIT.Infrastructure` (contains `DbContext` + migrations)
-- `--startup-project src/GrowIT.API` (provides runtime config/services)
+- `--startup-project src/GrowIT.Client` (single host provides runtime config/services)
 
 ## Apply migrations to the database
 
 ```bash
-dotnet ef database update --project src/GrowIT.Infrastructure --startup-project src/GrowIT.API
+dotnet ef database update --project src/GrowIT.Infrastructure --startup-project src/GrowIT.Client
 ```
 
 ## Add a new migration
 
 ```bash
-dotnet ef migrations add <MigrationName> --project src/GrowIT.Infrastructure --startup-project src/GrowIT.API
+dotnet ef migrations add <MigrationName> --project src/GrowIT.Infrastructure --startup-project src/GrowIT.Client
 ```
 
 ## Docker Compose (Beta)
@@ -102,15 +97,12 @@ dotnet ef migrations add <MigrationName> --project src/GrowIT.Infrastructure --s
 This repository includes a container stack for:
 
 - `db` (PostgreSQL)
-- `api` (ASP.NET Core API)
-- `client` (Nginx serving the Blazor WebAssembly app, with `/api` reverse-proxied to the API container)
+- `client` (ASP.NET Core / Blazor Web App host serving UI + backend in one process)
 
 Files:
 
 - `docker-compose.yml`
-- `docker/api/Dockerfile`
 - `docker/client/Dockerfile`
-- `docker/nginx/growit-client.conf`
 - `.env.docker.example`
 
 ## 1. Create your Docker env file
@@ -134,8 +126,7 @@ docker compose up -d --build
 
 Default container ports:
 
-- Client: `http://localhost:5180`
-- API: `http://localhost:5286`
+- App host: `http://localhost:5180`
 - Postgres: `localhost:5433`
 
 ## 3. Apply EF migrations to the containerized database (from host)
@@ -144,7 +135,7 @@ Use your normal EF command, but point the connection string at the Docker Postgr
 
 ```bash
 ConnectionStrings__DefaultConnection="Host=localhost;Port=5433;Database=GrowIT;Username=postgres;Password=YOUR_PASSWORD" \
-dotnet ef database update --project src/GrowIT.Infrastructure --startup-project src/GrowIT.API
+dotnet ef database update --project src/GrowIT.Infrastructure --startup-project src/GrowIT.Client
 ```
 
 ## 4. Cloudflare Tunnel (`beta-growit.ganthome.cloud`)
@@ -153,14 +144,14 @@ Your Cloudflare tunnel is already set up, so just point the public hostname serv
 
 - `http://localhost:5180`
 
-That routes requests to the `client` container, and nginx proxies `/api/*`, `/uploads/*`, `/healthz`, and `/swagger/*` to the `api` container.
+That routes requests directly to the single `client` container (Blazor Web App host + backend).
 
 ## Testing
 
 Run API integration tests:
 
 ```bash
-dotnet test tests/GrowIT.API.Tests/GrowIT.API.Tests.csproj -m:1 --disable-build-servers
+dotnet test tests/GrowIT.IntegrationTests/GrowIT.IntegrationTests.csproj -m:1 --disable-build-servers
 ```
 
 Coverage currently includes:
@@ -170,6 +161,24 @@ Coverage currently includes:
 - investment + fund balance integrity
 - imprint validation
 - authorization policy `403` checks for restricted endpoints
+
+Run browser smoke tests:
+
+```bash
+cd tests/Playwright
+npm install
+npx playwright install chromium
+npx playwright test --project=chromium
+```
+
+CI gate:
+- `/.github/workflows/beta-gate.yml` runs build + migrations + Playwright smoke tests
+
+Beta readiness checklist:
+- `/Users/robertgant/workspace/GrowIT/BETA.md`
+
+Backup/restore runbook:
+- `/Users/robertgant/workspace/GrowIT/docs/DB_BACKUP_RESTORE_RUNBOOK.md`
 
 ## Security + Tenancy Notes
 
@@ -201,7 +210,7 @@ If invite emails fail in Development:
 
 ## Common Dev Troubleshooting
 
-## API build path recursion (`bin/.../bin/...`)
+## Legacy API build path recursion (`bin/.../bin/...`)
 
 If you hit long path/copy errors, clean output folders:
 
@@ -209,15 +218,15 @@ If you hit long path/copy errors, clean output folders:
 rm -rf src/**/bin src/**/obj tests/**/bin tests/**/obj
 ```
 
-The API project is configured to exclude `bin/**` and `obj/**` from content items to prevent recursive copies.
+If you still have an older checkout with the separate API host, clean `bin/obj` and update to the single-host branch changes.
 
 ## “Upload succeeded but image is broken”
 
 Checklist:
 
-1. Restart API (static file provider + `wwwroot` ready)
+1. Restart the app host (`GrowIT.Client`) so static file providers reload
 2. Hard refresh browser (`Cmd+Shift+R` / `Ctrl+F5`)
-3. Use `http://localhost:5245` client if API is HTTP
+3. Re-upload once if the cached image URL is stale
 4. Re-upload once after restart if needed
 
 ## Working Agreements (project-specific)

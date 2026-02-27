@@ -5,7 +5,7 @@ namespace GrowIT.Client.Services;
 
 /// <summary>
 /// Base API service providing common HTTP operations.
-/// All services inherit from this to communicate with GrowIT.API.
+/// All services inherit from this to communicate with the backend host.
 /// </summary>
 public abstract class BaseApiService
 {
