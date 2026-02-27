@@ -1,0 +1,50 @@
+.investment-page-shell .card-growit .row.g-3 {
+    align-items: end;
+}
+
+::deep .e-grid .badge-growit {
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .investment-page-shell {
+        margin-top: 0.75rem !important;
+    }
+
+    .investment-page-shell .card-growit .card-body {
+        padding: 0.9rem;
+    }
+
+    .investment-page-shell .card-growit .row.g-3 > [class*="col-"] {
+        width: 100%;
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    .investment-page-shell .search-box input,
+    .investment-page-shell .form-select-growit {
+        min-height: 44px;
+    }
+
+    ::deep .e-grid .e-rowcell .d-flex.justify-content-end {
+        justify-content: flex-start !important;
+        flex-wrap: wrap;
+    }
+
+    ::deep .e-grid .e-rowcell .btn-growit.btn-sm,
+    ::deep .e-grid .e-rowcell .btn.btn-sm {
+        min-height: 36px;
+    }
+}
+
+@media (max-width: 520px) {
+    ::deep .e-grid .e-rowcell .d-flex.justify-content-end {
+        gap: 0.35rem !important;
+    }
+
+    ::deep .e-grid .e-rowcell .btn-growit.btn-sm,
+    ::deep .e-grid .e-rowcell .btn.btn-sm {
+        width: 100%;
+        justify-content: center;
+    }
+}

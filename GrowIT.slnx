@@ -1,12 +1,12 @@
 <Solution>
   <Folder Name="/src/">
-    <Project Path="src/GrowIT.API/GrowIT.API.csproj" />
+    <Project Path="src/GrowIT.Backend/GrowIT.Backend.csproj" />
     <Project Path="src/GrowIT.Client/GrowIT.Client.csproj" />
     <Project Path="src/GrowIT.Core/GrowIT.Core.csproj" />
     <Project Path="src/GrowIT.Infrastructure/GrowIT.Infrastructure.csproj" />
     <Project Path="src/GrowIT.Shared/GrowIT.Shared.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/GrowIT.API.Tests/GrowIT.API.Tests.csproj" />
+    <Project Path="tests/GrowIT.IntegrationTests/GrowIT.IntegrationTests.csproj" />
   </Folder>
 </Solution>

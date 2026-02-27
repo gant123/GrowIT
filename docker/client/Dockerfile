@@ -1,31 +1,27 @@
-# ---- build ----
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
-# Copy project files
+COPY Directory.Build.props ./
+COPY global.json ./
 COPY src/GrowIT.Client/GrowIT.Client.csproj src/GrowIT.Client/
+COPY src/GrowIT.Backend/GrowIT.Backend.csproj src/GrowIT.Backend/
 COPY src/GrowIT.Core/GrowIT.Core.csproj src/GrowIT.Core/
+COPY src/GrowIT.Infrastructure/GrowIT.Infrastructure.csproj src/GrowIT.Infrastructure/
 COPY src/GrowIT.Shared/GrowIT.Shared.csproj src/GrowIT.Shared/
 
-# Restore
 RUN dotnet restore src/GrowIT.Client/GrowIT.Client.csproj
 
-# Copy the rest of the source
 COPY src/ ./src/
+RUN dotnet publish src/GrowIT.Client/GrowIT.Client.csproj -c Release -o /app/publish /p:UseAppHost=false
 
-# Publish the client (WASM)
-RUN dotnet publish src/GrowIT.Client/GrowIT.Client.csproj -c Release -o /app/publish
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+WORKDIR /app
 
-# BULLETPROOF BYPASS: 
-# Find the hashed blazor.webassembly.xxx.js file and copy it to the standard name Nginx expects.
-RUN cd /app/publish/wwwroot/_framework && \
-    cp blazor.webassembly.*.js blazor.webassembly.js || true
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
 
-# ---- runtime (nginx) ----
-FROM nginx:1.27-alpine AS runtime
+COPY --from=build /app/publish ./
 
-COPY docker/nginx/growit-client.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/publish/wwwroot/ /usr/share/nginx/html/
+RUN mkdir -p /app/wwwroot/uploads /app/dev-emails
 
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+ENTRYPOINT ["dotnet", "GrowIT.Client.dll"]

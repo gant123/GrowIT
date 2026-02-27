@@ -103,6 +103,14 @@
                         <span class="nav-text">Settings</span>
                     </NavLink>
                 }
+
+                @if (_canManageSiteContent)
+                {
+                    <NavLink href="/super-admin/content" class="nav-item" title="Site Content Admin" @onclick="HandleNavSelected">
+                        <span class="nav-icon"><i class="bi bi-journal-richtext"></i></span>
+                        <span class="nav-text">Site Content</span>
+                    </NavLink>
+                }
             </div>
         </nav>
         
@@ -369,6 +377,13 @@
                                             System Preferences
                                         </NavLink>
                                     }
+                                    @if (_canManageSiteContent)
+                                    {
+                                        <NavLink href="/super-admin/content" class="dropdown-item" @onclick="() => _userMenuOpen = false">
+                                            <i class="bi bi-journal-richtext"></i>
+                                            Site Content
+                                        </NavLink>
+                                    }
                                     <div class="dropdown-access-summary">
                                         <div class="access-summary-label">Access</div>
                                         <div class="access-summary-pills">
@@ -454,6 +469,7 @@
     private string? _userPhotoUrl;
     private string _userOrganization = "Workspace";
     private bool _canAccessAdminWorkspace;
+    private bool _canManageSiteContent;
     private bool _canAccessIntelligence;
     private bool _canManageFinancials;
     private bool _canDocumentServiceRecords;
@@ -493,6 +509,7 @@
         new("/insights", "Insights", "Operational intelligence (beta)", "Intelligence", "bi bi-activity", "insights analytics"),
         new("/organization", "Organization", "Organization profile and setup", "System", "bi bi-building", "organization org"),
         new("/settings", "Settings", "System preferences and controls", "System", "bi bi-gear", "settings preferences"),
+        new("/super-admin/content", "Site Content", "Manage public blog and contact submissions", "System", "bi bi-journal-richtext", "site content blog contact super admin"),
         new("/profile", "Profile", "Account profile and preferences", "System", "bi bi-person-gear", "profile account user"),
         new("/notifications", "Notifications", "Alerts and updates", "System", "bi bi-bell", "notifications alerts"),
         new("/beta-feedback", "Beta Feedback", "Submit issues and product feedback", "System", "bi bi-chat-square-text", "beta feedback bug issue request"),
@@ -535,6 +552,7 @@
         {
             var access = await RoleAccessService.GetAccessAsync();
             _canAccessAdminWorkspace = access.CanManageAdminWorkspace;
+            _canManageSiteContent = access.CanManageSiteContent;
             _canAccessIntelligence = access.CanAccessReports;
             _canManageFinancials = access.CanManageFinancials;
             _canDocumentServiceRecords = access.CanDocumentServiceRecords;
@@ -563,6 +581,7 @@
         else
         {
             _canAccessAdminWorkspace = false;
+            _canManageSiteContent = false;
             _canAccessIntelligence = false;
             _canManageFinancials = false;
             _canDocumentServiceRecords = false;
@@ -654,7 +673,7 @@
     {
         _userMenuOpen = false;
         await AuthService.Logout();
-        Navigation.NavigateTo("/welcome");
+        Navigation.NavigateTo("/welcome", forceLoad: true);
     }
 
     private void ToggleSidebar()
@@ -883,6 +902,8 @@
             return "/insights";
         if (normalized.Contains("setting"))
             return "/settings";
+        if (normalized.Contains("site content") || normalized.Contains("blog admin") || normalized.Contains("contact submissions"))
+            return "/super-admin/content";
         if (normalized.Contains("organization") || normalized.Contains("org"))
             return "/organization";
         if (normalized.Contains("profile") || normalized.Contains("account"))
@@ -957,6 +978,7 @@
             "/insights" => _canAccessIntelligence,
             "/settings" => _canAccessAdminWorkspace,
             "/beta-feedback-admin" => _canAccessAdminWorkspace,
+            "/super-admin/content" => _canManageSiteContent,
             _ => true
         };
     }

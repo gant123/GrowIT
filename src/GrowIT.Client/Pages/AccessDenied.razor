@@ -1,0 +1,38 @@
+@page "/access-denied"
+@layout PublicLayout
+@inject NavigationManager Navigation
+
+<PageTitle>Access Denied - grow.IT</PageTitle>
+
+<div class="access-denied-page">
+    <div class="access-denied-card">
+        <span class="access-denied-kicker">Authorization Required</span>
+        <h1>Hey, you are not authorized to access that page.</h1>
+        <p>
+            Please sign in with an account that has access to continue.
+            @if (!string.IsNullOrWhiteSpace(_returnUrl))
+            {
+                <span>You tried to access <code>@_returnUrl</code>.</span>
+            }
+        </p>
+
+        <div class="access-denied-actions">
+            <a href="/login" class="btn btn-primary">Sign In</a>
+            <a href="/welcome" class="btn btn-outline">Go To Welcome</a>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string? _returnUrl;
+
+    protected override void OnInitialized()
+    {
+        var absoluteUri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(absoluteUri.Query);
+        if (query.TryGetValue("returnUrl", out var returnUrl))
+        {
+            _returnUrl = returnUrl.ToString();
+        }
+    }
+}

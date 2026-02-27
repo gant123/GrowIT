@@ -17,11 +17,11 @@ services:
     volumes:
       - growit-postgres-data:/var/lib/postgresql/data
 
-  api:
+  client:
     build:
       context: .
-      dockerfile: docker/api/Dockerfile
-    container_name: growit-api
+      dockerfile: docker/client/Dockerfile
+    container_name: growit-client
     restart: unless-stopped
     depends_on:
       db:
@@ -49,23 +49,12 @@ services:
       Reports__Scheduler__DefaultReportType: ${REPORT_SCHEDULER_DEFAULT_TYPE:-impact-summary}
       Reports__Scheduler__DefaultFormat: ${REPORT_SCHEDULER_DEFAULT_FORMAT:-pdf}
     ports:
-      - "${API_PORT:-5286}:8080"
+      - "${CLIENT_PORT:-5180}:8080"
     volumes:
-      - growit-api-uploads:/app/wwwroot/uploads
-      - growit-api-dev-emails:/app/dev-emails
-
-  client:
-    build:
-      context: .
-      dockerfile: docker/client/Dockerfile
-    container_name: growit-client
-    restart: unless-stopped
-    depends_on:
-      - api
-    ports:
-      - "${CLIENT_PORT:-5180}:80"
+      - growit-web-uploads:/app/wwwroot/uploads
+      - growit-web-dev-emails:/app/dev-emails
 
 volumes:
   growit-postgres-data:
-  growit-api-uploads:
-  growit-api-dev-emails:
+  growit-web-uploads:
+  growit-web-dev-emails:

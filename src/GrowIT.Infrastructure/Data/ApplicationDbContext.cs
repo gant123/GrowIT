@@ -41,6 +41,10 @@ public class ApplicationDbContext : DbContext
     public DbSet<AppTask> Tasks { get; set; } // Uses the 'AppTask' class we created
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<BetaFeedback> BetaFeedbacks { get; set; }
+    public DbSet<BlogPost> BlogPosts { get; set; }
+    public DbSet<ContactSubmission> ContactSubmissions { get; set; }
+    public DbSet<UnauthorizedAccessAttempt> UnauthorizedAccessAttempts { get; set; }
+    public DbSet<UserSignInEvent> UserSignInEvents { get; set; }
 
     // Domain: Financial Core & Impact
     public DbSet<Program> Programs { get; set; }
@@ -88,8 +92,35 @@ public class ApplicationDbContext : DbContext
         {
             property.SetColumnType("decimal(18,2)");
         }
+
+        // D. Public content indexes
+        // -------------------------------------------------------------
+        builder.Entity<BlogPost>()
+            .HasIndex(p => p.Slug)
+            .IsUnique();
+        builder.Entity<BlogPost>()
+            .HasIndex(p => p.IsPublished);
+        builder.Entity<BlogPost>()
+            .HasIndex(p => p.PublishedAt);
+
+        builder.Entity<ContactSubmission>()
+            .HasIndex(c => c.SubmittedAt);
+        builder.Entity<ContactSubmission>()
+            .HasIndex(c => c.IsReviewed);
+
+        builder.Entity<UnauthorizedAccessAttempt>()
+            .HasIndex(a => a.OccurredAt);
+        builder.Entity<UnauthorizedAccessAttempt>()
+            .HasIndex(a => a.ClientIp);
+
+        builder.Entity<UserSignInEvent>()
+            .HasIndex(e => e.OccurredAt);
+        builder.Entity<UserSignInEvent>()
+            .HasIndex(e => e.ClientIp);
+        builder.Entity<UserSignInEvent>()
+            .HasIndex(e => e.UserId);
         
-        // C. Enums as Strings (Readability)
+        // E. Enums as Strings (Readability)
         // -------------------------------------------------------------
         // Optional: Uncomment this if you want columns to say "Active" instead of "0"
         // builder.Entity<Subscription>().Property(s => s.Status).HasConversion<string>();
