@@ -16,7 +16,7 @@
     <!-- Sidebar Navigation -->
     <aside class="growit-sidebar @(_sidebarCollapsed ? "collapsed" : "")">
         <div class="sidebar-header">
-            <a href="/" class="sidebar-brand">
+            <a href="/home" class="sidebar-brand">
                 <img src="images/logo-@(_currentTheme == "dark" ? "light" : "dark").png" alt="GrowIT" class="brand-logo" />
                 <span class="brand-text">grow<span class="brand-highlight">.IT</span></span>
             </a>
@@ -28,7 +28,7 @@
         <nav class="sidebar-nav">
             <div class="nav-section">
                 <div class="nav-section-label">Main</div>
-                <NavLink href="/" class="nav-item" Match="NavLinkMatch.All" title="Dashboard" @onclick="HandleNavSelected">
+                <NavLink href="/home" class="nav-item" Match="NavLinkMatch.All" title="Dashboard" @onclick="HandleNavSelected">
                     <span class="nav-icon"><i class="bi bi-grid-1x2"></i></span>
                     <span class="nav-text">Dashboard</span>
                 </NavLink>
