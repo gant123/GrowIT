@@ -9,7 +9,6 @@
     <meta name="application-name" content="grow.IT" />
     <meta name="apple-mobile-web-app-title" content="grow.IT" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="description" content="grow.IT - Transform nonprofit service into measurable impact. Track investments, document outcomes, and demonstrate your impact to funders." />
 
     <base href="/" />
 
@@ -77,12 +76,24 @@
             flex: 0 0 auto;
         }
 
-        #blazor-error-ui .reload,
-        #blazor-error-ui .dismiss {
+        #blazor-error-ui .reload {
             margin-left: auto;
             color: inherit;
             text-decoration: underline;
             cursor: pointer;
+        }
+
+        #blazor-error-ui .dismiss {
+            margin-left: 0.5rem;
+            color: inherit;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .not-found-page .btn svg {
+            width: 1rem;
+            height: 1rem;
+            flex: 0 0 auto;
         }
     </style>
 

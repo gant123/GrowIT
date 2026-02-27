@@ -320,6 +320,71 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHealthChecks("/healthz");
+app.MapGet("/robots.txt", (HttpContext context) =>
+{
+    var origin = GetOrigin(context);
+    var content =
+        "User-agent: *\n" +
+        "Allow: /\n" +
+        "Disallow: /api/\n" +
+        "Disallow: /bff/\n" +
+        "Disallow: /home\n" +
+        "Disallow: /settings\n" +
+        "Disallow: /reports\n" +
+        "Disallow: /profile\n" +
+        "Disallow: /notifications\n" +
+        "Disallow: /clients\n" +
+        "Disallow: /people\n" +
+        "Disallow: /investments\n" +
+        "Disallow: /imprints\n" +
+        "Disallow: /households\n" +
+        "Disallow: /growth-plans\n" +
+        "Disallow: /insights\n" +
+        $"Sitemap: {origin}/sitemap.xml\n";
+
+    return Results.Text(content, "text/plain; charset=utf-8");
+}).AllowAnonymous();
+
+app.MapGet("/sitemap.xml", (HttpContext context) =>
+{
+    var origin = GetOrigin(context);
+    var publicPaths = new[]
+    {
+        "/",
+        "/blog",
+        "/contact",
+        "/about",
+        "/careers",
+        "/partners",
+        "/docs",
+        "/webinars",
+        "/templates",
+        "/changelog",
+        "/privacy",
+        "/terms",
+        "/security"
+    };
+
+    var now = DateTime.UtcNow.ToString("yyyy-MM-dd");
+    var xml = new StringBuilder();
+    xml.AppendLine("""<?xml version="1.0" encoding="UTF-8"?>""");
+    xml.AppendLine("""<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">""");
+
+    foreach (var path in publicPaths)
+    {
+        var loc = path == "/" ? $"{origin}/" : $"{origin}{path}";
+        var priority = path == "/" ? "1.0" : "0.7";
+        xml.AppendLine("  <url>");
+        xml.AppendLine($"    <loc>{System.Security.SecurityElement.Escape(loc)}</loc>");
+        xml.AppendLine($"    <lastmod>{now}</lastmod>");
+        xml.AppendLine("    <changefreq>weekly</changefreq>");
+        xml.AppendLine($"    <priority>{priority}</priority>");
+        xml.AppendLine("  </url>");
+    }
+
+    xml.AppendLine("</urlset>");
+    return Results.Text(xml.ToString(), "application/xml; charset=utf-8");
+}).AllowAnonymous();
 
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
@@ -381,6 +446,14 @@ static string GetClientIpPartitionKey(HttpContext context)
 {
     var ip = context.Connection.RemoteIpAddress?.ToString();
     return string.IsNullOrWhiteSpace(ip) ? "unknown" : ip;
+}
+
+static string GetOrigin(HttpContext context)
+{
+    var scheme = context.Request.Scheme;
+    var host = context.Request.Host.Value;
+    var pathBase = context.Request.PathBase.Value?.TrimEnd('/') ?? string.Empty;
+    return $"{scheme}://{host}{pathBase}";
 }
 
 static void ApplySecurityHeaders(HttpContext context, bool enforceContentSecurityPolicy)

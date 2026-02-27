@@ -1,7 +1,35 @@
 @inherits LayoutComponentBase
+@implements IDisposable
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 
-<div class="public-layout" data-theme="@_currentTheme">
+<div class="public-layout @(_mobileMenuOpen ? "mobile-menu-open" : string.Empty)" data-theme="@_currentTheme">
+    <HeadContent>
+        <meta name="description" content="@CurrentSeo.Description" />
+        <meta name="keywords" content="@CurrentSeo.Keywords" />
+        <meta name="author" content="grow.IT" />
+        <meta name="robots" content="@(CurrentSeo.NoIndex ? "noindex,nofollow,noarchive" : "index,follow,max-image-preview:large")" />
+
+        <link rel="canonical" href="@CurrentSeoCanonicalUrl" />
+        <link rel="alternate" href="@CurrentSeoCanonicalUrl" hreflang="en-US" />
+
+        <meta property="og:site_name" content="grow.IT" />
+        <meta property="og:type" content="@CurrentSeo.OpenGraphType" />
+        <meta property="og:title" content="@CurrentSeo.Title" />
+        <meta property="og:description" content="@CurrentSeo.Description" />
+        <meta property="og:url" content="@CurrentSeoCanonicalUrl" />
+        <meta property="og:image" content="@CurrentSeoImageUrl" />
+        <meta property="og:locale" content="en_US" />
+
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="@CurrentSeo.Title" />
+        <meta name="twitter:description" content="@CurrentSeo.Description" />
+        <meta name="twitter:image" content="@CurrentSeoImageUrl" />
+        <meta name="twitter:url" content="@CurrentSeoCanonicalUrl" />
+
+        <script type="application/ld+json">@((MarkupString)CurrentSeoJsonLd)</script>
+    </HeadContent>
+
     <!-- Public Header -->
     <header class="public-header">
         <div class="header-content">
@@ -45,7 +73,12 @@
                 <a href="/register" class="btn btn-primary">Start Free</a>
             </div>
             
-            <button class="mobile-menu-btn" @onclick="ToggleMobileMenu">
+            <button class="mobile-menu-btn"
+                    type="button"
+                    aria-controls="public-mobile-menu"
+                    aria-expanded="@_mobileMenuOpen"
+                    aria-label="@(_mobileMenuOpen ? "Close navigation menu" : "Open navigation menu")"
+                    @onclick="ToggleMobileMenu">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     @if (_mobileMenuOpen)
                     {
@@ -65,7 +98,11 @@
         <!-- Mobile Menu -->
         @if (_mobileMenuOpen)
         {
-            <div class="mobile-menu">
+            <button type="button" class="mobile-menu-backdrop" @onclick="CloseMobileMenu" aria-label="Close navigation menu"></button>
+            <div class="mobile-menu" id="public-mobile-menu" role="dialog" aria-modal="true" aria-label="Mobile navigation">
+                <div class="mobile-menu-header">
+                    <span>Navigate grow.IT</span>
+                </div>
                 <nav class="mobile-nav">
                     <a href="/welcome#features" @onclick="CloseMobileMenu">Features</a>
                     <a href="/welcome#pricing" @onclick="CloseMobileMenu">Pricing</a>
@@ -86,12 +123,174 @@
         @Body
     </main>
 
-    <PublicSiteFooter CurrentTheme="@_currentTheme" />
+    @if (ShowGlobalPublicFooter)
+    {
+        <PublicSiteFooter CurrentTheme="@_currentTheme" />
+    }
 </div>
 
 @code {
+    private sealed record SeoPage(string Title, string Description, string Keywords, string OpenGraphType = "website", bool NoIndex = false);
+
+    private static readonly SeoPage DefaultSeo = new(
+        "grow.IT - Mission Operations Platform",
+        "grow.IT helps mission-led organizations track service delivery, capacity, and funding readiness with enterprise-grade operational reporting.",
+        "nonprofit software, impact reporting, mission operations, funding readiness, service tracking");
+
+    private static readonly Dictionary<string, SeoPage> SeoPages = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["/"] = new(
+            "grow.IT - Founder Survivability & Funding Readiness",
+            "grow.IT helps mission-led organizations document service delivery, track cost and capacity, and produce funding-ready evidence before operational strain stalls the vision.",
+            "founder survivability, funding readiness, nonprofit platform, service operations, impact measurement"),
+        ["/welcome"] = new(
+            "grow.IT - Founder Survivability & Funding Readiness",
+            "grow.IT helps mission-led organizations document service delivery, track cost and capacity, and produce funding-ready evidence before operational strain stalls the vision.",
+            "founder survivability, funding readiness, nonprofit platform, service operations, impact measurement"),
+        ["/blog"] = new(
+            "Blog - grow.IT",
+            "Practical insights on founder survivability, operating discipline, and funding readiness for mission-driven organizations.",
+            "nonprofit blog, impact operations, founder guidance, funding strategy"),
+        ["/contact"] = new(
+            "Contact - grow.IT",
+            "Contact grow.IT for rollout planning, procurement support, implementation guidance, and enterprise platform questions.",
+            "contact growit, implementation support, nonprofit software demo"),
+        ["/about"] = new(
+            "About - grow.IT",
+            "Learn the mission behind grow.IT and how we help teams build durable operational systems for long-term impact.",
+            "about growit, mission operations, impact platform"),
+        ["/careers"] = new(
+            "Careers - grow.IT",
+            "Explore career opportunities at grow.IT and help build durable systems for mission-led organizations.",
+            "growit careers, mission technology jobs, nonprofit software careers"),
+        ["/partners"] = new(
+            "Partners - grow.IT",
+            "Partner with grow.IT to strengthen implementation outcomes and mission operations at scale.",
+            "growit partners, implementation partners, mission operations network"),
+        ["/docs"] = new(
+            "Documentation - grow.IT",
+            "Implementation and product documentation for using grow.IT across households, programs, milestones, and reporting workflows.",
+            "growit docs, nonprofit implementation, impact reporting documentation"),
+        ["/webinars"] = new(
+            "Webinars - grow.IT",
+            "Join grow.IT webinars focused on operational readiness, reporting workflows, and leadership execution.",
+            "growit webinars, nonprofit operations training, funding readiness webinar"),
+        ["/templates"] = new(
+            "Report Templates - grow.IT",
+            "Use starter templates for funder reporting, board review, and operational cadence planning.",
+            "report templates, funder reports, board reporting templates"),
+        ["/changelog"] = new(
+            "Changelog - grow.IT",
+            "Track product updates, platform hardening, and public feature releases across grow.IT.",
+            "growit changelog, product updates, release notes"),
+        ["/privacy"] = new(
+            "Privacy Policy - grow.IT",
+            "Review how grow.IT collects, uses, and protects personal and operational data.",
+            "growit privacy policy, data protection, platform privacy"),
+        ["/terms"] = new(
+            "Terms of Service - grow.IT",
+            "Read the terms governing use of the grow.IT platform and services.",
+            "growit terms, terms of service, legal"),
+        ["/security"] = new(
+            "Security - grow.IT",
+            "Understand grow.IT security controls, logging, and governance practices for mission-critical operations.",
+            "growit security, platform security, operational governance"),
+
+        // Public auth routes should be crawlable only for direct user access, not indexed.
+        ["/login"] = new("Sign In - grow.IT", "Sign in to your grow.IT workspace.", "growit login", NoIndex: true),
+        ["/register"] = new("Create Account - grow.IT", "Create your grow.IT account.", "growit register", NoIndex: true),
+        ["/forgot-password"] = new("Reset Password - grow.IT", "Request a grow.IT password reset.", "growit password reset", NoIndex: true),
+        ["/reset-password"] = new("Reset Password - grow.IT", "Set a new grow.IT password.", "growit reset password", NoIndex: true),
+        ["/accept-invite"] = new("Accept Invitation - grow.IT", "Accept your organization invitation to grow.IT.", "growit invite", NoIndex: true),
+        ["/access-denied"] = new("Access Denied - grow.IT", "You are not authorized to access that route.", "growit access denied", NoIndex: true),
+        ["/not-found"] = new("Not Found - grow.IT", "The requested page does not exist.", "growit not found", NoIndex: true)
+    };
+
     private string _currentTheme = "light";
     private bool _mobileMenuOpen = false;
+    private static readonly HashSet<string> FooterExcludedPaths = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "/login",
+        "/register",
+        "/forgot-password",
+        "/reset-password",
+        "/accept-invite"
+    };
+
+    private bool ShowGlobalPublicFooter
+    {
+        get
+        {
+            var normalized = GetNormalizedPath();
+            return !FooterExcludedPaths.Contains(normalized);
+        }
+    }
+
+    private string CurrentSeoCanonicalUrl
+    {
+        get
+        {
+            var absolute = Navigation.ToAbsoluteUri(Navigation.Uri);
+            var origin = absolute.GetLeftPart(UriPartial.Authority).TrimEnd('/');
+            var canonicalPath = GetCanonicalPath(GetNormalizedPath());
+            return canonicalPath == "/" ? $"{origin}/" : $"{origin}{canonicalPath}";
+        }
+    }
+
+    private string CurrentSeoImageUrl
+    {
+        get
+        {
+            var absolute = Navigation.ToAbsoluteUri(Navigation.Uri);
+            var origin = absolute.GetLeftPart(UriPartial.Authority).TrimEnd('/');
+            return $"{origin}/icon-512.png";
+        }
+    }
+
+    private SeoPage CurrentSeo
+    {
+        get
+        {
+            var path = GetNormalizedPath();
+            return SeoPages.TryGetValue(path, out var entry) ? entry : DefaultSeo;
+        }
+    }
+
+    private string CurrentSeoJsonLd
+    {
+        get
+        {
+            var websiteUrl = Navigation.ToAbsoluteUri("/").ToString();
+            var payload = new Dictionary<string, object?>
+            {
+                ["@context"] = "https://schema.org",
+                ["@type"] = "WebPage",
+                ["name"] = CurrentSeo.Title,
+                ["description"] = CurrentSeo.Description,
+                ["url"] = CurrentSeoCanonicalUrl,
+                ["inLanguage"] = "en-US",
+                ["isPartOf"] = new Dictionary<string, object?>
+                {
+                    ["@type"] = "WebSite",
+                    ["name"] = "grow.IT",
+                    ["url"] = websiteUrl
+                },
+                ["publisher"] = new Dictionary<string, object?>
+                {
+                    ["@type"] = "Organization",
+                    ["name"] = "grow.IT",
+                    ["url"] = websiteUrl,
+                    ["logo"] = new Dictionary<string, object?>
+                    {
+                        ["@type"] = "ImageObject",
+                        ["url"] = CurrentSeoImageUrl
+                    }
+                }
+            };
+
+            return System.Text.Json.JsonSerializer.Serialize(payload);
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -118,5 +317,42 @@
     {
         _mobileMenuOpen = false;
         StateHasChanged();
+    }
+
+    private string GetNormalizedPath()
+    {
+        var path = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var trimmed = path.Split('?', '#')[0].Trim();
+        if (string.IsNullOrWhiteSpace(trimmed))
+        {
+            return "/";
+        }
+
+        return "/" + trimmed.Trim('/').ToLowerInvariant();
+    }
+
+    private static string GetCanonicalPath(string normalizedPath) => normalizedPath switch
+    {
+        "/welcome" => "/",
+        _ => normalizedPath
+    };
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += HandleLocationChanged;
+    }
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        if (_mobileMenuOpen)
+        {
+            _mobileMenuOpen = false;
+            _ = InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= HandleLocationChanged;
     }
 }

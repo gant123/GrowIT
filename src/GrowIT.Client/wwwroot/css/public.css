@@ -1066,6 +1066,17 @@
     font-size: 0.875rem;
 }
 
+.footer-bottom a {
+    color: var(--growit-green);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.footer-bottom a:hover {
+    color: var(--growit-text-primary);
+    text-decoration: underline;
+}
+
 .social-links {
     display: flex;
     gap: 16px;
@@ -4262,5 +4273,396 @@
         flex-direction: column;
         align-items: flex-start;
         gap: 10px;
+    }
+}
+
+/* ========================================
+   PUBLIC ROUTES MOBILE REVAMP (v1)
+   ======================================== */
+.mobile-menu-backdrop {
+    display: none;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.mobile-menu-header {
+    display: none;
+}
+
+@keyframes publicMenuBackdropIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes publicMenuSheetIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.99);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes publicMenuItemIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 900px) {
+    .public-header {
+        height: 64px;
+    }
+
+    .public-header .header-content {
+        padding: 0 14px;
+        gap: 10px;
+    }
+
+    .public-main {
+        padding-top: 64px;
+    }
+
+    .header-brand .brand-logo {
+        height: 29px;
+    }
+
+    .header-brand .brand-text {
+        font-size: 1.04rem;
+    }
+
+    .header-actions {
+        gap: 8px;
+    }
+
+    .header-actions .theme-toggle {
+        width: 38px;
+        height: 38px;
+        border: 1px solid color-mix(in srgb, var(--growit-border) 72%, transparent);
+        background: color-mix(in srgb, var(--growit-bg-primary) 88%, transparent);
+    }
+
+    .mobile-menu-btn {
+        display: inline-flex;
+        width: 38px;
+        height: 38px;
+        border-radius: 11px;
+        border: 1px solid color-mix(in srgb, var(--growit-border) 72%, transparent);
+        background: color-mix(in srgb, var(--growit-bg-primary) 88%, transparent);
+    }
+
+    .mobile-menu-btn svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .mobile-menu-backdrop {
+        display: block;
+        position: fixed;
+        inset: 64px 0 0;
+        background: rgba(2, 6, 23, 0.46);
+        border: 0;
+        margin: 0;
+        padding: 0;
+        z-index: 1200;
+        cursor: pointer;
+        backdrop-filter: blur(2px);
+        -webkit-backdrop-filter: blur(2px);
+        animation: publicMenuBackdropIn 180ms ease-out both;
+    }
+
+    .mobile-menu {
+        top: 64px;
+        z-index: 1210;
+        padding: 16px 14px calc(18px + env(safe-area-inset-bottom));
+        gap: 18px;
+        overscroll-behavior: contain;
+        max-height: calc(100dvh - 64px);
+        overflow-y: auto;
+        transform-origin: top center;
+        animation: publicMenuSheetIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+        background:
+            linear-gradient(180deg, color-mix(in srgb, var(--growit-bg-secondary) 96%, black 4%), color-mix(in srgb, var(--growit-bg-secondary) 98%, transparent)),
+            radial-gradient(circle at 100% 0, color-mix(in srgb, var(--growit-green) 9%, transparent), transparent 40%);
+    }
+
+    .mobile-menu-header {
+        display: block;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--growit-text-muted);
+        padding: 2px 2px 8px;
+    }
+
+    .mobile-nav {
+        gap: 10px;
+    }
+
+    .mobile-nav a {
+        padding: 13px 14px;
+        font-size: 1rem;
+        border: 1px solid color-mix(in srgb, var(--growit-border) 74%, transparent);
+        border-radius: 13px;
+        background: color-mix(in srgb, var(--growit-bg-card) 96%, white 4%);
+        box-shadow: 0 7px 16px rgba(2, 6, 23, 0.12);
+        transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
+        opacity: 0;
+        animation: publicMenuItemIn 220ms ease-out both;
+    }
+
+    .mobile-nav a:hover {
+        padding-left: 14px;
+        transform: translateY(-1px);
+    }
+
+    .mobile-nav a:nth-child(1) { animation-delay: 25ms; }
+    .mobile-nav a:nth-child(2) { animation-delay: 50ms; }
+    .mobile-nav a:nth-child(3) { animation-delay: 75ms; }
+    .mobile-nav a:nth-child(4) { animation-delay: 100ms; }
+    .mobile-nav a:nth-child(5) { animation-delay: 125ms; }
+
+    .mobile-actions {
+        margin-top: auto;
+        padding-top: 14px;
+        padding-bottom: 0;
+    }
+
+    .mobile-actions .btn {
+        min-height: 48px;
+        justify-content: center;
+        border-radius: 12px;
+        font-weight: 700;
+        transition: transform 160ms ease;
+    }
+
+    .mobile-actions .btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .mobile-menu-btn:focus-visible,
+    .header-actions .theme-toggle:focus-visible,
+    .mobile-nav a:focus-visible,
+    .mobile-actions .btn:focus-visible {
+        outline: 2px solid color-mix(in srgb, var(--growit-green) 84%, white 16%);
+        outline-offset: 2px;
+    }
+
+    .public-layout.mobile-menu-open .public-main,
+    .public-layout.mobile-menu-open .landing-footer {
+        pointer-events: none;
+        user-select: none;
+    }
+
+    html:has(.public-layout.mobile-menu-open),
+    body:has(.public-layout.mobile-menu-open) {
+        overflow: hidden;
+    }
+
+    .blog-page,
+    .contact-page,
+    .footer-info-page,
+    .access-denied-page {
+        padding: 18px 16px 52px;
+    }
+
+    .blog-hero,
+    .contact-hero,
+    .blog-cta-card,
+    .contact-cta-card,
+    .contact-form-card,
+    .access-denied-card {
+        border-radius: 16px;
+        padding: 18px;
+    }
+
+    .blog-grid,
+    .contact-grid {
+        gap: 12px;
+    }
+
+    .blog-card,
+    .contact-card {
+        border-radius: 14px;
+        padding: 16px;
+    }
+
+    .contact-form-grid {
+        gap: 10px;
+    }
+
+    .contact-form-actions {
+        justify-content: stretch;
+    }
+
+    .contact-form-actions .btn {
+        width: 100%;
+        min-height: 46px;
+    }
+
+    .landing-footer {
+        padding: 34px 16px 18px;
+    }
+
+    .footer-content {
+        gap: 24px;
+        padding-bottom: 20px;
+    }
+
+    .footer-brand {
+        max-width: 100%;
+    }
+
+    .footer-links {
+        gap: 16px;
+    }
+}
+
+@media (max-width: 640px) {
+    .public-header {
+        height: 60px;
+    }
+
+    .public-header .header-content {
+        padding: 0 12px;
+    }
+
+    .public-main {
+        padding-top: 60px;
+    }
+
+    .header-brand .brand-logo {
+        height: 26px;
+    }
+
+    .header-brand .brand-text {
+        font-size: 0.95rem;
+    }
+
+    .header-actions .theme-toggle,
+    .mobile-menu-btn {
+        width: 36px;
+        height: 36px;
+    }
+
+    .mobile-menu-backdrop {
+        inset: 60px 0 0;
+    }
+
+    .mobile-menu {
+        top: 60px;
+        padding: 14px 12px calc(16px + env(safe-area-inset-bottom));
+        max-height: calc(100dvh - 60px);
+    }
+
+    .mobile-nav a {
+        padding: 12px 12px;
+        font-size: 0.97rem;
+    }
+
+    .blog-page,
+    .contact-page,
+    .footer-info-page,
+    .access-denied-page {
+        padding: 14px 12px 44px;
+    }
+
+    .blog-hero h1,
+    .contact-hero h1 {
+        font-size: clamp(1.45rem, 6.2vw, 1.9rem);
+        line-height: 1.14;
+    }
+
+    .blog-hero p,
+    .contact-hero p {
+        font-size: 0.95rem;
+        line-height: 1.58;
+    }
+
+    .blog-meta {
+        flex-wrap: wrap;
+        row-gap: 0.25rem;
+    }
+
+    .blog-card h2 {
+        font-size: 1.02rem;
+        line-height: 1.3;
+    }
+
+    .blog-card p,
+    .contact-card p,
+    .contact-form-card > p {
+        font-size: 0.9rem;
+        line-height: 1.55;
+    }
+
+    .blog-footer {
+        font-size: 0.78rem;
+    }
+
+    .blog-cta-actions .btn,
+    .contact-cta-actions .btn,
+    .access-denied-actions .btn {
+        width: 100%;
+    }
+
+    .contact-form-card .form-control {
+        min-height: 44px;
+        font-size: 16px;
+    }
+
+    .contact-form-card textarea.form-control {
+        min-height: 128px;
+    }
+
+    .footer-links {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .footer-bottom {
+        align-items: flex-start;
+        gap: 8px;
+    }
+}
+
+@media (max-width: 900px) and (hover: none) {
+    .mobile-nav a:hover,
+    .mobile-actions .btn:hover {
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .public-header,
+    .mobile-menu,
+    .mobile-menu-backdrop,
+    .mobile-nav a,
+    .mobile-actions .btn,
+    .mobile-menu-btn,
+    .header-actions .theme-toggle {
+        animation: none !important;
+        transition: none !important;
+    }
+
+    .mobile-nav a {
+        opacity: 1 !important;
+        transform: none !important;
+    }
+
+    .mobile-nav a:hover,
+    .mobile-actions .btn:hover {
+        transform: none !important;
     }
 }
