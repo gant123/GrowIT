@@ -5,6 +5,7 @@
 
 <div class="public-layout @(_mobileMenuOpen ? "mobile-menu-open" : string.Empty)" data-theme="@_currentTheme">
     <HeadContent>
+        <PageTitle>@CurrentSeo.Title</PageTitle>
         <meta name="description" content="@CurrentSeo.Description" />
         <meta name="keywords" content="@CurrentSeo.Keywords" />
         <meta name="author" content="grow.IT" />
@@ -12,6 +13,7 @@
 
         <link rel="canonical" href="@CurrentSeoCanonicalUrl" />
         <link rel="alternate" href="@CurrentSeoCanonicalUrl" hreflang="en-US" />
+        <link rel="alternate" href="@CurrentSeoCanonicalUrl" hreflang="x-default" />
 
         <meta property="og:site_name" content="grow.IT" />
         <meta property="og:type" content="@CurrentSeo.OpenGraphType" />
@@ -19,6 +21,7 @@
         <meta property="og:description" content="@CurrentSeo.Description" />
         <meta property="og:url" content="@CurrentSeoCanonicalUrl" />
         <meta property="og:image" content="@CurrentSeoImageUrl" />
+        <meta property="og:image:alt" content="@CurrentSeo.Title" />
         <meta property="og:locale" content="en_US" />
 
         <meta name="twitter:card" content="summary_large_image" />
@@ -151,6 +154,10 @@
             "Blog - grow.IT",
             "Practical insights on founder survivability, operating discipline, and funding readiness for mission-driven organizations.",
             "nonprofit blog, impact operations, founder guidance, funding strategy"),
+        ["/demo"] = new(
+            "Demo - grow.IT",
+            "See how grow.IT supports mission operations, reporting cadence, and funding-readiness workflows.",
+            "growit demo, nonprofit software demo, mission operations platform"),
         ["/contact"] = new(
             "Contact - grow.IT",
             "Contact grow.IT for rollout planning, procurement support, implementation guidance, and enterprise platform questions.",

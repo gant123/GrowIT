@@ -9,6 +9,7 @@
 .public-layout {
     min-height: 100vh;
     background: var(--growit-bg-primary);
+    overflow-x: clip;
 }
 
 .public-header {
@@ -228,6 +229,10 @@
    ---------------------------------------- */
 .landing-page {
     overflow-x: hidden;
+}
+
+.landing-page section[id] {
+    scroll-margin-top: 88px;
 }
 
 /* Hero Section */
@@ -4370,12 +4375,12 @@
     .mobile-menu-backdrop {
         display: block;
         position: fixed;
-        inset: 64px 0 0;
+        inset: 0;
         background: rgba(2, 6, 23, 0.46);
         border: 0;
         margin: 0;
         padding: 0;
-        z-index: 1200;
+        z-index: 2000;
         cursor: pointer;
         backdrop-filter: blur(2px);
         -webkit-backdrop-filter: blur(2px);
@@ -4383,14 +4388,19 @@
     }
 
     .mobile-menu {
-        top: 64px;
-        z-index: 1210;
-        padding: 16px 14px calc(18px + env(safe-area-inset-bottom));
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 2010;
+        min-height: 100svh;
+        max-height: none;
+        padding: calc(64px + 16px) 14px calc(18px + env(safe-area-inset-bottom));
         gap: 18px;
         overscroll-behavior: contain;
-        max-height: calc(100dvh - 64px);
         overflow-y: auto;
         transform-origin: top center;
+        isolation: isolate;
         animation: publicMenuSheetIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
         background:
             linear-gradient(180deg, color-mix(in srgb, var(--growit-bg-secondary) 96%, black 4%), color-mix(in srgb, var(--growit-bg-secondary) 98%, transparent)),
@@ -4414,13 +4424,19 @@
     .mobile-nav a {
         padding: 13px 14px;
         font-size: 1rem;
+        color: var(--growit-text-primary);
         border: 1px solid color-mix(in srgb, var(--growit-border) 74%, transparent);
         border-radius: 13px;
         background: color-mix(in srgb, var(--growit-bg-card) 96%, white 4%);
         box-shadow: 0 7px 16px rgba(2, 6, 23, 0.12);
         transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease;
-        opacity: 0;
+        opacity: 1;
         animation: publicMenuItemIn 220ms ease-out both;
+    }
+
+    .mobile-menu,
+    .mobile-menu * {
+        box-sizing: border-box;
     }
 
     .mobile-nav a:hover {
@@ -4448,6 +4464,18 @@
         transition: transform 160ms ease;
     }
 
+    .mobile-actions .btn-ghost {
+        color: var(--growit-text-primary);
+        border: 1px solid color-mix(in srgb, var(--growit-border) 74%, transparent);
+        background: color-mix(in srgb, var(--growit-bg-card) 96%, white 4%);
+    }
+
+    .mobile-actions .btn-primary {
+        color: #fff;
+        background: var(--growit-green);
+        border-color: var(--growit-green);
+    }
+
     .mobile-actions .btn:hover {
         transform: translateY(-1px);
     }
@@ -4458,17 +4486,6 @@
     .mobile-actions .btn:focus-visible {
         outline: 2px solid color-mix(in srgb, var(--growit-green) 84%, white 16%);
         outline-offset: 2px;
-    }
-
-    .public-layout.mobile-menu-open .public-main,
-    .public-layout.mobile-menu-open .landing-footer {
-        pointer-events: none;
-        user-select: none;
-    }
-
-    html:has(.public-layout.mobile-menu-open),
-    body:has(.public-layout.mobile-menu-open) {
-        overflow: hidden;
     }
 
     .blog-page,
@@ -4543,6 +4560,10 @@
         padding-top: 60px;
     }
 
+    .landing-page section[id] {
+        scroll-margin-top: 78px;
+    }
+
     .header-brand .brand-logo {
         height: 26px;
     }
@@ -4558,13 +4579,11 @@
     }
 
     .mobile-menu-backdrop {
-        inset: 60px 0 0;
+        inset: 0;
     }
 
     .mobile-menu {
-        top: 60px;
-        padding: 14px 12px calc(16px + env(safe-area-inset-bottom));
-        max-height: calc(100dvh - 60px);
+        padding: calc(60px + 14px) 12px calc(16px + env(safe-area-inset-bottom));
     }
 
     .mobile-nav a {

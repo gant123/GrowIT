@@ -351,6 +351,7 @@ app.MapGet("/sitemap.xml", (HttpContext context) =>
     var publicPaths = new[]
     {
         "/",
+        "/demo",
         "/blog",
         "/contact",
         "/about",
