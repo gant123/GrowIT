@@ -4,10 +4,6 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-    <EnableDefaultContentItems>false</EnableDefaultContentItems>
-    <EnableDefaultNoneItems>false</EnableDefaultNoneItems>
   </PropertyGroup>
 
   <ItemGroup>
@@ -36,18 +32,6 @@
     <ProjectReference Include="..\GrowIT.Core\GrowIT.Core.csproj" />
     <ProjectReference Include="..\GrowIT.Infrastructure\GrowIT.Infrastructure.csproj" />
     <ProjectReference Include="..\GrowIT.Shared\GrowIT.Shared.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Content Remove="bin\**;obj\**" />
-    <None Remove="bin\**;obj\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Compile Include="Controllers/*.cs" />
-    <Compile Include="Middleware/*.cs" />
-    <Compile Include="Services/*.cs" />
-    <Compile Include="Validators/*.cs" />
   </ItemGroup>
 
 </Project>
