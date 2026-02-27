@@ -1066,22 +1066,6 @@
     font-size: 0.875rem;
 }
 
-.footer-powered-sep {
-    margin: 0 0.45rem;
-    opacity: 0.6;
-}
-
-.footer-powered-link {
-    color: var(--growit-green);
-    text-decoration: none;
-    font-weight: 600;
-}
-
-.footer-powered-link:hover {
-    color: color-mix(in srgb, var(--growit-green) 82%, white);
-    text-decoration: underline;
-}
-
 .social-links {
     display: flex;
     gap: 16px;
@@ -1099,42 +1083,6 @@
 .social-links svg {
     width: 20px;
     height: 20px;
-}
-
-/* Public Contact Form Baseline */
-.contact-form-card {
-    border: 1px solid color-mix(in srgb, var(--growit-border) 76%, transparent);
-    border-radius: var(--radius-lg);
-    background: var(--growit-bg-card);
-    box-shadow: var(--shadow-sm);
-}
-
-.contact-form-card .form-label {
-    font-weight: 600;
-    color: var(--growit-text-primary);
-}
-
-.contact-form-section .form-control,
-.contact-form-section .form-select,
-.contact-form-card .form-control,
-.contact-form-card .form-select {
-    border: 1px solid var(--growit-border);
-    background: var(--growit-bg-primary);
-    color: var(--growit-text-primary);
-}
-
-.contact-form-section .form-control:focus,
-.contact-form-section .form-select:focus,
-.contact-form-card .form-control:focus,
-.contact-form-card .form-select:focus {
-    border-color: color-mix(in srgb, var(--growit-green) 62%, var(--growit-border));
-    box-shadow: 0 0 0 0.2rem color-mix(in srgb, var(--growit-green) 22%, transparent);
-    background: var(--growit-bg-primary);
-}
-
-.contact-form-card .validation-message {
-    color: var(--growit-danger);
-    font-size: 0.85rem;
 }
 
 /* ----------------------------------------
