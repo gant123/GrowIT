@@ -1,0 +1,539 @@
+@page "/super-admin/content"
+@using System.ComponentModel.DataAnnotations
+@using GrowIT.Shared.DTOs
+@inject IContentService ContentService
+@inject IRoleAccessService RoleAccessService
+
+<PageTitle>Super Admin Content - grow.IT</PageTitle>
+
+<div class="page-super-admin-content">
+    <PageHeader Title="Site Content Admin" Subtitle="Manage blog publishing and contact form submissions.">
+        <Actions>
+            @if (_hasAccess)
+            {
+                <button class="btn-growit btn-secondary-growit" @onclick="LoadAsync" disabled="@_isLoading">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                </button>
+            }
+        </Actions>
+    </PageHeader>
+
+    @if (!_hasAccess)
+    {
+        <div class="alert alert-warning">This workspace is restricted to `SuperAdmin` (or `Owner`) role access.</div>
+    }
+    else
+    {
+        @if (!string.IsNullOrWhiteSpace(_message))
+        {
+            <div class="alert alert-success">@_message</div>
+        }
+        @if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <div class="alert alert-danger">@_error</div>
+        }
+
+        <div class="card-growit mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="section-title mb-0">@(_editingPostId.HasValue ? "Edit Blog Post" : "Create Blog Post")</h3>
+                @if (_editingPostId.HasValue)
+                {
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="ResetEditor">Cancel Edit</button>
+                }
+            </div>
+            <div class="card-body">
+                <EditForm Model="_editor" OnValidSubmit="SavePostAsync">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label">Title</label>
+                            <InputText class="form-control" @bind-Value="_editor.Title" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Slug (Optional)</label>
+                            <InputText class="form-control" @bind-Value="_editor.Slug" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Category</label>
+                            <InputText class="form-control" @bind-Value="_editor.Category" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Author</label>
+                            <InputText class="form-control" @bind-Value="_editor.AuthorName" />
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <div class="form-check mb-2">
+                                <InputCheckbox class="form-check-input" @bind-Value="_editor.IsPublished" />
+                                <label class="form-check-label">Published</label>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Excerpt</label>
+                            <InputTextArea class="form-control" rows="3" @bind-Value="_editor.Excerpt" />
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Content</label>
+                            <InputTextArea class="form-control" rows="8" @bind-Value="_editor.Content" />
+                        </div>
+                    </div>
+                    <div class="mt-3 d-flex justify-content-end gap-2">
+                        <button type="button" class="btn btn-outline-secondary" @onclick="ResetEditor">Reset</button>
+                        <button type="submit" class="btn btn-primary" disabled="@_isSaving">
+                            @(_isSaving ? "Saving..." : (_editingPostId.HasValue ? "Update Post" : "Create Post"))
+                        </button>
+                    </div>
+                </EditForm>
+            </div>
+        </div>
+
+        <div class="card-growit mb-3">
+            <div class="card-header">
+                <h3 class="section-title mb-0">Blog Posts</h3>
+            </div>
+            @if (_isLoading)
+            {
+                <div class="card-body text-muted">Loading posts...</div>
+            }
+            else if (_blogPosts.Count == 0)
+            {
+                <div class="card-body text-muted">No posts found.</div>
+            }
+            else
+            {
+                <div class="card-body table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Category</th>
+                                <th>Status</th>
+                                <th>Published</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var post in _blogPosts)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="fw-semibold">@post.Title</div>
+                                        <div class="small text-muted">/@post.Slug</div>
+                                    </td>
+                                    <td>@post.Category</td>
+                                    <td>
+                                        <span class="badge @(post.IsPublished ? "text-bg-success" : "text-bg-secondary")">
+                                            @(post.IsPublished ? "Published" : "Draft")
+                                        </span>
+                                    </td>
+                                    <td>@(post.PublishedAt?.ToLocalTime().ToString("MMM d, yyyy") ?? "-")</td>
+                                    <td class="d-flex gap-2">
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => EditPost(post)">Edit</button>
+                                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeletePostAsync(post)">Delete</button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <div class="card-growit mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="section-title mb-0">Contact Submissions</h3>
+                <div class="d-flex align-items-center gap-2">
+                    <label class="form-label mb-0">Filter</label>
+                    <select class="form-select form-select-sm" style="width: 180px;" @bind="_reviewFilter" @bind:after="LoadContactSubmissionsAsync">
+                        <option value="-1">All</option>
+                        <option value="0">Unreviewed</option>
+                        <option value="1">Reviewed</option>
+                    </select>
+                </div>
+            </div>
+            @if (_contactSubmissions.Count == 0)
+            {
+                <div class="card-body text-muted">No submissions available.</div>
+            }
+            else
+            {
+                <div class="card-body table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>Submitted</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Subject</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in _contactSubmissions)
+                            {
+                                <tr>
+                                    <td>@item.SubmittedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</td>
+                                    <td>
+                                        <div class="fw-semibold">@item.FullName</div>
+                                        @if (!string.IsNullOrWhiteSpace(item.Organization))
+                                        {
+                                            <div class="small text-muted">@item.Organization</div>
+                                        }
+                                    </td>
+                                    <td>@item.Email</td>
+                                    <td>@(string.IsNullOrWhiteSpace(item.Subject) ? "-" : item.Subject)</td>
+                                    <td>
+                                        <span class="badge @(item.IsReviewed ? "text-bg-success" : "text-bg-warning")">
+                                            @(item.IsReviewed ? "Reviewed" : "New")
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-secondary"
+                                                @onclick="() => ToggleReviewAsync(item)"
+                                                disabled="@_isSaving">
+                                            @(item.IsReviewed ? "Mark New" : "Mark Reviewed")
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="6" class="bg-body-tertiary">
+                                        <div class="small">@item.Message</div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <div class="card-growit">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="section-title mb-0">Unauthorized Access Attempts</h3>
+                <div class="d-flex align-items-center gap-2">
+                    <input class="form-control form-control-sm"
+                           style="width: 220px;"
+                           placeholder="Filter by IP..."
+                           @bind="_securityIpSearch" />
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="LoadSecurityAttemptsAsync" disabled="@_isLoading">
+                        Search
+                    </button>
+                </div>
+            </div>
+            @if (_securityAttempts.Count == 0)
+            {
+                <div class="card-body text-muted">No unauthorized attempts logged yet.</div>
+            }
+            else
+            {
+                <div class="card-body table-responsive">
+                    <table class="table align-middle">
+                        <thead>
+                            <tr>
+                                <th>When</th>
+                                <th>Path</th>
+                                <th>IP</th>
+                                <th>Known Users On IP</th>
+                                <th>Browser</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in _securityAttempts)
+                            {
+                                <tr>
+                                    <td>@item.OccurredAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</td>
+                                    <td>@item.Path</td>
+                                    <td>@(string.IsNullOrWhiteSpace(item.ClientIp) ? "-" : item.ClientIp)</td>
+                                    <td>
+                                        @if (item.KnownUsers.Count == 0)
+                                        {
+                                            <span class="text-muted">No known match</span>
+                                        }
+                                        else
+                                        {
+                                            <div class="d-flex flex-column gap-1">
+                                                @foreach (var match in item.KnownUsers)
+                                                {
+                                                    <div class="small">
+                                                        <strong>@match.FullName</strong> (@match.Email)
+                                                        <span class="text-muted">- last seen @match.LastSeenAt.ToLocalTime().ToString("MMM d h:mm tt")</span>
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="small text-muted" title="@item.UserAgent">
+                                            @Truncate(item.UserAgent, 72)
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private sealed class BlogEditorModel
+    {
+        [Required]
+        [StringLength(220)]
+        public string Title { get; set; } = string.Empty;
+
+        [StringLength(220)]
+        public string? Slug { get; set; }
+
+        [Required]
+        [StringLength(120)]
+        public string Category { get; set; } = "General";
+
+        [Required]
+        [StringLength(120)]
+        public string AuthorName { get; set; } = "GrowIT Team";
+
+        [Required]
+        [StringLength(2000)]
+        public string Excerpt { get; set; } = string.Empty;
+
+        [Required]
+        [StringLength(30000)]
+        public string Content { get; set; } = string.Empty;
+
+        public bool IsPublished { get; set; }
+
+        public void ResetToDefaults()
+        {
+            Title = string.Empty;
+            Slug = string.Empty;
+            Category = "General";
+            AuthorName = "GrowIT Team";
+            Excerpt = string.Empty;
+            Content = string.Empty;
+            IsPublished = false;
+        }
+    }
+
+    private bool _hasAccess;
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string? _error;
+    private string? _message;
+    private readonly BlogEditorModel _editor = new();
+    private Guid? _editingPostId;
+    private List<AdminBlogPostDto> _blogPosts = new();
+    private List<ContactSubmissionAdminDto> _contactSubmissions = new();
+    private List<SecurityAccessAttemptDto> _securityAttempts = new();
+    private int _reviewFilter = -1;
+    private string _securityIpSearch = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var access = await RoleAccessService.GetAccessAsync();
+        _hasAccess = access.CanManageSiteContent;
+        if (!_hasAccess)
+        {
+            _isLoading = false;
+            return;
+        }
+
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _error = null;
+        _message = null;
+        _isLoading = true;
+        try
+        {
+            _blogPosts = (await ContentService.GetAdminBlogPostsAsync(includeDrafts: true))
+                .OrderByDescending(p => p.PublishedAt ?? p.CreatedAt)
+                .ToList();
+            await LoadContactSubmissionsAsync();
+            await LoadSecurityAttemptsAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadContactSubmissionsAsync()
+    {
+        var query = new ContactSubmissionQueryParams
+        {
+            Take = 300,
+            ReviewedOnly = _reviewFilter switch
+            {
+                0 => false,
+                1 => true,
+                _ => null
+            }
+        };
+
+        _contactSubmissions = (await ContentService.GetContactSubmissionsAsync(query))
+            .OrderByDescending(c => c.SubmittedAt)
+            .ToList();
+    }
+
+    private async Task LoadSecurityAttemptsAsync()
+    {
+        var query = new SecurityAccessAttemptQueryParams
+        {
+            Take = 250,
+            Ip = string.IsNullOrWhiteSpace(_securityIpSearch) ? null : _securityIpSearch.Trim()
+        };
+
+        _securityAttempts = (await ContentService.GetSecurityAccessAttemptsAsync(query))
+            .OrderByDescending(a => a.OccurredAt)
+            .ToList();
+    }
+
+    private async Task SavePostAsync()
+    {
+        _error = null;
+        _message = null;
+        _isSaving = true;
+        try
+        {
+            if (_editingPostId.HasValue)
+            {
+                await ContentService.UpdateBlogPostAsync(_editingPostId.Value, new UpdateBlogPostRequest
+                {
+                    Title = _editor.Title,
+                    Slug = _editor.Slug,
+                    Excerpt = _editor.Excerpt,
+                    Content = _editor.Content,
+                    Category = _editor.Category,
+                    AuthorName = _editor.AuthorName,
+                    IsPublished = _editor.IsPublished
+                });
+                _message = "Blog post updated.";
+            }
+            else
+            {
+                await ContentService.CreateBlogPostAsync(new CreateBlogPostRequest
+                {
+                    Title = _editor.Title,
+                    Slug = _editor.Slug,
+                    Excerpt = _editor.Excerpt,
+                    Content = _editor.Content,
+                    Category = _editor.Category,
+                    AuthorName = _editor.AuthorName,
+                    PublishNow = _editor.IsPublished
+                });
+                _message = "Blog post created.";
+            }
+
+            ResetEditor();
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void EditPost(AdminBlogPostDto post)
+    {
+        _editingPostId = post.Id;
+        _editor.Title = post.Title;
+        _editor.Slug = post.Slug;
+        _editor.Excerpt = post.Excerpt;
+        _editor.Content = post.Content;
+        _editor.Category = post.Category;
+        _editor.AuthorName = post.AuthorName;
+        _editor.IsPublished = post.IsPublished;
+    }
+
+    private async Task DeletePostAsync(AdminBlogPostDto post)
+    {
+        _error = null;
+        _message = null;
+        _isSaving = true;
+        try
+        {
+            await ContentService.DeleteBlogPostAsync(post.Id);
+            if (_editingPostId == post.Id)
+            {
+                ResetEditor();
+            }
+            _message = "Blog post deleted.";
+            await LoadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task ToggleReviewAsync(ContactSubmissionAdminDto item)
+    {
+        _error = null;
+        _message = null;
+        _isSaving = true;
+        try
+        {
+            var updated = await ContentService.UpdateContactSubmissionReviewAsync(item.Id, new UpdateContactSubmissionReviewRequest
+            {
+                IsReviewed = !item.IsReviewed
+            });
+
+            if (updated is not null)
+            {
+                var idx = _contactSubmissions.FindIndex(c => c.Id == updated.Id);
+                if (idx >= 0) _contactSubmissions[idx] = updated;
+                _message = updated.IsReviewed
+                    ? "Submission marked as reviewed."
+                    : "Submission moved back to new.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void ResetEditor()
+    {
+        _editingPostId = null;
+        _editor.ResetToDefaults();
+    }
+
+    private static string Truncate(string? value, int maxLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "-";
+        }
+
+        var v = value.Trim();
+        if (v.Length <= maxLength)
+        {
+            return v;
+        }
+
+        return v[..Math.Max(0, maxLength - 3)] + "...";
+    }
+}

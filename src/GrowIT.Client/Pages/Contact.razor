@@ -1,0 +1,235 @@
+@page "/contact"
+@layout PublicLayout
+@using System.ComponentModel.DataAnnotations
+@using Microsoft.AspNetCore.WebUtilities
+@inject IContentService ContentService
+@inject NavigationManager Navigation
+
+<PageTitle>Contact - grow.IT</PageTitle>
+
+<div class="contact-page">
+    <section class="contact-hero">
+        <span class="contact-kicker">Talk With The Team</span>
+        <h1>Contact grow.IT</h1>
+        <p>Whether you are evaluating rollout, planning procurement, or aligning reporting expectations with funders, we can help you map the right implementation path.</p>
+    </section>
+
+    <section class="contact-grid-section">
+        <div class="contact-grid">
+            <article class="contact-card">
+                <h2>Sales & Platform Questions</h2>
+                <p>Get help selecting the right plan and understanding how grow.IT fits your service model.</p>
+                <a href="https://www.moemedia.cloud/" target="_blank" rel="noopener noreferrer" class="contact-link">Visit Moe Media</a>
+            </article>
+
+            <article class="contact-card">
+                <h2>Implementation & Onboarding</h2>
+                <p>Need a rollout plan for leadership, managers, and service teams? We can guide setup and adoption.</p>
+                <a href="/register" class="contact-link">Start A Trial Workspace</a>
+            </article>
+
+            <article class="contact-card">
+                <h2>Enterprise / Procurement</h2>
+                <p>For board review, procurement documentation, and organization-wide deployment planning.</p>
+                <a href="/welcome#pricing" class="contact-link">Review Plans</a>
+            </article>
+        </div>
+    </section>
+
+    <section class="contact-form-section">
+        <div class="contact-form-card">
+            <h2>Send A Message</h2>
+            <p>Super admin can review submissions directly in the internal content workspace.</p>
+            @if (_isDemoRequest)
+            {
+                <div class="alert alert-info mb-3">
+                    Demo request mode is on. Confirm your details and send.
+                </div>
+            }
+
+            @if (_submitted)
+            {
+                <div class="alert alert-success mb-3">
+                    Thanks, your message was sent. We will follow up shortly.
+                </div>
+            }
+            else
+            {
+                @if (!string.IsNullOrWhiteSpace(_error))
+                {
+                    <div class="alert alert-danger mb-3">@_error</div>
+                }
+
+                <EditForm Model="_form" OnValidSubmit="SubmitAsync">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+
+                    <div class="contact-form-grid">
+                        <div>
+                            <label class="form-label" for="contact-full-name">Full Name</label>
+                            <InputText id="contact-full-name" class="form-control" @bind-Value="_form.FullName" />
+                        </div>
+                        <div>
+                            <label class="form-label" for="contact-email">Email</label>
+                            <InputText id="contact-email" class="form-control" @bind-Value="_form.Email" />
+                        </div>
+                        <div>
+                            <label class="form-label" for="contact-organization">Organization (Optional)</label>
+                            <InputText id="contact-organization" class="form-control" @bind-Value="_form.Organization" />
+                        </div>
+                        <div>
+                            <label class="form-label" for="contact-subject">Subject (Optional)</label>
+                            <InputText id="contact-subject" class="form-control" @bind-Value="_form.Subject" />
+                        </div>
+                        <div class="full-width">
+                            <label class="form-label" for="contact-message">Message</label>
+                            <InputTextArea id="contact-message" class="form-control" rows="5" @bind-Value="_form.Message" />
+                        </div>
+                    </div>
+
+                    <div class="contact-form-actions">
+                        <button class="btn btn-primary" type="submit" disabled="@_isSubmitting">
+                            @(_isSubmitting ? "Sending..." : "Send Message")
+                        </button>
+                    </div>
+                </EditForm>
+            }
+        </div>
+    </section>
+
+    <section class="contact-cta">
+        <div class="contact-cta-card">
+            <h2>Powered by mission operators who understand execution pressure.</h2>
+            <p>If you are carrying both service delivery and organizational sustainability, we built this for you.</p>
+            <div class="contact-cta-actions">
+                <a href="https://www.moemedia.cloud/" target="_blank" rel="noopener noreferrer" class="btn btn-primary">Moe Media Website</a>
+                <a href="/blog" class="btn btn-outline">Read The Blog</a>
+            </div>
+        </div>
+    </section>
+</div>
+
+@code {
+    private readonly ContactFormModel _form = new();
+    private bool _isSubmitting;
+    private bool _submitted;
+    private string? _error;
+    private bool _isDemoRequest;
+
+    protected override void OnInitialized()
+    {
+        ApplyQueryPrefill();
+    }
+
+    private async Task SubmitAsync()
+    {
+        _error = null;
+        _submitted = false;
+        _isSubmitting = true;
+        try
+        {
+            var request = new CreateContactSubmissionRequest
+            {
+                FullName = _form.FullName.Trim(),
+                Email = _form.Email.Trim(),
+                Organization = string.IsNullOrWhiteSpace(_form.Organization) ? null : _form.Organization.Trim(),
+                Subject = string.IsNullOrWhiteSpace(_form.Subject) ? null : _form.Subject.Trim(),
+                Message = _form.Message.Trim()
+            };
+
+            await ContentService.SubmitContactSubmissionAsync(request);
+            _submitted = true;
+            _form.Reset();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    private void ApplyQueryPrefill()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        if (string.IsNullOrWhiteSpace(uri.Query))
+        {
+            return;
+        }
+
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        _isDemoRequest = query.TryGetValue("demo", out var demoFlag) &&
+            string.Equals(demoFlag.ToString(), "1", StringComparison.OrdinalIgnoreCase);
+
+        if (query.TryGetValue("subject", out var subject) && string.IsNullOrWhiteSpace(_form.Subject))
+        {
+            _form.Subject = subject.ToString();
+        }
+
+        if (query.TryGetValue("message", out var message) && string.IsNullOrWhiteSpace(_form.Message))
+        {
+            _form.Message = message.ToString();
+        }
+
+        if (query.TryGetValue("organization", out var organization) && string.IsNullOrWhiteSpace(_form.Organization))
+        {
+            _form.Organization = organization.ToString();
+        }
+
+        if (query.TryGetValue("name", out var name) && string.IsNullOrWhiteSpace(_form.FullName))
+        {
+            _form.FullName = name.ToString();
+        }
+
+        if (query.TryGetValue("email", out var email) && string.IsNullOrWhiteSpace(_form.Email))
+        {
+            _form.Email = email.ToString();
+        }
+
+        if (_isDemoRequest)
+        {
+            if (string.IsNullOrWhiteSpace(_form.Subject))
+            {
+                _form.Subject = "Demo Request";
+            }
+
+            if (string.IsNullOrWhiteSpace(_form.Message))
+            {
+                _form.Message = "Hi grow.IT team, I would like a live demo for my organization.";
+            }
+        }
+    }
+
+    private sealed class ContactFormModel
+    {
+        [Required]
+        [StringLength(120)]
+        public string FullName { get; set; } = string.Empty;
+
+        [Required]
+        [EmailAddress]
+        [StringLength(160)]
+        public string Email { get; set; } = string.Empty;
+
+        [StringLength(160)]
+        public string? Organization { get; set; }
+
+        [StringLength(180)]
+        public string? Subject { get; set; }
+
+        [Required]
+        [StringLength(3000, MinimumLength = 10)]
+        public string Message { get; set; } = string.Empty;
+
+        public void Reset()
+        {
+            FullName = string.Empty;
+            Email = string.Empty;
+            Organization = string.Empty;
+            Subject = string.Empty;
+            Message = string.Empty;
+        }
+    }
+}

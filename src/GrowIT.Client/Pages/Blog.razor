@@ -1,0 +1,91 @@
+@page "/blog"
+@layout PublicLayout
+@using GrowIT.Shared.DTOs
+@inject IContentService ContentService
+
+<PageTitle>Blog - grow.IT</PageTitle>
+
+<div class="blog-page">
+    <section class="blog-hero">
+        <span class="blog-kicker">Insights For Mission Operators</span>
+        <h1>The grow.IT Blog</h1>
+        <p>Practical guidance on founder survivability, operational discipline, funding readiness, and building durable impact systems.</p>
+    </section>
+
+    <section class="blog-grid-section">
+        @if (_isLoading)
+        {
+            <div class="blog-loading">Loading latest posts...</div>
+        }
+        else if (!string.IsNullOrWhiteSpace(_error))
+        {
+            <div class="blog-loading error">@_error</div>
+        }
+        else if (_articles.Count == 0)
+        {
+            <div class="blog-loading">No blog posts are published yet.</div>
+        }
+        else
+        {
+            <div class="blog-grid">
+                @foreach (var article in _articles)
+                {
+                    <article class="blog-card">
+                        <div class="blog-meta">
+                            <span class="category">@article.Category</span>
+                            <span class="dot">•</span>
+                            <span class="read-time">@EstimateReadTime(article) min read</span>
+                        </div>
+                        <h2>@article.Title</h2>
+                        <p>@article.Excerpt</p>
+                        <div class="blog-footer">
+                            <span class="author">@article.AuthorName</span>
+                            <span class="date">@article.PublishedAt.ToLocalTime().ToString("MMMM yyyy")</span>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+
+    <section class="blog-cta">
+        <div class="blog-cta-card">
+            <h2>Need help building this in your organization?</h2>
+            <p>We can walk your team through implementation strategy and reporting design.</p>
+            <div class="blog-cta-actions">
+                <a href="/contact" class="btn btn-primary">Contact Our Team</a>
+                <a href="/register" class="btn btn-outline">Start Free Trial</a>
+            </div>
+        </div>
+    </section>
+</div>
+
+@code {
+    private readonly List<PublicBlogPostDto> _articles = new();
+    private bool _isLoading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _articles.Clear();
+            _articles.AddRange(await ContentService.GetPublishedBlogPostsAsync());
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static int EstimateReadTime(PublicBlogPostDto post)
+    {
+        var text = $"{post.Excerpt} {post.Content}";
+        var wordCount = text.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Length;
+        return Math.Max(2, (int)Math.Ceiling(wordCount / 220d));
+    }
+}
