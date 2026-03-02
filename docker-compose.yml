@@ -31,6 +31,7 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB:-GrowIT};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
       Jwt__Key: ${JWT_KEY:-ChangeMe-Set-A-Long-Random-Key-Before-Beta}
+      SyncfusionLicense: ${SYNCFUSION_LICENSE:-}
       ClientUrl: ${CLIENT_URL:-https://beta.growit.now}
       Cors__AllowedOrigins__0: ${CLIENT_URL:-https://beta.growit.now}
       Cors__AllowedOrigins__1: http://localhost:${CLIENT_PORT:-5180}
