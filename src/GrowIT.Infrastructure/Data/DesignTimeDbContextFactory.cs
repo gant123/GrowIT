@@ -11,7 +11,13 @@ public sealed class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<App
         var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
 
         var connectionString = Environment.GetEnvironmentVariable("GROWIT_CONNECTION_STRING")
-            ?? "Host=localhost;Port=5433;Database=GrowIT;Username=postgres;Password=password";
+            ?? Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection");
+
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException(
+                "A database connection string is required for design-time operations. Set GROWIT_CONNECTION_STRING or ConnectionStrings__DefaultConnection.");
+        }
 
         optionsBuilder.UseNpgsql(connectionString);
         return new ApplicationDbContext(optionsBuilder.Options, new DesignTimeTenantService());

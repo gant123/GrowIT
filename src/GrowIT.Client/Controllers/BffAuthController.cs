@@ -83,6 +83,11 @@ public class BffAuthController : ControllerBase
             return StatusCode(StatusCodes.Status423Locked, "This account is temporarily locked due to repeated failed sign-in attempts.");
         }
 
+        if (result.IsNotAllowed)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, "Confirm your email before signing in.");
+        }
+
         if (!result.Succeeded)
         {
             return Unauthorized("Invalid email or password");

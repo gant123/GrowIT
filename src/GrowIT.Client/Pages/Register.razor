@@ -571,12 +571,17 @@
             var result = await AuthService.Register(_registerRequest);
             if (result != null)
             {
-                Navigation.NavigateTo("/home", forceLoad: true);
+                var email = Uri.EscapeDataString(result.Email);
+                Navigation.NavigateTo($"/login?reason=confirm-email-sent&email={email}", forceLoad: true);
             }
             else
             {
                 _errorMessage = "Registration failed. Please check your details and try again.";
             }
+        }
+        catch (ApiException ex)
+        {
+            _errorMessage = ex.Message;
         }
         catch (Exception ex)
         {

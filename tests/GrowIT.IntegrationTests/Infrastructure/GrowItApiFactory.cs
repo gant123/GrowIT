@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -13,9 +14,31 @@ public sealed class GrowItApiFactory : WebApplicationFactory<Program>
 {
     private readonly string _dbName = $"growit-tests-{Guid.NewGuid():N}";
 
+    public GrowItApiFactory()
+    {
+        Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", "Host=localhost;Port=5432;Database=growit-tests;Username=test;Password=test");
+        Environment.SetEnvironmentVariable("Jwt__Key", "integration-test-signing-key-please-change-in-real-env");
+        Environment.SetEnvironmentVariable("Jwt__Issuer", "growit-local");
+        Environment.SetEnvironmentVariable("Jwt__Audience", "growit-internal");
+        Environment.SetEnvironmentVariable("ClientUrl", "https://localhost");
+        Environment.SetEnvironmentVariable("Reports__Scheduler__Enabled", "false");
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
+        builder.ConfigureAppConfiguration((_, configBuilder) =>
+        {
+            configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Port=5432;Database=growit-tests;Username=test;Password=test",
+                ["Jwt:Key"] = "integration-test-signing-key-please-change-in-real-env",
+                ["Jwt:Issuer"] = "growit-local",
+                ["Jwt:Audience"] = "growit-internal",
+                ["ClientUrl"] = "https://localhost",
+                ["Reports:Scheduler:Enabled"] = "false"
+            });
+        });
 
         builder.ConfigureServices(services =>
         {

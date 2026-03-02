@@ -46,6 +46,22 @@
                     </svg>
                     <span>@_errorMessage</span>
                 </div>
+
+                @if (_errorMessage.Contains("confirm your email", StringComparison.OrdinalIgnoreCase))
+                {
+                    <div class="auth-inline-actions mt-3">
+                        <button type="button" class="btn btn-ghost" @onclick="ResendConfirmationAsync" disabled="@_isResendingConfirmation">
+                            @if (_isResendingConfirmation)
+                            {
+                                <span>Sending confirmation...</span>
+                            }
+                            else
+                            {
+                                <span>Resend confirmation email</span>
+                            }
+                        </button>
+                    </div>
+                }
             }
 
             <div class="auth-form">
@@ -215,6 +231,7 @@
     private bool _rememberMe = false;
     private bool _showPassword = false;
     private bool _isLoading = false;
+    private bool _isResendingConfirmation = false;
     private string? _errorMessage;
     private string? _lastNoticeKey;
 
@@ -224,9 +241,17 @@
     [SupplyParameterFromQuery(Name = "returnUrl")]
     public string? ReturnUrl { get; set; }
 
+    [SupplyParameterFromQuery(Name = "email")]
+    public string? Email { get; set; }
+
     protected override void OnParametersSet()
     {
-        var noticeKey = $"{Reason}|{ReturnUrl}";
+        if (!string.IsNullOrWhiteSpace(Email))
+        {
+            _email = Email;
+        }
+
+        var noticeKey = $"{Reason}|{ReturnUrl}|{Email}";
         if (noticeKey == _lastNoticeKey)
         {
             return;
@@ -241,6 +266,14 @@
         else if (string.Equals(Reason, "session-expired", StringComparison.OrdinalIgnoreCase))
         {
             Notifications.Warning("Your session expired. Sign in again to continue.");
+        }
+        else if (string.Equals(Reason, "confirm-email-sent", StringComparison.OrdinalIgnoreCase))
+        {
+            Notifications.Success("Check your email and confirm your account before signing in.");
+        }
+        else if (string.Equals(Reason, "email-confirmed", StringComparison.OrdinalIgnoreCase))
+        {
+            Notifications.Success("Your email is confirmed. You can sign in now.");
         }
     }
 
@@ -283,6 +316,10 @@
                 _errorMessage = "Invalid email or password. Please try again.";
             }
         }
+        catch (ApiException ex)
+        {
+            _errorMessage = ex.Message;
+        }
         catch (Exception ex)
         {
             _errorMessage = $"An error occurred: {ex.Message}";
@@ -290,6 +327,36 @@
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private async Task ResendConfirmationAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_email))
+        {
+            _errorMessage = "Enter your email address first.";
+            return;
+        }
+
+        _isResendingConfirmation = true;
+        _errorMessage = null;
+
+        try
+        {
+            await AuthService.ResendConfirmationEmail(new ResendConfirmationEmailRequest
+            {
+                Email = _email
+            });
+
+            Notifications.Success("If your account exists, a new confirmation email has been sent.");
+        }
+        catch (ApiException ex)
+        {
+            _errorMessage = ex.Message;
+        }
+        finally
+        {
+            _isResendingConfirmation = false;
         }
     }
 

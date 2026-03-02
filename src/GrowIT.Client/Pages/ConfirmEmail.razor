@@ -1,0 +1,106 @@
+@page "/confirm-email"
+@layout PublicLayout
+@using GrowIT.Client.Services
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Confirm Email - grow.IT</PageTitle>
+
+<div class="auth-page">
+    <div class="auth-container auth-container-centered">
+        <div class="auth-card">
+            <div class="auth-logo">
+                <a href="/welcome">
+                    <img src="images/logo-@(_currentTheme == "dark" ? "light" : "dark").png" alt="GrowIT" class="brand-icon" />
+                    <span class="brand-text">grow<span class="brand-highlight">.IT</span></span>
+                </a>
+            </div>
+
+            @if (_isLoading)
+            {
+                <div class="auth-header">
+                    <h1>Confirming your email</h1>
+                    <p>Please wait while we activate your account.</p>
+                </div>
+            }
+            else
+            {
+                <div class="auth-header">
+                    <h1>@(_confirmed ? "Email confirmed" : "Email confirmation failed")</h1>
+                    <p>@_message</p>
+                </div>
+
+                <div class="auth-footer">
+                    @if (_confirmed)
+                    {
+                        <a href="@BuildLoginUrl()" class="btn btn-primary btn-block">Continue to sign in</a>
+                    }
+                    else
+                    {
+                        <a href="/login" class="btn btn-primary btn-block">Back to sign in</a>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _currentTheme = "light";
+    private bool _isLoading = true;
+    private bool _confirmed;
+    private string _message = "We could not process the confirmation link.";
+
+    [SupplyParameterFromQuery(Name = "userId")]
+    public string? UserId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "token")]
+    public string? Token { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrWhiteSpace(UserId) || string.IsNullOrWhiteSpace(Token))
+        {
+            _message = "The confirmation link is incomplete.";
+            _isLoading = false;
+            return;
+        }
+
+        try
+        {
+            var result = await AuthService.ConfirmEmail(UserId, Token);
+            _confirmed = result?.Succeeded == true;
+            _message = result?.Message ?? _message;
+        }
+        catch (ApiException ex)
+        {
+            _confirmed = false;
+            _message = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _currentTheme = await JS.InvokeAsync<string>("blazorInterop.getTheme");
+            StateHasChanged();
+        }
+    }
+
+    private string BuildLoginUrl()
+    {
+        var builder = "/login?reason=email-confirmed";
+        if (!string.IsNullOrWhiteSpace(UserId))
+        {
+            return builder;
+        }
+
+        return "/login";
+    }
+}

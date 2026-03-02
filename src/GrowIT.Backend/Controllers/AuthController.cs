@@ -25,6 +25,7 @@ public class AuthController : ControllerBase
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
     private readonly RoleManager<IdentityRole<Guid>> _roleManager;
+    private readonly ILogger<AuthController> _logger;
 
     public AuthController(
         ApplicationDbContext context, 
@@ -33,7 +34,8 @@ public class AuthController : ControllerBase
         IConfiguration config,
         UserManager<User> userManager,
         SignInManager<User> signInManager,
-        RoleManager<IdentityRole<Guid>> roleManager)
+        RoleManager<IdentityRole<Guid>> roleManager,
+        ILogger<AuthController> logger)
     {
         _context = context;
         _tokenService = tokenService;
@@ -42,6 +44,7 @@ public class AuthController : ControllerBase
         _userManager = userManager;
         _signInManager = signInManager;
         _roleManager = roleManager;
+        _logger = logger;
     }
 
     [HttpPost("register")]
@@ -84,7 +87,7 @@ public class AuthController : ControllerBase
             IsActive = true,
             NotifyInviteActivity = true,
             NotifySystemAlerts = true,
-            EmailConfirmed = true
+            EmailConfirmed = false
         };
 
         // 3. Save as a Transaction (All or Nothing)
@@ -106,16 +109,48 @@ public class AuthController : ControllerBase
             }
 
             await EnsureRoleAsync("Admin");
-            await _userManager.AddToRoleAsync(newUser, "Admin");
+            var addToRoleResult = await _userManager.AddToRoleAsync(newUser, "Admin");
+            if (!addToRoleResult.Succeeded)
+            {
+                await transaction.RollbackAsync();
+                return BadRequest(new
+                {
+                    Message = "Registration failed.",
+                    Errors = addToRoleResult.Errors.Select(e => e.Description).ToArray()
+                });
+            }
             await transaction.CommitAsync();
         }
         catch (Exception ex)
         {
             await transaction.RollbackAsync();
-            return BadRequest(new { Message = "Registration failed.", Error = ex.Message, InnerError = ex.InnerException?.Message });
+            _logger.LogError(ex, "Registration failed for {Email}.", request.Email);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Registration failed. Please try again." });
         }
 
-        return Ok(new { Message = "Organization Registered!", TenantId = newTenant.Id });
+        try
+        {
+            await SendEmailConfirmationAsync(newUser);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send confirmation email for {Email}.", newUser.Email);
+            return Accepted(new RegisterResponseDto
+            {
+                Message = "Organization created. We could not deliver the confirmation email yet. Use resend confirmation from sign in.",
+                TenantId = newTenant.Id,
+                RequiresEmailConfirmation = true,
+                Email = newUser.Email ?? string.Empty
+            });
+        }
+
+        return Ok(new RegisterResponseDto
+        {
+            Message = "Organization created. Check your email to confirm your account before signing in.",
+            TenantId = newTenant.Id,
+            RequiresEmailConfirmation = true,
+            Email = newUser.Email ?? string.Empty
+        });
     }
 
     [HttpPost("login")]
@@ -144,6 +179,11 @@ public class AuthController : ControllerBase
         if (signInResult.IsLockedOut)
         {
             return StatusCode(StatusCodes.Status423Locked, "This account is temporarily locked due to repeated failed sign-in attempts.");
+        }
+
+        if (signInResult.IsNotAllowed)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, "Confirm your email before signing in.");
         }
 
         if (!signInResult.Succeeded)
@@ -193,13 +233,90 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            // Log the error but don't fail the request if email sending fails
-            // This prevents leaking user existence and provides a better UX
-            // In a real app, you might want to retry or use a queue
-            Console.WriteLine($"[ERROR] Failed to send password reset email: {ex.Message}");
+            _logger.LogError(ex, "Failed to send password reset email for {Email}.", user.Email ?? request.Email.Trim());
         }
 
         return Ok(new { Message = "If your email is in our system, you will receive a reset link." });
+    }
+
+    [HttpGet("confirm-email")]
+    public async Task<ActionResult<ConfirmEmailResultDto>> ConfirmEmail([FromQuery] string userId, [FromQuery] string token)
+    {
+        if (!Guid.TryParse(userId, out var parsedUserId) || string.IsNullOrWhiteSpace(token))
+        {
+            return BadRequest(new ConfirmEmailResultDto
+            {
+                Succeeded = false,
+                Message = "The confirmation link is invalid."
+            });
+        }
+
+        var user = await _userManager.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Id == parsedUserId);
+        if (user is null)
+        {
+            return NotFound(new ConfirmEmailResultDto
+            {
+                Succeeded = false,
+                Message = "The confirmation link is invalid or expired."
+            });
+        }
+
+        if (user.EmailConfirmed)
+        {
+            return Ok(new ConfirmEmailResultDto
+            {
+                Succeeded = true,
+                Message = "Your email is already confirmed. You can sign in."
+            });
+        }
+
+        var result = await _userManager.ConfirmEmailAsync(user, token);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new ConfirmEmailResultDto
+            {
+                Succeeded = false,
+                Message = string.Join(" ", result.Errors.Select(e => e.Description))
+            });
+        }
+
+        return Ok(new ConfirmEmailResultDto
+        {
+            Succeeded = true,
+            Message = "Your email has been confirmed. You can sign in."
+        });
+    }
+
+    [HttpPost("resend-confirmation")]
+    public async Task<IActionResult> ResendConfirmation(ResendConfirmationEmailRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+        {
+            return BadRequest(new { Message = "Email is required." });
+        }
+
+        var user = await _userManager.FindByEmailAsync(request.Email.Trim());
+        if (user is null)
+        {
+            return Ok(new { Message = "If your email is in our system, you will receive a confirmation link." });
+        }
+
+        if (user.EmailConfirmed)
+        {
+            return Ok(new { Message = "Your email is already confirmed. You can sign in." });
+        }
+
+        try
+        {
+            await SendEmailConfirmationAsync(user);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resend confirmation email for {Email}.", user.Email);
+            return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "We could not resend the confirmation email right now. Please try again." });
+        }
+
+        return Ok(new { Message = "If your email is in our system, you will receive a confirmation link." });
     }
 
     [HttpGet("invites/validate")]
@@ -386,5 +503,24 @@ public class AuthController : ControllerBase
                 throw new InvalidOperationException($"Failed to create role '{normalizedRole}': {string.Join(" ", result.Errors.Select(e => e.Description))}");
             }
         }
+    }
+
+    private async Task SendEmailConfirmationAsync(User user)
+    {
+        var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        var clientUrl = _config["ClientUrl"] ?? throw new InvalidOperationException("ClientUrl configuration is required.");
+        var confirmationLink =
+            $"{clientUrl.TrimEnd('/')}/confirm-email?userId={HttpUtility.UrlEncode(user.Id.ToString())}&token={HttpUtility.UrlEncode(token)}";
+
+        var body = $@"
+            <h1>Confirm your grow.IT email</h1>
+            <p>Welcome to grow.IT. Confirm your email to activate your workspace and sign in.</p>
+            <p><a href='{confirmationLink}'>{confirmationLink}</a></p>
+            <p>If you did not create this account, you can ignore this email.</p>";
+
+        await _emailService.SendEmailAsync(
+            user.Email ?? throw new InvalidOperationException("User email is required."),
+            "Confirm your grow.IT account",
+            body);
     }
 }

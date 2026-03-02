@@ -34,8 +34,9 @@ public class TokenService
             claims.Add(new Claim(ClaimTypes.Role, role));
         }
 
-        // 2. Create the Security Key (We will add this to appsettings.json next)
-        var jwtKey = _config["Jwt:Key"] ?? "ThisIsMySuperSecretKeyForGrowITLocalDevelopment123!";
+        var jwtKey = GetRequiredSetting("Jwt:Key");
+        var jwtIssuer = GetRequiredSetting("Jwt:Issuer");
+        var jwtAudience = GetRequiredSetting("Jwt:Audience");
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
@@ -45,8 +46,8 @@ public class TokenService
             Subject = new ClaimsIdentity(claims),
             Expires = DateTime.UtcNow.AddDays(7), // Token lasts 1 week
             SigningCredentials = creds,
-            Issuer = _config["Jwt:Issuer"],
-            Audience = _config["Jwt:Audience"]
+            Issuer = jwtIssuer,
+            Audience = jwtAudience
         };
 
         var tokenHandler = new JwtSecurityTokenHandler();
@@ -142,5 +143,16 @@ public class TokenService
         {
             yield return user.Role;
         }
+    }
+
+    private string GetRequiredSetting(string key)
+    {
+        var value = _config[key];
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new InvalidOperationException($"Configuration value '{key}' is required.");
+        }
+
+        return value;
     }
 }

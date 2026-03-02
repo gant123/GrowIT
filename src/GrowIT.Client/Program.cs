@@ -34,6 +34,11 @@ QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 builder.Configuration.AddJsonFile("wwwroot/appsettings.json", optional: true, reloadOnChange: true);
 builder.Configuration.AddJsonFile($"wwwroot/appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
 
+var defaultConnectionString = GetRequiredConnectionString(builder.Configuration, "DefaultConnection");
+var jwtKey = GetRequiredConfigurationValue(builder.Configuration, "Jwt:Key");
+var jwtIssuer = GetRequiredConfigurationValue(builder.Configuration, "Jwt:Issuer");
+var jwtAudience = GetRequiredConfigurationValue(builder.Configuration, "Jwt:Audience");
+
 var syncfusionKey = builder.Configuration["SyncfusionLicense"];
 if (!string.IsNullOrWhiteSpace(syncfusionKey))
 {
@@ -76,9 +81,7 @@ builder.Services.AddScoped<AuditInterceptor>();
 builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
 {
     var auditInterceptor = sp.GetRequiredService<AuditInterceptor>();
-    options.UseNpgsql(
-            builder.Configuration.GetConnectionString("DefaultConnection")
-            ?? "Host=localhost;Port=5433;Database=GrowIT;Username=postgres;Password=password")
+    options.UseNpgsql(defaultConnectionString)
         .AddInterceptors(auditInterceptor);
 });
 
@@ -134,7 +137,6 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "ThisIsMySuperSecretKeyForGrowITLocalDevelopment123!";
 const string CompositeAuthScheme = "GrowITCompositeAuth";
 builder.Services.AddIdentityCore<User>(options =>
     {
@@ -147,8 +149,8 @@ builder.Services.AddIdentityCore<User>(options =>
         options.Lockout.AllowedForNewUsers = true;
         options.Lockout.MaxFailedAccessAttempts = 5;
         options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
-        options.SignIn.RequireConfirmedAccount = false;
-        options.SignIn.RequireConfirmedEmail = false;
+        options.SignIn.RequireConfirmedAccount = true;
+        options.SignIn.RequireConfirmedEmail = true;
     })
     .AddRoles<IdentityRole<Guid>>()
     .AddSignInManager<SignInManager<User>>()
@@ -230,11 +232,11 @@ builder.Services.AddAuthentication(options =>
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-            ValidateIssuer = !builder.Environment.IsDevelopment(),
-            ValidateAudience = !builder.Environment.IsDevelopment(),
+            ValidateIssuer = true,
+            ValidateAudience = true,
             ValidateLifetime = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
             ClockSkew = TimeSpan.FromMinutes(1)
         };
     });
@@ -312,7 +314,13 @@ builder.Services.AddSyncfusionBlazor();
 
 var app = builder.Build();
 
-await EnsureIdentityBootstrapAsync(app.Services);
+if (args.Contains("--bootstrap-identity", StringComparer.OrdinalIgnoreCase))
+{
+    app.Logger.LogInformation("Running explicit Identity bootstrap.");
+    await EnsureIdentityBootstrapAsync(app.Services);
+    app.Logger.LogInformation("Identity bootstrap completed.");
+    return;
+}
 
 if (!app.Environment.IsDevelopment())
 {
@@ -437,7 +445,12 @@ static async Task EnsureIdentityBootstrapAsync(IServiceProvider services)
     {
         if (!await roleManager.RoleExistsAsync(roleName))
         {
-            await roleManager.CreateAsync(new IdentityRole<Guid>(roleName));
+            var createRoleResult = await roleManager.CreateAsync(new IdentityRole<Guid>(roleName));
+            if (!createRoleResult.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to create role '{roleName}': {string.Join(" ", createRoleResult.Errors.Select(e => e.Description))}");
+            }
         }
     }
 
@@ -513,12 +526,46 @@ static async Task EnsureIdentityBootstrapAsync(IServiceProvider services)
             var currentRoles = await userManager.GetRolesAsync(user);
             if (currentRoles.Count > 0)
             {
-                await userManager.RemoveFromRolesAsync(user, currentRoles);
+                var removeRolesResult = await userManager.RemoveFromRolesAsync(user, currentRoles);
+                if (!removeRolesResult.Succeeded)
+                {
+                    throw new InvalidOperationException(
+                        $"Failed to remove roles for '{user.Id}': {string.Join(" ", removeRolesResult.Errors.Select(e => e.Description))}");
+                }
             }
 
-            await userManager.AddToRoleAsync(user, desiredRole);
+            var addRoleResult = await userManager.AddToRoleAsync(user, desiredRole);
+            if (!addRoleResult.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to add role '{desiredRole}' for '{user.Id}': {string.Join(" ", addRoleResult.Errors.Select(e => e.Description))}");
+            }
         }
     }
+}
+
+static string GetRequiredConnectionString(IConfiguration configuration, string name)
+{
+    var value = configuration.GetConnectionString(name);
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        throw new InvalidOperationException(
+            $"Connection string '{name}' is required. Configure it via appsettings, environment variables, or user secrets.");
+    }
+
+    return value;
+}
+
+static string GetRequiredConfigurationValue(IConfiguration configuration, string key)
+{
+    var value = configuration[key];
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        throw new InvalidOperationException(
+            $"Configuration value '{key}' is required. Configure it via appsettings, environment variables, or user secrets.");
+    }
+
+    return value;
 }
 
 static Uri ResolveApiBaseAddress(IConfiguration config, IWebHostEnvironment env, string baseUri)
