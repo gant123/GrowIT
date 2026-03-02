@@ -13,13 +13,56 @@
 
     @if (!string.IsNullOrWhiteSpace(_pageError))
     {
-        <div class="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
+        <div class="alert alert-danger settings-page-alert d-flex justify-content-between align-items-center" role="alert">
             <div>@_pageError</div>
             <button class="btn btn-sm btn-outline-light" @onclick="LoadAllAsync">Retry</button>
         </div>
     }
 
-    <div class="settings-kpis">
+    <section class="settings-overview-shell">
+        <div class="settings-overview-hero">
+            <div class="settings-overview-copy">
+                <span class="settings-overview-kicker">Workspace Control Center</span>
+                <h2>Run the operational backbone behind your team, access model, and delivery governance.</h2>
+                <p>
+                    Settings is where organizational identity, team permissions, invite lifecycle, diagnostics, and security readiness stay aligned.
+                    Keep this area clean, current, and tightly controlled.
+                </p>
+                <div class="settings-overview-badges">
+                    <span class="settings-overview-badge"><i class="bi bi-shield-check"></i> Identity-managed access</span>
+                    <span class="settings-overview-badge"><i class="bi bi-activity"></i> Live diagnostics</span>
+                    <span class="settings-overview-badge"><i class="bi bi-diagram-3"></i> Tenant-aware controls</span>
+                </div>
+            </div>
+
+            <div class="settings-ops-spotlight">
+                <div class="settings-ops-card">
+                    <span class="settings-ops-label">Current focus</span>
+                    <strong>@GetActiveTabTitle()</strong>
+                    <p>@GetActiveTabDescription()</p>
+                </div>
+                <div class="settings-ops-grid">
+                    <div class="settings-ops-metric">
+                        <span>Users</span>
+                        <strong>@_users.Count</strong>
+                    </div>
+                    <div class="settings-ops-metric">
+                        <span>Pending invites</span>
+                        <strong>@PendingInviteCount</strong>
+                    </div>
+                    <div class="settings-ops-metric">
+                        <span>Unread alerts</span>
+                        <strong>@InviteActivityUnreadCount</strong>
+                    </div>
+                    <div class="settings-ops-metric">
+                        <span>Theme</span>
+                        <strong>Adaptive</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="settings-kpis">
         <div class="settings-kpi-card">
             <div class="settings-kpi-icon org"><i class="bi bi-building"></i></div>
             <div>
@@ -48,35 +91,98 @@
                 <div class="settings-kpi-value">@InviteActivityUnreadCount</div>
             </div>
         </div>
-    </div>
+        </div>
+    </section>
 
     @if (!_hasSettingsAccess)
     {
-        <div class="alert alert-warning" role="alert">
-            This workspace is limited to `Admin`, `Manager`, or `Owner` roles.
-        </div>
+        <section class="settings-access-card" role="alert">
+            <div class="settings-access-icon"><i class="bi bi-shield-lock"></i></div>
+            <div>
+                <h2>Settings access is restricted.</h2>
+                <p>This workspace is limited to `Admin`, `Manager`, or `Owner` roles. Request elevated access if you need to manage configuration or team controls.</p>
+            </div>
+        </section>
     }
     else
     {
-        <div class="settings-tabbar" role="tablist" aria-label="Settings sections">
-            <button class="settings-tab @(ActiveTab == "organization" ? "active" : null)" @onclick="@(() => SetActiveTab("organization"))">Organization</button>
-            <button class="settings-tab @(ActiveTab == "users" ? "active" : null)" @onclick="@(() => SetActiveTab("users"))">Users & Roles</button>
-            <button class="settings-tab @(ActiveTab == "invites" ? "active" : null)" @onclick="@(() => SetActiveTab("invites"))">Invites</button>
-            <button class="settings-tab @(ActiveTab == "security" ? "active" : null)" @onclick="@(() => SetActiveTab("security"))">Security</button>
-        </div>
+        <section class="settings-workspace-shell">
+            <aside class="settings-rail">
+                <div class="settings-rail-header">
+                    <span class="settings-rail-kicker">Sections</span>
+                    <h2>Admin workspace</h2>
+                    <p>Select the control surface you need. Each section is tuned for a different layer of operational governance.</p>
+                </div>
 
-        @if (_isLoading)
-        {
-            <div class="settings-loading">
-                <div class="spinner-border text-primary" role="status"></div>
-                <p>Loading settings workspace...</p>
-            </div>
-        }
-        else
-        {
-            @if (ActiveTab == "organization")
-            {
-                <section class="settings-panel">
+                <div class="settings-tabbar" role="tablist" aria-label="Settings sections">
+                    <button class="settings-tab @(ActiveTab == "organization" ? "active" : null)" @onclick="@(() => SetActiveTab("organization"))">
+                        <span class="settings-tab-icon"><i class="bi bi-buildings"></i></span>
+                        <span class="settings-tab-content">
+                            <span class="settings-tab-title">Organization</span>
+                            <span class="settings-tab-copy">Identity, profile, and enabled operating modules</span>
+                        </span>
+                    </button>
+                    <button class="settings-tab @(ActiveTab == "users" ? "active" : null)" @onclick="@(() => SetActiveTab("users"))">
+                        <span class="settings-tab-icon"><i class="bi bi-people"></i></span>
+                        <span class="settings-tab-content">
+                            <span class="settings-tab-title">Users & Roles</span>
+                            <span class="settings-tab-copy">@_users.Count user accounts with role-based access control</span>
+                        </span>
+                    </button>
+                    <button class="settings-tab @(ActiveTab == "invites" ? "active" : null)" @onclick="@(() => SetActiveTab("invites"))">
+                        <span class="settings-tab-icon"><i class="bi bi-envelope-paper"></i></span>
+                        <span class="settings-tab-content">
+                            <span class="settings-tab-title">Invites</span>
+                            <span class="settings-tab-copy">@PendingInviteCount pending invites and @InviteActivityUnreadCount unread activity items</span>
+                        </span>
+                    </button>
+                    <button class="settings-tab @(ActiveTab == "security" ? "active" : null)" @onclick="@(() => SetActiveTab("security"))">
+                        <span class="settings-tab-icon"><i class="bi bi-shield-check"></i></span>
+                        <span class="settings-tab-content">
+                            <span class="settings-tab-title">Security</span>
+                            <span class="settings-tab-copy">Diagnostics, audit trail, seed tooling, and readiness controls</span>
+                        </span>
+                    </button>
+                </div>
+
+                <div class="settings-rail-footnote">
+                    <span class="settings-rail-footnote-label">Current section</span>
+                    <strong>@GetActiveTabTitle()</strong>
+                    <p>@GetActiveTabDescription()</p>
+                </div>
+            </aside>
+
+            <div class="settings-main-stage">
+                @if (_isLoading)
+                {
+                    <div class="settings-loading">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p>Loading settings workspace...</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="settings-stage-header">
+                        <div>
+                            <span class="settings-stage-kicker">@GetActiveTabEyebrow()</span>
+                            <h2>@GetActiveTabTitle()</h2>
+                            <p>@GetActiveTabDescription()</p>
+                        </div>
+                        <div class="settings-stage-meta">
+                            <span class="settings-stage-chip">
+                                <i class="bi bi-building"></i>
+                                @_organization?.Name
+                            </span>
+                            <span class="settings-stage-chip">
+                                <i class="bi bi-stars"></i>
+                                Enterprise workspace
+                            </span>
+                        </div>
+                    </div>
+
+                    @if (ActiveTab == "organization")
+                    {
+                        <section class="settings-panel">
                 <div class="settings-panel-header">
                     <div>
                         <h2>Organization Profile</h2>
@@ -157,12 +263,12 @@
                         </EditForm>
                     }
                 </div>
-                </section>
-            }
+                        </section>
+                    }
 
-            @if (ActiveTab == "users")
-            {
-                <section class="settings-panel">
+                    @if (ActiveTab == "users")
+                    {
+                        <section class="settings-panel">
                 <div class="settings-panel-header">
                     <div>
                         <h2>Users & Roles</h2>
@@ -271,12 +377,12 @@
                         </GridColumns>
                     </SfGrid>
                 </div>
-                </section>
-            }
+                        </section>
+                    }
 
-            @if (ActiveTab == "invites")
-            {
-                <section class="settings-panel">
+                    @if (ActiveTab == "invites")
+                    {
+                        <section class="settings-panel">
                 <div class="settings-panel-header">
                     <div>
                         <h2>Invite Team Members</h2>
@@ -449,12 +555,12 @@
                         }
                     </div>
                 </div>
-                </section>
-            }
+                        </section>
+                    }
 
-            @if (ActiveTab == "security")
-            {
-                <section class="settings-panel">
+                    @if (ActiveTab == "security")
+                    {
+                        <section class="settings-panel">
                 <div class="settings-panel-header">
                     <div>
                         <h2>Security & Access Controls</h2>
@@ -763,9 +869,11 @@
                         </SfGrid>
                     </div>
                 </div>
-                </section>
-            }
-        }
+                        </section>
+                    }
+                }
+            </div>
+        </section>
     }
 </div>
 
@@ -1038,6 +1146,33 @@
         "expired" => "expired",
         "revoked" => "revoked",
         _ => "unknown"
+    };
+
+    private string GetActiveTabTitle() => ActiveTab switch
+    {
+        "organization" => "Organization",
+        "users" => "Users & Roles",
+        "invites" => "Invites",
+        "security" => "Security",
+        _ => "Settings"
+    };
+
+    private string GetActiveTabEyebrow() => ActiveTab switch
+    {
+        "organization" => "Workspace Identity",
+        "users" => "Access Control",
+        "invites" => "Invite Operations",
+        "security" => "Operational Readiness",
+        _ => "Administration"
+    };
+
+    private string GetActiveTabDescription() => ActiveTab switch
+    {
+        "organization" => "Maintain the workspace profile, tenant metadata, and the operating modules your team relies on across the platform.",
+        "users" => "Manage team membership, role alignment, and who is allowed to operate inside sensitive admin surfaces.",
+        "invites" => "Track pending invitations, resend or revoke access, and monitor invite activity before new users enter the workspace.",
+        "security" => "Review diagnostics, audit flow, demo tooling, and service readiness from one controlled operations surface.",
+        _ => "Manage organization settings and administrative controls."
     };
 
     private void SetActiveTab(string tab)
