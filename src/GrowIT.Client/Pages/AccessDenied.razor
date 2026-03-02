@@ -1,5 +1,6 @@
 @page "/access-denied"
 @layout PublicLayout
+@inject AppNotificationService Notifications
 @inject NavigationManager Navigation
 
 <PageTitle>Access Denied - grow.IT</PageTitle>
@@ -25,14 +26,26 @@
 
 @code {
     private string? _returnUrl;
+    private string? _lastReason;
 
-    protected override void OnInitialized()
+    [SupplyParameterFromQuery(Name = "reason")]
+    public string? Reason { get; set; }
+
+    protected override void OnParametersSet()
     {
         var absoluteUri = Navigation.ToAbsoluteUri(Navigation.Uri);
         var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(absoluteUri.Query);
-        if (query.TryGetValue("returnUrl", out var returnUrl))
+        if (query.TryGetValue("returnUrl", out var returnUrl) || query.TryGetValue("ReturnUrl", out returnUrl))
         {
             _returnUrl = returnUrl.ToString();
         }
+
+        if (_lastReason == Reason)
+        {
+            return;
+        }
+
+        _lastReason = Reason;
+        Notifications.Warning("You do not have access to that page.");
     }
 }

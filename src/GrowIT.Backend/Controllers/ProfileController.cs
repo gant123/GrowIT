@@ -2,6 +2,7 @@ using GrowIT.Core.Interfaces;
 using GrowIT.Infrastructure.Data;
 using GrowIT.Shared.DTOs;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,15 +24,18 @@ public class ProfileController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly ICurrentUserService _currentUserService;
     private readonly IFileStorageService _fileStorage;
+    private readonly UserManager<GrowIT.Core.Entities.User> _userManager;
 
     public ProfileController(
         ApplicationDbContext context,
         ICurrentUserService currentUserService,
-        IFileStorageService fileStorage)
+        IFileStorageService fileStorage,
+        UserManager<GrowIT.Core.Entities.User> userManager)
     {
         _context = context;
         _currentUserService = currentUserService;
         _fileStorage = fileStorage;
+        _userManager = userManager;
     }
 
     [HttpGet]
@@ -83,22 +87,22 @@ public class ProfileController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.CurrentPassword))
             return BadRequest("Current password is required.");
 
-        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 8)
-            return BadRequest("New password must be at least 8 characters.");
+        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 12)
+            return BadRequest("New password must be at least 12 characters.");
 
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == userId.Value);
         if (user is null) return NotFound();
 
-        if (!BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
-            return BadRequest("Current password is incorrect.");
-
-        if (BCrypt.Net.BCrypt.Verify(request.NewPassword, user.PasswordHash))
+        if (await _userManager.CheckPasswordAsync(user, request.NewPassword))
             return BadRequest("New password must be different from the current password.");
 
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-        user.PasswordResetToken = null;
-        user.ResetTokenExpires = null;
-        await _context.SaveChangesAsync();
+        var result = await _userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+        if (!result.Succeeded)
+        {
+            return BadRequest(string.Join(" ", result.Errors.Select(e => e.Description)));
+        }
+
+        await _userManager.UpdateSecurityStampAsync(user);
 
         return Ok(new { Message = "Password updated successfully." });
     }
@@ -203,7 +207,7 @@ public class ProfileController : ControllerBase
             TenantId = user.TenantId,
             FirstName = user.FirstName,
             LastName = user.LastName,
-            Email = user.Email,
+            Email = user.Email ?? string.Empty,
             Role = user.Role,
             IsActive = user.IsActive,
             PhotoUrl = ToPublicPhotoUrl(user.PhotoUrl),

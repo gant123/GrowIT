@@ -7,10 +7,12 @@ using GrowIT.Backend.Services;
 using GrowIT.Client;
 using GrowIT.Client.Auth;
 using GrowIT.Client.Services;
+using GrowIT.Core.Entities;
 using GrowIT.Core.Interfaces;
 using GrowIT.Infrastructure.Data;
 using GrowIT.Infrastructure.Data.Interceptors;
 using GrowIT.Infrastructure.Services;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components;
@@ -46,6 +48,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<AppNotificationService>();
 builder.Services.AddAntiforgery(options =>
 {
     options.HeaderName = "X-CSRF-TOKEN";
@@ -58,6 +61,7 @@ builder.Services.AddScoped<ApiAuthorizationHandler>();
 builder.Services.AddScoped<ICurrentTenantService, CurrentTenantService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<TokenService>();
+builder.Services.AddScoped<IUserClaimsPrincipalFactory<User>, GrowITUserClaimsPrincipalFactory>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 builder.Services.Configure<ReportSchedulerOptions>(builder.Configuration.GetSection("Reports:Scheduler"));
@@ -132,6 +136,30 @@ builder.Services.AddRateLimiter(options =>
 
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "ThisIsMySuperSecretKeyForGrowITLocalDevelopment123!";
 const string CompositeAuthScheme = "GrowITCompositeAuth";
+builder.Services.AddIdentityCore<User>(options =>
+    {
+        options.User.RequireUniqueEmail = true;
+        options.Password.RequiredLength = 12;
+        options.Password.RequireDigit = true;
+        options.Password.RequireLowercase = true;
+        options.Password.RequireUppercase = true;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Lockout.AllowedForNewUsers = true;
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+        options.SignIn.RequireConfirmedAccount = false;
+        options.SignIn.RequireConfirmedEmail = false;
+    })
+    .AddRoles<IdentityRole<Guid>>()
+    .AddSignInManager<SignInManager<User>>()
+    .AddRoleManager<RoleManager<IdentityRole<Guid>>>()
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+builder.Services.AddScoped<IPasswordHasher<User>, LegacyCompatiblePasswordHasher>();
+builder.Services.Configure<SecurityStampValidatorOptions>(options =>
+{
+    options.ValidationInterval = TimeSpan.FromMinutes(5);
+});
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = CompositeAuthScheme;
@@ -155,10 +183,10 @@ builder.Services.AddAuthentication(options =>
                 return JwtBearerDefaults.AuthenticationScheme;
             }
 
-            return CookieAuthenticationDefaults.AuthenticationScheme;
+            return IdentityConstants.ApplicationScheme;
         };
     })
-    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
+    .AddCookie(IdentityConstants.ApplicationScheme, options =>
     {
         options.Cookie.Name = "growit.auth";
         options.Cookie.HttpOnly = true;
@@ -169,7 +197,7 @@ builder.Services.AddAuthentication(options =>
         options.SlidingExpiration = true;
         options.ExpireTimeSpan = TimeSpan.FromHours(12);
         options.LoginPath = "/login";
-        options.AccessDeniedPath = "/login";
+        options.AccessDeniedPath = "/access-denied";
         options.Events = new CookieAuthenticationEvents
         {
             OnRedirectToLogin = context =>
@@ -202,8 +230,12 @@ builder.Services.AddAuthentication(options =>
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-            ValidateIssuer = false,
-            ValidateAudience = false
+            ValidateIssuer = !builder.Environment.IsDevelopment(),
+            ValidateAudience = !builder.Environment.IsDevelopment(),
+            ValidateLifetime = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            ClockSkew = TimeSpan.FromMinutes(1)
         };
     });
 
@@ -279,6 +311,8 @@ builder.Services.AddScoped(sp =>
 builder.Services.AddSyncfusionBlazor();
 
 var app = builder.Build();
+
+await EnsureIdentityBootstrapAsync(app.Services);
 
 if (!app.Environment.IsDevelopment())
 {
@@ -392,6 +426,101 @@ app.MapRazorComponents<App>()
 
 app.Run();
 
+static async Task EnsureIdentityBootstrapAsync(IServiceProvider services)
+{
+    using var scope = services.CreateScope();
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+    var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+    foreach (var roleName in new[] { "SuperAdmin", "Owner", "Admin", "Manager", "Case Manager", "Analyst", "Member" })
+    {
+        if (!await roleManager.RoleExistsAsync(roleName))
+        {
+            await roleManager.CreateAsync(new IdentityRole<Guid>(roleName));
+        }
+    }
+
+    var userIds = await dbContext.Users
+        .IgnoreQueryFilters()
+        .Select(u => u.Id)
+        .ToListAsync();
+
+    foreach (var userId in userIds)
+    {
+        var user = await userManager.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user is null)
+        {
+            continue;
+        }
+
+        var changed = false;
+
+        if (string.IsNullOrWhiteSpace(user.UserName))
+        {
+            user.UserName = user.Email;
+            changed = true;
+        }
+
+        var normalizedEmail = (user.Email ?? user.UserName ?? string.Empty).ToUpperInvariant();
+        if (!string.Equals(user.NormalizedEmail, normalizedEmail, StringComparison.Ordinal))
+        {
+            user.NormalizedEmail = normalizedEmail;
+            changed = true;
+        }
+
+        var normalizedUserName = user.UserName?.ToUpperInvariant();
+        if (!string.Equals(user.NormalizedUserName, normalizedUserName, StringComparison.Ordinal))
+        {
+            user.NormalizedUserName = normalizedUserName;
+            changed = true;
+        }
+
+        if (string.IsNullOrWhiteSpace(user.SecurityStamp))
+        {
+            user.SecurityStamp = Guid.NewGuid().ToString("N");
+            changed = true;
+        }
+
+        if (string.IsNullOrWhiteSpace(user.ConcurrencyStamp))
+        {
+            user.ConcurrencyStamp = Guid.NewGuid().ToString("N");
+            changed = true;
+        }
+
+        if (!user.EmailConfirmed)
+        {
+            user.EmailConfirmed = true;
+            changed = true;
+        }
+
+        if (changed)
+        {
+            var updateResult = await userManager.UpdateAsync(user);
+            if (!updateResult.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to normalize Identity user '{user.Id}': {string.Join(" ", updateResult.Errors.Select(e => e.Description))}");
+            }
+        }
+
+        var desiredRole = string.IsNullOrWhiteSpace(user.Role) ? "Member" : user.Role.Trim();
+        if (!await userManager.IsInRoleAsync(user, desiredRole))
+        {
+            var currentRoles = await userManager.GetRolesAsync(user);
+            if (currentRoles.Count > 0)
+            {
+                await userManager.RemoveFromRolesAsync(user, currentRoles);
+            }
+
+            await userManager.AddToRoleAsync(user, desiredRole);
+        }
+    }
+}
+
 static Uri ResolveApiBaseAddress(IConfiguration config, IWebHostEnvironment env, string baseUri)
 {
     static bool IsHttpScheme(Uri uri) =>
@@ -478,8 +607,8 @@ static void ApplySecurityHeaders(HttpContext context, bool enforceContentSecurit
             "frame-ancestors 'none'; " +
             "form-action 'self'; " +
             "img-src 'self' data: https:; " +
-            "font-src 'self' data: https://fonts.gstatic.com; " +
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+            "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " +
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " +
             "script-src 'self' 'unsafe-inline'; " +
             "connect-src 'self' ws: wss:;";
     }

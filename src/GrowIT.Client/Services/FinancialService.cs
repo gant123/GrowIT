@@ -15,7 +15,7 @@ public class FinancialService : BaseApiService, IFinancialService
 {
     private const string BaseEndpoint = "api/financials";
 
-    public FinancialService(HttpClient http) : base(http) { }
+    public FinancialService(HttpClient http, AppNotificationService notifications) : base(http, notifications) { }
 
     public async Task<List<FundDto>> GetFundsAsync()
     {

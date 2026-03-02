@@ -19,7 +19,7 @@ public class AuthService : BaseApiService, IAuthService
 {
     private readonly IJSRuntime _js;
 
-    public AuthService(HttpClient http, IJSRuntime js) : base(http)
+    public AuthService(HttpClient http, AppNotificationService notifications, IJSRuntime js) : base(http, notifications)
     {
         _js = js;
     }

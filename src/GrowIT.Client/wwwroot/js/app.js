@@ -132,9 +132,11 @@
         
         show: function(message, type = 'info', duration = null) {
             this.init();
+
+            const normalizedType = type === 'error' ? 'danger' : (type || 'info');
             
             const toast = document.createElement('div');
-            toast.className = `toast toast-${type}`;
+            toast.className = `toast toast-${normalizedType}`;
             
             const icons = {
                 success: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
@@ -144,7 +146,7 @@
             };
             
             toast.innerHTML = `
-                <span class="toast-icon">${icons[type] || icons.info}</span>
+                <span class="toast-icon">${icons[normalizedType] || icons.info}</span>
                 <span class="toast-message">${this.escapeHtml(message)}</span>
                 <button class="toast-close" aria-label="Close notification">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

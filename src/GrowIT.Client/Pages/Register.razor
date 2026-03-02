@@ -134,7 +134,7 @@
                                    @oninput="OnPasswordInput"
                                    placeholder="Create a strong password"
                                    autocomplete="new-password"
-                                   minlength="8"
+                                   minlength="12"
                                    required />
                             <button type="button" class="password-toggle" @onclick="() => _showPassword = !_showPassword">
                                 @if (_showPassword)
@@ -237,16 +237,17 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="role">Your role</label>
-                        <select id="role" @bind="_registerRequest.Role" required>
-                            <option value="">Select role...</option>
-                            <option value="executive">Executive Director / CEO</option>
-                            <option value="program">Program Director / Manager</option>
-                            <option value="case">Case Manager</option>
-                            <option value="admin">Administrator</option>
-                            <option value="volunteer">Volunteer Coordinator</option>
-                            <option value="other">Other</option>
-                        </select>
+                        <label>Your workspace owner access</label>
+                        <div class="auth-context-strip auth-context-strip-inline">
+                            <div class="context-chip">
+                                <span class="label">Initial role</span>
+                                <span class="value">Administrator</span>
+                            </div>
+                            <div class="context-chip">
+                                <span class="label">Why</span>
+                                <span class="value">You are creating the organization workspace</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-actions">
@@ -529,9 +530,9 @@
             return;
         }
 
-        if (_registerRequest.Password.Length < 8)
+        if (_registerRequest.Password.Length < 12)
         {
-            _errorMessage = "Password must be at least 8 characters.";
+            _errorMessage = "Password must be at least 12 characters.";
             return;
         }
         _errorMessage = null;
@@ -541,7 +542,7 @@
     private void GoToStep3()
     {
         if (string.IsNullOrWhiteSpace(_registerRequest.OrganizationName) || string.IsNullOrWhiteSpace(_registerRequest.OrganizationType) ||
-            string.IsNullOrWhiteSpace(_registerRequest.OrganizationSize) || string.IsNullOrWhiteSpace(_registerRequest.Role))
+            string.IsNullOrWhiteSpace(_registerRequest.OrganizationSize))
         {
             _errorMessage = "All fields in Step 2 are required.";
             return;
@@ -570,7 +571,7 @@
             var result = await AuthService.Register(_registerRequest);
             if (result != null)
             {
-                Navigation.NavigateTo("/home");
+                Navigation.NavigateTo("/home", forceLoad: true);
             }
             else
             {

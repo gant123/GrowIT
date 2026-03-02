@@ -16,7 +16,7 @@ public interface IProfileService
 
 public class ProfileService : BaseApiService, IProfileService
 {
-    public ProfileService(HttpClient http) : base(http) { }
+    public ProfileService(HttpClient http, AppNotificationService notifications) : base(http, notifications) { }
 
     public async Task<UserProfileDto> GetProfileAsync() =>
         (await GetAsync<UserProfileDto>("api/profile"))!;

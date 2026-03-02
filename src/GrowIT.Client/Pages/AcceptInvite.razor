@@ -122,7 +122,7 @@
                         <label for="invitePassword">Password</label>
                         <div class="input-wrapper">
                             <i class="bi bi-lock input-icon-bi"></i>
-                            <input type="@(_showPassword ? "text" : "password")" id="invitePassword" class="form-control" @bind="_password" autocomplete="new-password" minlength="8" required />
+                            <input type="@(_showPassword ? "text" : "password")" id="invitePassword" class="form-control" @bind="_password" autocomplete="new-password" minlength="12" required />
                             <button type="button" class="password-toggle" @onclick="TogglePassword" title="Toggle password visibility">
                                 <i class="bi @(_showPassword ? "bi-eye-slash" : "bi-eye")"></i>
                             </button>
@@ -222,9 +222,9 @@
             return;
         }
 
-        if (_password.Length < 8)
+        if (_password.Length < 12)
         {
-            _errorMessage = "Password must be at least 8 characters.";
+            _errorMessage = "Password must be at least 12 characters.";
             return;
         }
 
@@ -242,7 +242,7 @@
 
             if (result is not null)
             {
-                Navigation.NavigateTo("/home");
+                Navigation.NavigateTo("/home", forceLoad: true);
             }
             else
             {

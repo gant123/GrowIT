@@ -113,7 +113,7 @@
     gap: 12px;
 }
 
-.header-actions .theme-toggle {
+.public-layout .header-actions .theme-toggle {
     width: 40px;
     height: 40px;
     display: flex;
@@ -127,17 +127,17 @@
     transition: var(--transition-normal);
 }
 
-.header-actions .theme-toggle:hover {
+.public-layout .header-actions .theme-toggle:hover {
     color: var(--growit-text-primary);
     background: var(--growit-bg-card-hover);
 }
 
-.header-actions .theme-toggle svg {
+.public-layout .header-actions .theme-toggle svg {
     width: 20px;
     height: 20px;
 }
 
-.mobile-menu-btn {
+.public-layout .mobile-menu-btn {
     display: none;
     width: 40px;
     height: 40px;
@@ -149,23 +149,23 @@
     color: var(--growit-text-primary);
 }
 
-.mobile-menu-btn svg {
+.public-layout .mobile-menu-btn svg {
     width: 24px;
     height: 24px;
 }
 
 @media (max-width: 900px) {
-    .header-nav,
-    .header-actions .btn {
+    .public-layout .header-nav,
+    .public-layout .header-actions .btn {
         display: none;
     }
     
-    .mobile-menu-btn {
+    .public-layout .mobile-menu-btn {
         display: flex;
     }
 }
 
-.mobile-menu {
+.public-layout .mobile-menu {
     position: fixed;
     top: 72px;
     left: 0;
@@ -187,13 +187,13 @@
     to { transform: translateY(0); opacity: 1; }
 }
 
-.mobile-nav {
+.public-layout .mobile-nav {
     display: flex;
     flex-direction: column;
     gap: 8px;
 }
 
-.mobile-nav a {
+.public-layout .mobile-nav a {
     padding: 16px;
     color: var(--growit-text-primary);
     text-decoration: none;
@@ -204,13 +204,13 @@
     transition: all var(--transition-normal);
 }
 
-.mobile-nav a:hover {
+.public-layout .mobile-nav a:hover {
     background: var(--brand-accent-glow);
     color: var(--growit-green);
     padding-left: 24px;
 }
 
-.mobile-actions {
+.public-layout .mobile-actions {
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -504,13 +504,13 @@
     margin: 0 auto;
 }
 
-.section-header {
+.landing-page .section-header {
     text-align: center;
     max-width: 700px;
     margin: 0 auto 48px;
 }
 
-.section-badge {
+.landing-page .section-badge {
     display: inline-block;
     padding: 4px 12px;
     background: color-mix(in srgb, var(--growit-green) 10%, transparent);
@@ -521,7 +521,7 @@
     margin-bottom: 16px;
 }
 
-.section-title {
+.landing-page .section-title {
     font-size: 2.5rem;
     font-weight: 700;
     color: var(--growit-text-primary);
@@ -529,12 +529,12 @@
 }
 
 @media (max-width: 768px) {
-    .section-title {
+    .landing-page .section-title {
         font-size: 2rem;
     }
 }
 
-.section-subtitle {
+.landing-page .section-subtitle {
     font-size: 1.125rem;
     color: var(--growit-text-secondary);
     margin: 0;
@@ -1600,7 +1600,7 @@
 }
 
 /* Buttons */
-.btn {
+.public-layout .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1616,90 +1616,90 @@
     line-height: 1.5;
 }
 
-.btn:disabled {
+.public-layout .btn:disabled {
     opacity: 0.65;
     cursor: not-allowed;
 }
 
-.btn-primary {
+.public-layout .btn-primary {
     background: var(--growit-green);
     color: white;
     border-color: var(--growit-green);
 }
 
-.btn-primary:hover:not(:disabled) {
+.public-layout .btn-primary:hover:not(:disabled) {
     background: #16a34a;
     border-color: #16a34a;
     transform: translateY(-1px);
     box-shadow: var(--shadow-sm);
 }
 
-.btn-outline-primary {
+.public-layout .btn-outline-primary {
     background: transparent;
     color: var(--growit-green);
     border: 1px solid var(--growit-green);
 }
 
-.btn-outline-primary:hover:not(:disabled) {
+.public-layout .btn-outline-primary:hover:not(:disabled) {
     background: var(--growit-green);
     color: white;
     transform: translateY(-1px);
     box-shadow: var(--shadow-sm);
 }
 
-.btn-outline {
+.public-layout .btn-outline {
     background: transparent;
     color: var(--growit-green);
     border: 1px solid var(--growit-green);
 }
 
-.btn-outline:hover:not(:disabled) {
+.public-layout .btn-outline:hover:not(:disabled) {
     background: var(--growit-green);
     color: white;
     transform: translateY(-1px);
     box-shadow: var(--shadow-sm);
 }
 
-.btn-ghost {
+.public-layout .btn-ghost {
     background: color-mix(in srgb, var(--growit-bg-secondary) 72%, transparent);
     color: var(--growit-text-primary);
     border: 1px solid var(--growit-border);
 }
 
-.btn-ghost:hover:not(:disabled) {
+.public-layout .btn-ghost:hover:not(:disabled) {
     background: var(--growit-bg-secondary);
     color: var(--growit-text-primary);
     border-color: color-mix(in srgb, var(--growit-green) 30%, var(--growit-border));
 }
 
-[data-theme="dark"] .mobile-menu {
+[data-theme="dark"] .public-layout .mobile-menu {
     background: rgba(2, 6, 23, 0.94);
 }
 
-[data-theme="dark"] .btn-ghost {
+[data-theme="dark"] .public-layout .btn-ghost {
     background: rgba(15, 23, 42, 0.65);
     border-color: rgba(148, 163, 184, 0.25);
 }
 
 @media (max-width: 900px) {
-    .mobile-actions .btn {
+    .public-layout .mobile-actions .btn {
         min-height: 46px;
         justify-content: center;
         font-weight: 700;
     }
 }
 
-.btn-block {
+.public-layout .btn-block {
     display: flex;
     width: 100%;
 }
 
-.btn-lg {
+.public-layout .btn-lg {
     padding: 12px 24px;
     font-size: 1rem;
 }
 
-.btn svg {
+.public-layout .btn svg {
     width: 18px;
     height: 18px;
 }
@@ -4284,13 +4284,13 @@
 /* ========================================
    PUBLIC ROUTES MOBILE REVAMP (v1)
    ======================================== */
-.mobile-menu-backdrop {
+.public-layout .mobile-menu-backdrop {
     display: none;
     appearance: none;
     -webkit-appearance: none;
 }
 
-.mobile-menu-header {
+.public-layout .mobile-menu-header {
     display: none;
 }
 
@@ -4326,16 +4326,16 @@
 }
 
 @media (max-width: 900px) {
-    .public-header {
+    .public-layout .public-header {
         height: 64px;
     }
 
-    .public-header .header-content {
+    .public-layout .public-header .header-content {
         padding: 0 14px;
         gap: 10px;
     }
 
-    .public-main {
+    .public-layout .public-main {
         padding-top: 64px;
     }
 
@@ -4347,18 +4347,18 @@
         font-size: 1.04rem;
     }
 
-    .header-actions {
+    .public-layout .header-actions {
         gap: 8px;
     }
 
-    .header-actions .theme-toggle {
+    .public-layout .header-actions .theme-toggle {
         width: 38px;
         height: 38px;
         border: 1px solid color-mix(in srgb, var(--growit-border) 72%, transparent);
         background: color-mix(in srgb, var(--growit-bg-primary) 88%, transparent);
     }
 
-    .mobile-menu-btn {
+    .public-layout .mobile-menu-btn {
         display: inline-flex;
         width: 38px;
         height: 38px;
@@ -4367,12 +4367,12 @@
         background: color-mix(in srgb, var(--growit-bg-primary) 88%, transparent);
     }
 
-    .mobile-menu-btn svg {
+    .public-layout .mobile-menu-btn svg {
         width: 20px;
         height: 20px;
     }
 
-    .mobile-menu-backdrop {
+    .public-layout .mobile-menu-backdrop {
         display: block;
         position: fixed;
         inset: 0;
@@ -4387,7 +4387,7 @@
         animation: publicMenuBackdropIn 180ms ease-out both;
     }
 
-    .mobile-menu {
+    .public-layout .mobile-menu {
         top: 0;
         right: 0;
         bottom: 0;
@@ -4407,7 +4407,7 @@
             radial-gradient(circle at 100% 0, color-mix(in srgb, var(--growit-green) 9%, transparent), transparent 40%);
     }
 
-    .mobile-menu-header {
+    .public-layout .mobile-menu-header {
         display: block;
         font-size: 0.72rem;
         font-weight: 700;
@@ -4417,11 +4417,11 @@
         padding: 2px 2px 8px;
     }
 
-    .mobile-nav {
+    .public-layout .mobile-nav {
         gap: 10px;
     }
 
-    .mobile-nav a {
+    .public-layout .mobile-nav a {
         padding: 13px 14px;
         font-size: 1rem;
         color: var(--growit-text-primary);
@@ -4434,29 +4434,29 @@
         animation: publicMenuItemIn 220ms ease-out both;
     }
 
-    .mobile-menu,
-    .mobile-menu * {
+    .public-layout .mobile-menu,
+    .public-layout .mobile-menu * {
         box-sizing: border-box;
     }
 
-    .mobile-nav a:hover {
+    .public-layout .mobile-nav a:hover {
         padding-left: 14px;
         transform: translateY(-1px);
     }
 
-    .mobile-nav a:nth-child(1) { animation-delay: 25ms; }
-    .mobile-nav a:nth-child(2) { animation-delay: 50ms; }
-    .mobile-nav a:nth-child(3) { animation-delay: 75ms; }
-    .mobile-nav a:nth-child(4) { animation-delay: 100ms; }
-    .mobile-nav a:nth-child(5) { animation-delay: 125ms; }
+    .public-layout .mobile-nav a:nth-child(1) { animation-delay: 25ms; }
+    .public-layout .mobile-nav a:nth-child(2) { animation-delay: 50ms; }
+    .public-layout .mobile-nav a:nth-child(3) { animation-delay: 75ms; }
+    .public-layout .mobile-nav a:nth-child(4) { animation-delay: 100ms; }
+    .public-layout .mobile-nav a:nth-child(5) { animation-delay: 125ms; }
 
-    .mobile-actions {
+    .public-layout .mobile-actions {
         margin-top: auto;
         padding-top: 14px;
         padding-bottom: 0;
     }
 
-    .mobile-actions .btn {
+    .public-layout .mobile-actions .btn {
         min-height: 48px;
         justify-content: center;
         border-radius: 12px;
@@ -4464,26 +4464,26 @@
         transition: transform 160ms ease;
     }
 
-    .mobile-actions .btn-ghost {
+    .public-layout .mobile-actions .btn-ghost {
         color: var(--growit-text-primary);
         border: 1px solid color-mix(in srgb, var(--growit-border) 74%, transparent);
         background: color-mix(in srgb, var(--growit-bg-card) 96%, white 4%);
     }
 
-    .mobile-actions .btn-primary {
+    .public-layout .mobile-actions .btn-primary {
         color: #fff;
         background: var(--growit-green);
         border-color: var(--growit-green);
     }
 
-    .mobile-actions .btn:hover {
+    .public-layout .mobile-actions .btn:hover {
         transform: translateY(-1px);
     }
 
-    .mobile-menu-btn:focus-visible,
-    .header-actions .theme-toggle:focus-visible,
-    .mobile-nav a:focus-visible,
-    .mobile-actions .btn:focus-visible {
+    .public-layout .mobile-menu-btn:focus-visible,
+    .public-layout .header-actions .theme-toggle:focus-visible,
+    .public-layout .mobile-nav a:focus-visible,
+    .public-layout .mobile-actions .btn:focus-visible {
         outline: 2px solid color-mix(in srgb, var(--growit-green) 84%, white 16%);
         outline-offset: 2px;
     }
@@ -4548,15 +4548,15 @@
 }
 
 @media (max-width: 640px) {
-    .public-header {
+    .public-layout .public-header {
         height: 60px;
     }
 
-    .public-header .header-content {
+    .public-layout .public-header .header-content {
         padding: 0 12px;
     }
 
-    .public-main {
+    .public-layout .public-main {
         padding-top: 60px;
     }
 
@@ -4572,21 +4572,21 @@
         font-size: 0.95rem;
     }
 
-    .header-actions .theme-toggle,
-    .mobile-menu-btn {
+    .public-layout .header-actions .theme-toggle,
+    .public-layout .mobile-menu-btn {
         width: 36px;
         height: 36px;
     }
 
-    .mobile-menu-backdrop {
+    .public-layout .mobile-menu-backdrop {
         inset: 0;
     }
 
-    .mobile-menu {
+    .public-layout .mobile-menu {
         padding: calc(60px + 14px) 12px calc(16px + env(safe-area-inset-bottom));
     }
 
-    .mobile-nav a {
+    .public-layout .mobile-nav a {
         padding: 12px 12px;
         font-size: 0.97rem;
     }
@@ -4657,31 +4657,31 @@
 }
 
 @media (max-width: 900px) and (hover: none) {
-    .mobile-nav a:hover,
-    .mobile-actions .btn:hover {
+    .public-layout .mobile-nav a:hover,
+    .public-layout .mobile-actions .btn:hover {
         transform: none;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .public-header,
-    .mobile-menu,
-    .mobile-menu-backdrop,
-    .mobile-nav a,
-    .mobile-actions .btn,
-    .mobile-menu-btn,
-    .header-actions .theme-toggle {
+    .public-layout .public-header,
+    .public-layout .mobile-menu,
+    .public-layout .mobile-menu-backdrop,
+    .public-layout .mobile-nav a,
+    .public-layout .mobile-actions .btn,
+    .public-layout .mobile-menu-btn,
+    .public-layout .header-actions .theme-toggle {
         animation: none !important;
         transition: none !important;
     }
 
-    .mobile-nav a {
+    .public-layout .mobile-nav a {
         opacity: 1 !important;
         transform: none !important;
     }
 
-    .mobile-nav a:hover,
-    .mobile-actions .btn:hover {
+    .public-layout .mobile-nav a:hover,
+    .public-layout .mobile-actions .btn:hover {
         transform: none !important;
     }
 }

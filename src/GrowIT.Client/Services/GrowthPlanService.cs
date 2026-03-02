@@ -15,7 +15,7 @@ public class GrowthPlanService : BaseApiService, IGrowthPlanService
 {
     private const string BaseEndpoint = "api/growthplans";
 
-    public GrowthPlanService(HttpClient http) : base(http) { }
+    public GrowthPlanService(HttpClient http, AppNotificationService notifications) : base(http, notifications) { }
 
     public async Task<List<GrowthPlanListDto>> GetGrowthPlansAsync()
     {

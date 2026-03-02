@@ -1,0 +1,67 @@
+@implements IDisposable
+@inject AppNotificationService Notifications
+@inject IJSRuntime JS
+
+@code {
+    private bool _jsReady;
+
+    protected override void OnInitialized()
+    {
+        Notifications.Changed += OnNotificationsChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        _jsReady = true;
+        await FlushAsync();
+    }
+
+    private void OnNotificationsChanged()
+    {
+        _ = InvokeAsync(FlushAsync);
+    }
+
+    private async Task FlushAsync()
+    {
+        if (!_jsReady)
+        {
+            return;
+        }
+
+        try
+        {
+            while (Notifications.TryDequeue(out var message) && message is not null)
+            {
+                await JS.InvokeVoidAsync(
+                    "blazorInterop.showToast",
+                    message.Message,
+                    MapType(message.Level),
+                    message.DurationMs);
+            }
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (InvalidOperationException)
+        {
+        }
+    }
+
+    private static string MapType(AppNotificationLevel level) => level switch
+    {
+        AppNotificationLevel.Success => "success",
+        AppNotificationLevel.Warning => "warning",
+        AppNotificationLevel.Error => "danger",
+        _ => "info"
+    };
+
+    public void Dispose()
+    {
+        Notifications.Changed -= OnNotificationsChanged;
+    }
+}

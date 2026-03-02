@@ -21,7 +21,7 @@ public class ReportService : BaseApiService, IReportService
 {
     private const string BaseEndpoint = "api/reports";
 
-    public ReportService(HttpClient http) : base(http) { }
+    public ReportService(HttpClient http, AppNotificationService notifications) : base(http, notifications) { }
 
     public async Task<List<RecentReport>> GetRecentReportsAsync(RecentReportsQueryParams? query = null)
     {

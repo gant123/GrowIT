@@ -25,7 +25,7 @@ public interface IAdminService
 
 public class AdminService : BaseApiService, IAdminService
 {
-    public AdminService(HttpClient http) : base(http) { }
+    public AdminService(HttpClient http, AppNotificationService notifications) : base(http, notifications) { }
 
     public async Task<OrganizationSettingsDto> GetOrganizationAsync() =>
         (await GetAsync<OrganizationSettingsDto>("api/admin/organization"))!;

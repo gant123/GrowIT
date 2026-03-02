@@ -19,7 +19,7 @@ public interface IContentService
 
 public class ContentService : BaseApiService, IContentService
 {
-    public ContentService(HttpClient http) : base(http) { }
+    public ContentService(HttpClient http, AppNotificationService notifications) : base(http, notifications) { }
 
     public async Task<List<PublicBlogPostDto>> GetPublishedBlogPostsAsync(int take = 24) =>
         await GetAsync<List<PublicBlogPostDto>>($"api/content/blog?take={Math.Clamp(take, 1, 100)}") ?? new();

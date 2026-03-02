@@ -4,6 +4,8 @@ using GrowIT.Core.Entities;
 using GrowIT.Core.Interfaces;
 using GrowIT.Shared.Enums;
 using GrowIT.Infrastructure.Data;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
@@ -20,26 +22,36 @@ public class AuthController : ControllerBase
     private readonly TokenService _tokenService;
     private readonly IEmailService _emailService;
     private readonly IConfiguration _config;
+    private readonly UserManager<User> _userManager;
+    private readonly SignInManager<User> _signInManager;
+    private readonly RoleManager<IdentityRole<Guid>> _roleManager;
 
     public AuthController(
         ApplicationDbContext context, 
         TokenService tokenService, 
         IEmailService emailService,
-        IConfiguration config)
+        IConfiguration config,
+        UserManager<User> userManager,
+        SignInManager<User> signInManager,
+        RoleManager<IdentityRole<Guid>> roleManager)
     {
         _context = context;
         _tokenService = tokenService;
         _emailService = emailService;
         _config = config;
+        _userManager = userManager;
+        _signInManager = signInManager;
+        _roleManager = roleManager;
     }
 
     [HttpPost("register")]
     public async Task<IActionResult> Register(RegisterRequest request)
     {
         // 0. Check if user already exists
-        var existingUser = await _context.Users
+        var normalizedEmail = request.Email.Trim().ToUpperInvariant();
+        var existingUser = await _userManager.Users
             .IgnoreQueryFilters()
-            .AnyAsync(u => u.Email == request.Email);
+            .AnyAsync(u => u.NormalizedEmail == normalizedEmail);
             
         if (existingUser)
         {
@@ -66,26 +78,40 @@ public class AuthController : ControllerBase
             TenantId = newTenant.Id, // Link to the new Tenant
             FirstName = request.FirstName,
             LastName = request.LastName,
-            Email = request.Email,
-            Role = string.IsNullOrEmpty(request.Role) ? "Admin" : request.Role, // Ensure a role is set
+            Email = request.Email.Trim(),
+            UserName = request.Email.Trim(),
+            Role = "Admin",
             IsActive = true,
             NotifyInviteActivity = true,
             NotifySystemAlerts = true,
-            // Hash the password immediately!
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
+            EmailConfirmed = true
         };
 
         // 3. Save as a Transaction (All or Nothing)
-        using var transaction = _context.Database.BeginTransaction();
+        await using var transaction = await _context.Database.BeginTransactionAsync();
         try 
         {
             _context.Tenants.Add(newTenant);
-            _context.Users.Add(newUser);
             await _context.SaveChangesAsync();
+
+            var createResult = await _userManager.CreateAsync(newUser, request.Password);
+            if (!createResult.Succeeded)
+            {
+                await transaction.RollbackAsync();
+                return BadRequest(new
+                {
+                    Message = "Registration failed.",
+                    Errors = createResult.Errors.Select(e => e.Description).ToArray()
+                });
+            }
+
+            await EnsureRoleAsync("Admin");
+            await _userManager.AddToRoleAsync(newUser, "Admin");
             await transaction.CommitAsync();
         }
         catch (Exception ex)
         {
+            await transaction.RollbackAsync();
             return BadRequest(new { Message = "Registration failed.", Error = ex.Message, InnerError = ex.InnerException?.Message });
         }
 
@@ -97,9 +123,10 @@ public class AuthController : ControllerBase
     {
         // 1. Find User
         // Use IgnoreQueryFilters() to find user across all tenants during login
-        var user = await _context.Users
+        var normalizedEmail = request.Email.Trim().ToUpperInvariant();
+        var user = await _userManager.Users
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.Email == request.Email);
+            .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
             
         if (user == null) 
         {
@@ -108,19 +135,25 @@ public class AuthController : ControllerBase
         }
 
         // 2. Check Password
-        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-        {
-            return Unauthorized("Invalid email or password");
-        }
-
         if (!user.IsActive)
         {
             return Unauthorized("This account has been deactivated. Contact your organization administrator.");
         }
 
+        var signInResult = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
+        if (signInResult.IsLockedOut)
+        {
+            return StatusCode(StatusCodes.Status423Locked, "This account is temporarily locked due to repeated failed sign-in attempts.");
+        }
+
+        if (!signInResult.Succeeded)
+        {
+            return Unauthorized("Invalid email or password");
+        }
+
         // 3. Generate Token
         // Important: Use user.TenantId to ensure the token has the correct tenant context
-        var token = _tokenService.CreateToken(user, user.TenantId);
+        var token = await _tokenService.CreateTokenAsync(user, user.TenantId);
 
         return Ok(new AuthResponseDto
         {
@@ -133,9 +166,7 @@ public class AuthController : ControllerBase
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
     {
-        var user = await _context.Users
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.Email == request.Email);
+        var user = await _userManager.FindByEmailAsync(request.Email.Trim());
 
         if (user == null)
         {
@@ -143,12 +174,7 @@ public class AuthController : ControllerBase
             return Ok(new { Message = "If your email is in our system, you will receive a reset link." });
         }
 
-        // Generate token
-        var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-        user.PasswordResetToken = token;
-        user.ResetTokenExpires = DateTime.UtcNow.AddHours(2);
-
-        await _context.SaveChangesAsync();
+        var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
         // Send email
         var clientUrl = _config["ClientUrl"] ?? "https://localhost:7234";
@@ -163,7 +189,7 @@ public class AuthController : ControllerBase
 
         try
         {
-            await _emailService.SendEmailAsync(user.Email, "Reset your GrowIT password", body);
+            await _emailService.SendEmailAsync(user.Email ?? request.Email.Trim(), "Reset your GrowIT password", body);
         }
         catch (Exception ex)
         {
@@ -230,8 +256,8 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Token) || string.IsNullOrWhiteSpace(request.Email))
             return BadRequest("Invite token and email are required.");
 
-        if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
-            return BadRequest("Password must be at least 8 characters.");
+        if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 12)
+            return BadRequest("Password must be at least 12 characters.");
 
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
         var tokenHash = HashToken(request.Token);
@@ -247,7 +273,7 @@ public class AuthController : ControllerBase
 
         var existingUser = await _context.Users
             .IgnoreQueryFilters()
-            .AnyAsync(u => u.Email.ToLower() == normalizedEmail);
+            .AnyAsync(u => u.Email != null && u.Email.ToLower() == normalizedEmail);
         if (existingUser)
             return BadRequest("A user with this email already exists.");
 
@@ -257,23 +283,32 @@ public class AuthController : ControllerBase
             FirstName = string.IsNullOrWhiteSpace(request.FirstName) ? invite.FirstName : request.FirstName.Trim(),
             LastName = string.IsNullOrWhiteSpace(request.LastName) ? invite.LastName : request.LastName.Trim(),
             Email = normalizedEmail,
+            UserName = normalizedEmail,
             Role = string.IsNullOrWhiteSpace(invite.Role) ? "Member" : invite.Role,
             IsActive = true,
             NotifyInviteActivity = true,
             NotifySystemAlerts = true,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
+            EmailConfirmed = true
         };
 
         if (string.IsNullOrWhiteSpace(user.FirstName) || string.IsNullOrWhiteSpace(user.LastName))
             return BadRequest("First name and last name are required.");
 
-        _context.Users.Add(user);
         invite.AcceptedAt = DateTime.UtcNow;
         invite.AcceptedUserId = user.Id;
+        var createResult = await _userManager.CreateAsync(user, request.Password);
+        if (!createResult.Succeeded)
+        {
+            return BadRequest(string.Join(" ", createResult.Errors.Select(e => e.Description)));
+        }
+
+        var assignedRole = string.IsNullOrWhiteSpace(user.Role) ? "Member" : user.Role;
+        await EnsureRoleAsync(assignedRole);
+        await _userManager.AddToRoleAsync(user, assignedRole);
         await AddInviteAcceptedNotificationsAsync(invite, user);
         await _context.SaveChangesAsync();
 
-        var token = _tokenService.CreateToken(user, user.TenantId);
+        var token = await _tokenService.CreateTokenAsync(user, user.TenantId);
 
         return Ok(new AuthResponseDto
         {
@@ -286,21 +321,19 @@ public class AuthController : ControllerBase
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
     {
-        var user = await _context.Users
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.Email == request.Email && u.PasswordResetToken == request.Token);
-
-        if (user == null || user.ResetTokenExpires < DateTime.UtcNow)
+        var user = await _userManager.FindByEmailAsync(request.Email.Trim());
+        if (user == null)
         {
             return BadRequest(new { Message = "Invalid or expired token." });
         }
 
-        // Reset password
-        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
-        user.PasswordResetToken = null;
-        user.ResetTokenExpires = null;
+        var result = await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { Message = string.Join(" ", result.Errors.Select(e => e.Description)) });
+        }
 
-        await _context.SaveChangesAsync();
+        await _userManager.UpdateSecurityStampAsync(user);
 
         return Ok(new { Message = "Password has been reset successfully." });
     }
@@ -339,6 +372,19 @@ public class AuthController : ControllerBase
                 IsRead = false,
                 CreatedAt = now
             });
+        }
+    }
+
+    private async Task EnsureRoleAsync(string roleName)
+    {
+        var normalizedRole = roleName.Trim();
+        if (!await _roleManager.RoleExistsAsync(normalizedRole))
+        {
+            var result = await _roleManager.CreateAsync(new IdentityRole<Guid>(normalizedRole));
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException($"Failed to create role '{normalizedRole}': {string.Join(" ", result.Errors.Select(e => e.Description))}");
+            }
         }
     }
 }

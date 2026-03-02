@@ -1,20 +1,16 @@
 using GrowIT.Core.Interfaces;
+using Microsoft.AspNetCore.Identity;
 
 namespace GrowIT.Core.Entities;
 
-public class User : IMustHaveTenant
+public class User : IdentityUser<Guid>, IMustHaveTenant
 {
-    public Guid Id { get; set; } = Guid.NewGuid();
     public Guid TenantId { get; set; }
     
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string PasswordHash { get; set; } = string.Empty;
-    public string Role { get; set; } = string.Empty; // Added to store initial user role
+    public string Role { get; set; } = string.Empty;
     
-    public string? PasswordResetToken { get; set; }
-    public DateTime? ResetTokenExpires { get; set; }
     public bool IsActive { get; set; } = true;
     public DateTime? DeactivatedAt { get; set; }
     public string? PhotoUrl { get; set; }

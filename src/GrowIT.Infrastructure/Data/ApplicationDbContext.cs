@@ -1,11 +1,13 @@
 using GrowIT.Core.Entities;
 using GrowIT.Core.Interfaces;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using System.Reflection;
 
 namespace GrowIT.Infrastructure.Data;
 
-public class ApplicationDbContext : DbContext
+public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
 {
     private readonly ICurrentTenantService _tenantService;
 
@@ -28,9 +30,6 @@ public class ApplicationDbContext : DbContext
     public DbSet<Payment> Payments { get; set; }
     public DbSet<FamilyMember> FamilyMembers { get; set; }
     // Domain: Security & Users
-    public DbSet<User> Users { get; set; }
-    public DbSet<Role> Roles { get; set; }
-    public DbSet<UserRole> UserRoles { get; set; }
     public DbSet<OrganizationInvite> OrganizationInvites { get; set; }
 
     // Domain: Case Management
@@ -65,6 +64,47 @@ public class ApplicationDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        builder.Entity<User>(entity =>
+        {
+            entity.ToTable("Users");
+            entity.Property(u => u.FirstName).HasDefaultValue(string.Empty);
+            entity.Property(u => u.LastName).HasDefaultValue(string.Empty);
+            entity.Property(u => u.Role).HasDefaultValue(string.Empty);
+            entity.Property(u => u.IsActive).HasDefaultValue(true);
+            entity.Property(u => u.NotifyInviteActivity).HasDefaultValue(true);
+            entity.Property(u => u.NotifySystemAlerts).HasDefaultValue(true);
+        });
+
+        builder.Entity<IdentityRole<Guid>>(entity =>
+        {
+            entity.ToTable("AspNetRoles");
+        });
+
+        builder.Entity<IdentityUserRole<Guid>>(entity =>
+        {
+            entity.ToTable("AspNetUserRoles");
+        });
+
+        builder.Entity<IdentityUserClaim<Guid>>(entity =>
+        {
+            entity.ToTable("AspNetUserClaims");
+        });
+
+        builder.Entity<IdentityUserLogin<Guid>>(entity =>
+        {
+            entity.ToTable("AspNetUserLogins");
+        });
+
+        builder.Entity<IdentityUserToken<Guid>>(entity =>
+        {
+            entity.ToTable("AspNetUserTokens");
+        });
+
+        builder.Entity<IdentityRoleClaim<Guid>>(entity =>
+        {
+            entity.ToTable("AspNetRoleClaims");
+        });
 
         // A. Global Query Filter (Multi-Tenancy Security)
         // -------------------------------------------------------------

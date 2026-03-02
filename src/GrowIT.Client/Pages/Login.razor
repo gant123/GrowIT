@@ -3,6 +3,7 @@
 @using GrowIT.Client.Services
 @using GrowIT.Shared.DTOs
 @inject IAuthService AuthService
+@inject AppNotificationService Notifications
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 
@@ -215,6 +216,33 @@
     private bool _showPassword = false;
     private bool _isLoading = false;
     private string? _errorMessage;
+    private string? _lastNoticeKey;
+
+    [SupplyParameterFromQuery(Name = "reason")]
+    public string? Reason { get; set; }
+
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        var noticeKey = $"{Reason}|{ReturnUrl}";
+        if (noticeKey == _lastNoticeKey)
+        {
+            return;
+        }
+
+        _lastNoticeKey = noticeKey;
+
+        if (string.Equals(Reason, "auth-required", StringComparison.OrdinalIgnoreCase))
+        {
+            Notifications.Warning("Please sign in to access that page.");
+        }
+        else if (string.Equals(Reason, "session-expired", StringComparison.OrdinalIgnoreCase))
+        {
+            Notifications.Warning("Your session expired. Sign in again to continue.");
+        }
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -248,7 +276,7 @@
 
             if (result != null)
             {
-                Navigation.NavigateTo("/home");
+                Navigation.NavigateTo(GetPostLoginTarget(), forceLoad: true, replace: true);
             }
             else
             {
@@ -273,5 +301,15 @@
     private void LoginWithMicrosoft()
     {
         // OAuth with Microsoft
+    }
+
+    private string GetPostLoginTarget()
+    {
+        if (!string.IsNullOrWhiteSpace(ReturnUrl) && ReturnUrl.StartsWith('/'))
+        {
+            return ReturnUrl;
+        }
+
+        return "/home";
     }
 }

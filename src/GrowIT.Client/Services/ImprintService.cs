@@ -14,7 +14,7 @@ public class ImprintService : BaseApiService, IImprintService
 {
     private const string BaseEndpoint = "api/imprints";
 
-    public ImprintService(HttpClient http) : base(http) { }
+    public ImprintService(HttpClient http, AppNotificationService notifications) : base(http, notifications) { }
 
     public async Task<List<ImprintListDto>> GetImprintsAsync(int page = 1, int pageSize = 50)
     {

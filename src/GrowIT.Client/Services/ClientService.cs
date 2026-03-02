@@ -18,7 +18,7 @@ public class ClientService : BaseApiService, IClientService
 {
     private const string Endpoint = "api/clients";
 
-    public ClientService(HttpClient http) : base(http) { }
+    public ClientService(HttpClient http, AppNotificationService notifications) : base(http, notifications) { }
 
     public async Task<List<ClientDto>> GetAllClientsAsync()
     {

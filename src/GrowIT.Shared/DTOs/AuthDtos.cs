@@ -18,12 +18,12 @@ public class RegisterRequest
     public string Email { get; set; } = string.Empty;
 
     [Required]
+    [MinLength(12)]
     public string Password { get; set; } = string.Empty;
 
     // Organization Details (from Step 2)
     public string OrganizationType { get; set; } = string.Empty;
     public string OrganizationSize { get; set; } = string.Empty;
-    public string Role { get; set; } = string.Empty;
 
     // Initial Setup Preferences (from Step 3)
     public bool TrackPeople { get; set; } = false;
@@ -60,6 +60,6 @@ public class ResetPasswordRequest
     public string Email { get; set; } = string.Empty;
 
     [Required]
-    [MinLength(6)]
+    [MinLength(12)]
     public string NewPassword { get; set; } = string.Empty;
 }

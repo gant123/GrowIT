@@ -14,7 +14,7 @@ public class HouseholdService : BaseApiService, IHouseholdService
 {
     private const string BaseEndpoint = "api/households";
 
-    public HouseholdService(HttpClient http) : base(http) { }
+    public HouseholdService(HttpClient http, AppNotificationService notifications) : base(http, notifications) { }
 
     public async Task<List<HouseholdDto>> GetHouseholdsAsync()
     {

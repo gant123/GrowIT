@@ -12,7 +12,7 @@ public interface IFeedbackService
 
 public class FeedbackService : BaseApiService, IFeedbackService
 {
-    public FeedbackService(HttpClient http) : base(http) { }
+    public FeedbackService(HttpClient http, AppNotificationService notifications) : base(http, notifications) { }
 
     public Task<BetaFeedbackListItemDto?> SubmitAsync(CreateBetaFeedbackRequest request) =>
         PostAsync<CreateBetaFeedbackRequest, BetaFeedbackListItemDto>("api/feedback", request);

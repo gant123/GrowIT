@@ -1,7 +1,9 @@
 using System.Net.Http.Headers;
 using GrowIT.Backend.Services;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 namespace GrowIT.Client.Auth;
@@ -13,20 +15,23 @@ namespace GrowIT.Client.Auth;
 public sealed class ApiAuthorizationHandler : DelegatingHandler
 {
     private readonly IHttpContextAccessor _httpContextAccessor;
-    private readonly TokenService _tokenService;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly IConfiguration _configuration;
     private readonly IWebHostEnvironment _environment;
+    private readonly AuthenticationStateProvider _authenticationStateProvider;
 
     public ApiAuthorizationHandler(
         IHttpContextAccessor httpContextAccessor,
-        TokenService tokenService,
+        IServiceScopeFactory scopeFactory,
         IConfiguration configuration,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        AuthenticationStateProvider authenticationStateProvider)
     {
         _httpContextAccessor = httpContextAccessor;
-        _tokenService = tokenService;
+        _scopeFactory = scopeFactory;
         _configuration = configuration;
         _environment = environment;
+        _authenticationStateProvider = authenticationStateProvider;
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -36,11 +41,18 @@ public sealed class ApiAuthorizationHandler : DelegatingHandler
         if (request.Headers.Authorization is null)
         {
             var user = _httpContextAccessor.HttpContext?.User;
+            if (user?.Identity?.IsAuthenticated != true)
+            {
+                var authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
+                user = authState.User;
+            }
 
             var isAuthenticated = user?.Identity?.IsAuthenticated == true;
             if (isAuthenticated)
             {
-                var token = _tokenService.TryCreateToken(user!);
+                await using var scope = _scopeFactory.CreateAsyncScope();
+                var tokenService = scope.ServiceProvider.GetRequiredService<TokenService>();
+                var token = await tokenService.TryCreateTokenAsync(user!);
                 if (!string.IsNullOrWhiteSpace(token))
                 {
                     request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);

@@ -22,7 +22,7 @@ public class InvestmentService : BaseApiService, IInvestmentService
 {
     private const string BaseEndpoint = "api/investments";
 
-    public InvestmentService(HttpClient http) : base(http) { }
+    public InvestmentService(HttpClient http, AppNotificationService notifications) : base(http, notifications) { }
 
     public async Task<PaginatedResult<InvestmentListDto>> GetInvestmentsAsync(InvestmentQueryParams query)
     {

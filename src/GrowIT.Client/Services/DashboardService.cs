@@ -16,7 +16,7 @@ public class DashboardService : BaseApiService, IDashboardService
 {
     private const string BaseEndpoint = "api/dashboard";
 
-    public DashboardService(HttpClient http) : base(http) { }
+    public DashboardService(HttpClient http, AppNotificationService notifications) : base(http, notifications) { }
 
     /// <summary>
     /// Gets the main dashboard stats from api/dashboard endpoint.

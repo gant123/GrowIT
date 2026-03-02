@@ -4,8 +4,8 @@ using GrowIT.Infrastructure.Data;
 using GrowIT.Shared.DTOs;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -18,11 +18,19 @@ public class BffAuthController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly IAntiforgery _antiforgery;
+    private readonly SignInManager<User> _signInManager;
+    private readonly UserManager<User> _userManager;
 
-    public BffAuthController(ApplicationDbContext context, IAntiforgery antiforgery)
+    public BffAuthController(
+        ApplicationDbContext context,
+        IAntiforgery antiforgery,
+        SignInManager<User> signInManager,
+        UserManager<User> userManager)
     {
         _context = context;
         _antiforgery = antiforgery;
+        _signInManager = signInManager;
+        _userManager = userManager;
     }
 
     [AllowAnonymous]
@@ -55,11 +63,11 @@ public class BffAuthController : ControllerBase
         }
 
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
-        var user = await _context.Users
+        var user = await _userManager.Users
             .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(u => u.Email.ToLower() == normalizedEmail);
+            .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail.ToUpperInvariant());
 
-        if (user is null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
+        if (user is null)
         {
             return Unauthorized("Invalid email or password");
         }
@@ -69,7 +77,17 @@ public class BffAuthController : ControllerBase
             return Unauthorized("This account has been deactivated. Contact your organization administrator.");
         }
 
-        await SignInAsync(user, request.RememberMe);
+        var result = await _signInManager.PasswordSignInAsync(user, request.Password, request.RememberMe, lockoutOnFailure: true);
+        if (result.IsLockedOut)
+        {
+            return StatusCode(StatusCodes.Status423Locked, "This account is temporarily locked due to repeated failed sign-in attempts.");
+        }
+
+        if (!result.Succeeded)
+        {
+            return Unauthorized("Invalid email or password");
+        }
+
         await RecordSignInEventAsync(user);
         return NoContent();
     }
@@ -87,7 +105,7 @@ public class BffAuthController : ControllerBase
             return Forbid();
         }
 
-        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        await _signInManager.SignOutAsync();
         return NoContent();
     }
 
@@ -113,40 +131,6 @@ public class BffAuthController : ControllerBase
         });
     }
 
-    private async Task SignInAsync(User user, bool rememberMe)
-    {
-        var displayName = string.Join(" ", new[] { user.FirstName, user.LastName }.Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
-        if (string.IsNullOrWhiteSpace(displayName))
-        {
-            displayName = user.Email;
-        }
-
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Email, user.Email),
-            new(ClaimTypes.Name, displayName),
-            new("tenantId", user.TenantId.ToString())
-        };
-
-        if (!string.IsNullOrWhiteSpace(user.Role))
-        {
-            claims.Add(new Claim(ClaimTypes.Role, user.Role));
-            claims.Add(new Claim("role", user.Role));
-        }
-
-        var principal = new ClaimsPrincipal(new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme));
-
-        var authProperties = new AuthenticationProperties
-        {
-            IsPersistent = rememberMe,
-            AllowRefresh = true,
-            ExpiresUtc = DateTimeOffset.UtcNow.Add(rememberMe ? TimeSpan.FromDays(30) : TimeSpan.FromHours(12))
-        };
-
-        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProperties);
-    }
-
     private async Task RecordSignInEventAsync(User user)
     {
         try
@@ -169,7 +153,7 @@ public class BffAuthController : ControllerBase
                 Id = Guid.NewGuid(),
                 UserId = user.Id,
                 TenantId = user.TenantId,
-                Email = user.Email,
+                Email = user.Email ?? string.Empty,
                 DisplayName = displayName,
                 ClientIp = clientIp,
                 UserAgent = userAgent,

@@ -11,7 +11,7 @@ public interface INotificationService
 
 public class NotificationService : BaseApiService, INotificationService
 {
-    public NotificationService(HttpClient http) : base(http) { }
+    public NotificationService(HttpClient http, AppNotificationService notifications) : base(http, notifications) { }
 
     public async Task<NotificationInboxResponseDto> GetNotificationsAsync(int take = 25, bool unreadOnly = false) =>
         (await GetAsync<NotificationInboxResponseDto>($"api/notifications?take={Math.Clamp(take, 1, 200)}&unreadOnly={unreadOnly.ToString().ToLowerInvariant()}"))!

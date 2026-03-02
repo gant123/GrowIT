@@ -6,6 +6,7 @@ using GrowIT.Infrastructure.Data;
 using GrowIT.Shared.DTOs;
 using GrowIT.Shared.Enums;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -26,6 +27,8 @@ public class AdminController : ControllerBase
     private readonly IWebHostEnvironment _environment;
     private readonly IOptionsMonitor<ReportSchedulerOptions> _schedulerOptions;
     private readonly ReportSchedulerState _schedulerState;
+    private readonly UserManager<User> _userManager;
+    private readonly RoleManager<IdentityRole<Guid>> _roleManager;
 
     public AdminController(
         ApplicationDbContext context,
@@ -35,7 +38,9 @@ public class AdminController : ControllerBase
         IConfiguration config,
         IWebHostEnvironment environment,
         IOptionsMonitor<ReportSchedulerOptions> schedulerOptions,
-        ReportSchedulerState schedulerState)
+        ReportSchedulerState schedulerState,
+        UserManager<User> userManager,
+        RoleManager<IdentityRole<Guid>> roleManager)
     {
         _context = context;
         _tenantService = tenantService;
@@ -45,6 +50,8 @@ public class AdminController : ControllerBase
         _environment = environment;
         _schedulerOptions = schedulerOptions;
         _schedulerState = schedulerState;
+        _userManager = userManager;
+        _roleManager = roleManager;
     }
 
     [HttpGet("organization")]
@@ -109,7 +116,7 @@ public class AdminController : ControllerBase
             {
                 Id = u.Id,
                 FullName = (u.FirstName + " " + u.LastName).Trim(),
-                Email = u.Email,
+                Email = u.Email ?? string.Empty,
                 Role = u.Role,
                 IsActive = u.IsActive,
                 DeactivatedAt = u.DeactivatedAt,
@@ -136,8 +143,22 @@ public class AdminController : ControllerBase
         if (await WouldRemoveLastActiveAdminAsync(user, newRole, user.IsActive))
             return BadRequest("At least one active admin must remain in the organization.");
 
+        await EnsureRoleAsync(newRole);
+        var existingRoles = await _userManager.GetRolesAsync(user);
+        if (existingRoles.Count > 0)
+        {
+            var removeResult = await _userManager.RemoveFromRolesAsync(user, existingRoles);
+            if (!removeResult.Succeeded)
+                return BadRequest(string.Join(" ", removeResult.Errors.Select(e => e.Description)));
+        }
+
+        var addResult = await _userManager.AddToRoleAsync(user, newRole);
+        if (!addResult.Succeeded)
+            return BadRequest(string.Join(" ", addResult.Errors.Select(e => e.Description)));
+
         user.Role = newRole;
         await _context.SaveChangesAsync();
+        await _userManager.UpdateSecurityStampAsync(user);
 
         return Ok(ToAdminUserListItem(user));
     }
@@ -159,6 +180,7 @@ public class AdminController : ControllerBase
         user.IsActive = false;
         user.DeactivatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
+        await _userManager.UpdateSecurityStampAsync(user);
 
         return Ok(ToAdminUserListItem(user));
     }
@@ -172,6 +194,7 @@ public class AdminController : ControllerBase
         user.IsActive = true;
         user.DeactivatedAt = null;
         await _context.SaveChangesAsync();
+        await _userManager.UpdateSecurityStampAsync(user);
 
         return Ok(ToAdminUserListItem(user));
     }
@@ -272,7 +295,7 @@ public class AdminController : ControllerBase
             return BadRequest("Email is required.");
 
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
-        var emailExists = await _context.Users.IgnoreQueryFilters().AnyAsync(u => u.Email.ToLower() == normalizedEmail);
+        var emailExists = await _context.Users.IgnoreQueryFilters().AnyAsync(u => u.Email != null && u.Email.ToLower() == normalizedEmail);
         if (emailExists)
             return BadRequest("A user with this email already exists.");
 
@@ -790,7 +813,7 @@ public class AdminController : ControllerBase
 
         foreach (var log in logs)
         {
-            log.UserName = userLookup.TryGetValue(log.UserId, out var name) ? name : "System";
+            log.UserName = userLookup.TryGetValue(log.UserId, out var name) && !string.IsNullOrWhiteSpace(name) ? name : "System";
         }
 
         return Ok(logs);
@@ -852,7 +875,7 @@ public class AdminController : ControllerBase
     {
         Id = user.Id,
         FullName = (user.FirstName + " " + user.LastName).Trim(),
-        Email = user.Email,
+        Email = user.Email ?? string.Empty,
         Role = user.Role,
         IsActive = user.IsActive,
         DeactivatedAt = user.DeactivatedAt,
@@ -881,6 +904,19 @@ public class AdminController : ControllerBase
                 u.Id != targetUser.Id &&
                 u.IsActive &&
                 (u.Role.ToLower() == "admin" || u.Role.ToLower() == "owner"));
+    }
+
+    private async Task EnsureRoleAsync(string roleName)
+    {
+        var normalizedRole = roleName.Trim();
+        if (!await _roleManager.RoleExistsAsync(normalizedRole))
+        {
+            var result = await _roleManager.CreateAsync(new IdentityRole<Guid>(normalizedRole));
+            if (!result.Succeeded)
+            {
+                throw new InvalidOperationException($"Failed to create role '{normalizedRole}': {string.Join(" ", result.Errors.Select(e => e.Description))}");
+            }
+        }
     }
 
     private async Task AddInviteAuditNotificationsAsync(Guid tenantId, string title, string message)
