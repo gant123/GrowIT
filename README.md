@@ -4,52 +4,43 @@ Plant the seed. Measure the growth. Build the future.
 
 grow.IT is a founder survivability and funding-readiness platform for early-stage nonprofit leaders. It helps organizations document service delivery, measure real impact, track cost and capacity, and build the operational clarity needed to sustain and scale.
 
-## What This Repository Contains
+## Technology Stack
+
+- **Framework:** .NET 10 (ASP.NET Core / Blazor Interactive Server)
+- **Database:** PostgreSQL 16 (EF Core)
+- **UI:** Blazor + Syncfusion + Bootstrap 5
+- **Reporting:** QuestPDF
+- **Testing:** xUnit (Integration) + Playwright (Smoke/E2E)
+- **Containerization:** Docker + Docker Compose
+
+## Project Structure
 
 - `src/GrowIT.Client` — Blazor Web App host (UI + embedded backend controllers/services)
-- `src/GrowIT.Backend` — backend controllers/services/middleware/validators (loaded by `GrowIT.Client`)
+- `src/GrowIT.Backend` — Backend controllers/services/middleware/validators (loaded by `GrowIT.Client`)
 - `src/GrowIT.Infrastructure` — EF Core + PostgreSQL + migrations
-- `src/GrowIT.Core` — domain entities and core interfaces
-- `src/GrowIT.Shared` — shared DTOs/contracts
-- `tests/GrowIT.IntegrationTests` — integration tests (tenant isolation + core flow coverage)
-- `docs/` — project docs (including permissions matrix)
-
-## Current Product Scope (Implemented)
-
-- Multi-tenant org/workspace model
-- Client / household / family member management
-- Funds + programs
-- Investments (create, approve, disburse, delete, reassign)
-- Imprints (impact milestones / outcomes)
-- Growth plans (DB-backed)
-- Reports (DB-backed schedules/history)
-- Admin workspace:
-  - organization settings
-  - users + roles
-  - invites + invite activity audit feed
-  - audit log viewer
-  - seed demo data
-  - email diagnostics + test email
-- Profile:
-  - name/password updates
-  - notification preferences
-  - profile photo upload/remove
+- `src/GrowIT.Core` — Domain entities and core interfaces
+- `src/GrowIT.Shared` — Shared DTOs/contracts
+- `tests/GrowIT.IntegrationTests` — Integration tests (tenant isolation + core flow coverage)
+- `tests/Playwright` — Browser-based smoke tests
+- `docs/` — Project documentation and runbooks
+- `scripts/` — Automation and maintenance scripts
 
 ## Prerequisites
 
-- .NET SDK `10.x`
-- PostgreSQL
-- Node `20+` (required for Playwright smoke tests)
+- [.NET SDK 10.x](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [PostgreSQL 16+](https://www.postgresql.org/)
+- [Node.js 20+](https://nodejs.org/) (required for Playwright smoke tests)
+- [Docker & Docker Compose](https://www.docker.com/) (optional, for containerized dev/prod)
 
 ## Quick Start (Local Development)
 
-## 1. Build the solution
+### 1. Build the solution
 
 ```bash
 dotnet build GrowIT.slnx
 ```
 
-## 2. Run the App (single host)
+### 2. Run the App (single host)
 
 From repo root:
 
@@ -58,112 +49,93 @@ dotnet run --project src/GrowIT.Client
 ```
 
 Default dev URLs:
-
 - `http://localhost:5245`
 - `https://localhost:7234`
 
-## 3. Configure local secrets (recommended)
+### 3. Configure local secrets
 
 Keep SMTP/API credentials out of git by using user-secrets for the web app host:
 
 ```bash
+dotnet user-secrets --project src/GrowIT.Client set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5433;Database=GrowIT;Username=postgres;Password=your-password"
+dotnet user-secrets --project src/GrowIT.Client set "Jwt:Key" "your-long-random-secret-key"
 dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpHost" "your-smtp-host"
 dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpUser" "your-user"
 dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpPass" "your-password"
-dotnet user-secrets --project src/GrowIT.Client set "ConnectionStrings:DefaultConnection" "Host=10.0.0.6;Port=5433;Database=GrowIT;Username=postgres;Password=your-password"
 ```
 
-## Database / EF Core Workflow (Important)
+## Database / EF Core Workflow
 
-Run EF commands from the repository root and always target:
+Run EF commands from the repository root:
 
-- `--project src/GrowIT.Infrastructure` (contains `DbContext` + migrations)
-- `--startup-project src/GrowIT.Client` (single host provides runtime config/services)
+- **Apply migrations:**
+  ```bash
+  dotnet ef database update --project src/GrowIT.Infrastructure --startup-project src/GrowIT.Client
+  ```
 
-## Apply migrations to the database
+- **Add a new migration:**
+  ```bash
+  dotnet ef migrations add <MigrationName> --project src/GrowIT.Infrastructure --startup-project src/GrowIT.Client
+  ```
 
-```bash
-dotnet ef database update --project src/GrowIT.Infrastructure --startup-project src/GrowIT.Client
-```
+## Scripts & Automation
 
-## Add a new migration
+The repository includes several scripts for database maintenance and operations:
 
-```bash
-dotnet ef migrations add <MigrationName> --project src/GrowIT.Infrastructure --startup-project src/GrowIT.Client
-```
+- **Backup/Restore:** See `scripts/db/`
+  - `backup_postgres.sh`: Creates a DB dump.
+  - `restore_postgres.sh`: Restores a DB dump.
+  - `restore_drill.sh`: Validates backup integrity.
+- **Cleanup:**
+  ```bash
+  # Clean build artifacts if recursion issues occur
+  rm -rf src/**/bin src/**/obj tests/**/bin tests/**/obj
+  ```
 
 ## Docker Compose (Beta)
 
-This repository includes a container stack for:
+The container stack includes:
+- `db`: PostgreSQL 16
+- `client`: ASP.NET Core / Blazor Web App host
 
-- `db` (PostgreSQL)
-- `client` (ASP.NET Core / Blazor Web App host serving UI + backend in one process)
-
-Files:
-
-- `docker-compose.yml`
-- `docker/client/Dockerfile`
-- `.env.docker.example`
-
-## 1. Create your Docker env file
-
+### 1. Setup Environment
 ```bash
 cp .env.docker.example .env
+# Edit .env with your specific settings (POSTGRES_PASSWORD, JWT_KEY, etc.)
 ```
 
-Update at minimum:
-
-- `POSTGRES_PASSWORD`
-- `JWT_KEY`
-- `CLIENT_URL` (set to `https://beta-growit.ganthome.cloud`)
-- SMTP settings (`EMAIL_*`) for real invite delivery
-
-## 2. Start the containers
-
+### 2. Start Containers
 ```bash
 docker compose up -d --build
 ```
-
-Default container ports:
-
-- App host: `http://localhost:5180`
+- App: `http://localhost:5180`
 - Postgres: `localhost:5433`
 
-## 3. Apply EF migrations to the containerized database (from host)
+## Environment Variables
 
-Use your normal EF command, but point the connection string at the Docker Postgres port:
+Key configuration keys (can be set via `appsettings.json`, environment variables, or secrets):
 
-```bash
-ConnectionStrings__DefaultConnection="Host=localhost;Port=5433;Database=GrowIT;Username=postgres;Password=YOUR_PASSWORD" \
-dotnet ef database update --project src/GrowIT.Infrastructure --startup-project src/GrowIT.Client
-```
-
-## 4. Cloudflare Tunnel (`beta-growit.ganthome.cloud`)
-
-Your Cloudflare tunnel is already set up, so just point the public hostname service target to:
-
-- `http://localhost:5180`
-
-That routes requests directly to the single `client` container (Blazor Web App host + backend).
+| Key | Description | Default (Dev) |
+|-----|-------------|---------------|
+| `ConnectionStrings:DefaultConnection` | PostgreSQL connection string | - |
+| `Jwt:Key` | Secret key for JWT signing | - |
+| `Jwt:Issuer` / `Jwt:Audience` | JWT metadata | `growit-local` / `growit-internal` |
+| `ClientUrl` | Public URL of the application | `http://localhost:5245` |
+| `SyncfusionLicense` | License key for Syncfusion components | - |
+| `Email:SmtpHost` | SMTP server address | - |
+| `Email:DevFileFallbackEnabled` | If true, writes emails to disk instead of sending | `true` |
+| `Reports:Scheduler:Enabled` | Enables the background report runner | `true` |
 
 ## Testing
 
-Run API integration tests:
-
+### Integration Tests
+API and data isolation checks:
 ```bash
 dotnet test tests/GrowIT.IntegrationTests/GrowIT.IntegrationTests.csproj -m:1 --disable-build-servers
 ```
 
-Coverage currently includes:
-
-- tenant isolation checks
-- family member cross-tenant access checks
-- investment + fund balance integrity
-- imprint validation
-- authorization policy `403` checks for restricted endpoints
-
-Run browser smoke tests:
-
+### Browser Smoke Tests
+Using Playwright:
 ```bash
 cd tests/Playwright
 npm install
@@ -171,72 +143,30 @@ npx playwright install chromium
 npx playwright test --project=chromium
 ```
 
-CI gate:
-- `/.github/workflows/beta-gate.yml` runs build + migrations + Playwright smoke tests
+## Security & Tenancy
 
-Beta readiness checklist:
-- `/Users/robertgant/workspace/GrowIT/BETA.md`
+- **Multi-Tenancy:** Tenant-scoped entities implementation uses EF Core global query filters (`IMustHaveTenant`).
+- **Authorization:** Authoritative policies are defined in the backend (`AdminOnly`, `AdminOrManager`, etc.).
+- **Audit Logs:** System-wide audit logging for sensitive operations.
+- **Reference:** See `docs/PERMISSIONS_MATRIX.md` for role details.
 
-Backup/restore runbook:
-- `/Users/robertgant/workspace/GrowIT/docs/DB_BACKUP_RESTORE_RUNBOOK.md`
+## Working Agreements
 
-## Security + Tenancy Notes
+- Keep DTOs in `GrowIT.Shared` as the source of truth.
+- Keep migrations in `GrowIT.Infrastructure`.
+- Use typed client services (avoid raw `HttpClient` in Razor pages/components).
+- Prefer tenant-safe validation in controllers for all cross-entity relationships.
 
-- Tenant-scoped entities are protected via query filters and controller validation.
-- Avoid any writes using `Guid.Empty` tenant IDs.
-- Prefer tenant-filtered queries (`FirstOrDefaultAsync`, `AnyAsync`) over `FindAsync(...)` in tenant-sensitive paths.
-- Backend authorization policies are the source of truth (`AdminOnly`, `AdminOrManager`, `ServiceWriter`).
-- Frontend role-based UI gating is implemented for major workflows, but backend policies remain authoritative.
+## License
 
-See:
+- **Framework/Code:** TODO: Define project license (e.g., MIT, Proprietary).
+- **QuestPDF:** Community License.
+- **Syncfusion:** Requires valid license key.
+- **Bootstrap:** MIT.
 
-- `/Users/robertgant/workspace/GrowIT/docs/PERMISSIONS_MATRIX.md`
+## Documentation Index
 
-## Admin + Invite Operations
-
-Settings now includes:
-
-- user role management + deactivate/reactivate
-- invite creation/resend/revoke
-- invite activity notifications
-- audit log grid
-- demo data seeding
-- email diagnostics + test email tool
-
-If invite emails fail in Development:
-
-- grow.IT can fall back to writing email HTML files locally (`dev-emails/`) depending on config.
-- Use the Settings `Security` tab email diagnostics panel to confirm SMTP vs dev fallback behavior.
-
-## Common Dev Troubleshooting
-
-## Legacy API build path recursion (`bin/.../bin/...`)
-
-If you hit long path/copy errors, clean output folders:
-
-```bash
-rm -rf src/**/bin src/**/obj tests/**/bin tests/**/obj
-```
-
-If you still have an older checkout with the separate API host, clean `bin/obj` and update to the single-host branch changes.
-
-## “Upload succeeded but image is broken”
-
-Checklist:
-
-1. Restart the app host (`GrowIT.Client`) so static file providers reload
-2. Hard refresh browser (`Cmd+Shift+R` / `Ctrl+F5`)
-3. Re-upload once if the cached image URL is stale
-4. Re-upload once after restart if needed
-
-## Working Agreements (project-specific)
-
-- Keep DTOs in `GrowIT.Shared` as the source of truth
-- Keep migrations in `GrowIT.Infrastructure`
-- Use typed client services (avoid raw `HttpClient` in Razor pages/components)
-- Prefer tenant-safe validation in controllers for all cross-entity relationships
-
-## Next Docs
-
-- Permission matrix: `/Users/robertgant/workspace/GrowIT/docs/PERMISSIONS_MATRIX.md`
-- Morning task list: `/Users/robertgant/workspace/GrowIT/TODO_AM.md`
+- [Beta Readiness Checklist](BETA.md)
+- [Database Backup/Restore Runbook](docs/DB_BACKUP_RESTORE_RUNBOOK.md)
+- [Permissions Matrix](docs/PERMISSIONS_MATRIX.md)
+- [Morning Task List](TODO_AM.md)
