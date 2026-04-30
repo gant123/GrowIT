@@ -25,58 +25,58 @@ public abstract class BaseApiService
         };
     }
 
-    protected async Task<T?> GetAsync<T>(string endpoint)
+    protected async Task<T?> GetAsync<T>(string endpoint, CancellationToken ct = default)
     {
-        var response = await SendAsync(() => _http.GetAsync(endpoint));
+        var response = await SendAsync(() => _http.GetAsync(endpoint, ct));
         await EnsureSuccessWithDetailsAsync(response);
-        return await response.Content.ReadFromJsonAsync<T>(_jsonOptions);
+        return await response.Content.ReadFromJsonAsync<T>(_jsonOptions, ct);
     }
 
-    protected async Task<TResponse?> PostAsync<TRequest, TResponse>(string endpoint, TRequest data)
+    protected async Task<TResponse?> PostAsync<TRequest, TResponse>(string endpoint, TRequest data, CancellationToken ct = default)
     {
-        var response = await SendAsync(() => _http.PostAsJsonAsync(endpoint, data, _jsonOptions));
+        var response = await SendAsync(() => _http.PostAsJsonAsync(endpoint, data, _jsonOptions, ct));
         await EnsureSuccessWithDetailsAsync(response);
-        return await response.Content.ReadFromJsonAsync<TResponse>(_jsonOptions);
+        return await response.Content.ReadFromJsonAsync<TResponse>(_jsonOptions, ct);
     }
 
-    protected async Task PostAsync<TRequest>(string endpoint, TRequest data)
+    protected async Task PostAsync<TRequest>(string endpoint, TRequest data, CancellationToken ct = default)
     {
-        var response = await SendAsync(() => _http.PostAsJsonAsync(endpoint, data, _jsonOptions));
-        await EnsureSuccessWithDetailsAsync(response);
-    }
-
-    protected async Task<TResponse?> PutAsync<TRequest, TResponse>(string endpoint, TRequest data)
-    {
-        var response = await SendAsync(() => _http.PutAsJsonAsync(endpoint, data, _jsonOptions));
-        await EnsureSuccessWithDetailsAsync(response);
-        return await response.Content.ReadFromJsonAsync<TResponse>(_jsonOptions);
-    }
-
-    protected async Task PutAsync<TRequest>(string endpoint, TRequest data)
-    {
-        var response = await SendAsync(() => _http.PutAsJsonAsync(endpoint, data, _jsonOptions));
+        var response = await SendAsync(() => _http.PostAsJsonAsync(endpoint, data, _jsonOptions, ct));
         await EnsureSuccessWithDetailsAsync(response);
     }
 
-    protected async Task<TResponse?> PatchAsync<TRequest, TResponse>(string endpoint, TRequest data)
+    protected async Task<TResponse?> PutAsync<TRequest, TResponse>(string endpoint, TRequest data, CancellationToken ct = default)
+    {
+        var response = await SendAsync(() => _http.PutAsJsonAsync(endpoint, data, _jsonOptions, ct));
+        await EnsureSuccessWithDetailsAsync(response);
+        return await response.Content.ReadFromJsonAsync<TResponse>(_jsonOptions, ct);
+    }
+
+    protected async Task PutAsync<TRequest>(string endpoint, TRequest data, CancellationToken ct = default)
+    {
+        var response = await SendAsync(() => _http.PutAsJsonAsync(endpoint, data, _jsonOptions, ct));
+        await EnsureSuccessWithDetailsAsync(response);
+    }
+
+    protected async Task<TResponse?> PatchAsync<TRequest, TResponse>(string endpoint, TRequest data, CancellationToken ct = default)
     {
         var content = JsonContent.Create(data, options: _jsonOptions);
-        var response = await SendAsync(() => _http.PatchAsync(endpoint, content));
+        var response = await SendAsync(() => _http.PatchAsync(endpoint, content, ct));
         await EnsureSuccessWithDetailsAsync(response);
-        return await response.Content.ReadFromJsonAsync<TResponse>(_jsonOptions);
+        return await response.Content.ReadFromJsonAsync<TResponse>(_jsonOptions, ct);
     }
 
-    protected async Task DeleteAsync(string endpoint)
+    protected async Task DeleteAsync(string endpoint, CancellationToken ct = default)
     {
-        var response = await SendAsync(() => _http.DeleteAsync(endpoint));
+        var response = await SendAsync(() => _http.DeleteAsync(endpoint, ct));
         await EnsureSuccessWithDetailsAsync(response);
     }
 
-    protected async Task<TResponse?> DeleteAsync<TResponse>(string endpoint)
+    protected async Task<TResponse?> DeleteAsync<TResponse>(string endpoint, CancellationToken ct = default)
     {
-        var response = await SendAsync(() => _http.DeleteAsync(endpoint));
+        var response = await SendAsync(() => _http.DeleteAsync(endpoint, ct));
         await EnsureSuccessWithDetailsAsync(response);
-        return await response.Content.ReadFromJsonAsync<TResponse>(_jsonOptions);
+        return await response.Content.ReadFromJsonAsync<TResponse>(_jsonOptions, ct);
     }
 
     protected async Task EnsureSuccessWithDetailsAsync(HttpResponseMessage response)

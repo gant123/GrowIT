@@ -137,6 +137,7 @@ public class SendTestEmailResponse
     public bool Succeeded { get; set; }
     public string DeliveryMode { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
+    public string? Error { get; set; }
     public string? FallbackFilePath { get; set; }
     public string? TargetEmail { get; set; }
 }

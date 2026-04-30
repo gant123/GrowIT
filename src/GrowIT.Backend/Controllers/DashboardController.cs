@@ -145,4 +145,106 @@ public class DashboardController : ControllerBase
             PendingFollowUps = followUps
         });
     }
+
+    [HttpGet("insights")]
+    public async Task<ActionResult<InsightsDto>> GetInsights()
+    {
+        var now = DateTime.UtcNow;
+        var last30Days = now.AddDays(-30);
+        var prev30Days = now.AddDays(-60);
+
+        // 1. Funding Readiness
+        var fundsAvailable = await _context.Funds.SumAsync(f => (decimal?)f.AvailableAmount) ?? 0m;
+        var recentSpending = await _context.Investments
+            .Where(i => i.CreatedAt >= last30Days && i.Status == InvestmentStatus.Approved)
+            .SumAsync(i => (decimal?)i.Amount) ?? 0m;
+        
+        var burnRate = recentSpending; // Monthly burn rate
+        var runway = burnRate > 0 ? (int)(fundsAvailable / burnRate) : 99;
+        
+        var score = 70; // Base score
+        var suggestions = new List<string>();
+
+        if (runway < 3)
+        {
+            score -= 30;
+            suggestions.Add("Runway is critically low (under 3 months). Focus on immediate fundraising.");
+        }
+        else if (runway < 6)
+        {
+            score -= 10;
+            suggestions.Add("Runway is moderate. Plan for next funding cycle within 60 days.");
+        }
+        else
+        {
+            score += 10;
+            suggestions.Add("Healthy runway detected. Focus on deepening program impact.");
+        }
+
+        var unapprovedInvestments = await _context.Investments.CountAsync(i => i.Status == InvestmentStatus.Pending);
+        if (unapprovedInvestments > 5)
+        {
+            score -= 5;
+            suggestions.Add($"{unapprovedInvestments} pending investments need approval to maintain data accuracy.");
+        }
+
+        // 2. Impact Velocity
+        var currentMilestones = await _context.Imprints.CountAsync(i => i.DateOccurred >= last30Days);
+        var prevMilestones = await _context.Imprints.CountAsync(i => i.DateOccurred >= prev30Days && i.DateOccurred < last30Days);
+        
+        double growth = 0;
+        if (prevMilestones > 0)
+        {
+            growth = ((double)currentMilestones - prevMilestones) / prevMilestones * 100;
+        }
+
+        // 3. Allocation Insights (by Program)
+        var allocation = await _context.Investments
+            .Where(i => i.Status == InvestmentStatus.Approved)
+            .Include(i => i.Program)
+            .GroupBy(i => i.Program!.Name ?? "Uncategorized")
+            .Select(g => new CategoryDistributionDto
+            {
+                Category = g.Key,
+                Amount = g.Sum(x => x.Amount)
+            })
+            .ToListAsync();
+
+        var totalAllocated = allocation.Sum(a => a.Amount);
+        foreach (var a in allocation)
+        {
+            a.Percentage = totalAllocated > 0 ? (double)(a.Amount / totalAllocated * 100) : 0;
+        }
+
+        // 4. Program Performance (Top Milestones by Program/Category)
+        var topPrograms = await _context.Imprints
+            .GroupBy(i => i.Category)
+            .Select(g => new TopPerformerDto
+            {
+                Name = g.Key.ToString(),
+                Count = g.Count()
+            })
+            .OrderByDescending(p => p.Count)
+            .Take(5)
+            .ToListAsync();
+
+        return Ok(new InsightsDto
+        {
+            FundingReadiness = new FundingReadinessDto
+            {
+                Score = Math.Clamp(score, 0, 100),
+                Suggestions = suggestions,
+                BurnRateMonthly = burnRate,
+                EstimatedRunwayMonths = runway
+            },
+            ImpactVelocity = new ImpactVelocityDto
+            {
+                CurrentVelocity = currentMilestones,
+                PreviousVelocity = prevMilestones,
+                GrowthPercentage = growth
+            },
+            AllocationInsights = allocation.OrderByDescending(a => a.Amount).ToList(),
+            ProgramPerformance = topPrograms
+        });
+    }
 }

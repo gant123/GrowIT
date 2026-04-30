@@ -208,73 +208,6 @@
             }
         </div>
 
-        <div class="card-growit">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h3 class="section-title mb-0">Unauthorized Access Attempts</h3>
-                <div class="d-flex align-items-center gap-2">
-                    <input class="form-control form-control-sm"
-                           style="width: 220px;"
-                           placeholder="Filter by IP..."
-                           @bind="_securityIpSearch" />
-                    <button class="btn btn-sm btn-outline-secondary" @onclick="LoadSecurityAttemptsAsync" disabled="@_isLoading">
-                        Search
-                    </button>
-                </div>
-            </div>
-            @if (_securityAttempts.Count == 0)
-            {
-                <div class="card-body text-muted">No unauthorized attempts logged yet.</div>
-            }
-            else
-            {
-                <div class="card-body table-responsive">
-                    <table class="table align-middle">
-                        <thead>
-                            <tr>
-                                <th>When</th>
-                                <th>Path</th>
-                                <th>IP</th>
-                                <th>Known Users On IP</th>
-                                <th>Browser</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var item in _securityAttempts)
-                            {
-                                <tr>
-                                    <td>@item.OccurredAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</td>
-                                    <td>@item.Path</td>
-                                    <td>@(string.IsNullOrWhiteSpace(item.ClientIp) ? "-" : item.ClientIp)</td>
-                                    <td>
-                                        @if (item.KnownUsers.Count == 0)
-                                        {
-                                            <span class="text-muted">No known match</span>
-                                        }
-                                        else
-                                        {
-                                            <div class="d-flex flex-column gap-1">
-                                                @foreach (var match in item.KnownUsers)
-                                                {
-                                                    <div class="small">
-                                                        <strong>@match.FullName</strong> (@match.Email)
-                                                        <span class="text-muted">- last seen @match.LastSeenAt.ToLocalTime().ToString("MMM d h:mm tt")</span>
-                                                    </div>
-                                                }
-                                            </div>
-                                        }
-                                    </td>
-                                    <td>
-                                        <div class="small text-muted" title="@item.UserAgent">
-                                            @Truncate(item.UserAgent, 72)
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
-            }
-        </div>
     }
 </div>
 
@@ -327,9 +260,7 @@
     private Guid? _editingPostId;
     private List<AdminBlogPostDto> _blogPosts = new();
     private List<ContactSubmissionAdminDto> _contactSubmissions = new();
-    private List<SecurityAccessAttemptDto> _securityAttempts = new();
     private int _reviewFilter = -1;
-    private string _securityIpSearch = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -355,7 +286,6 @@
                 .OrderByDescending(p => p.PublishedAt ?? p.CreatedAt)
                 .ToList();
             await LoadContactSubmissionsAsync();
-            await LoadSecurityAttemptsAsync();
         }
         catch (Exception ex)
         {
@@ -382,19 +312,6 @@
 
         _contactSubmissions = (await ContentService.GetContactSubmissionsAsync(query))
             .OrderByDescending(c => c.SubmittedAt)
-            .ToList();
-    }
-
-    private async Task LoadSecurityAttemptsAsync()
-    {
-        var query = new SecurityAccessAttemptQueryParams
-        {
-            Take = 250,
-            Ip = string.IsNullOrWhiteSpace(_securityIpSearch) ? null : _securityIpSearch.Trim()
-        };
-
-        _securityAttempts = (await ContentService.GetSecurityAccessAttemptsAsync(query))
-            .OrderByDescending(a => a.OccurredAt)
             .ToList();
     }
 

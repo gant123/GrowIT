@@ -16,9 +16,9 @@
     </PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.2" />
     <PackageReference Include="QuestPDF" Version="2024.12.1" />
-    <PackageReference Include="Syncfusion.Blazor.Charts" Version="32.1.24" />
-    <PackageReference Include="Syncfusion.Blazor.Grid" Version="32.1.24" />
-    <PackageReference Include="Syncfusion.Blazor.Themes" Version="32.1.24" />
+    <PackageReference Include="Syncfusion.Blazor.Charts" Version="33.2.4" />
+    <PackageReference Include="Syncfusion.Blazor.Grid" Version="33.2.4" />
+    <PackageReference Include="Syncfusion.Blazor.Themes" Version="33.2.4" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
   </ItemGroup>

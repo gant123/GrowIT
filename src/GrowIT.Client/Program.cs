@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -61,6 +62,7 @@ builder.Services.AddAntiforgery(options =>
 });
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<ApiAuthorizationHandler>();
+builder.Services.AddSingleton<Microsoft.AspNetCore.Components.Server.Circuits.CircuitHandler, GrowIT.Client.Infrastructure.CircuitExceptionHandlingHandler>();
 
 // Backend services now run in-process with the Blazor Web App host.
 builder.Services.AddScoped<ICurrentTenantService, CurrentTenantService>();
@@ -262,6 +264,7 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IInvestmentService, InvestmentService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IInsightsService, InsightsService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IImprintService, ImprintService>();
 builder.Services.AddScoped<IReportService, ReportService>();
@@ -311,6 +314,10 @@ builder.Services.AddScoped(sp =>
 });
 
 builder.Services.AddSyncfusionBlazor();
+
+var cultureInfo = new CultureInfo("en-US");
+CultureInfo.DefaultThreadCurrentCulture = cultureInfo;
+CultureInfo.DefaultThreadCurrentUICulture = cultureInfo;
 
 var app = builder.Build();
 

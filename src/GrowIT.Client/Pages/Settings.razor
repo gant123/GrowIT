@@ -2,6 +2,7 @@
 @using GrowIT.Shared.DTOs
 @using Syncfusion.Blazor.Grids
 @using Syncfusion.Blazor.Navigations
+@implements IDisposable
 @inject IAdminService AdminService
 @inject IRoleAccessService RoleAccessService
 @inject IJSRuntime JS
@@ -23,24 +24,17 @@
         <div class="settings-overview-hero">
             <div class="settings-overview-copy">
                 <span class="settings-overview-kicker">Workspace Control Center</span>
-                <h2>Run the operational backbone behind your team, access model, and delivery governance.</h2>
+                <h2>Admin Workspace</h2>
                 <p>
-                    Settings is where organizational identity, team permissions, invite lifecycle, diagnostics, and security readiness stay aligned.
-                    Keep this area clean, current, and tightly controlled.
+                    Manage your organization profile, team access, and system diagnostics from one central hub.
                 </p>
                 <div class="settings-overview-badges">
                     <span class="settings-overview-badge"><i class="bi bi-shield-check"></i> Identity-managed access</span>
                     <span class="settings-overview-badge"><i class="bi bi-activity"></i> Live diagnostics</span>
-                    <span class="settings-overview-badge"><i class="bi bi-diagram-3"></i> Tenant-aware controls</span>
                 </div>
             </div>
 
             <div class="settings-ops-spotlight">
-                <div class="settings-ops-card">
-                    <span class="settings-ops-label">Current focus</span>
-                    <strong>@GetActiveTabTitle()</strong>
-                    <p>@GetActiveTabDescription()</p>
-                </div>
                 <div class="settings-ops-grid">
                     <div class="settings-ops-metric">
                         <span>Users</span>
@@ -50,47 +44,8 @@
                         <span>Pending invites</span>
                         <strong>@PendingInviteCount</strong>
                     </div>
-                    <div class="settings-ops-metric">
-                        <span>Unread alerts</span>
-                        <strong>@InviteActivityUnreadCount</strong>
-                    </div>
-                    <div class="settings-ops-metric">
-                        <span>Theme</span>
-                        <strong>Adaptive</strong>
-                    </div>
                 </div>
             </div>
-        </div>
-
-        <div class="settings-kpis">
-        <div class="settings-kpi-card">
-            <div class="settings-kpi-icon org"><i class="bi bi-building"></i></div>
-            <div>
-                <div class="settings-kpi-label">Organization</div>
-                <div class="settings-kpi-value">@(_organization?.Name ?? "Loading...")</div>
-            </div>
-        </div>
-        <div class="settings-kpi-card">
-            <div class="settings-kpi-icon users"><i class="bi bi-people"></i></div>
-            <div>
-                <div class="settings-kpi-label">Active Users</div>
-                <div class="settings-kpi-value">@_users.Count(u => u.IsActive)</div>
-            </div>
-        </div>
-        <div class="settings-kpi-card">
-            <div class="settings-kpi-icon pending"><i class="bi bi-envelope-paper"></i></div>
-            <div>
-                <div class="settings-kpi-label">Pending Invites</div>
-                <div class="settings-kpi-value">@PendingInviteCount</div>
-            </div>
-        </div>
-        <div class="settings-kpi-card">
-            <div class="settings-kpi-icon modules"><i class="bi bi-bell"></i></div>
-            <div>
-                <div class="settings-kpi-label">Invite Alerts</div>
-                <div class="settings-kpi-value">@InviteActivityUnreadCount</div>
-            </div>
-        </div>
         </div>
     </section>
 
@@ -119,28 +74,28 @@
                         <span class="settings-tab-icon"><i class="bi bi-buildings"></i></span>
                         <span class="settings-tab-content">
                             <span class="settings-tab-title">Organization</span>
-                            <span class="settings-tab-copy">Identity, profile, and enabled operating modules</span>
+                            <span class="settings-tab-copy">Profile and modules</span>
                         </span>
                     </button>
                     <button class="settings-tab @(ActiveTab == "users" ? "active" : null)" @onclick="@(() => SetActiveTab("users"))">
                         <span class="settings-tab-icon"><i class="bi bi-people"></i></span>
                         <span class="settings-tab-content">
                             <span class="settings-tab-title">Users & Roles</span>
-                            <span class="settings-tab-copy">@_users.Count user accounts with role-based access control</span>
+                            <span class="settings-tab-copy">Team access control</span>
                         </span>
                     </button>
                     <button class="settings-tab @(ActiveTab == "invites" ? "active" : null)" @onclick="@(() => SetActiveTab("invites"))">
                         <span class="settings-tab-icon"><i class="bi bi-envelope-paper"></i></span>
                         <span class="settings-tab-content">
                             <span class="settings-tab-title">Invites</span>
-                            <span class="settings-tab-copy">@PendingInviteCount pending invites and @InviteActivityUnreadCount unread activity items</span>
+                            <span class="settings-tab-copy">Manage invitations</span>
                         </span>
                     </button>
                     <button class="settings-tab @(ActiveTab == "security" ? "active" : null)" @onclick="@(() => SetActiveTab("security"))">
                         <span class="settings-tab-icon"><i class="bi bi-shield-check"></i></span>
                         <span class="settings-tab-content">
-                            <span class="settings-tab-title">Security</span>
-                            <span class="settings-tab-copy">Diagnostics, audit trail, seed tooling, and readiness controls</span>
+                            <span class="settings-tab-title">System Health</span>
+                            <span class="settings-tab-copy">Diagnostics & audits</span>
                         </span>
                     </button>
                 </div>
@@ -285,7 +240,8 @@
                         <div class="alert alert-danger">@_userActionError</div>
                     }
 
-                    <SfGrid TValue="AdminUserListItemDto"
+                    <SfGrid @key="@("users-grid")"
+                            TValue="AdminUserListItemDto"
                             @ref="_usersGrid"
                             DataSource="@_users"
                             CssClass="settings-grid settings-grid-users"
@@ -294,18 +250,16 @@
                             AllowFiltering="true"
                             AllowResizing="true"
                             AllowExcelExport="true"
-                            AllowTextWrap="true"
                             ShowColumnChooser="true"
                             Toolbar="@GridToolbarItems"
                             Width="100%">
-                        <GridPageSettings PageSize="8"></GridPageSettings>
+                        <GridPageSettings PageSize="10"></GridPageSettings>
                         <GridFilterSettings Type="FilterType.Excel"></GridFilterSettings>
-                        <GridTextWrapSettings WrapMode="WrapMode.Content"></GridTextWrapSettings>
                         <GridEvents TValue="AdminUserListItemDto" OnToolbarClick="OnUsersGridToolbarClick"></GridEvents>
                         <GridColumns>
-                            <GridColumn Field=@nameof(AdminUserListItemDto.FullName) HeaderText="Name" Width="200"></GridColumn>
-                            <GridColumn Field=@nameof(AdminUserListItemDto.Email) HeaderText="Email" Width="240"></GridColumn>
-                            <GridColumn HeaderText="Status" Width="130">
+                            <GridColumn Field=@nameof(AdminUserListItemDto.FullName) HeaderText="Name" Width="180" MinWidth="140"></GridColumn>
+                            <GridColumn Field=@nameof(AdminUserListItemDto.Email) HeaderText="Email" Width="220" MinWidth="180"></GridColumn>
+                            <GridColumn HeaderText="Status" Width="120" TextAlign="TextAlign.Center">
                                 <Template>
                                     @{
                                         var user = (context as AdminUserListItemDto)!;
@@ -315,7 +269,7 @@
                                     </span>
                                 </Template>
                             </GridColumn>
-                            <GridColumn HeaderText="Role" Width="220">
+                            <GridColumn HeaderText="Role" Width="200">
                                 <Template>
                                     @{
                                         var user = (context as AdminUserListItemDto)!;
@@ -334,28 +288,29 @@
                                                 <option value="@GetRoleDraft(user)">@GetRoleDraft(user)</option>
                                             }
                                         </select>
-                                        <button class="btn btn-sm btn-outline-primary"
+                                        <button class="btn btn-sm btn-outline-primary px-2"
+                                                title="Save Role"
                                                 disabled="@(!CanSaveRole(user) || IsUserBusy(user.Id))"
                                                 @onclick="() => SaveUserRoleAsync(user)">
-                                            Save
+                                            <i class="bi bi-check2"></i>
                                         </button>
                                     </div>
                                 </Template>
                             </GridColumn>
-                            <GridColumn HeaderText="Joined" Width="150">
+                            <GridColumn HeaderText="Joined" Width="130">
                                 <Template>
                                     @{
                                         var user = (context as AdminUserListItemDto)!;
                                     }
-                                    <span>@user.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")</span>
+                                    <span class="text-muted small">@user.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")</span>
                                 </Template>
                             </GridColumn>
-                            <GridColumn HeaderText="Actions" Width="200">
+                            <GridColumn HeaderText="Actions" Width="140" TextAlign="TextAlign.Right">
                                 <Template>
                                     @{
                                         var user = (context as AdminUserListItemDto)!;
                                     }
-                                    <div class="grid-action-row">
+                                    <div class="grid-action-row justify-content-end">
                                         @if (user.IsActive)
                                         {
                                             <button class="btn btn-sm btn-outline-danger"
@@ -443,7 +398,8 @@
                     </div>
 
                     <div class="invite-grid-wrap mt-4">
-                        <SfGrid TValue="OrganizationInviteListItemDto"
+                        <SfGrid @key="@("invites-grid")"
+                                TValue="OrganizationInviteListItemDto"
                                 @ref="_invitesGrid"
                                 DataSource="@_invites"
                                 CssClass="settings-grid settings-grid-invites"
@@ -452,27 +408,25 @@
                                 AllowFiltering="true"
                                 AllowResizing="true"
                                 AllowExcelExport="true"
-                                AllowTextWrap="true"
                                 ShowColumnChooser="true"
                                 Toolbar="@GridToolbarItems"
                                 Width="100%">
-                            <GridPageSettings PageSize="8"></GridPageSettings>
+                            <GridPageSettings PageSize="10"></GridPageSettings>
                             <GridFilterSettings Type="FilterType.Excel"></GridFilterSettings>
-                            <GridTextWrapSettings WrapMode="WrapMode.Content"></GridTextWrapSettings>
                             <GridEvents TValue="OrganizationInviteListItemDto" OnToolbarClick="OnInvitesGridToolbarClick"></GridEvents>
                             <GridColumns>
-                                <GridColumn Field=@nameof(OrganizationInviteListItemDto.Email) HeaderText="Email" Width="220"></GridColumn>
-                                <GridColumn HeaderText="Invitee" Width="180">
+                                <GridColumn Field=@nameof(OrganizationInviteListItemDto.Email) HeaderText="Email" Width="200" MinWidth="160"></GridColumn>
+                                <GridColumn HeaderText="Invitee" Width="170">
                                     <Template>
                                         @{
                                             var invite = (context as OrganizationInviteListItemDto)!;
                                             var name = string.Join(" ", new[] { invite.FirstName, invite.LastName }.Where(s => !string.IsNullOrWhiteSpace(s))).Trim();
                                         }
-                                        <span>@(string.IsNullOrWhiteSpace(name) ? "Not provided" : name)</span>
+                                        <span class="small">@(string.IsNullOrWhiteSpace(name) ? "Not provided" : name)</span>
                                     </Template>
                                 </GridColumn>
-                                <GridColumn Field=@nameof(OrganizationInviteListItemDto.Role) HeaderText="Role" Width="130"></GridColumn>
-                                <GridColumn HeaderText="Status" Width="130">
+                                <GridColumn Field=@nameof(OrganizationInviteListItemDto.Role) HeaderText="Role" Width="120"></GridColumn>
+                                <GridColumn HeaderText="Status" Width="120" TextAlign="TextAlign.Center">
                                     <Template>
                                         @{
                                             var invite = (context as OrganizationInviteListItemDto)!;
@@ -480,28 +434,28 @@
                                         <span class="invite-status-pill @GetInviteStatusClass(invite.Status)">@invite.Status</span>
                                     </Template>
                                 </GridColumn>
-                                <GridColumn HeaderText="Created" Width="150">
+                                <GridColumn HeaderText="Created" Width="130">
                                     <Template>
                                         @{
                                             var invite = (context as OrganizationInviteListItemDto)!;
                                         }
-                                        <span>@invite.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")</span>
+                                        <span class="text-muted small">@invite.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")</span>
                                     </Template>
                                 </GridColumn>
-                                <GridColumn HeaderText="Expires" Width="150">
+                                <GridColumn HeaderText="Expires" Width="130">
                                     <Template>
                                         @{
                                             var invite = (context as OrganizationInviteListItemDto)!;
                                         }
-                                        <span>@invite.ExpiresAt.ToLocalTime().ToString("MMM d, yyyy")</span>
+                                        <span class="text-muted small">@invite.ExpiresAt.ToLocalTime().ToString("MMM d, yyyy")</span>
                                     </Template>
                                 </GridColumn>
-                                <GridColumn HeaderText="Actions" Width="200">
+                                <GridColumn HeaderText="Actions" Width="180" TextAlign="TextAlign.Right">
                                     <Template>
                                         @{
                                             var invite = (context as OrganizationInviteListItemDto)!;
                                         }
-                                        <div class="grid-action-row">
+                                        <div class="grid-action-row justify-content-end">
                                             @if (invite.Status == "Pending" || invite.Status == "Expired")
                                             {
                                                 <button class="btn btn-sm btn-outline-secondary" @onclick="() => ResendInviteAsync(invite.Id)">Resend</button>
@@ -565,42 +519,11 @@
                         <section class="settings-panel">
                 <div class="settings-panel-header">
                     <div>
-                        <h2>Security & Access Controls</h2>
-                        <p>Foundational security controls are available now. Advanced policies can be layered in next.</p>
+                        <h2>Diagnostics & Audits</h2>
+                        <p>Monitor system health, validate email delivery, and review the workspace audit trail.</p>
                     </div>
                 </div>
                 <div class="settings-panel-body">
-                    <div class="seed-tools-card mb-4">
-                        <div>
-                            <h3>Demo Data</h3>
-                            <p>Seed sample households, clients, funds, programs, investments, imprints, and growth plans for UI and workflow testing.</p>
-                            @if (!string.IsNullOrWhiteSpace(_seedDataMessage))
-                            {
-                                <div class="alert alert-success py-2 mb-0 mt-2">@_seedDataMessage</div>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(_seedDataError))
-                            {
-                                <div class="alert alert-danger py-2 mb-0 mt-2">@_seedDataError</div>
-                            }
-                        </div>
-                        @if (_canSeedDemoData)
-                        {
-                            <button class="btn btn-outline-primary"
-                                    disabled="@_isSeedingDemoData"
-                                    @onclick="SeedDemoDataAsync">
-                                @if (_isSeedingDemoData)
-                                {
-                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
-                                }
-                                <span>Seed Demo Data</span>
-                            </button>
-                        }
-                        else
-                        {
-                            <span class="badge text-bg-secondary">Admin/Owner Only</span>
-                        }
-                    </div>
-
                     <div class="email-diagnostics-card mb-4">
                         <div class="email-diagnostics-header">
                             <div>
@@ -787,6 +710,78 @@
                         </div>
                     </div>
 
+                    <div class="security-attempts-card mt-4">
+                        <div class="email-diagnostics-header">
+                            <div>
+                                <h3>Unauthorized Access Attempts</h3>
+                                <p>Administrative actions and unauthorized access attempts are logged to support incident review and security audits.</p>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <input class="form-control form-control-sm"
+                                       style="width: 220px;"
+                                       placeholder="Filter by IP..."
+                                       @bind="_securityIpSearch" />
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="LoadSecurityAttemptsAsync" disabled="@_isLoadingSecurity">
+                                    Search
+                                </button>
+                            </div>
+                        </div>
+
+                        @if (_securityAttempts.Count == 0)
+                        {
+                            <div class="card-body text-muted">No unauthorized attempts logged yet.</div>
+                        }
+                        else
+                        {
+                            <div class="table-responsive">
+                                <table class="table align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>When</th>
+                                            <th>Path</th>
+                                            <th>IP</th>
+                                            <th>Known Users On IP</th>
+                                            <th>Browser</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var item in _securityAttempts)
+                                        {
+                                            <tr>
+                                                <td>@item.OccurredAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</td>
+                                                <td>@item.Path</td>
+                                                <td>@(string.IsNullOrWhiteSpace(item.ClientIp) ? "-" : item.ClientIp)</td>
+                                                <td>
+                                                    @if (item.KnownUsers.Count == 0)
+                                                    {
+                                                        <span class="text-muted">No known match</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <div class="d-flex flex-column gap-1">
+                                                            @foreach (var match in item.KnownUsers)
+                                                            {
+                                                                <div class="small">
+                                                                    <strong>@match.FullName</strong> (@match.Email)
+                                                                    <span class="text-muted">- last seen @match.LastSeenAt.ToLocalTime().ToString("MMM d h:mm tt")</span>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    }
+                                                </td>
+                                                <td>
+                                                    <div class="small text-muted" title="@item.UserAgent">
+                                                        @TruncateText(item.UserAgent, 72)
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+
                     <div class="audit-log-panel mt-4">
                         <div class="audit-log-header">
                             <div>
@@ -794,14 +789,14 @@
                                 <p>Review recent create/update/delete events recorded across the workspace.</p>
                             </div>
                             <div class="audit-log-actions">
-                                <select class="form-select form-select-sm" @bind="_auditTableFilter">
+                                <select class="form-select form-select-sm" @bind="_auditTableFilter" @bind:after="UpdateFilteredAuditLogs">
                                     <option value="">All tables</option>
                                     @foreach (var tableName in _auditTableOptions)
                                     {
                                         <option value="@tableName">@tableName</option>
                                     }
                                 </select>
-                                <select class="form-select form-select-sm" @bind="_auditActionFilter">
+                                <select class="form-select form-select-sm" @bind="_auditActionFilter" @bind:after="UpdateFilteredAuditLogs">
                                     <option value="">All actions</option>
                                     <option value="Create">Create</option>
                                     <option value="Update">Update</option>
@@ -823,49 +818,64 @@
                             <div class="alert alert-danger py-2 mb-3">@_auditLogError</div>
                         }
 
-                        <SfGrid TValue="AdminAuditLogItemDto"
+                        <SfGrid @key="@("audit-logs-grid")"
+                                TValue="AdminAuditLogItemDto"
                                 @ref="_auditLogsGrid"
-                                DataSource="@FilteredAuditLogs"
+                                DataSource="@_filteredAuditLogs"
                                 CssClass="settings-grid settings-grid-audit"
                                 AllowPaging="true"
                                 AllowSorting="true"
                                 AllowFiltering="true"
                                 AllowResizing="true"
                                 AllowExcelExport="true"
-                                AllowTextWrap="true"
                                 ShowColumnChooser="true"
                                 Toolbar="@GridToolbarItems"
                                 Width="100%">
                             <GridPageSettings PageSize="10"></GridPageSettings>
                             <GridFilterSettings Type="FilterType.Excel"></GridFilterSettings>
-                            <GridTextWrapSettings WrapMode="WrapMode.Content"></GridTextWrapSettings>
                             <GridEvents TValue="AdminAuditLogItemDto" OnToolbarClick="OnAuditLogsGridToolbarClick"></GridEvents>
                             <GridColumns>
-                                <GridColumn HeaderText="When" Width="170">
+                                <GridColumn HeaderText="When" Width="160">
                                     <Template>
                                         @{
                                             var log = (context as AdminAuditLogItemDto)!;
                                         }
-                                        <span>@log.CreatedAt.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</span>
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-bold small">@log.CreatedAt.ToLocalTime().ToString("MMM d, yyyy")</span>
+                                            <span class="text-muted x-small">@log.CreatedAt.ToLocalTime().ToString("h:mm tt")</span>
+                                        </div>
                                     </Template>
                                 </GridColumn>
-                                <GridColumn Field=@nameof(AdminAuditLogItemDto.ActionType) HeaderText="Action" Width="150"></GridColumn>
-                                <GridColumn Field=@nameof(AdminAuditLogItemDto.TableName) HeaderText="Table" Width="160"></GridColumn>
-                                <GridColumn Field=@nameof(AdminAuditLogItemDto.UserName) HeaderText="User" Width="190"></GridColumn>
-                                <GridColumn HeaderText="Summary" Width="300">
+                                <GridColumn Field=@nameof(AdminAuditLogItemDto.ActionType) HeaderText="Action" Width="120">
                                     <Template>
                                         @{
                                             var log = (context as AdminAuditLogItemDto)!;
+                                            var badgeClass = log.ActionType switch {
+                                                "Create" => "bg-success-subtle text-success",
+                                                "Update" => "bg-primary-subtle text-primary",
+                                                "Delete" => "bg-danger-subtle text-danger",
+                                                _ => "bg-secondary-subtle text-secondary"
+                                            };
                                         }
-                                        <span>@(string.IsNullOrWhiteSpace(log.Summary) ? $"{log.ActionType} on {log.TableName}" : log.Summary)</span>
+                                        <span class="badge @badgeClass fw-semibold px-2 py-1">@log.ActionType</span>
                                     </Template>
                                 </GridColumn>
-                                <GridColumn HeaderText="Record" Width="220">
+                                <GridColumn Field=@nameof(AdminAuditLogItemDto.TableName) HeaderText="Table" Width="130"></GridColumn>
+                                <GridColumn Field=@nameof(AdminAuditLogItemDto.UserName) HeaderText="User" Width="160"></GridColumn>
+                                <GridColumn HeaderText="Summary" Width="300" ClipMode="ClipMode.EllipsisWithTooltip">
                                     <Template>
                                         @{
                                             var log = (context as AdminAuditLogItemDto)!;
                                         }
-                                        <code>@log.RecordId</code>
+                                        <span class="small">@(string.IsNullOrWhiteSpace(log.Summary) ? $"{log.ActionType} on {log.TableName}" : log.Summary)</span>
+                                    </Template>
+                                </GridColumn>
+                                <GridColumn HeaderText="Record" Width="180">
+                                    <Template>
+                                        @{
+                                            var log = (context as AdminAuditLogItemDto)!;
+                                        }
+                                        <code class="x-small">@log.RecordId</code>
                                     </Template>
                                 </GridColumn>
                             </GridColumns>
@@ -883,16 +893,16 @@
 @code {
     private string ActiveTab { get; set; } = "organization";
     private bool _isLoading = true;
+    private bool _disposed;
+    private readonly CancellationTokenSource _cts = new();
     private bool _isSavingOrganization;
     private bool _isSendingInvite;
-    private bool _isSeedingDemoData;
     private bool _isLoadingAuditLogs;
     private bool _isLoadingEmailDiagnostics;
     private bool _isLoadingSystemDiagnostics;
     private bool _isSendingTestEmail;
     private bool _testEmailSucceeded;
     private bool _hasSettingsAccess = true;
-    private bool _canSeedDemoData;
     private string? _pageError;
     private string? _orgSaveMessage;
     private string? _userActionMessage;
@@ -900,8 +910,6 @@
     private string? _inviteMessage;
     private string? _inviteError;
     private string? _lastInviteLink;
-    private string? _seedDataMessage;
-    private string? _seedDataError;
     private string? _auditLogError;
     private string? _emailDiagnosticsError;
     private string? _systemDiagnosticsError;
@@ -918,6 +926,9 @@
     private List<OrganizationInviteListItemDto> _invites = new();
     private List<InviteAuditNotificationDto> _inviteActivity = new();
     private List<AdminAuditLogItemDto> _auditLogs = new();
+    private List<SecurityAccessAttemptDto> _securityAttempts = new();
+    private string _securityIpSearch = string.Empty;
+    private bool _isLoadingSecurity;
     private CreateOrganizationInviteRequest _newInvite = new() { ExpiresInDays = 7, Role = "Member" };
     private readonly HashSet<Guid> _busyUserIds = new();
     private readonly Dictionary<Guid, string> _roleDrafts = new();
@@ -941,15 +952,18 @@
     private int PendingInviteCount => _invites.Count(i => string.Equals(i.Status, "Pending", StringComparison.OrdinalIgnoreCase));
     private int InviteActivityUnreadCount => _inviteActivity.Count(i => !i.IsRead);
     private List<string> _auditTableOptions => _auditLogs.Select(l => l.TableName).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(s => s).ToList();
-    private List<AdminAuditLogItemDto> FilteredAuditLogs => _auditLogs
-        .Where(l => string.IsNullOrWhiteSpace(_auditTableFilter) || string.Equals(l.TableName, _auditTableFilter, StringComparison.OrdinalIgnoreCase))
-        .Where(l => string.IsNullOrWhiteSpace(_auditActionFilter) || string.Equals(l.ActionType, _auditActionFilter, StringComparison.OrdinalIgnoreCase))
-        .ToList();
+    private List<AdminAuditLogItemDto> _filteredAuditLogs = new();
+    private void UpdateFilteredAuditLogs()
+    {
+        _filteredAuditLogs = _auditLogs
+            .Where(l => string.IsNullOrWhiteSpace(_auditTableFilter) || string.Equals(l.TableName, _auditTableFilter, StringComparison.OrdinalIgnoreCase))
+            .Where(l => string.IsNullOrWhiteSpace(_auditActionFilter) || string.Equals(l.ActionType, _auditActionFilter, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
     protected override async Task OnInitializedAsync()
     {
         var access = await RoleAccessService.GetAccessAsync();
         _hasSettingsAccess = access.CanManageAdminWorkspace;
-        _canSeedDemoData = access.CanSeedDemoData;
 
         if (!_hasSettingsAccess)
         {
@@ -960,6 +974,13 @@
         await LoadAllAsync();
     }
 
+    public void Dispose()
+    {
+        _disposed = true;
+        _cts.Cancel();
+        _cts.Dispose();
+    }
+
     private async Task LoadAllAsync()
     {
         _isLoading = true;
@@ -967,14 +988,17 @@
         _orgSaveMessage = null;
         try
         {
-            var orgTask = AdminService.GetOrganizationAsync();
-            var usersTask = AdminService.GetUsersAsync();
-            var invitesTask = AdminService.GetInvitesAsync();
-            var inviteActivityTask = AdminService.GetInviteActivityAsync(30);
-            var auditLogsTask = AdminService.GetAuditLogsAsync(100);
-            var emailDiagnosticsTask = AdminService.GetEmailDiagnosticsAsync();
-            var systemDiagnosticsTask = AdminService.GetSystemDiagnosticsAsync();
-            await Task.WhenAll(orgTask, usersTask, invitesTask, inviteActivityTask, auditLogsTask, emailDiagnosticsTask, systemDiagnosticsTask);
+            var orgTask = AdminService.GetOrganizationAsync(_cts.Token);
+            var usersTask = AdminService.GetUsersAsync(_cts.Token);
+            var invitesTask = AdminService.GetInvitesAsync(_cts.Token);
+            var inviteActivityTask = AdminService.GetInviteActivityAsync(30, _cts.Token);
+            var auditLogsTask = AdminService.GetAuditLogsAsync(100, null, null, _cts.Token);
+            var emailDiagnosticsTask = AdminService.GetEmailDiagnosticsAsync(_cts.Token);
+            var systemDiagnosticsTask = AdminService.GetSystemDiagnosticsAsync(_cts.Token);
+            var securityAttemptsTask = AdminService.GetSecurityAccessAttemptsAsync(new SecurityAccessAttemptQueryParams { Take = 250 }, _cts.Token);
+            await Task.WhenAll(orgTask, usersTask, invitesTask, inviteActivityTask, auditLogsTask, emailDiagnosticsTask, systemDiagnosticsTask, securityAttemptsTask);
+
+            if (_disposed) return;
 
             _organization = await orgTask;
             _organizationEdit = new UpdateOrganizationSettingsRequest
@@ -995,8 +1019,10 @@
             _invites = await invitesTask;
             _inviteActivity = await inviteActivityTask;
             _auditLogs = await auditLogsTask;
+            UpdateFilteredAuditLogs();
             _emailDiagnostics = await emailDiagnosticsTask;
             _systemDiagnostics = await systemDiagnosticsTask;
+            _securityAttempts = await securityAttemptsTask;
         }
         catch (Exception ex)
         {
@@ -1044,7 +1070,8 @@
         _pageError = null;
         try
         {
-            _organization = await AdminService.UpdateOrganizationAsync(_organizationEdit);
+            _organization = await AdminService.UpdateOrganizationAsync(_organizationEdit, _cts.Token);
+            if (_disposed) return;
             _orgSaveMessage = "Organization settings saved.";
         }
         catch (Exception ex)
@@ -1073,12 +1100,13 @@
         _isSendingInvite = true;
         try
         {
-            var response = await AdminService.CreateInviteAsync(_newInvite);
+            var response = await AdminService.CreateInviteAsync(_newInvite, _cts.Token);
+            if (_disposed) return;
             _inviteMessage = response.Message;
             _lastInviteLink = response.InviteLink;
             _newInvite = new CreateOrganizationInviteRequest { ExpiresInDays = 7, Role = "Member" };
-            _invites = await AdminService.GetInvitesAsync();
-            _inviteActivity = await AdminService.GetInviteActivityAsync(30);
+            _invites = await AdminService.GetInvitesAsync(_cts.Token);
+            _inviteActivity = await AdminService.GetInviteActivityAsync(30, _cts.Token);
             ActiveTab = "invites";
         }
         catch (Exception ex)
@@ -1098,11 +1126,12 @@
         _inviteMessage = null;
         try
         {
-            var response = await AdminService.ResendInviteAsync(inviteId);
+            var response = await AdminService.ResendInviteAsync(inviteId, _cts.Token);
+            if (_disposed) return;
             _inviteMessage = response.Message;
             _lastInviteLink = response.InviteLink;
-            _invites = await AdminService.GetInvitesAsync();
-            _inviteActivity = await AdminService.GetInviteActivityAsync(30);
+            _invites = await AdminService.GetInvitesAsync(_cts.Token);
+            _inviteActivity = await AdminService.GetInviteActivityAsync(30, _cts.Token);
         }
         catch (Exception ex)
         {
@@ -1117,10 +1146,11 @@
         _inviteMessage = null;
         try
         {
-            await AdminService.RevokeInviteAsync(inviteId);
+            await AdminService.RevokeInviteAsync(inviteId, _cts.Token);
+            if (_disposed) return;
             _inviteMessage = "Invite revoked.";
-            _invites = await AdminService.GetInvitesAsync();
-            _inviteActivity = await AdminService.GetInviteActivityAsync(30);
+            _invites = await AdminService.GetInvitesAsync(_cts.Token);
+            _inviteActivity = await AdminService.GetInviteActivityAsync(30, _cts.Token);
         }
         catch (Exception ex)
         {
@@ -1156,7 +1186,7 @@
         "organization" => "Organization",
         "users" => "Users & Roles",
         "invites" => "Invites",
-        "security" => "Security",
+        "security" => "System Health",
         _ => "Settings"
     };
 
@@ -1165,17 +1195,17 @@
         "organization" => "Workspace Identity",
         "users" => "Access Control",
         "invites" => "Invite Operations",
-        "security" => "Operational Readiness",
+        "security" => "System Monitoring",
         _ => "Administration"
     };
 
     private string GetActiveTabDescription() => ActiveTab switch
     {
-        "organization" => "Maintain the workspace profile, tenant metadata, and the operating modules your team relies on across the platform.",
-        "users" => "Manage team membership, role alignment, and who is allowed to operate inside sensitive admin surfaces.",
-        "invites" => "Track pending invitations, resend or revoke access, and monitor invite activity before new users enter the workspace.",
-        "security" => "Review diagnostics, audit flow, demo tooling, and service readiness from one controlled operations surface.",
-        _ => "Manage organization settings and administrative controls."
+        "organization" => "Workspace profile and operating modules.",
+        "users" => "Team membership and role-based access.",
+        "invites" => "Manage and track organization invitations.",
+        "security" => "Diagnostics, audit trail, and system health.",
+        _ => "Manage organization settings."
     };
 
     private void SetActiveTab(string tab)
@@ -1217,7 +1247,8 @@
         _busyUserIds.Add(user.Id);
         try
         {
-            var updated = await AdminService.UpdateUserRoleAsync(user.Id, new UpdateAdminUserRoleRequest { Role = newRole });
+            var updated = await AdminService.UpdateUserRoleAsync(user.Id, new UpdateAdminUserRoleRequest { Role = newRole }, _cts.Token);
+            if (_disposed) return;
             ReplaceUser(updated);
             _roleDrafts[user.Id] = updated.Role;
             _userActionMessage = $"Updated role for {updated.FullName}.";
@@ -1238,7 +1269,8 @@
         _busyUserIds.Add(user.Id);
         try
         {
-            var updated = await AdminService.DeactivateUserAsync(user.Id);
+            var updated = await AdminService.DeactivateUserAsync(user.Id, _cts.Token);
+            if (_disposed) return;
             ReplaceUser(updated);
             _userActionMessage = $"{updated.FullName} has been deactivated.";
         }
@@ -1258,7 +1290,8 @@
         _busyUserIds.Add(user.Id);
         try
         {
-            var updated = await AdminService.ReactivateUserAsync(user.Id);
+            var updated = await AdminService.ReactivateUserAsync(user.Id, _cts.Token);
+            if (_disposed) return;
             ReplaceUser(updated);
             _userActionMessage = $"{updated.FullName} has been reactivated.";
         }
@@ -1277,7 +1310,8 @@
         ClearTransientMessages();
         try
         {
-            await AdminService.MarkInviteActivityReadAllAsync();
+            await AdminService.MarkInviteActivityReadAllAsync(_cts.Token);
+            if (_disposed) return;
             _inviteActivity = _inviteActivity
                 .Select(i => { i.IsRead = true; return i; })
                 .ToList();
@@ -1289,32 +1323,6 @@
         }
     }
 
-    private async Task SeedDemoDataAsync()
-    {
-        ClearTransientMessages();
-        _seedDataError = null;
-        _seedDataMessage = null;
-        _isSeedingDemoData = true;
-        try
-        {
-            var result = await AdminService.SeedDemoDataAsync();
-            _seedDataMessage = $"{result.Message} " +
-                $"Programs:{result.ProgramsCreated}, Funds:{result.FundsCreated}, Households:{result.HouseholdsCreated}, " +
-                $"Clients:{result.ClientsCreated}, Members:{result.FamilyMembersCreated}, Investments:{result.InvestmentsCreated}, " +
-                $"Imprints:{result.ImprintsCreated}, Plans:{result.GrowthPlansCreated}.";
-
-            await LoadAllAsync();
-            ActiveTab = "security";
-        }
-        catch (Exception ex)
-        {
-            _seedDataError = ex.Message;
-        }
-        finally
-        {
-            _isSeedingDemoData = false;
-        }
-    }
 
     private async Task RefreshAuditLogsAsync()
     {
@@ -1322,7 +1330,9 @@
         _isLoadingAuditLogs = true;
         try
         {
-            _auditLogs = await AdminService.GetAuditLogsAsync(100);
+            _auditLogs = await AdminService.GetAuditLogsAsync(100, null, null, _cts.Token);
+            if (_disposed) return;
+            UpdateFilteredAuditLogs();
         }
         catch (Exception ex)
         {
@@ -1340,7 +1350,8 @@
         _isLoadingEmailDiagnostics = true;
         try
         {
-            _emailDiagnostics = await AdminService.GetEmailDiagnosticsAsync();
+            _emailDiagnostics = await AdminService.GetEmailDiagnosticsAsync(_cts.Token);
+            if (_disposed) return;
         }
         catch (Exception ex)
         {
@@ -1358,7 +1369,8 @@
         _isLoadingSystemDiagnostics = true;
         try
         {
-            _systemDiagnostics = await AdminService.GetSystemDiagnosticsAsync();
+            _systemDiagnostics = await AdminService.GetSystemDiagnosticsAsync(_cts.Token);
+            if (_disposed) return;
         }
         catch (Exception ex)
         {
@@ -1370,6 +1382,31 @@
         }
     }
 
+    private async Task LoadSecurityAttemptsAsync()
+    {
+        _isLoadingSecurity = true;
+        try
+        {
+            var query = new SecurityAccessAttemptQueryParams
+            {
+                Take = 250,
+                Ip = string.IsNullOrWhiteSpace(_securityIpSearch) ? null : _securityIpSearch.Trim()
+            };
+
+            _securityAttempts = (await AdminService.GetSecurityAccessAttemptsAsync(query, _cts.Token))
+                .OrderByDescending(a => a.OccurredAt)
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _pageError = ex.Message;
+        }
+        finally
+        {
+            _isLoadingSecurity = false;
+        }
+    }
+
     private async Task SendTestEmailAsync()
     {
         _emailDiagnosticsError = null;
@@ -1378,11 +1415,17 @@
         _isSendingTestEmail = true;
         try
         {
-            var response = await AdminService.SendTestEmailAsync(_testEmailRequest);
+            var response = await AdminService.SendTestEmailAsync(_testEmailRequest, _cts.Token);
+            if (_disposed) return;
             _testEmailSucceeded = response.Succeeded;
             _testEmailMessage = response.Succeeded
                 ? $"Test email sent to {response.TargetEmail} via {response.DeliveryMode}.{(string.IsNullOrWhiteSpace(response.FallbackFilePath) ? "" : $" File: {response.FallbackFilePath}")}"
-                : response.Message;
+                : $"Failed: {response.Message}";
+
+            if (!response.Succeeded && !string.IsNullOrWhiteSpace(response.Error))
+            {
+                _testEmailMessage += $" Detail: {response.Error}";
+            }
 
             await RefreshEmailDiagnosticsAsync();
             await RefreshSystemDiagnosticsAsync();
@@ -1431,8 +1474,6 @@
         _userActionError = null;
         _inviteMessage = null;
         _inviteError = null;
-        _seedDataMessage = null;
-        _seedDataError = null;
         _auditLogError = null;
         _emailDiagnosticsError = null;
         _systemDiagnosticsError = null;

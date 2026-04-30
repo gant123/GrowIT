@@ -7,6 +7,7 @@ using GrowIT.Infrastructure.Data;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
 using System.Web;
@@ -153,6 +154,7 @@ public class AuthController : ControllerBase
         });
     }
 
+    [EnableRateLimiting("auth-submit")]
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginRequest request)
     {

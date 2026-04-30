@@ -813,11 +813,16 @@
 }
 
 :deep(.settings-grid.e-grid) {
-    border-radius: 24px !important;
+    border-radius: 20px !important;
     border: 1px solid color-mix(in srgb, var(--enterprise-border) 92%, transparent) !important;
     background: linear-gradient(180deg, color-mix(in srgb, var(--enterprise-surface-strong) 98%, transparent), color-mix(in srgb, var(--growit-bg-card) 98%, transparent)) !important;
     box-shadow: var(--enterprise-shadow-lg) !important;
-    overflow: hidden !important;
+    overflow: visible !important;
+}
+
+:deep(.settings-grid.e-grid .e-gridheader),
+:deep(.settings-grid.e-grid .e-headercontent) {
+    border-radius: 20px 20px 0 0 !important;
 }
 
 :deep(.settings-grid.e-grid .e-gridheader),
@@ -830,6 +835,7 @@
 :deep(.settings-grid.e-grid .e-toolbar) {
     padding: 1rem 1.05rem 0.8rem !important;
     border-bottom: 1px solid color-mix(in srgb, var(--enterprise-border) 88%, transparent) !important;
+    border-radius: 20px 20px 0 0 !important;
     background:
         linear-gradient(180deg, color-mix(in srgb, var(--growit-bg-primary) 74%, var(--enterprise-surface-strong)), color-mix(in srgb, var(--enterprise-surface-strong) 98%, transparent)) !important;
 }
@@ -959,6 +965,7 @@
 :deep(.settings-grid.e-grid .e-gridpager) {
     padding: 0.95rem 1.05rem 1.05rem !important;
     border-top: 1px solid color-mix(in srgb, var(--enterprise-border) 88%, transparent) !important;
+    border-radius: 0 0 20px 20px !important;
     background: linear-gradient(180deg, color-mix(in srgb, var(--growit-bg-primary) 52%, var(--enterprise-surface-strong)), color-mix(in srgb, var(--enterprise-surface-strong) 98%, transparent)) !important;
 }
 
@@ -1015,7 +1022,7 @@
 }
 
 :deep(.settings-grid.e-grid .user-role-editor) {
-    display: grid;
+    display: flex !important;
     gap: 0.55rem;
     min-width: 170px;
 }

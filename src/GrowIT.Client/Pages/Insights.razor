@@ -1,14 +1,278 @@
 @page "/insights"
+@using GrowIT.Shared.DTOs
+@using GrowIT.Client.Services
+@using Syncfusion.Blazor.Charts
+@inject IInsightsService InsightsService
+@inject IJSRuntime JS
 
-<div style="max-width: 1100px; margin: 0 auto;">
-    <PageHeader Title="Insights" Subtitle="Operational trends and recommendations" />
+<div class="insights-container fade-in" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+    <PageHeader Title="Operational Insights" Subtitle="Data-driven intelligence to protect the mission and prove impact." />
 
-    <div class="card-growit">
-        <div class="card-body">
-            <p style="margin-bottom: 12px;">Insights is now a valid route in the app shell and linked from navigation.</p>
-            <p style="margin-bottom: 0; color: var(--growit-text-secondary);">
-                Next step: connect this page to report summaries and dashboard trend analysis APIs.
-            </p>
+    @if (_isLoading)
+    {
+        <div class="d-flex justify-content-center align-items-center" style="height: 400px;">
+            <div class="spinner-growit"></div>
         </div>
-    </div>
+    }
+    else if (_insights == null)
+    {
+        <div class="alert alert-warning">Failed to load insights. Please try again later.</div>
+    }
+    else
+    {
+        <div class="grid-2 mb-4">
+            <!-- Funding Readiness Card -->
+            <div class="card-growit">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h3 class="section-title mb-0">Funding Readiness</h3>
+                    <span class="badge-growit @(GetScoreColor(_insights.FundingReadiness.Score))">Score: @_insights.FundingReadiness.Score</span>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-4">
+                        <div style="width: 120px; height: 120px; margin-right: 20px;">
+                            <SfAccumulationChart Background="transparent" Theme="@_chartTheme" Height="100%" Width="100%">
+                                <AccumulationChartSeriesCollection>
+                                    <AccumulationChartSeries DataSource="@(new List<object> { new { x="Score", y=_insights.FundingReadiness.Score }, new { x="Gap", y=100-_insights.FundingReadiness.Score } })" 
+                                                              XName="x" YName="y" InnerRadius="70%" Palettes="@(new string[] { GetHexColor(_insights.FundingReadiness.Score), _isDarkMode ? "#1e293b" : "#f0f0f0" })">
+                                    </AccumulationChartSeries>
+                                </AccumulationChartSeriesCollection>
+                                <AccumulationChartTooltipSettings Enable="false"></AccumulationChartTooltipSettings>
+                            </SfAccumulationChart>
+                        </div>
+                        <div>
+                            <div class="text-muted small text-uppercase fw-700">Estimated Runway</div>
+                            <div class="display-6 fw-700">@_insights.FundingReadiness.EstimatedRunwayMonths Months</div>
+                            <div class="text-muted">Monthly Burn: @_insights.FundingReadiness.BurnRateMonthly.ToString("C0")</div>
+                        </div>
+                    </div>
+                    
+                    <div class="recommendations">
+                        <div class="fw-600 mb-2 small text-uppercase" style="letter-spacing: 0.05em;">Recommendations</div>
+                        @foreach (var suggestion in _insights.FundingReadiness.Suggestions)
+                        {
+                            <div class="d-flex mb-2">
+                                <i class="bi bi-lightbulb text-warning me-2"></i>
+                                <span class="small">@suggestion</span>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Impact Velocity Card -->
+            <div class="card-growit">
+                <div class="card-header">
+                    <h3 class="section-title mb-0">Impact Velocity</h3>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-end mb-2">
+                            <div>
+                                <div class="text-muted small text-uppercase fw-700">Milestones (Last 30 Days)</div>
+                                <div class="display-6 fw-700">@_insights.ImpactVelocity.CurrentVelocity</div>
+                            </div>
+                            <div class="text-end">
+                                <div class="fw-700 @(_insights.ImpactVelocity.GrowthPercentage >= 0 ? "text-success" : "text-danger")">
+                                    <i class="bi @(_insights.ImpactVelocity.GrowthPercentage >= 0 ? "bi-arrow-up" : "bi-arrow-down")"></i>
+                                    @Math.Abs(_insights.ImpactVelocity.GrowthPercentage).ToString("F1")%
+                                </div>
+                                <div class="text-muted small">vs previous period</div>
+                            </div>
+                        </div>
+                        <div class="velocity-track">
+                             <div class="velocity-bar" style="width: @(GetVelocityWidth() + "%");"></div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <h4 class="small fw-700 text-uppercase mb-3">Top Impact Categories</h4>
+                        @foreach (var program in _insights.ProgramPerformance)
+                        {
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small">@program.Name</span>
+                                <div class="d-flex align-items-center">
+                                    <span class="fw-600 me-2">@program.Count</span>
+                                    <div class="impact-track">
+                                        @{ var progWidth = GetProgramWidth(program.Count) + "%"; }
+                                        <div class="impact-bar" style="width: @progWidth;"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-growit">
+            <div class="card-header">
+                <h3 class="section-title mb-0">Resource Allocation by Program</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <SfAccumulationChart Background="transparent" Theme="@_chartTheme" Height="300px">
+                            <AccumulationChartSeriesCollection>
+                                <AccumulationChartSeries DataSource="@_insights.AllocationInsights" 
+                                                          XName="Category" YName="Amount" Name="Program"
+                                                          InnerRadius="40%">
+                                    <AccumulationDataLabelSettings Visible="true" Name="Category" Position="AccumulationLabelPosition.Outside">
+                                        <AccumulationChartConnector Type="ConnectorType.Line" Length="10%"></AccumulationChartConnector>
+                                    </AccumulationDataLabelSettings>
+                                </AccumulationChartSeries>
+                            </AccumulationChartSeriesCollection>
+                            <AccumulationChartLegendSettings Visible="false"></AccumulationChartLegendSettings>
+                            <AccumulationChartTooltipSettings Enable="true" Format="${point.x}: <b>${point.y}</b>"></AccumulationChartTooltipSettings>
+                        </SfAccumulationChart>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-borderless theme-aware-table">
+                                <thead class="text-muted small text-uppercase">
+                                    <tr>
+                                        <th>Program</th>
+                                        <th class="text-end">Amount</th>
+                                        <th class="text-end">Share</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in _insights.AllocationInsights)
+                                    {
+                                        <tr>
+                                            <td class="py-2">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="category-dot" style="opacity: @(0.3 + (item.Percentage/100))"></div>
+                                                    @item.Category
+                                                </div>
+                                            </td>
+                                            <td class="text-end py-2 fw-600">@item.Amount.ToString("C0")</td>
+                                            <td class="text-end py-2 text-muted">@item.Percentage.ToString("F1")%</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 </div>
+
+<style>
+    .insights-container {
+        animation: fadeIn 0.5s ease-in-out;
+    }
+    .recommendations {
+        background: var(--growit-bg-secondary);
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px dashed var(--growit-border);
+    }
+    .display-6 {
+        font-size: 1.75rem;
+        letter-spacing: -0.02em;
+        color: var(--growit-text-primary);
+    }
+    .velocity-track, .impact-track {
+        height: 10px; 
+        background: var(--growit-border-light); 
+        border-radius: 5px; 
+        overflow: hidden;
+    }
+    .velocity-bar {
+        height: 100%; 
+        background: var(--growit-green); 
+        transition: width 1s ease-in-out;
+    }
+    .impact-track {
+        width: 100px; 
+        height: 6px;
+    }
+    .impact-bar {
+        height: 100%; 
+        background: var(--growit-primary); 
+        border-radius: 3px;
+    }
+    .category-dot {
+        width: 10px; 
+        height: 10px; 
+        border-radius: 50%; 
+        background: var(--growit-green); 
+        margin-right: 8px;
+    }
+    .theme-aware-table {
+        color: var(--growit-text-primary);
+    }
+
+    [data-theme="dark"] .recommendations {
+        background: rgba(255, 255, 255, 0.03);
+    }
+</style>
+
+@code {
+    private InsightsDto? _insights;
+    private bool _isLoading = true;
+    private bool _isDarkMode = false;
+    private Theme _chartTheme = Theme.Bootstrap5;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _insights = await InsightsService.GetInsightsAsync();
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                var theme = await JS.InvokeAsync<string>("localStorage.getItem", "theme");
+                _isDarkMode = theme == "dark";
+                _chartTheme = _isDarkMode ? Theme.Bootstrap5Dark : Theme.Bootstrap5;
+                StateHasChanged();
+            }
+            catch
+            {
+                // Fallback to light
+            }
+        }
+    }
+
+    private string GetScoreColor(int score) => score switch
+    {
+        >= 80 => "badge-success",
+        >= 50 => "badge-warning",
+        _ => "badge-danger"
+    };
+
+    private string GetHexColor(int score) => score switch
+    {
+        >= 80 => "#10b981", // Success
+        >= 50 => "#f59e0b", // Warning
+        _ => "#ef4444"      // Danger
+    };
+
+    private double GetVelocityWidth()
+    {
+        if (_insights == null || _insights.ImpactVelocity.CurrentVelocity == 0) return 0;
+        var max = Math.Max(_insights.ImpactVelocity.CurrentVelocity, _insights.ImpactVelocity.PreviousVelocity);
+        if (max == 0) return 0;
+        return (double)_insights.ImpactVelocity.CurrentVelocity / max * 100;
+    }
+
+    private double GetProgramWidth(int count)
+    {
+        if (_insights == null || !_insights.ProgramPerformance.Any()) return 0;
+        var max = _insights.ProgramPerformance.Max(p => p.Count);
+        if (max == 0) return 0;
+        return (double)count / max * 100;
+    }
+}

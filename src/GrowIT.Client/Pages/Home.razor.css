@@ -31,7 +31,11 @@
 
 .legend-item.impact .legend-dot {
     background: var(--growit-green);
-    box-shadow: 0 0 8px var(--growit-green-glow);
+    box-shadow: 0 0 12px var(--growit-green-glow);
+}
+
+.chart-container {
+    padding: 10px 0;
 }
 
 /* Activity Items */
