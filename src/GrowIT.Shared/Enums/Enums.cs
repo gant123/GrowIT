@@ -16,7 +16,6 @@ public enum DocumentCategory { ID, Bill, Contract, Other }
 public enum TaskStatus { Pending, Completed, Skipped }
 public enum ImpactOutcome { Improved, Maintained, Regressed, Unknown }
 
-public enum UserRole { Admin, CaseWorker, Viewer }
 public enum UserStatus { Active, Inactive, Pending }
 public enum NotificationType { Email, SMS, InApp }
 public enum NotificationFrequency { Immediate, Daily, Weekly, Monthly }
