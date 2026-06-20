@@ -608,12 +608,22 @@ static async Task EnsureConfiguredSuperAdminAsync(
         .ToList();
     if (staleRoles.Count > 0)
     {
-        await userManager.RemoveFromRolesAsync(superUser, staleRoles);
+        var removeResult = await userManager.RemoveFromRolesAsync(superUser, staleRoles);
+        if (!removeResult.Succeeded)
+        {
+            throw new InvalidOperationException(
+                $"Failed to remove stale roles for SuperAdmin '{superUser.Id}': {string.Join(" ", removeResult.Errors.Select(e => e.Description))}");
+        }
     }
 
     if (!await userManager.IsInRoleAsync(superUser, SuperAdminRole))
     {
-        await userManager.AddToRoleAsync(superUser, SuperAdminRole);
+        var addResult = await userManager.AddToRoleAsync(superUser, SuperAdminRole);
+        if (!addResult.Succeeded)
+        {
+            throw new InvalidOperationException(
+                $"Failed to add SuperAdmin role for '{superUser.Id}': {string.Join(" ", addResult.Errors.Select(e => e.Description))}");
+        }
     }
 
     await userManager.UpdateSecurityStampAsync(superUser);
