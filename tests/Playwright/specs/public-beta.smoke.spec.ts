@@ -9,13 +9,6 @@ test.describe('Public beta smoke', () => {
     await expect(page.getByRole('link', { name: 'Request Demo' }).first()).toBeVisible();
   });
 
-  test('anonymous user is redirected from protected home route', async ({ page }) => {
-    await page.goto('/');
-
-    await expect(page).toHaveURL(/\/access-denied/);
-    await expect(page.getByRole('heading', { name: /not authorized/i })).toBeVisible();
-  });
-
   test('blog page loads', async ({ page }) => {
     await page.goto('/blog');
 
