@@ -764,7 +764,12 @@ public class AdminController : ControllerBase
                 return Unauthorized("No valid tenant context found.");
 
             tenantScope = tenantId.Value;
-            var tenantUserIds = await _context.Users.Select(u => u.Id).ToListAsync();
+            // Explicit tenant predicate (not just the global query filter) keeps scoping
+            // self-contained and resilient to filter changes/bypasses.
+            var tenantUserIds = await _context.Users
+                .Where(u => u.TenantId == tenantScope)
+                .Select(u => u.Id)
+                .ToListAsync();
             var tenantIps = await _context.UserSignInEvents
                 .AsNoTracking()
                 .Where(e => e.TenantId == tenantScope && e.ClientIp != null)
