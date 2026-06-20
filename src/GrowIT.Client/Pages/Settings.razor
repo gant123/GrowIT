@@ -524,6 +524,9 @@
                     </div>
                 </div>
                 <div class="settings-panel-body">
+                    @* Email and system diagnostics are platform-wide and restricted to SuperAdmin. *@
+                    @if (_isSuperAdmin)
+                    {
                     <div class="email-diagnostics-card mb-4">
                         <div class="email-diagnostics-header">
                             <div>
@@ -674,6 +677,7 @@
                             </div>
                         }
                     </div>
+                    }
 
                     <div class="security-grid">
                         <div class="security-card">
@@ -903,6 +907,7 @@
     private bool _isSendingTestEmail;
     private bool _testEmailSucceeded;
     private bool _hasSettingsAccess = true;
+    private bool _isSuperAdmin;
     private string? _pageError;
     private string? _orgSaveMessage;
     private string? _userActionMessage;
@@ -964,6 +969,7 @@
     {
         var access = await RoleAccessService.GetAccessAsync();
         _hasSettingsAccess = access.CanManageAdminWorkspace;
+        _isSuperAdmin = access.IsSuperAdmin;
 
         if (!_hasSettingsAccess)
         {
@@ -993,10 +999,8 @@
             var invitesTask = AdminService.GetInvitesAsync(_cts.Token);
             var inviteActivityTask = AdminService.GetInviteActivityAsync(30, _cts.Token);
             var auditLogsTask = AdminService.GetAuditLogsAsync(100, null, null, _cts.Token);
-            var emailDiagnosticsTask = AdminService.GetEmailDiagnosticsAsync(_cts.Token);
-            var systemDiagnosticsTask = AdminService.GetSystemDiagnosticsAsync(_cts.Token);
             var securityAttemptsTask = AdminService.GetSecurityAccessAttemptsAsync(new SecurityAccessAttemptQueryParams { Take = 250 }, _cts.Token);
-            await Task.WhenAll(orgTask, usersTask, invitesTask, inviteActivityTask, auditLogsTask, emailDiagnosticsTask, systemDiagnosticsTask, securityAttemptsTask);
+            await Task.WhenAll(orgTask, usersTask, invitesTask, inviteActivityTask, auditLogsTask, securityAttemptsTask);
 
             if (_disposed) return;
 
@@ -1020,9 +1024,14 @@
             _inviteActivity = await inviteActivityTask;
             _auditLogs = await auditLogsTask;
             UpdateFilteredAuditLogs();
-            _emailDiagnostics = await emailDiagnosticsTask;
-            _systemDiagnostics = await systemDiagnosticsTask;
             _securityAttempts = await securityAttemptsTask;
+
+            // Platform diagnostics are SuperAdmin-only; skip for tenant admins.
+            if (_isSuperAdmin)
+            {
+                _emailDiagnostics = await AdminService.GetEmailDiagnosticsAsync(_cts.Token);
+                _systemDiagnostics = await AdminService.GetSystemDiagnosticsAsync(_cts.Token);
+            }
         }
         catch (Exception ex)
         {
@@ -1346,6 +1355,7 @@
 
     private async Task RefreshEmailDiagnosticsAsync()
     {
+        if (!_isSuperAdmin) return;
         _emailDiagnosticsError = null;
         _isLoadingEmailDiagnostics = true;
         try
@@ -1365,6 +1375,7 @@
 
     private async Task RefreshSystemDiagnosticsAsync()
     {
+        if (!_isSuperAdmin) return;
         _systemDiagnosticsError = null;
         _isLoadingSystemDiagnostics = true;
         try

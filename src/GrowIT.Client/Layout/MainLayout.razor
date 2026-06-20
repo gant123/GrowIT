@@ -470,6 +470,7 @@
     private string _userOrganization = "Workspace";
     private bool _canAccessAdminWorkspace;
     private bool _canManageSiteContent;
+    private bool _isSuperAdmin;
     private bool _canAccessIntelligence;
     private bool _canManageFinancials;
     private bool _canDocumentServiceRecords;
@@ -553,6 +554,7 @@
             var access = await RoleAccessService.GetAccessAsync();
             _canAccessAdminWorkspace = access.CanManageAdminWorkspace;
             _canManageSiteContent = access.CanManageSiteContent;
+            _isSuperAdmin = access.IsSuperAdmin;
             _canAccessIntelligence = access.CanAccessReports;
             _canManageFinancials = access.CanManageFinancials;
             _canDocumentServiceRecords = access.CanDocumentServiceRecords;
@@ -582,6 +584,7 @@
         {
             _canAccessAdminWorkspace = false;
             _canManageSiteContent = false;
+            _isSuperAdmin = false;
             _canAccessIntelligence = false;
             _canManageFinancials = false;
             _canDocumentServiceRecords = false;
@@ -1024,7 +1027,8 @@
 
     private async Task RefreshShellDiagnosticsBannerAsync()
     {
-        if (!_canAccessAdminWorkspace)
+        // System diagnostics are platform-wide and restricted to SuperAdmin.
+        if (!_isSuperAdmin)
         {
             _showSystemWarningBanner = false;
             _systemWarningBannerMessage = null;

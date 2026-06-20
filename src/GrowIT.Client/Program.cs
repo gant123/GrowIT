@@ -245,14 +245,16 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization(options =>
 {
+    // SuperAdmin is a strict superset: it is implicitly allowed by every lower-tier
+    // policy, but only SuperAdmin satisfies SuperAdminOnly (platform/site-wide controls).
     options.AddPolicy("SuperAdminOnly", policy => policy.RequireAssertion(context =>
-        HasAnyRole(context.User, "SuperAdmin", "Owner")));
+        HasAnyRole(context.User, "SuperAdmin")));
     options.AddPolicy("AdminOnly", policy => policy.RequireAssertion(context =>
-        HasAnyRole(context.User, "Admin", "Owner")));
+        HasAnyRole(context.User, "SuperAdmin", "Admin", "Owner")));
     options.AddPolicy("AdminOrManager", policy => policy.RequireAssertion(context =>
-        HasAnyRole(context.User, "Admin", "Manager", "Owner")));
+        HasAnyRole(context.User, "SuperAdmin", "Admin", "Manager", "Owner")));
     options.AddPolicy("ServiceWriter", policy => policy.RequireAssertion(context =>
-        HasAnyRole(context.User, "Admin", "Manager", "Owner", "Case Manager")));
+        HasAnyRole(context.User, "SuperAdmin", "Admin", "Manager", "Owner", "Case Manager")));
 });
 
 builder.Services.AddEndpointsApiExplorer();
@@ -452,6 +454,8 @@ static async Task EnsureIdentityBootstrapAsync(IServiceProvider services)
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("IdentityBootstrap");
 
     foreach (var roleName in new[] { "SuperAdmin", "Owner", "Admin", "Manager", "Case Manager", "Analyst", "Member" })
     {
@@ -554,6 +558,66 @@ static async Task EnsureIdentityBootstrapAsync(IServiceProvider services)
             }
         }
     }
+
+    await EnsureConfiguredSuperAdminAsync(userManager, configuration, logger);
+}
+
+// Promotes the single configured SuperAdmin (SuperAdmin:Email) to the SuperAdmin role
+// exclusively. SuperAdmin is a superset of all other roles, so this user does not also
+// need Admin/Owner. No email is hardcoded here — it is read from configuration.
+static async Task EnsureConfiguredSuperAdminAsync(
+    UserManager<User> userManager,
+    IConfiguration configuration,
+    ILogger logger)
+{
+    const string SuperAdminRole = "SuperAdmin";
+    var superAdminEmail = configuration["SuperAdmin:Email"]?.Trim();
+    if (string.IsNullOrWhiteSpace(superAdminEmail))
+    {
+        logger.LogWarning("SuperAdmin:Email is not configured. No SuperAdmin was provisioned.");
+        return;
+    }
+
+    var normalizedEmail = superAdminEmail.ToUpperInvariant();
+    var superUser = await userManager.Users
+        .IgnoreQueryFilters()
+        .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
+
+    if (superUser is null)
+    {
+        logger.LogWarning(
+            "Configured SuperAdmin '{Email}' was not found. Register that account, then re-run the identity bootstrap.",
+            superAdminEmail);
+        return;
+    }
+
+    if (!string.Equals(superUser.Role, SuperAdminRole, StringComparison.OrdinalIgnoreCase))
+    {
+        superUser.Role = SuperAdminRole;
+        var updateResult = await userManager.UpdateAsync(superUser);
+        if (!updateResult.Succeeded)
+        {
+            throw new InvalidOperationException(
+                $"Failed to set SuperAdmin role flag for '{superUser.Id}': {string.Join(" ", updateResult.Errors.Select(e => e.Description))}");
+        }
+    }
+
+    var currentRoles = await userManager.GetRolesAsync(superUser);
+    var staleRoles = currentRoles
+        .Where(r => !string.Equals(r, SuperAdminRole, StringComparison.OrdinalIgnoreCase))
+        .ToList();
+    if (staleRoles.Count > 0)
+    {
+        await userManager.RemoveFromRolesAsync(superUser, staleRoles);
+    }
+
+    if (!await userManager.IsInRoleAsync(superUser, SuperAdminRole))
+    {
+        await userManager.AddToRoleAsync(superUser, SuperAdminRole);
+    }
+
+    await userManager.UpdateSecurityStampAsync(superUser);
+    logger.LogInformation("Provisioned SuperAdmin for '{Email}'.", superAdminEmail);
 }
 
 static string GetRequiredConnectionString(IConfiguration configuration, string name)
