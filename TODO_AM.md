@@ -1,86 +1,80 @@
-# Morning TODO (Next Work Session)
+# grow.IT — Working TODO
 
-## First 15 Minutes (stability checks)
+_Last refreshed: 2026-06-20. Ordered by priority. Check the README "Quick Start" for setup commands._
 
-- [ ] Pull latest changes and run:
-  - `dotnet build GrowIT.slnx`
-- [ ] Apply any pending migrations:
-  - `dotnet ef database update --project src/GrowIT.Infrastructure --startup-project src/GrowIT.Client`
-- [ ] Start app host + DB and confirm both boot cleanly
-- [ ] Hard refresh browser cache before UI review
+## Recently shipped (PR: super-admin lockdown)
 
-## QA Pass (high value)
+- [x] `SuperAdminOnly` narrowed to `SuperAdmin` only; SuperAdmin made a strict superset of lower policies.
+- [x] Single SuperAdmin provisioned from `SuperAdmin:Email` during identity bootstrap.
+- [x] Platform endpoints (email/system diagnostics, email test, site content) locked to SuperAdmin.
+- [x] `audit-logs` / `security-attempts` tenant-scoped for tenant admins, platform-wide for SuperAdmin.
+- [x] Privilege-escalation guards in `UpdateUserRole` / `CreateInvite`.
+- [x] Integration tests for the new policy boundaries (14 passing).
+- [x] Removed dead `Role` / `UserRole` entities and the unused `UserRole` enum.
+- [x] README + permissions matrix updated; `.env.docker.example` added.
 
-- [ ] `Profile`:
-  - [ ] upload photo
-  - [ ] remove photo
-  - [ ] confirm header/sidebar avatar updates
-- [ ] `Settings -> Security`:
-  - [ ] Email diagnostics loads
-  - [ ] Test email sends (SMTP or dev file fallback)
-  - [ ] Seed Demo Data works without FK errors
-- [ ] `Settings -> Users & Roles`:
-  - [ ] role edit save
-  - [ ] deactivate/reactivate
-- [ ] `Settings -> Invites`:
-  - [ ] create / resend / revoke
-  - [ ] accept invite flow
-  - [ ] invite activity feed updates
+## First 15 minutes (stability checks)
 
-## Role / Permissions Verification (manual)
+- [ ] `dotnet build GrowIT.slnx`
+- [ ] Start DB: `docker compose up -d db`
+- [ ] Apply migrations: `dotnet ef database update --project src/GrowIT.Infrastructure --startup-project src/GrowIT.Client`
+- [ ] Run bootstrap (provisions SuperAdmin): `dotnet run --project src/GrowIT.Client -- --bootstrap-identity`
+- [ ] Start the host, log in as SuperAdmin, confirm `Site Content` + diagnostics are visible.
 
-- [ ] Test `Owner`
-- [ ] Test `Admin`
-- [ ] Test `Manager`
-- [ ] Test `Case Manager`
-- [ ] Test `Member`
+## Identity correctness (the big one)
 
-Check these screens for correct access (visible/hidden actions + backend enforcement):
+- [ ] **Consolidate role storage to a single source of truth.** Today roles live in BOTH
+      ASP.NET Identity (`AspNetUserRoles`/`AspNetRoles`) and the denormalized `User.Role`
+      column, and `GrowITUserClaimsPrincipalFactory` emits both as claims. It works because
+      every write path keeps them in sync, but it's fragile. Decide: make Identity authoritative
+      and either drop `User.Role` or keep it as a read-only cached display value never used for
+      authz. Touch points: `TokenService`, `GrowITUserClaimsPrincipalFactory`, `AdminController`,
+      `AuthController`, bootstrap.
+- [ ] Reconcile `User.Role` ↔ Identity roles in bootstrap as a one-time repair (detect drift).
 
-- [ ] `/settings`
-- [ ] `/reports`
-- [ ] `/funds`
-- [ ] `/programs`
+## Auth / permissions hardening
+
+- [ ] Route-level gating: switch `Routes.razor` to `AuthorizeRouteView` so protected pages enforce
+      roles at the router (defense in depth; today only the API enforces).
+- [ ] Endpoint-by-endpoint policy audit — confirm every write route has an explicit policy.
+- [ ] Expand `403` integration tests (Financials, Investments approve/disburse, AdminContent).
+- [ ] **Product decision:** should `Manager` keep user/org/invite management, or be operational-only?
+- [ ] **Product decision:** is beta feedback meant to be per-tenant (current) or platform-wide to the founder/SuperAdmin?
+
+## Operational / correctness
+
+- [ ] `seed-demo-data` is currently a stub returning a success message — either implement real
+      seeding or hide the Settings action so it isn't misleading.
+- [ ] Decide how migrations + bootstrap run in deployed environments (no auto-migrate on startup
+      today). Either add a guarded startup migrate, or document/script it for Docker.
+- [ ] Add a startup health check page (DB connectivity + pending migrations + SMTP diagnostics).
+
+## QA pass (manual, per role)
+
+Test `SuperAdmin`, `Owner`, `Admin`, `Manager`, `Case Manager`, `Member` against:
+
+- [ ] `/settings` (org, users & roles, invites, system health tab)
+- [ ] `/super-admin/content` (SuperAdmin only)
+- [ ] `/reports`, `/insights`
+- [ ] `/funds`, `/programs`
 - [ ] `/investments` (create vs approve/disburse/delete)
-- [ ] `/imprints`
-- [ ] `/growth-plans`
+- [ ] `/imprints`, `/growth-plans`
+- [ ] Profile photo upload/remove → header/sidebar avatar updates
+- [ ] Invites: create / resend / revoke / accept + activity feed
 
-## Tests
+## Next engineering work
 
-- [ ] Run integration tests:
-  - `dotnet test tests/GrowIT.IntegrationTests/GrowIT.IntegrationTests.csproj -m:1 --disable-build-servers`
-- [ ] Confirm new authorization tests pass (`403` checks)
+1. **Upload productionization** — env-based storage (Local/S3/Azure Blob), thumbnail variants, retention cleanup.
+2. **Email delivery hardening** — provider option (SendGrid/Postmark), retry/backoff, structured error logging.
+3. **Admin experience** — user detail drawer (last seen / created / role history), force password reset, invite filters/search.
 
-## Next Engineering Work (recommended order)
+## Cleanup / nice-to-have
 
-1. **Upload productionization**
-   - [ ] move file storage behind env-based config (Local/S3/Azure Blob)
-   - [ ] add thumbnail/size variants (avatar + profile)
-   - [ ] add file retention cleanup strategy
+- [ ] Address remaining nullable warnings (`FinancialsController`, some Razor pages).
+- [ ] Keep `docs/PERMISSIONS_MATRIX.md` in sync when policies change.
 
-2. **Email delivery hardening**
-   - [ ] add provider integration option (SendGrid/Postmark)
-   - [ ] add retry/backoff + structured error logging
-   - [ ] add “copy fallback file path” UX in Settings (dev mode)
+## Notes
 
-3. **Permission coverage expansion**
-   - [ ] audit every write endpoint for policy annotations
-   - [ ] add more `403` integration tests (Financials/Admin edge cases)
-   - [ ] document any role exceptions in `docs/PERMISSIONS_MATRIX.md`
-
-4. **Admin experience polish**
-   - [ ] user detail drawer (last seen / created / role history)
-   - [ ] force password reset
-   - [ ] invite filters/search in grid
-
-## Cleanup / Nice-to-Have
-
-- [ ] Address known nullable warnings (`FinancialsController`, some client Razor pages)
-- [ ] Add a startup health check page (DB + migrations status + SMTP diagnostics)
-- [ ] Add release checklist doc for staging/prod config
-
-## Notes For Tomorrow
-
-- `GrowIT.Client` is now the single host (UI + backend controllers/services)
-- If anything looks weird in UI after code changes: hard refresh first
-- If build output paths recurse again: clean `bin/obj` folders before debugging deeper
+- `GrowIT.Client` is the single host (UI + backend controllers/services).
+- After code changes, hard-refresh the browser before UI review.
+- If build output paths recurse, clean `bin/obj` before deeper debugging.
