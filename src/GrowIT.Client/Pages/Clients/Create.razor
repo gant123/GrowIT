@@ -69,6 +69,32 @@
                             </div>
                         </div>
                     </div>
+
+                    <div class="form-group-growit">
+                        <label>Address</label>
+                        <InputText @bind-Value="clientRequest.Address" class="form-input-growit" placeholder="Street, city, state, ZIP" />
+                    </div>
+
+                    <div class="form-row three-col">
+                        <div>
+                            <div class="form-group-growit">
+                                <label>Date of Birth</label>
+                                <InputDate @bind-Value="clientRequest.DateOfBirth" class="form-input-growit" />
+                            </div>
+                        </div>
+                        <div>
+                            <div class="form-group-growit">
+                                <label>SSN Last 4</label>
+                                <InputText @bind-Value="clientRequest.SSNLast4" class="form-input-growit" maxlength="4" />
+                            </div>
+                        </div>
+                        <div>
+                            <div class="form-group-growit">
+                                <label>Photo URL</label>
+                                <InputText @bind-Value="clientRequest.PhotoUrl" class="form-input-growit" />
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Assessment -->
@@ -94,6 +120,47 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <div class="form-row three-col">
+                        <div>
+                            <div class="form-group-growit">
+                                <label>Marital Status</label>
+                                <InputSelect @bind-Value="clientRequest.MaritalStatus" class="form-input-growit">
+                                    @foreach (var status in Enum.GetValues<MaritalStatus>())
+                                    {
+                                        <option value="@status">@status</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="form-group-growit">
+                                <label>Employment Status</label>
+                                <InputSelect @bind-Value="clientRequest.EmploymentStatus" class="form-input-growit">
+                                    @foreach (var status in Enum.GetValues<EmploymentStatus>())
+                                    {
+                                        <option value="@status">@status</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="form-group-growit">
+                                <label>Household Role</label>
+                                <InputSelect @bind-Value="clientRequest.HouseholdRole" class="form-input-growit">
+                                    @foreach (var role in Enum.GetValues<HouseholdRole>())
+                                    {
+                                        <option value="@role">@role</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group-growit">
+                        <label>Next Follow-Up Date</label>
+                        <InputDate @bind-Value="clientRequest.NextFollowupDate" class="form-input-growit" />
                     </div>
 
                     <div class="form-group-growit">

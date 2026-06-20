@@ -33,6 +33,12 @@ services:
       Jwt__Key: ${JWT_KEY:-ChangeMe-Set-A-Long-Random-Key-Before-Beta}
       SyncfusionLicense: ${SYNCFUSION_LICENSE:-}
       ClientUrl: ${CLIENT_URL:-https://beta.growit.now}
+      Stripe__SecretKey: ${STRIPE_SECRET_KEY:-}
+      Stripe__WebhookSecret: ${STRIPE_WEBHOOK_SECRET:-}
+      Stripe__Plans__Pro__MonthlyPriceId: ${STRIPE_PRO_MONTHLY_PRICE_ID:-}
+      Stripe__Plans__Pro__YearlyPriceId: ${STRIPE_PRO_YEARLY_PRICE_ID:-}
+      Stripe__Plans__Enterprise__MonthlyPriceId: ${STRIPE_ENTERPRISE_MONTHLY_PRICE_ID:-}
+      Stripe__Plans__Enterprise__YearlyPriceId: ${STRIPE_ENTERPRISE_YEARLY_PRICE_ID:-}
       Cors__AllowedOrigins__0: ${CLIENT_URL:-https://beta.growit.now}
       Cors__AllowedOrigins__1: http://localhost:${CLIENT_PORT:-5180}
       Email__SmtpHost: ${EMAIL_SMTP_HOST:-}

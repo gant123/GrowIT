@@ -15,8 +15,15 @@ public class ClientDetailDto
     public string Email { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;
+    public DateTime? DateOfBirth { get; set; }
+    public string? SSNLast4 { get; set; }
+    public string? PhotoUrl { get; set; }
     public int HouseholdCount { get; set; }
+    public MaritalStatus MaritalStatus { get; set; }
     public EmploymentStatus EmploymentStatus { get; set; }
+    public DateTime? NextFollowupDate { get; set; }
+    public Guid? HouseholdId { get; set; }
+    public HouseholdRole HouseholdRole { get; set; }
 
     // --- Financial Summary ---
     public decimal TotalInvestment { get; set; }

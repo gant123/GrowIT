@@ -1,6 +1,7 @@
 using FluentValidation;
 using GrowIT.Shared.DTOs;
 using GrowIT.Infrastructure.Data;
+using GrowIT.Shared.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace GrowIT.Backend.Validators;
@@ -26,7 +27,10 @@ public class UpdateFundRequestValidator : AbstractValidator<UpdateFundRequest>
             {
                 // Calculate real usage from DB
                 var realUsage = await context.Investments
-                    .Where(i => i.FundId == fundId)
+                    .Where(i => i.FundId == fundId &&
+                        (i.Status == InvestmentStatus.Approved ||
+                         i.Status == InvestmentStatus.Disbursed ||
+                         i.Status == InvestmentStatus.Completed))
                     .SumAsync(i => i.Amount, cancellation);
 
                 // Validation passes if New Amount >= Real Usage

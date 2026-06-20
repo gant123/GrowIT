@@ -8,6 +8,7 @@ public interface IClientService
     Task<List<ClientDto>> GetAllClientsAsync();
     Task<ClientDetailDto> GetClientDetailAsync(Guid id);
     Task<Guid> CreateClientAsync(CreateClientRequest request);
+    Task UpdateClientAsync(Guid id, CreateClientRequest request);
     Task AddFamilyMemberAsync(Guid clientId, CreateFamilyMemberRequest request);
     Task<FamilyMemberProfileDto> GetMemberProfileAsync(Guid memberId);
     Task UpdateFamilyMemberAsync(Guid memberId, CreateFamilyMemberRequest request);
@@ -37,6 +38,11 @@ public class ClientService : BaseApiService, IClientService
         // POST api/clients
         var result = await PostAsync<CreateClientRequest, CreateResponse>(Endpoint, request);
         return result?.ClientId ?? Guid.Empty;
+    }
+
+    public async Task UpdateClientAsync(Guid id, CreateClientRequest request)
+    {
+        await PutAsync($"{Endpoint}/{id}", request);
     }
 
     public async Task AddFamilyMemberAsync(Guid clientId, CreateFamilyMemberRequest request)

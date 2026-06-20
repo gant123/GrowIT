@@ -16,11 +16,16 @@ public class InvestmentsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly ICurrentTenantService _tenantService;
+    private readonly ICurrentUserService _currentUserService;
 
-    public InvestmentsController(ApplicationDbContext context, ICurrentTenantService tenantService)
+    public InvestmentsController(
+        ApplicationDbContext context,
+        ICurrentTenantService tenantService,
+        ICurrentUserService currentUserService)
     {
         _context = context;
         _tenantService = tenantService;
+        _currentUserService = currentUserService;
     }
 
     [HttpGet]
@@ -130,7 +135,7 @@ public class InvestmentsController : ControllerBase
             if (!memberExists) return BadRequest("Family member not found for the selected client.");
         }
 
-        // 2. Business Logic: Do we have enough money?
+        // 2. Business Logic: Confirm the request could be approved today.
         if (fund.AvailableAmount < request.Amount)
         {
             return BadRequest($"Insufficient funds. Available: ${fund.AvailableAmount}");
@@ -149,15 +154,11 @@ public class InvestmentsController : ControllerBase
             Status = InvestmentStatus.Pending,
             TenantId = tenantId.Value,
             SnapshotUnitCost = request.Amount, 
-            CreatedBy = Guid.Empty 
+            CreatedBy = _currentUserService.UserId ?? Guid.Empty 
         };
 
-        // 4. Update the Fund Balance (The "Real-Time" tracking)
-        fund.AvailableAmount -= request.Amount;
-
-        // 5. Save everything in one "Transaction"
+        // Pending requests do not reserve budget. Approval reserves budget; disbursement records cash leaving.
         _context.Investments.Add(investment);
-        _context.Funds.Update(fund); 
         await _context.SaveChangesAsync();
 
         return Ok(new { Message = "Investment Recorded", NewFundBalance = fund.AvailableAmount, InvestmentId = investment.Id });
@@ -167,14 +168,31 @@ public class InvestmentsController : ControllerBase
     [Authorize(Policy = "AdminOrManager")]
     public async Task<IActionResult> ApproveInvestment(Guid id, [FromBody] ApproveInvestmentRequest request)
     {
-        var investment = await _context.Investments.FirstOrDefaultAsync(i => i.Id == id);
+        var investment = await _context.Investments
+            .Include(i => i.Fund)
+            .FirstOrDefaultAsync(i => i.Id == id);
         if (investment == null) return NotFound();
 
+        if (investment.Status != InvestmentStatus.Pending && investment.Status != InvestmentStatus.Draft)
+        {
+            return BadRequest("Only pending or draft investments can be approved.");
+        }
+
+        if (investment.Fund == null)
+        {
+            return BadRequest("Investment fund was not found.");
+        }
+
+        if (investment.Fund.AvailableAmount < investment.Amount)
+        {
+            return BadRequest($"Insufficient funds. Available: ${investment.Fund.AvailableAmount}");
+        }
+
+        investment.Fund.AvailableAmount -= investment.Amount;
         investment.Status = InvestmentStatus.Approved;
-        // In a real app, we'd store who approved it and when
         
         await _context.SaveChangesAsync();
-        return Ok(new { Message = "Investment Approved" });
+        return Ok(new { Message = "Investment Approved", NewFundBalance = investment.Fund.AvailableAmount });
     }
 
     [HttpPost("{id}/disburse")]
@@ -183,6 +201,11 @@ public class InvestmentsController : ControllerBase
     {
         var investment = await _context.Investments.FirstOrDefaultAsync(i => i.Id == id);
         if (investment == null) return NotFound();
+
+        if (investment.Status != InvestmentStatus.Approved)
+        {
+            return BadRequest("Only approved investments can be disbursed.");
+        }
 
         investment.Status = InvestmentStatus.Disbursed;
         
@@ -199,11 +222,13 @@ public class InvestmentsController : ControllerBase
             .FirstOrDefaultAsync(i => i.Id == id);
         if (investment == null) return NotFound();
 
-        // If it's being deleted, return funds? Depends on business rules.
-        // For now, let's just delete it.
-        if (investment.Fund != null)
+        if (investment.Status == InvestmentStatus.Approved && investment.Fund != null)
         {
             investment.Fund.AvailableAmount += investment.Amount;
+        }
+        else if (investment.Status == InvestmentStatus.Disbursed || investment.Status == InvestmentStatus.Completed)
+        {
+            return BadRequest("Disbursed investments cannot be deleted. Mark them returned or create an offsetting record.");
         }
 
         _context.Investments.Remove(investment);

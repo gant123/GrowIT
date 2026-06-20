@@ -83,10 +83,17 @@ public class ClientsController : ControllerBase
             Email = client.Email,
             Phone = client.Phone,
             Address = client.Address,
+            DateOfBirth = client.DateOfBirth,
+            SSNLast4 = client.SSNLast4,
+            PhotoUrl = client.PhotoUrl,
             StabilityScore = client.StabilityScore,
             LifePhase = client.LifePhase,
             HouseholdCount = client.HouseholdCount,
+            MaritalStatus = client.MaritalStatus,
             EmploymentStatus = client.EmploymentStatus,
+            NextFollowupDate = client.NextFollowupDate,
+            HouseholdId = client.HouseholdId,
+            HouseholdRole = client.HouseholdRole,
             TotalInvestment = investments.Sum(x => x.Amount),
             LastInvestmentDate = investments.OrderByDescending(i => i.CreatedAt).FirstOrDefault()?.CreatedAt,
             
@@ -115,15 +122,35 @@ public class ClientsController : ControllerBase
             return Unauthorized("No valid tenant context found.");
         }
 
+        if (request.HouseholdId.HasValue)
+        {
+            var householdExists = await _context.Households
+                .AnyAsync(h => h.Id == request.HouseholdId.Value && h.TenantId == tenantId.Value);
+
+            if (!householdExists)
+            {
+                return BadRequest("Selected household was not found.");
+            }
+        }
+
         var newClient = new Client
         {
             FirstName = request.FirstName,
             LastName = request.LastName,
             Email = request.Email ?? "",
             Phone = request.Phone ?? "",
+            Address = request.Address,
+            DateOfBirth = ToUtcDate(request.DateOfBirth),
+            SSNLast4 = string.IsNullOrWhiteSpace(request.SSNLast4) ? null : request.SSNLast4.Trim(),
+            PhotoUrl = string.IsNullOrWhiteSpace(request.PhotoUrl) ? null : request.PhotoUrl.Trim(),
+            MaritalStatus = request.MaritalStatus,
+            EmploymentStatus = request.EmploymentStatus,
             HouseholdCount = request.HouseholdCount,
             StabilityScore = request.StabilityScore,
             LifePhase = request.LifePhase,
+            HouseholdId = request.HouseholdId,
+            HouseholdRole = request.HouseholdRole,
+            NextFollowupDate = ToUtcDate(request.NextFollowupDate),
             TenantId = tenantId.Value
         };
 
@@ -143,12 +170,63 @@ public class ClientsController : ControllerBase
                 Name = c.FirstName + (string.IsNullOrEmpty(c.LastName) ? "" : " " + c.LastName),
                 Email = c.Email,
                 Phone = c.Phone,
+                Address = c.Address,
                 StabilityScore = c.StabilityScore,
-                LifePhase = c.LifePhase
+                LifePhase = c.LifePhase,
+                HouseholdCount = c.HouseholdCount,
+                MaritalStatus = c.MaritalStatus,
+                EmploymentStatus = c.EmploymentStatus,
+                DateOfBirth = c.DateOfBirth,
+                NextFollowupDate = c.NextFollowupDate
             })
             .ToListAsync();
 
         return Ok(clients);
+    }
+
+    [HttpPut("{id}")]
+    [Authorize(Policy = "ServiceWriter")]
+    public async Task<IActionResult> UpdateClient(Guid id, CreateClientRequest request)
+    {
+        var tenantId = _tenantService.TenantId;
+        if (!tenantId.HasValue || tenantId == Guid.Empty)
+        {
+            return Unauthorized("No valid tenant context found.");
+        }
+
+        var client = await _context.Clients.FirstOrDefaultAsync(c => c.Id == id);
+        if (client == null) return NotFound("Client not found.");
+
+        if (request.HouseholdId.HasValue)
+        {
+            var householdExists = await _context.Households
+                .AnyAsync(h => h.Id == request.HouseholdId.Value && h.TenantId == tenantId.Value);
+
+            if (!householdExists)
+            {
+                return BadRequest("Selected household was not found.");
+            }
+        }
+
+        client.FirstName = request.FirstName;
+        client.LastName = request.LastName;
+        client.Email = request.Email ?? string.Empty;
+        client.Phone = request.Phone ?? string.Empty;
+        client.Address = request.Address;
+        client.DateOfBirth = ToUtcDate(request.DateOfBirth);
+        client.SSNLast4 = string.IsNullOrWhiteSpace(request.SSNLast4) ? null : request.SSNLast4.Trim();
+        client.PhotoUrl = string.IsNullOrWhiteSpace(request.PhotoUrl) ? null : request.PhotoUrl.Trim();
+        client.MaritalStatus = request.MaritalStatus;
+        client.EmploymentStatus = request.EmploymentStatus;
+        client.HouseholdCount = request.HouseholdCount;
+        client.StabilityScore = request.StabilityScore;
+        client.LifePhase = request.LifePhase;
+        client.HouseholdId = request.HouseholdId;
+        client.HouseholdRole = request.HouseholdRole;
+        client.NextFollowupDate = ToUtcDate(request.NextFollowupDate);
+
+        await _context.SaveChangesAsync();
+        return Ok();
     }
 
     [HttpPost("{id}/members")]
@@ -306,5 +384,15 @@ public class ClientsController : ControllerBase
         _context.FamilyMembers.Remove(member);
         await _context.SaveChangesAsync();
         return Ok();
+    }
+
+    private static DateTime? ToUtcDate(DateTime? value)
+    {
+        if (!value.HasValue)
+        {
+            return null;
+        }
+
+        return DateTime.SpecifyKind(value.Value.Date, DateTimeKind.Utc);
     }
 }

@@ -84,8 +84,36 @@ else
                                 <span class="badge-growit @GetPhaseBadgeClass(client.LifePhase)">@client.LifePhase</span>
                             </div>
                             <div class="detail-row">
+                                <span>Employment</span>
+                                <strong>@client.EmploymentStatus</strong>
+                            </div>
+                            <div class="detail-row">
+                                <span>Marital status</span>
+                                <strong>@client.MaritalStatus</strong>
+                            </div>
+                            <div class="detail-row">
                                 <span>Stability score</span>
                                 <strong>@client.StabilityScore / 10</strong>
+                            </div>
+                            <div class="detail-row">
+                                <span>Household role</span>
+                                <strong>@client.HouseholdRole</strong>
+                            </div>
+                            <div class="detail-row">
+                                <span>Date of birth</span>
+                                <strong>@(client.DateOfBirth?.ToString("MMM dd, yyyy") ?? "Not set")</strong>
+                            </div>
+                            <div class="detail-row">
+                                <span>SSN last 4</span>
+                                <strong>@(string.IsNullOrWhiteSpace(client.SSNLast4) ? "Not set" : client.SSNLast4)</strong>
+                            </div>
+                            <div class="detail-row">
+                                <span>Next follow-up</span>
+                                <strong>@(client.NextFollowupDate?.ToString("MMM dd, yyyy") ?? "Not set")</strong>
+                            </div>
+                            <div class="detail-row">
+                                <span>Address</span>
+                                <strong>@(string.IsNullOrWhiteSpace(client.Address) ? "Not set" : client.Address)</strong>
                             </div>
                             <div class="detail-row">
                                 <span>Last investment</span>

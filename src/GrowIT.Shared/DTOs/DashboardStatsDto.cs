@@ -42,8 +42,10 @@ public class ActivityItem
 
 public class TaskItem
 {
+    public Guid? TaskId { get; set; }
     public Guid ClientId { get; set; }
     public string ClientName { get; set; } = string.Empty;
     public string Note { get; set; } = string.Empty;
     public DateTime DueDate { get; set; }
+    public string AssignedToName { get; set; } = string.Empty;
 }

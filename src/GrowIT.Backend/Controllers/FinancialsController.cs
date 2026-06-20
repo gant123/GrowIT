@@ -9,6 +9,7 @@ using GrowIT.Core.Entities;
 using CoreProgram = GrowIT.Core.Entities.Program;
 using GrowIT.Backend.Services;
 using GrowIT.Backend.Validators;
+using GrowIT.Shared.Enums;
 
 namespace GrowIT.Backend.Controllers;
 
@@ -141,7 +142,12 @@ public class FinancialsController : ControllerBase
         var oldAvailable = fund.AvailableAmount;
 
         // 3. APPLY UPDATE (Logic is now safe because Validator passed)
-        var realUsage = await _context.Investments.Where(i => i.FundId == id).SumAsync(i => i.Amount);
+        var realUsage = await _context.Investments
+            .Where(i => i.FundId == id &&
+                (i.Status == InvestmentStatus.Approved ||
+                 i.Status == InvestmentStatus.Disbursed ||
+                 i.Status == InvestmentStatus.Completed))
+            .SumAsync(i => i.Amount);
         
         fund.Name = request.Name;
         fund.TotalAmount = request.TotalAmount;

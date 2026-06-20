@@ -1,0 +1,235 @@
+@page "/documents"
+@using GrowIT.Shared.DTOs
+@using GrowIT.Shared.Enums
+@inject IDocumentService DocumentService
+@inject IClientService ClientService
+
+<PageTitle>Documents - grow.IT</PageTitle>
+
+<div class="dashboard fade-in mt-4">
+    <PageHeader Title="Documents" Subtitle="Client files recorded against the Documents table.">
+        <Actions>
+            <button class="btn-growit btn-secondary-growit" @onclick="LoadData" disabled="@_isLoading">
+                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+            </button>
+            <button class="btn-growit btn-primary-growit" @onclick="OpenCreate">
+                <i class="bi bi-plus-lg me-1"></i>New Document
+            </button>
+        </Actions>
+    </PageHeader>
+
+    @if (_isLoading)
+    {
+        <div class="loading-state">
+            <div class="spinner-growit"></div>
+            <p class="loading-state-text">Loading documents...</p>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-danger">@_error</div>
+    }
+    else
+    {
+        <div class="grid-4 mb-4">
+            <KpiCard Label="Documents" Value="@_documents.Count.ToString()" Icon="bi bi-file-earmark-text" Color="primary" TrendText="Recorded files" />
+            <KpiCard Label="Clients" Value="@_documents.Select(d => d.ClientId).Distinct().Count().ToString()" Icon="bi bi-people" Color="info" TrendText="With documents" />
+            <KpiCard Label="ID Files" Value="@_documents.Count(d => d.Category == DocumentCategory.ID).ToString()" Icon="bi bi-person-badge" Color="success" TrendText="Identity records" />
+            <KpiCard Label="Contracts" Value="@_documents.Count(d => d.Category == DocumentCategory.Contract).ToString()" Icon="bi bi-journal-check" Color="warning" TrendText="Agreement records" />
+        </div>
+
+        <div class="card-growit">
+            <div class="card-header">
+                <h3 class="section-title">Document Register</h3>
+                <span class="badge-growit badge-neutral">@_documents.Count</span>
+            </div>
+            <div class="card-body p-0">
+                @if (!_documents.Any())
+                {
+                    <div class="empty-state">
+                        <i class="bi bi-file-earmark empty-state-icon"></i>
+                        <div class="empty-state-title">No documents found</div>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table mb-0 align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Client</th>
+                                    <th>Category</th>
+                                    <th>Type</th>
+                                    <th>Location</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var document in _documents)
+                                {
+                                    <tr>
+                                        <td>@document.ClientName</td>
+                                        <td><span class="badge-growit badge-neutral">@document.Category</span></td>
+                                        <td>@document.FileType</td>
+                                        <td>
+                                            <a href="@document.FileUrl" target="_blank" rel="noopener noreferrer">@DisplayUrl(document.FileUrl)</a>
+                                        </td>
+                                        <td class="text-end">
+                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteDocument(document.Id)">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@if (_showCreate)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.65); z-index: 1200;" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title">New Document</h5>
+                    <button type="button" class="btn-close" @onclick="CloseCreate"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(_modalError))
+                    {
+                        <div class="alert alert-danger">@_modalError</div>
+                    }
+                    <EditForm Model="@_newDocument" OnValidSubmit="CreateDocument">
+                        <DataAnnotationsValidator />
+                        <div class="mb-3">
+                            <label class="form-label">Client</label>
+                            <InputSelect @bind-Value="_newDocument.ClientId" class="form-select">
+                                <option value="@Guid.Empty">Select client</option>
+                                @foreach (var client in _clients)
+                                {
+                                    <option value="@client.Id">@client.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">File URL</label>
+                            <InputText @bind-Value="_newDocument.FileUrl" class="form-control" />
+                        </div>
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">File Type</label>
+                                <InputText @bind-Value="_newDocument.FileType" class="form-control" placeholder="PDF" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Category</label>
+                                <InputSelect @bind-Value="_newDocument.Category" class="form-select">
+                                    @foreach (var category in Enum.GetValues<DocumentCategory>())
+                                    {
+                                        <option value="@category">@category</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-outline-secondary" @onclick="CloseCreate">Cancel</button>
+                            <button type="submit" class="btn btn-primary" disabled="@_isSaving">Save Document</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<DocumentDto> _documents = [];
+    private List<ClientDto> _clients = [];
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _showCreate;
+    private string? _error;
+    private string? _modalError;
+    private CreateDocumentRequest _newDocument = new();
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData()
+    {
+        _isLoading = true;
+        _error = null;
+        try
+        {
+            _clients = await ClientService.GetAllClientsAsync();
+            _documents = await DocumentService.GetDocumentsAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private void OpenCreate()
+    {
+        _modalError = null;
+        _newDocument = new CreateDocumentRequest
+        {
+            ClientId = _clients.FirstOrDefault()?.Id ?? Guid.Empty,
+            FileType = "PDF",
+            Category = DocumentCategory.Other
+        };
+        _showCreate = true;
+    }
+
+    private void CloseCreate() => _showCreate = false;
+
+    private async Task CreateDocument()
+    {
+        _modalError = null;
+        if (_newDocument.ClientId == Guid.Empty)
+        {
+            _modalError = "Client is required.";
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            await DocumentService.CreateDocumentAsync(_newDocument);
+            _showCreate = false;
+            _documents = await DocumentService.GetDocumentsAsync();
+        }
+        catch (Exception ex)
+        {
+            _modalError = ex.Message;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task DeleteDocument(Guid id)
+    {
+        await DocumentService.DeleteDocumentAsync(id);
+        _documents = await DocumentService.GetDocumentsAsync();
+    }
+
+    private static string DisplayUrl(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "No URL";
+        }
+
+        return value.Length <= 48 ? value : value[..48] + "...";
+    }
+}

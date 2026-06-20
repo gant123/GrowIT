@@ -1,0 +1,302 @@
+@page "/tasks"
+@using GrowIT.Shared.DTOs
+@using GrowIT.Shared.Enums
+@inject ITaskService TaskService
+@inject IClientService ClientService
+@inject IAdminService AdminService
+@inject NavigationManager Nav
+
+<PageTitle>Tasks - grow.IT</PageTitle>
+
+<div class="dashboard fade-in mt-4">
+    <PageHeader Title="Tasks" Subtitle="Team follow-ups and case work.">
+        <Actions>
+            <button class="btn-growit btn-secondary-growit" @onclick="LoadData" disabled="@_isLoading">
+                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+            </button>
+            <button class="btn-growit btn-primary-growit" @onclick="OpenCreate">
+                <i class="bi bi-plus-lg me-1"></i>New Task
+            </button>
+        </Actions>
+    </PageHeader>
+
+    @if (_isLoading)
+    {
+        <div class="loading-state">
+            <div class="spinner-growit"></div>
+            <p class="loading-state-text">Loading tasks...</p>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-danger">@_error</div>
+    }
+    else
+    {
+        <div class="grid-4 mb-4">
+            <KpiCard Label="Pending" Value="@PendingCount.ToString()" Icon="bi bi-list-check" Color="warning" TrendText="Open work" />
+            <KpiCard Label="Overdue" Value="@OverdueCount.ToString()" Icon="bi bi-exclamation-triangle" Color="danger" TrendText="Past due" />
+            <KpiCard Label="Completed" Value="@CompletedCount.ToString()" Icon="bi bi-check2-circle" Color="success" TrendText="Closed work" />
+            <KpiCard Label="Skipped" Value="@SkippedCount.ToString()" Icon="bi bi-skip-forward" Color="info" TrendText="Not pursued" />
+        </div>
+
+        <div class="card-growit mb-4">
+            <div class="card-body">
+                <div class="d-flex flex-wrap gap-3 align-items-end">
+                    <div style="min-width: 220px;">
+                        <label class="form-label">Status</label>
+                        <InputSelect @bind-Value="_statusFilter" class="form-select">
+                            <option value="">Pending only</option>
+                            <option value="All">All</option>
+                            <option value="@GrowIT.Shared.Enums.TaskStatus.Pending">Pending</option>
+                            <option value="@GrowIT.Shared.Enums.TaskStatus.Completed">Completed</option>
+                            <option value="@GrowIT.Shared.Enums.TaskStatus.Skipped">Skipped</option>
+                        </InputSelect>
+                    </div>
+                    <button class="btn-growit btn-secondary-growit" @onclick="ApplyFilter">Apply</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-growit">
+            <div class="card-header">
+                <h3 class="section-title">Task Queue</h3>
+                <span class="badge-growit badge-neutral">@_tasks.Count</span>
+            </div>
+            <div class="card-body p-0">
+                @if (!_tasks.Any())
+                {
+                    <div class="empty-state">
+                        <i class="bi bi-check2-circle empty-state-icon text-success"></i>
+                        <div class="empty-state-title">No tasks found</div>
+                    </div>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table mb-0 align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Client</th>
+                                    <th>Task</th>
+                                    <th>Assignee</th>
+                                    <th>Due</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var task in _tasks)
+                                {
+                                    <tr>
+                                        <td>
+                                            <button class="btn btn-link p-0" @onclick="() => NavigateToClient(task.ClientId)">
+                                                @task.ClientName
+                                            </button>
+                                        </td>
+                                        <td>@task.Notes</td>
+                                        <td>@task.AssignedToName</td>
+                                        <td>
+                                            <span class="@(task.IsOverdue ? "text-danger fw-bold" : "")">@task.DueDate.ToString("MMM dd, yyyy")</span>
+                                        </td>
+                                        <td><span class="badge-growit @GetStatusBadge(task.Status)">@task.Status</span></td>
+                                        <td class="text-end">
+                                            <div class="btn-group btn-group-sm">
+                                                @if (task.Status == GrowIT.Shared.Enums.TaskStatus.Pending)
+                                                {
+                                                    <button class="btn btn-outline-success" title="Complete" @onclick="() => ChangeStatus(task.Id, GrowIT.Shared.Enums.TaskStatus.Completed)">
+                                                        <i class="bi bi-check2"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-secondary" title="Skip" @onclick="() => ChangeStatus(task.Id, GrowIT.Shared.Enums.TaskStatus.Skipped)">
+                                                        <i class="bi bi-skip-forward"></i>
+                                                    </button>
+                                                }
+                                                <button class="btn btn-outline-danger" title="Delete" @onclick="() => DeleteTask(task.Id)">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@if (_showCreate)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.65); z-index: 1200;" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title">New Task</h5>
+                    <button type="button" class="btn-close" @onclick="CloseCreate"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(_modalError))
+                    {
+                        <div class="alert alert-danger">@_modalError</div>
+                    }
+                    <EditForm Model="@_newTask" OnValidSubmit="CreateTask">
+                        <DataAnnotationsValidator />
+                        <div class="mb-3">
+                            <label class="form-label">Client</label>
+                            <InputSelect @bind-Value="_newTask.ClientId" class="form-select">
+                                <option value="@Guid.Empty">Select client</option>
+                                @foreach (var client in _clients)
+                                {
+                                    <option value="@client.Id">@client.Name</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Assignee</label>
+                            <InputSelect @bind-Value="_newTask.AssignedTo" class="form-select">
+                                <option value="@Guid.Empty">Select assignee</option>
+                                @foreach (var user in _users.Where(u => u.IsActive))
+                                {
+                                    <option value="@user.Id">@user.FullName</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Due Date</label>
+                            <InputDate @bind-Value="_newTask.DueDate" class="form-control" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <InputTextArea @bind-Value="_newTask.Notes" class="form-control" rows="4" />
+                        </div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-outline-secondary" @onclick="CloseCreate">Cancel</button>
+                            <button type="submit" class="btn btn-primary" disabled="@_isSaving">Save Task</button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<TaskListDto> _tasks = [];
+    private List<ClientDto> _clients = [];
+    private List<AdminUserListItemDto> _users = [];
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private bool _showCreate;
+    private string? _error;
+    private string? _modalError;
+    private string? _statusFilter;
+    private CreateTaskRequest _newTask = new();
+
+    private int PendingCount => _tasks.Count(t => t.Status == GrowIT.Shared.Enums.TaskStatus.Pending);
+    private int OverdueCount => _tasks.Count(t => t.IsOverdue);
+    private int CompletedCount => _tasks.Count(t => t.Status == GrowIT.Shared.Enums.TaskStatus.Completed);
+    private int SkippedCount => _tasks.Count(t => t.Status == GrowIT.Shared.Enums.TaskStatus.Skipped);
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData()
+    {
+        _isLoading = true;
+        _error = null;
+        try
+        {
+            _clients = await ClientService.GetAllClientsAsync();
+            _users = await AdminService.GetUsersAsync();
+            await LoadTasks();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task LoadTasks()
+    {
+        var query = new TaskQueryParams();
+        if (_statusFilter == "All")
+        {
+            query.IncludeCompleted = true;
+        }
+        else if (Enum.TryParse<GrowIT.Shared.Enums.TaskStatus>(_statusFilter, out var status))
+        {
+            query.Status = status;
+            query.IncludeCompleted = true;
+        }
+
+        _tasks = await TaskService.GetTasksAsync(query);
+    }
+
+    private async Task ApplyFilter() => await LoadTasks();
+
+    private void OpenCreate()
+    {
+        _modalError = null;
+        _newTask = new CreateTaskRequest
+        {
+            DueDate = DateTime.UtcNow.Date.AddDays(7),
+            ClientId = _clients.FirstOrDefault()?.Id ?? Guid.Empty,
+            AssignedTo = _users.FirstOrDefault(u => u.IsActive)?.Id ?? Guid.Empty
+        };
+        _showCreate = true;
+    }
+
+    private void CloseCreate() => _showCreate = false;
+
+    private async Task CreateTask()
+    {
+        _modalError = null;
+        if (_newTask.ClientId == Guid.Empty || _newTask.AssignedTo == Guid.Empty)
+        {
+            _modalError = "Client and assignee are required.";
+            return;
+        }
+
+        _isSaving = true;
+        try
+        {
+            await TaskService.CreateTaskAsync(_newTask);
+            _showCreate = false;
+            await LoadTasks();
+        }
+        catch (Exception ex)
+        {
+            _modalError = ex.Message;
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private async Task ChangeStatus(Guid id, GrowIT.Shared.Enums.TaskStatus status)
+    {
+        await TaskService.UpdateTaskStatusAsync(id, status);
+        await LoadTasks();
+    }
+
+    private async Task DeleteTask(Guid id)
+    {
+        await TaskService.DeleteTaskAsync(id);
+        await LoadTasks();
+    }
+
+    private void NavigateToClient(Guid clientId) => Nav.NavigateTo($"/clients/{clientId}");
+
+    private static string GetStatusBadge(GrowIT.Shared.Enums.TaskStatus status) => status switch
+    {
+        GrowIT.Shared.Enums.TaskStatus.Completed => "badge-success",
+        GrowIT.Shared.Enums.TaskStatus.Skipped => "badge-neutral",
+        _ => "badge-warning"
+    };
+}

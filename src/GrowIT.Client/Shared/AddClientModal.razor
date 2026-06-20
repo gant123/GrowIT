@@ -5,7 +5,7 @@
 @if (Show)
 {
     <div class="modal fade show d-block" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 1200;" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow-lg" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
                 <div class="modal-header border-bottom" style="border-color: var(--growit-border);">
                     <h5 class="modal-title fw-bold">
@@ -37,6 +37,26 @@
                             </div>
                         </div>
 
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted">Address</label>
+                            <InputText @bind-Value="request.Address" class="form-control" placeholder="Street, city, state, ZIP" style="@ThemeInputStyle" />
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-muted">Date of Birth</label>
+                                <InputDate @bind-Value="request.DateOfBirth" class="form-control" style="@ThemeInputStyle" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-muted">SSN Last 4</label>
+                                <InputText @bind-Value="request.SSNLast4" class="form-control" maxlength="4" style="@ThemeInputStyle" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-muted">Next Follow-Up</label>
+                                <InputDate @bind-Value="request.NextFollowupDate" class="form-control" style="@ThemeInputStyle" />
+                            </div>
+                        </div>
+
                         <div class="row g-3 mb-3">
                             <div class="col-4">
                                 <label class="form-label small fw-bold text-muted">Household Size</label>
@@ -57,6 +77,36 @@
                                     <option value="@LifePhase.Crisis">Crisis</option>
                                     <option value="@LifePhase.Stable">Stable</option>
                                     <option value="@LifePhase.Thriving">Thriving</option>
+                                </InputSelect>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-muted">Marital</label>
+                                <InputSelect @bind-Value="request.MaritalStatus" class="form-select" style="@ThemeInputStyle">
+                                    @foreach (var status in Enum.GetValues<MaritalStatus>())
+                                    {
+                                        <option value="@status">@status</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-muted">Employment</label>
+                                <InputSelect @bind-Value="request.EmploymentStatus" class="form-select" style="@ThemeInputStyle">
+                                    @foreach (var status in Enum.GetValues<EmploymentStatus>())
+                                    {
+                                        <option value="@status">@status</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small fw-bold text-muted">Household Role</label>
+                                <InputSelect @bind-Value="request.HouseholdRole" class="form-select" style="@ThemeInputStyle">
+                                    @foreach (var role in Enum.GetValues<HouseholdRole>())
+                                    {
+                                        <option value="@role">@role</option>
+                                    }
                                 </InputSelect>
                             </div>
                         </div>

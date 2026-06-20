@@ -26,14 +26,16 @@ public class DashboardController : ControllerBase
     {
         var currentYear = DateTime.UtcNow.Year;
 
-        // 1. KPI: Total Invested YTD (Only Approved ones)
+        // 1. KPI: Total Invested YTD (money that has actually left the organization)
         var totalInvestedYtd = await _context.Investments
-            .Where(i => i.CreatedAt.Year == currentYear && i.Status == InvestmentStatus.Approved)
+            .Where(i => i.CreatedAt.Year == currentYear &&
+                (i.Status == InvestmentStatus.Disbursed || i.Status == InvestmentStatus.Completed))
             .SumAsync(i => (decimal?)i.Amount) ?? 0m;
 
-        // 2. KPI: Households Served YTD (Unique Clients with Approved Investments)
+        // 2. KPI: Households Served YTD (Unique Clients with disbursed investments)
         var householdsServed = await _context.Investments
-            .Where(i => i.CreatedAt.Year == currentYear && i.Status == InvestmentStatus.Approved)
+            .Where(i => i.CreatedAt.Year == currentYear &&
+                (i.Status == InvestmentStatus.Disbursed || i.Status == InvestmentStatus.Completed))
             .Select(i => i.ClientId)
             .Distinct()
             .CountAsync();
@@ -46,13 +48,14 @@ public class DashboardController : ControllerBase
 
         // 5. Total Lifetime Stats (Filling missing DTO fields)
         var totalLifetimeInvested = await _context.Investments
-            .Where(i => i.Status == InvestmentStatus.Approved)
+            .Where(i => i.Status == InvestmentStatus.Disbursed || i.Status == InvestmentStatus.Completed)
             .SumAsync(i => (decimal?)i.Amount) ?? 0m;
         var totalMilestones = await _context.Imprints.CountAsync();
 
         // 6. CHART: Monthly Trends (Group by Month)
         var rawInvestments = await _context.Investments
-            .Where(i => i.CreatedAt.Year == currentYear && i.Status == InvestmentStatus.Approved)
+            .Where(i => i.CreatedAt.Year == currentYear &&
+                (i.Status == InvestmentStatus.Disbursed || i.Status == InvestmentStatus.Completed))
             .Select(i => new { i.CreatedAt, i.Amount })
             .ToListAsync();
 
@@ -117,17 +120,22 @@ public class DashboardController : ControllerBase
         }));
 
         // 8. TASKS: Pending Follow-Ups
-        var followUps = await _context.Imprints
-            .Include(i => i.Client)
-            .Where(i => i.FollowupDate != null && i.FollowupDate >= DateTime.UtcNow.AddDays(-7))
-            .OrderBy(i => i.FollowupDate)
+        var followUps = await _context.Tasks
+            .Include(t => t.Client)
+            .Include(t => t.AssignedUser)
+            .Where(t => t.Status == GrowIT.Shared.Enums.TaskStatus.Pending)
+            .OrderBy(t => t.DueDate)
             .Take(10)
-            .Select(i => new TaskItem
+            .Select(t => new TaskItem
             {
-                ClientId = i.ClientId,
-                ClientName = i.Client != null ? $"{i.Client.FirstName} {i.Client.LastName}" : "Unknown",
-                Note = $"Follow up on: {i.Title}",
-                DueDate = i.FollowupDate!.Value
+                TaskId = t.Id,
+                ClientId = t.ClientId,
+                ClientName = t.Client != null ? $"{t.Client.FirstName} {t.Client.LastName}" : "Unknown",
+                AssignedToName = t.AssignedUser != null
+                    ? t.AssignedUser.FirstName + " " + t.AssignedUser.LastName
+                    : "Unassigned",
+                Note = t.Notes,
+                DueDate = t.DueDate
             })
             .ToListAsync();
 
@@ -156,7 +164,8 @@ public class DashboardController : ControllerBase
         // 1. Funding Readiness
         var fundsAvailable = await _context.Funds.SumAsync(f => (decimal?)f.AvailableAmount) ?? 0m;
         var recentSpending = await _context.Investments
-            .Where(i => i.CreatedAt >= last30Days && i.Status == InvestmentStatus.Approved)
+            .Where(i => i.CreatedAt >= last30Days &&
+                (i.Status == InvestmentStatus.Disbursed || i.Status == InvestmentStatus.Completed))
             .SumAsync(i => (decimal?)i.Amount) ?? 0m;
         
         var burnRate = recentSpending; // Monthly burn rate
@@ -200,7 +209,7 @@ public class DashboardController : ControllerBase
 
         // 3. Allocation Insights (by Program)
         var allocation = await _context.Investments
-            .Where(i => i.Status == InvestmentStatus.Approved)
+            .Where(i => i.Status == InvestmentStatus.Disbursed || i.Status == InvestmentStatus.Completed)
             .Include(i => i.Program)
             .GroupBy(i => i.Program!.Name ?? "Uncategorized")
             .Select(g => new CategoryDistributionDto

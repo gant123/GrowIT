@@ -13,6 +13,12 @@ public class CreateClientRequest
 
     public string? Email { get; set; }
     public string? Phone { get; set; }
+    public string Address { get; set; } = string.Empty;
+    public DateTime? DateOfBirth { get; set; }
+    public string? SSNLast4 { get; set; }
+    public string? PhotoUrl { get; set; }
+    public MaritalStatus MaritalStatus { get; set; } = MaritalStatus.Single;
+    public EmploymentStatus EmploymentStatus { get; set; } = EmploymentStatus.Other;
     
     // Intake details
     public int HouseholdCount { get; set; }
@@ -23,4 +29,6 @@ public class CreateClientRequest
     
     // Optional linking
     public Guid? HouseholdId { get; set; }
+    public HouseholdRole HouseholdRole { get; set; } = HouseholdRole.Head;
+    public DateTime? NextFollowupDate { get; set; }
 }

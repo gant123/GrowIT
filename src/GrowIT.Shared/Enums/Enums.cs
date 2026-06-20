@@ -5,6 +5,7 @@ public enum SubscriptionStatus { Active, Trialing, PastDue, Canceled }
 public enum InvoiceStatus { Draft, Open, Paid, Void, Uncollectible }
 public enum PaymentMethod { Card, BankTransfer, Cash, Other }
 public enum PaymentStatus { Pending, Succeeded, Failed, Refunded }
+public enum BillingInterval { Monthly, Yearly }
 
 public enum HouseholdRole { Head, Spouse, Dependent, Other }
 public enum MaritalStatus { Single, Married, Other }

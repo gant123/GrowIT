@@ -46,7 +46,7 @@ public class ContentService : BaseApiService, IContentService
         PutAsync<UpdateContactSubmissionReviewRequest, ContactSubmissionAdminDto>($"api/admin/content/contact/{id}/review", request);
 
     public async Task<List<SecurityAccessAttemptDto>> GetSecurityAccessAttemptsAsync(SecurityAccessAttemptQueryParams? query = null) =>
-        await GetAsync<List<SecurityAccessAttemptDto>>($"api/admin/content/security-attempts{BuildSecurityQuery(query)}") ?? new();
+        await GetAsync<List<SecurityAccessAttemptDto>>($"api/admin/security-attempts{BuildSecurityQuery(query)}") ?? new();
 
     private static string BuildContactQuery(ContactSubmissionQueryParams? query)
     {

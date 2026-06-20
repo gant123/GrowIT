@@ -1,0 +1,310 @@
+@page "/billing"
+@using GrowIT.Shared.DTOs
+@using GrowIT.Shared.Enums
+@inject IBillingService BillingService
+@inject NavigationManager Nav
+
+<PageTitle>Billing - grow.IT</PageTitle>
+
+<div class="dashboard fade-in mt-4">
+    <PageHeader Title="Billing" Subtitle="Plans, subscriptions, invoices, payments, and billing events.">
+        <Actions>
+            <button class="btn-growit btn-secondary-growit" @onclick="LoadBilling" disabled="@_isLoading">
+                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+            </button>
+            @if (_overview?.CurrentSubscription?.ExternalSubscriptionId is not null)
+            {
+                <button class="btn-growit btn-primary-growit" @onclick="OpenPortal" disabled="@_isRedirecting">
+                    <i class="bi bi-credit-card me-1"></i>Manage Billing
+                </button>
+            }
+        </Actions>
+    </PageHeader>
+
+    @if (_isLoading)
+    {
+        <div class="loading-state">
+            <div class="spinner-growit"></div>
+            <p class="loading-state-text">Loading billing...</p>
+        </div>
+    }
+    else if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="alert alert-danger">@_error</div>
+    }
+    else if (_overview is not null)
+    {
+        @if (!_overview.StripeConfigured)
+        {
+            <div class="alert alert-warning">
+                @_overview.SetupMessage
+            </div>
+        }
+
+        <div class="grid-4 mb-4">
+            <KpiCard Label="Current Plan"
+                     Value="@(_overview.CurrentSubscription?.PlanName ?? "None")"
+                     Icon="bi bi-layers"
+                     Color="primary"
+                     TrendText="@(_overview.CurrentSubscription?.Status.ToString() ?? "No subscription")" />
+            <KpiCard Label="Invoices"
+                     Value="@_overview.Invoices.Count.ToString()"
+                     Icon="bi bi-receipt"
+                     Color="info"
+                     TrendText="@PaidInvoiceSummary" />
+            <KpiCard Label="Payments"
+                     Value="@_overview.Payments.Sum(p => p.Amount).ToString("C0")"
+                     Icon="bi bi-credit-card"
+                     Color="success"
+                     TrendText="@($"{_overview.Payments.Count} payment records")" />
+            <KpiCard Label="Billing Events"
+                     Value="@_overview.Events.Count.ToString()"
+                     Icon="bi bi-activity"
+                     Color="warning"
+                     TrendText="Latest Stripe and plan activity" />
+        </div>
+
+        <div class="grid-3 mb-4">
+            @foreach (var plan in _overview.Plans)
+            {
+                <div class="card-growit h-100">
+                    <div class="card-header">
+                        <div>
+                            <h3 class="section-title">@plan.Name</h3>
+                            <div class="small text-muted">@plan.MaxUsers users, @plan.MaxClients clients</div>
+                        </div>
+                        @if (_overview.CurrentSubscription?.PlanId == plan.Id)
+                        {
+                            <span class="badge-growit badge-success">Current</span>
+                        }
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex align-items-end gap-2 mb-3">
+                            <div class="display-6 fw-bold">@plan.PriceMonthly.ToString("C0")</div>
+                            <div class="text-muted mb-2">monthly</div>
+                        </div>
+                        <div class="mb-3 text-muted">@plan.PriceYearly.ToString("C0") yearly</div>
+
+                        @if (plan.Features.Any())
+                        {
+                            <ul class="list-unstyled small mb-4">
+                                @foreach (var feature in plan.Features.Take(6))
+                                {
+                                    <li class="mb-2"><i class="bi bi-check2 text-success me-2"></i>@feature</li>
+                                }
+                            </ul>
+                        }
+
+                        <div class="d-flex flex-wrap gap-2">
+                            @if (plan.PriceMonthly <= 0 && plan.PriceYearly <= 0)
+                            {
+                                <button class="btn-growit btn-secondary-growit btn-sm" @onclick="() => StartCheckout(plan.Id, BillingInterval.Monthly)">
+                                    Activate
+                                </button>
+                            }
+                            else
+                            {
+                                <button class="btn-growit btn-primary-growit btn-sm"
+                                        @onclick="() => StartCheckout(plan.Id, BillingInterval.Monthly)"
+                                        disabled="@(!plan.CanCheckoutMonthly || _isRedirecting)">
+                                    Monthly
+                                </button>
+                                <button class="btn-growit btn-secondary-growit btn-sm"
+                                        @onclick="() => StartCheckout(plan.Id, BillingInterval.Yearly)"
+                                        disabled="@(!plan.CanCheckoutYearly || _isRedirecting)">
+                                    Yearly
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="grid-2 mb-4">
+            <div class="card-growit">
+                <div class="card-header">
+                    <h3 class="section-title">Invoices</h3>
+                    <span class="badge-growit badge-neutral">@_overview.Invoices.Count</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Invoice</th>
+                                    <th>Status</th>
+                                    <th>Due</th>
+                                    <th class="text-end">Paid</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var invoice in _overview.Invoices.Take(10))
+                                {
+                                    <tr>
+                                        <td>@invoice.InvoiceNumber</td>
+                                        <td><span class="badge-growit @GetInvoiceBadge(invoice.Status)">@invoice.Status</span></td>
+                                        <td>@invoice.DueDate.ToString("MMM dd, yyyy")</td>
+                                        <td class="text-end">@invoice.AmountPaid.ToString("C2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card-growit">
+                <div class="card-header">
+                    <h3 class="section-title">Payments</h3>
+                    <span class="badge-growit badge-neutral">@_overview.Payments.Count</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0 align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Provider</th>
+                                    <th>Status</th>
+                                    <th>Paid</th>
+                                    <th class="text-end">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var payment in _overview.Payments.Take(10))
+                                {
+                                    <tr>
+                                        <td>@payment.PaymentProvider</td>
+                                        <td><span class="badge-growit @GetPaymentBadge(payment.Status)">@payment.Status</span></td>
+                                        <td>@(payment.PaidAt?.ToString("MMM dd, yyyy") ?? "Pending")</td>
+                                        <td class="text-end">@payment.Amount.ToString("C2")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-growit">
+            <div class="card-header">
+                <h3 class="section-title">Billing Events</h3>
+                <span class="badge-growit badge-neutral">@_overview.Events.Count</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0 align-middle">
+                        <thead>
+                            <tr>
+                                <th>Event</th>
+                                <th>Reference</th>
+                                <th>Created</th>
+                                <th>Metadata</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in _overview.Events.Take(25))
+                            {
+                                <tr>
+                                    <td>@item.EventType</td>
+                                    <td>@item.ReferenceTable</td>
+                                    <td>@item.CreatedAt.ToString("MMM dd, yyyy h:mm tt")</td>
+                                    <td><code class="small">@TrimMetadata(item.Metadata)</code></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private BillingOverviewDto? _overview;
+    private bool _isLoading = true;
+    private bool _isRedirecting;
+    private string? _error;
+
+    private string PaidInvoiceSummary =>
+        _overview is null ? string.Empty : $"{_overview.Invoices.Count(i => i.Status == InvoiceStatus.Paid)} paid";
+
+    protected override async Task OnInitializedAsync() => await LoadBilling();
+
+    private async Task LoadBilling()
+    {
+        _isLoading = true;
+        _error = null;
+        try
+        {
+            _overview = await BillingService.GetOverviewAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task StartCheckout(Guid planId, BillingInterval interval)
+    {
+        _isRedirecting = true;
+        _error = null;
+        try
+        {
+            var url = await BillingService.CreateCheckoutSessionAsync(planId, interval);
+            if (!string.IsNullOrWhiteSpace(url))
+            {
+                Nav.NavigateTo(url, forceLoad: true);
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _isRedirecting = false;
+        }
+    }
+
+    private async Task OpenPortal()
+    {
+        _isRedirecting = true;
+        _error = null;
+        try
+        {
+            var url = await BillingService.CreatePortalSessionAsync();
+            if (!string.IsNullOrWhiteSpace(url))
+            {
+                Nav.NavigateTo(url, forceLoad: true);
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            _isRedirecting = false;
+        }
+    }
+
+    private static string GetInvoiceBadge(InvoiceStatus status) => status switch
+    {
+        InvoiceStatus.Paid => "badge-success",
+        InvoiceStatus.Open => "badge-warning",
+        InvoiceStatus.Uncollectible => "bg-danger",
+        InvoiceStatus.Void => "badge-neutral",
+        _ => "badge-neutral"
+    };
+
+    private static string GetPaymentBadge(PaymentStatus status) => status switch
+    {
+        PaymentStatus.Succeeded => "badge-success",
+        PaymentStatus.Failed => "bg-danger",
+        PaymentStatus.Refunded => "badge-neutral",
+        _ => "badge-warning"
+    };
+
+    private static string TrimMetadata(string metadata) =>
+        metadata.Length <= 100 ? metadata : metadata[..100] + "...";
+}

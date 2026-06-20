@@ -277,6 +277,9 @@ builder.Services.AddScoped<IFinancialService, FinancialService>();
 builder.Services.AddScoped<IRoleAccessService, RoleAccessService>();
 builder.Services.AddScoped<IFeedbackService, FeedbackService>();
 builder.Services.AddScoped<IContentService, ContentService>();
+builder.Services.AddScoped<IBillingService, BillingService>();
+builder.Services.AddScoped<ITaskService, TaskService>();
+builder.Services.AddScoped<IDocumentService, DocumentService>();
 
 builder.Services.AddHttpClient("GrowITApi", (sp, client) =>
     {

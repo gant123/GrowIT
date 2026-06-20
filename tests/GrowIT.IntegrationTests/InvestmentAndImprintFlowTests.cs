@@ -74,7 +74,18 @@ public class InvestmentAndImprintFlowTests
         var fundsAfterCreate = await (await client.GetAsync("/api/financials/funds"))
             .ReadRequiredJsonAsync<List<FundDto>>();
         Assert.Single(fundsAfterCreate);
-        Assert.Equal(800m, fundsAfterCreate[0].AvailableAmount);
+        Assert.Equal(1000m, fundsAfterCreate[0].AvailableAmount);
+
+        var approveResponse = await client.PostAsJsonAsync($"/api/investments/{investmentId}/approve", new ApproveInvestmentRequest
+        {
+            ApprovedBy = "Integration Test"
+        });
+        approveResponse.EnsureSuccessStatusCode();
+
+        var fundsAfterApproval = await (await client.GetAsync("/api/financials/funds"))
+            .ReadRequiredJsonAsync<List<FundDto>>();
+        Assert.Single(fundsAfterApproval);
+        Assert.Equal(800m, fundsAfterApproval[0].AvailableAmount);
 
         var deleteResponse = await client.DeleteAsync($"/api/investments/{investmentId}");
         Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);

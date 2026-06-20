@@ -1,0 +1,104 @@
+using System.ComponentModel.DataAnnotations;
+using GrowIT.Shared.Enums;
+
+namespace GrowIT.Shared.DTOs;
+
+public class BillingOverviewDto
+{
+    public List<SubscriptionPlanDto> Plans { get; set; } = new();
+    public SubscriptionDto? CurrentSubscription { get; set; }
+    public List<InvoiceDto> Invoices { get; set; } = new();
+    public List<PaymentDto> Payments { get; set; } = new();
+    public List<BillingEventDto> Events { get; set; } = new();
+    public bool StripeConfigured { get; set; }
+    public string? SetupMessage { get; set; }
+}
+
+public class SubscriptionPlanDto
+{
+    public Guid Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public decimal PriceMonthly { get; set; }
+    public decimal PriceYearly { get; set; }
+    public int MaxUsers { get; set; }
+    public int MaxClients { get; set; }
+    public string FeaturesJson { get; set; } = "{}";
+    public List<string> Features { get; set; } = new();
+    public bool CanCheckoutMonthly { get; set; }
+    public bool CanCheckoutYearly { get; set; }
+}
+
+public class SubscriptionDto
+{
+    public Guid Id { get; set; }
+    public Guid PlanId { get; set; }
+    public string PlanName { get; set; } = string.Empty;
+    public SubscriptionStatus Status { get; set; }
+    public DateTime StartDate { get; set; }
+    public DateTime? EndDate { get; set; }
+    public DateTime? TrialEndsAt { get; set; }
+    public string? ExternalSubscriptionId { get; set; }
+}
+
+public class InvoiceDto
+{
+    public Guid Id { get; set; }
+    public Guid SubscriptionId { get; set; }
+    public string InvoiceNumber { get; set; } = string.Empty;
+    public decimal AmountDue { get; set; }
+    public decimal AmountPaid { get; set; }
+    public InvoiceStatus Status { get; set; }
+    public DateTime DueDate { get; set; }
+    public DateTime? PaidAt { get; set; }
+}
+
+public class PaymentDto
+{
+    public Guid Id { get; set; }
+    public Guid InvoiceId { get; set; }
+    public string InvoiceNumber { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public PaymentMethod PaymentMethod { get; set; }
+    public string PaymentProvider { get; set; } = string.Empty;
+    public string ExternalPaymentId { get; set; } = string.Empty;
+    public PaymentStatus Status { get; set; }
+    public DateTime? PaidAt { get; set; }
+    public DateTime CreatedAt { get; set; }
+}
+
+public class BillingEventDto
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public string EventType { get; set; } = string.Empty;
+    public string ReferenceTable { get; set; } = string.Empty;
+    public Guid ReferenceId { get; set; }
+    public string Metadata { get; set; } = "{}";
+    public DateTime CreatedAt { get; set; }
+}
+
+public class CreateCheckoutSessionRequest
+{
+    public Guid PlanId { get; set; }
+    public BillingInterval Interval { get; set; } = BillingInterval.Monthly;
+}
+
+public class BillingRedirectResponse
+{
+    public string Url { get; set; } = string.Empty;
+}
+
+public class CreateSubscriptionPlanRequest
+{
+    [Required]
+    public string Name { get; set; } = string.Empty;
+    public decimal PriceMonthly { get; set; }
+    public decimal PriceYearly { get; set; }
+    public int MaxUsers { get; set; }
+    public int MaxClients { get; set; }
+    public string FeaturesJson { get; set; } = "{}";
+}
+
+public class UpdateSubscriptionPlanRequest : CreateSubscriptionPlanRequest
+{
+}
