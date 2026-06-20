@@ -16,13 +16,15 @@ public sealed class RoleAccessSnapshot
     public bool IsCaseManager { get; init; }
     public bool IsAnalyst { get; init; }
 
-    public bool CanManageAdminWorkspace => IsOwner || IsAdmin || IsManager;
-    public bool CanManageSiteContent => IsSuperAdmin || IsOwner;
-    public bool CanAccessReports => IsOwner || IsAdmin || IsManager;
-    public bool CanManageFinancials => IsOwner || IsAdmin || IsManager;
-    public bool CanSeedDemoData => IsOwner || IsAdmin;
-    public bool CanDocumentServiceRecords => IsOwner || IsAdmin || IsManager || IsCaseManager;
-    public bool CanApproveServiceInvestments => IsOwner || IsAdmin || IsManager;
+    // SuperAdmin is a strict superset: it implies every lower-tier capability.
+    public bool CanManageAdminWorkspace => IsSuperAdmin || IsOwner || IsAdmin || IsManager;
+    public bool CanManageSiteContent => IsSuperAdmin;
+    public bool CanViewPlatformDiagnostics => IsSuperAdmin;
+    public bool CanAccessReports => IsSuperAdmin || IsOwner || IsAdmin || IsManager;
+    public bool CanManageFinancials => IsSuperAdmin || IsOwner || IsAdmin || IsManager;
+    public bool CanSeedDemoData => IsSuperAdmin || IsOwner || IsAdmin;
+    public bool CanDocumentServiceRecords => IsSuperAdmin || IsOwner || IsAdmin || IsManager || IsCaseManager;
+    public bool CanApproveServiceInvestments => IsSuperAdmin || IsOwner || IsAdmin || IsManager;
 }
 
 public interface IRoleAccessService

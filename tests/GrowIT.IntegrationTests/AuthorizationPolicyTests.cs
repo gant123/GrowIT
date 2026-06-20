@@ -80,4 +80,68 @@ public class AuthorizationPolicyTests
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
+
+    [Fact]
+    public async Task SuperAdminOnly_EmailDiagnostics_RejectsAdmin()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Admin");
+
+        var response = await client.GetAsync("/api/admin/email-diagnostics");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SuperAdminOnly_EmailDiagnostics_AllowsSuperAdmin()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "SuperAdmin");
+
+        var response = await client.GetAsync("/api/admin/email-diagnostics");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SuperAdminOnly_SiteContent_RejectsOwner()
+    {
+        // Owner is a per-tenant role and must NOT inherit platform/site-wide SuperAdmin access.
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Owner");
+
+        var response = await client.GetAsync("/api/admin/content/blog");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateUserRole_RejectsEscalationToSuperAdminByAdmin()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Admin");
+
+        var response = await client.PutAsJsonAsync($"/api/admin/users/{Guid.NewGuid()}/role", new
+        {
+            role = "SuperAdmin"
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateUserRole_AllowsSuperAdminToGrantElevatedRole()
+    {
+        // A SuperAdmin passes the role-assignment gate; the request then fails only because
+        // the target user does not exist (404), proving the elevated role was permitted.
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "SuperAdmin");
+
+        var response = await client.PutAsJsonAsync($"/api/admin/users/{Guid.NewGuid()}/role", new
+        {
+            role = "SuperAdmin"
+        });
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
 }

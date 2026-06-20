@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Security.Cryptography;
 using GrowIT.Core.Entities;
 using GrowIT.Core.Interfaces;
@@ -19,6 +20,19 @@ namespace GrowIT.Backend.Controllers;
 public class AdminController : ControllerBase
 {
     private const string InviteAuditLink = "/settings?tab=invites";
+
+    // Roles a tenant Admin/Manager/Owner may assign to other users or invites.
+    private static readonly HashSet<string> StandardAssignableRoles = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Admin", "Manager", "Case Manager", "Analyst", "Member"
+    };
+
+    // Elevated roles may only be granted by a SuperAdmin (prevents privilege escalation).
+    private static readonly HashSet<string> ElevatedRoles = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "SuperAdmin", "Owner"
+    };
+
     private readonly ApplicationDbContext _context;
     private readonly ICurrentTenantService _tenantService;
     private readonly ICurrentUserService _currentUserService;
@@ -133,12 +147,20 @@ public class AdminController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Role))
             return BadRequest("Role is required.");
 
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
-        if (user is null) return NotFound();
-
         var newRole = request.Role.Trim();
         if (newRole.Length > 64)
             return BadRequest("Role must be 64 characters or less.");
+
+        // Block privilege escalation: only a SuperAdmin may grant elevated roles (SuperAdmin/Owner).
+        if (!CanAssignRole(newRole))
+            return BadRequest("That role cannot be assigned.");
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (user is null) return NotFound();
+
+        // Only a SuperAdmin may change the role of a user who currently holds an elevated role.
+        if (ElevatedRoles.Contains(user.Role ?? string.Empty) && !IsSuperAdmin())
+            return Forbid();
 
         if (await WouldRemoveLastActiveAdminAsync(user, newRole, user.IsActive))
             return BadRequest("At least one active admin must remain in the organization.");
@@ -304,6 +326,11 @@ public class AdminController : ControllerBase
         if (existingPendingInvite)
             return BadRequest("A pending invite already exists for this email.");
 
+        // Block privilege escalation through invites: elevated roles require SuperAdmin.
+        var inviteRole = string.IsNullOrWhiteSpace(request.Role) ? "Member" : request.Role.Trim();
+        if (!CanAssignRole(inviteRole))
+            return BadRequest("That role cannot be assigned to an invite.");
+
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         var invite = new OrganizationInvite
         {
@@ -311,7 +338,7 @@ public class AdminController : ControllerBase
             Email = normalizedEmail,
             FirstName = request.FirstName?.Trim() ?? string.Empty,
             LastName = request.LastName?.Trim() ?? string.Empty,
-            Role = string.IsNullOrWhiteSpace(request.Role) ? "Member" : request.Role.Trim(),
+            Role = inviteRole,
             TokenHash = HashToken(token),
             CreatedAt = DateTime.UtcNow,
             ExpiresAt = DateTime.UtcNow.AddDays(Math.Clamp(request.ExpiresInDays, 1, 30)),
@@ -416,6 +443,7 @@ public class AdminController : ControllerBase
     }
 
 
+    [Authorize(Policy = "SuperAdminOnly")]
     [HttpGet("email-diagnostics")]
     public ActionResult<EmailDiagnosticsDto> GetEmailDiagnostics()
     {
@@ -424,6 +452,7 @@ public class AdminController : ControllerBase
         return Ok(diagnostics);
     }
 
+    [Authorize(Policy = "SuperAdminOnly")]
     [HttpGet("system-diagnostics")]
     public async Task<ActionResult<SystemDiagnosticsDto>> GetSystemDiagnostics()
     {
@@ -534,7 +563,7 @@ public class AdminController : ControllerBase
         // Scheduler state
         var schedulerOptions = _schedulerOptions.CurrentValue;
         _schedulerState.Enabled = schedulerOptions.Enabled;
-        var dueCount = await _context.ReportSchedules.CountAsync(s => s.IsActive && s.NextRun <= now);
+        var dueCount = await _context.ReportSchedules.IgnoreQueryFilters().CountAsync(s => s.IsActive && s.NextRun <= now);
         checks.Add(new SystemDiagnosticCheckDto
         {
             Key = "report-scheduler",
@@ -552,7 +581,7 @@ public class AdminController : ControllerBase
 
         // Report run health (last 24h failures)
         var since = now.AddHours(-24);
-        var recentFailures = await _context.ReportRuns.CountAsync(r => r.GeneratedAt >= since && r.Status == "Failed");
+        var recentFailures = await _context.ReportRuns.IgnoreQueryFilters().CountAsync(r => r.GeneratedAt >= since && r.Status == "Failed");
         checks.Add(new SystemDiagnosticCheckDto
         {
             Key = "reports",
@@ -607,6 +636,7 @@ public class AdminController : ControllerBase
         };
     }
 
+    [Authorize(Policy = "SuperAdminOnly")]
     [HttpPost("email-test")]
     public async Task<ActionResult<SendTestEmailResponse>> SendTestEmail([FromBody] SendTestEmailRequest? request)
     {
@@ -657,7 +687,11 @@ public class AdminController : ControllerBase
             .Select(u => new { u.Id, Name = (u.FirstName + " " + u.LastName).Trim(), u.Email })
             .ToDictionaryAsync(x => x.Id, x => string.IsNullOrWhiteSpace(x.Name) ? x.Email : x.Name);
 
-        var query = _context.AuditLogs.AsNoTracking().AsQueryable();
+        // Tenant admins see only their own organization's audit trail (global query filter).
+        // SuperAdmin sees the platform-wide trail across all tenants.
+        var query = IsSuperAdmin()
+            ? _context.AuditLogs.IgnoreQueryFilters().AsNoTracking().AsQueryable()
+            : _context.AuditLogs.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(table))
         {
@@ -718,6 +752,36 @@ public class AdminController : ControllerBase
             source = source.Where(a => (a.ClientIp ?? string.Empty).Contains(ipFilter));
         }
 
+        // SuperAdmin sees the full platform-wide security log (these tables are not
+        // tenant-scoped). Tenant admins only see attempts tied to their own users or to
+        // IPs that have signed in to their tenant.
+        var isSuperAdmin = IsSuperAdmin();
+        Guid tenantScope = Guid.Empty;
+        if (!isSuperAdmin)
+        {
+            var tenantId = _tenantService.TenantId;
+            if (!tenantId.HasValue || tenantId == Guid.Empty)
+                return Unauthorized("No valid tenant context found.");
+
+            tenantScope = tenantId.Value;
+            // Explicit tenant predicate (not just the global query filter) keeps scoping
+            // self-contained and resilient to filter changes/bypasses.
+            var tenantUserIds = await _context.Users
+                .Where(u => u.TenantId == tenantScope)
+                .Select(u => u.Id)
+                .ToListAsync();
+            var tenantIps = await _context.UserSignInEvents
+                .AsNoTracking()
+                .Where(e => e.TenantId == tenantScope && e.ClientIp != null)
+                .Select(e => e.ClientIp!)
+                .Distinct()
+                .ToListAsync();
+
+            source = source.Where(a =>
+                (a.UserId.HasValue && tenantUserIds.Contains(a.UserId.Value)) ||
+                (a.ClientIp != null && tenantIps.Contains(a.ClientIp)));
+        }
+
         var attempts = await source
             .OrderByDescending(a => a.OccurredAt)
             .Take(take)
@@ -730,11 +794,17 @@ public class AdminController : ControllerBase
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
+        var signInQuery = _context.UserSignInEvents
+            .AsNoTracking()
+            .Where(e => e.ClientIp != null && ipSet.Contains(e.ClientIp));
+        if (!isSuperAdmin)
+        {
+            signInQuery = signInQuery.Where(e => e.TenantId == tenantScope);
+        }
+
         var signIns = ipSet.Count == 0
             ? new List<UserSignInEvent>()
-            : await _context.UserSignInEvents
-                .AsNoTracking()
-                .Where(e => e.ClientIp != null && ipSet.Contains(e.ClientIp))
+            : await signInQuery
                 .OrderByDescending(e => e.OccurredAt)
                 .ToListAsync();
 
@@ -861,8 +931,24 @@ public class AdminController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(role)) return false;
         var normalized = role.Trim();
-        return normalized.Equals("Admin", StringComparison.OrdinalIgnoreCase)
+        return normalized.Equals("SuperAdmin", StringComparison.OrdinalIgnoreCase)
+            || normalized.Equals("Admin", StringComparison.OrdinalIgnoreCase)
             || normalized.Equals("Owner", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool IsSuperAdmin() =>
+        User.Claims.Any(c =>
+            (c.Type == ClaimTypes.Role || c.Type == "role") &&
+            string.Equals(c.Value?.Trim(), "SuperAdmin", StringComparison.OrdinalIgnoreCase));
+
+    // A standard role is always assignable by a tenant admin; an elevated role
+    // (SuperAdmin/Owner) may only be assigned by a SuperAdmin. Unknown roles are rejected.
+    private bool CanAssignRole(string role)
+    {
+        var normalized = role.Trim();
+        if (StandardAssignableRoles.Contains(normalized)) return true;
+        if (ElevatedRoles.Contains(normalized)) return IsSuperAdmin();
+        return false;
     }
 
     private async Task<bool> WouldRemoveLastActiveAdminAsync(User targetUser, string targetRole, bool targetIsActive)
