@@ -33,6 +33,7 @@ services:
       Jwt__Key: ${JWT_KEY:-ChangeMe-Set-A-Long-Random-Key-Before-Beta}
       SyncfusionLicense: ${SYNCFUSION_LICENSE:-}
       ClientUrl: ${CLIENT_URL:-https://beta.growit.now}
+      InternalApiBaseUrl: ${INTERNAL_API_BASE_URL:-http://localhost:8080}
       Stripe__SecretKey: ${STRIPE_SECRET_KEY:-}
       Stripe__WebhookSecret: ${STRIPE_WEBHOOK_SECRET:-}
       Stripe__Plans__Pro__MonthlyPriceId: ${STRIPE_PRO_MONTHLY_PRICE_ID:-}

@@ -516,6 +516,10 @@
             }, 'Show shortcuts');
             
             document.addEventListener('keydown', (e) => {
+                if (typeof e.key !== 'string' || e.key.length === 0) {
+                    return;
+                }
+
                 // Build key combo string
                 const parts = [];
                 if (e.ctrlKey || e.metaKey) parts.push('ctrl');

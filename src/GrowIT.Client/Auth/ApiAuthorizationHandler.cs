@@ -38,13 +38,20 @@ public sealed class ApiAuthorizationHandler : DelegatingHandler
     {
         request.RequestUri = NormalizeApiRequestUri(request.RequestUri);
 
-        if (request.Headers.Authorization is null)
+        if (request.Headers.Authorization is null && !IsPublicAuthRequest(request.RequestUri))
         {
             var user = _httpContextAccessor.HttpContext?.User;
             if (user?.Identity?.IsAuthenticated != true)
             {
-                var authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
-                user = authState.User;
+                try
+                {
+                    var authState = await _authenticationStateProvider.GetAuthenticationStateAsync();
+                    user = authState.User;
+                }
+                catch (InvalidOperationException)
+                {
+                    user = null;
+                }
             }
 
             var isAuthenticated = user?.Identity?.IsAuthenticated == true;
@@ -61,6 +68,13 @@ public sealed class ApiAuthorizationHandler : DelegatingHandler
         }
 
         return await base.SendAsync(request, cancellationToken);
+    }
+
+    private static bool IsPublicAuthRequest(Uri? requestUri)
+    {
+        var path = requestUri?.AbsolutePath ?? string.Empty;
+        return path.Equals("/api/auth", StringComparison.OrdinalIgnoreCase)
+            || path.StartsWith("/api/auth/", StringComparison.OrdinalIgnoreCase);
     }
 
     private Uri NormalizeApiRequestUri(Uri? requestUri)
@@ -93,9 +107,30 @@ public sealed class ApiAuthorizationHandler : DelegatingHandler
             return new Uri($"{httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.PathBase}/");
         }
 
-        var clientUrl = _configuration["ClientUrl"]
+        var clientUrl = ResolveConfiguredBaseUrl()
             ?? (_environment.IsDevelopment() ? "http://localhost:5245/" : "http://localhost/");
 
         return new Uri(clientUrl.EndsWith('/') ? clientUrl : $"{clientUrl}/");
+    }
+
+    private string? ResolveConfiguredBaseUrl()
+    {
+        foreach (var key in new[] { "InternalApiBaseUrl", "ApiBaseUrl", "ClientUrl" })
+        {
+            var value = _configuration[key]?.Trim();
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                continue;
+            }
+
+            if (Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+                (string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+            {
+                return value;
+            }
+        }
+
+        return null;
     }
 }

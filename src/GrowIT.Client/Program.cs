@@ -286,7 +286,8 @@ builder.Services.AddHttpClient("GrowITApi", (sp, client) =>
         var httpContext = sp.GetService<IHttpContextAccessor>()?.HttpContext;
         var baseUri = httpContext is not null
             ? $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.PathBase}/"
-            : builder.Configuration["ClientUrl"]
+            : builder.Configuration["InternalApiBaseUrl"]
+                ?? builder.Configuration["ClientUrl"]
                 ?? (builder.Environment.IsDevelopment() ? "http://localhost:5245/" : "http://localhost/");
 
         client.BaseAddress = ResolveApiBaseAddress(builder.Configuration, builder.Environment, baseUri);
@@ -307,7 +308,8 @@ builder.Services.AddScoped(sp =>
         }
         else
         {
-            baseUri = builder.Configuration["ClientUrl"]
+            baseUri = builder.Configuration["InternalApiBaseUrl"]
+                ?? builder.Configuration["ClientUrl"]
                 ?? (builder.Environment.IsDevelopment() ? "http://localhost:5245/" : "http://localhost/");
         }
     }
@@ -584,7 +586,8 @@ static Uri ResolveApiBaseAddress(IConfiguration config, IWebHostEnvironment env,
         string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
         string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase);
 
-    var fallbackBase = config["ClientUrl"]
+    var fallbackBase = config["InternalApiBaseUrl"]
+        ?? config["ClientUrl"]
         ?? (env.IsDevelopment() ? "http://localhost:5245/" : "http://localhost/");
 
     if (!Uri.TryCreate(baseUri, UriKind.Absolute, out var candidateBase) || !IsHttpScheme(candidateBase))
@@ -592,7 +595,11 @@ static Uri ResolveApiBaseAddress(IConfiguration config, IWebHostEnvironment env,
         baseUri = fallbackBase;
     }
 
-    var configured = config["ApiBaseUrl"]?.Trim();
+    var configured = config["InternalApiBaseUrl"]?.Trim();
+    if (string.IsNullOrWhiteSpace(configured))
+    {
+        configured = config["ApiBaseUrl"]?.Trim();
+    }
     if (!string.IsNullOrWhiteSpace(configured))
     {
         if (Uri.TryCreate(configured, UriKind.Absolute, out var absolute))
@@ -612,7 +619,7 @@ static Uri ResolveApiBaseAddress(IConfiguration config, IWebHostEnvironment env,
         }
     }
 
-    return new Uri(fallbackBase);
+    return new Uri(baseUri);
 }
 
 static bool HasAnyRole(ClaimsPrincipal user, params string[] allowedRoles)

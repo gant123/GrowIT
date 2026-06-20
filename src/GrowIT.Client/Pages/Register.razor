@@ -93,13 +93,14 @@
             <!-- Step 1: Account Info -->
             @if (_currentStep == 1)
             {
-                <form class="auth-form" @onsubmit="GoToStep2">
+                <form class="auth-form" @onsubmit="GoToStep2" @onsubmit:preventDefault="true">
                     <div class="form-row">
                         <div class="form-group">
                             <label for="firstName">First name</label>
                             <input type="text" 
                                    id="firstName" 
                                    @bind="_registerRequest.FirstName" 
+                                   @bind:event="oninput"
                                    placeholder="John"
                                    autocomplete="given-name"
                                    required />
@@ -109,6 +110,7 @@
                             <input type="text" 
                                    id="lastName" 
                                    @bind="_registerRequest.LastName" 
+                                   @bind:event="oninput"
                                    placeholder="Smith"
                                    autocomplete="family-name"
                                    required />
@@ -120,6 +122,7 @@
                         <input type="email" 
                                id="email" 
                                @bind="_registerRequest.Email" 
+                               @bind:event="oninput"
                                placeholder="you@nonprofit.org"
                                autocomplete="email"
                                required />
@@ -202,12 +205,13 @@
             <!-- Step 2: Organization Info -->
             @if (_currentStep == 2)
             {
-                <form class="auth-form" @onsubmit="GoToStep3">
+                <form class="auth-form" @onsubmit="GoToStep3" @onsubmit:preventDefault="true">
                     <div class="form-group">
                         <label for="orgName">Organization name</label>
                         <input type="text" 
                                id="orgName" 
                                @bind="_registerRequest.OrganizationName" 
+                               @bind:event="oninput"
                                placeholder="Community Hope Network"
                                required />
                     </div>
@@ -272,7 +276,7 @@
             <!-- Step 3: Final Setup -->
             @if (_currentStep == 3)
             {
-                <form class="auth-form" @onsubmit="CompleteRegistration">
+                <form class="auth-form" @onsubmit="CompleteRegistration" @onsubmit:preventDefault="true">
                     <div class="setup-options">
                         <h3>What would you like to track?</h3>
                         <p class="setup-hint">Select all that apply. You can change these later.</p>
