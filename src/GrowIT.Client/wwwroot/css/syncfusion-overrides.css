@@ -87,16 +87,16 @@
    content) a light #f8f9fa, which sits on top of the dark toolbar and produces a
    light strip in dark mode. Match them to the card background so the whole toolbar
    stays themed. */
-.e-grid .e-toolbar .e-toolbar-items,
+.e-grid .e-toolbar .e-toolbar-items {
+    background: var(--growit-bg-card) !important;
+    gap: 8px !important;
+    min-height: 42px !important;
+}
+
 .e-grid .e-toolbar .e-hscroll,
 .e-grid .e-toolbar .e-hscroll-content,
 .e-grid .e-toolbar .e-toolbar-item {
     background: var(--growit-bg-card) !important;
-}
-
-.e-grid .e-toolbar .e-toolbar-items {
-    gap: 8px !important;
-    min-height: 42px !important;
 }
 
 .e-grid .e-toolbar .e-toolbar-left {
