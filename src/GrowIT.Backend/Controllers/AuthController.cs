@@ -411,19 +411,40 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(user.FirstName) || string.IsNullOrWhiteSpace(user.LastName))
             return BadRequest("First name and last name are required.");
 
-        invite.AcceptedAt = DateTime.UtcNow;
-        invite.AcceptedUserId = user.Id;
-        var createResult = await _userManager.CreateAsync(user, request.Password);
-        if (!createResult.Succeeded)
-        {
-            return BadRequest(string.Join(" ", createResult.Errors.Select(e => e.Description)));
-        }
-
         var assignedRole = string.IsNullOrWhiteSpace(invite.Role) ? "Member" : invite.Role;
         await EnsureRoleAsync(assignedRole);
-        await _userManager.AddToRoleAsync(user, assignedRole);
-        await AddInviteAcceptedNotificationsAsync(invite, user);
-        await _context.SaveChangesAsync();
+
+        // Create the user, assign the Identity role, and consume the invite atomically.
+        // Identity is the only source of roles now, so a failed AddToRoleAsync must not
+        // leave a role-less account behind (and the invite must remain usable).
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            var createResult = await _userManager.CreateAsync(user, request.Password);
+            if (!createResult.Succeeded)
+            {
+                await transaction.RollbackAsync();
+                return BadRequest(string.Join(" ", createResult.Errors.Select(e => e.Description)));
+            }
+
+            var addRoleResult = await _userManager.AddToRoleAsync(user, assignedRole);
+            if (!addRoleResult.Succeeded)
+            {
+                await transaction.RollbackAsync();
+                return BadRequest(string.Join(" ", addRoleResult.Errors.Select(e => e.Description)));
+            }
+
+            invite.AcceptedAt = DateTime.UtcNow;
+            invite.AcceptedUserId = user.Id;
+            await AddInviteAcceptedNotificationsAsync(invite, user);
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
 
         var token = await _tokenService.CreateTokenAsync(user, user.TenantId);
 
