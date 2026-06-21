@@ -54,7 +54,9 @@ public class ProfileController : ControllerBase
             .Select(t => t.Name)
             .FirstOrDefaultAsync();
 
-        return Ok(ToProfileDto(user, tenantName));
+        var role = (await _userManager.GetRolesAsync(user)).FirstOrDefault() ?? "Member";
+
+        return Ok(ToProfileDto(user, tenantName, role));
     }
 
     [HttpPut]
@@ -199,7 +201,7 @@ public class ProfileController : ControllerBase
         };
     }
 
-    private UserProfileDto ToProfileDto(GrowIT.Core.Entities.User user, string? tenantName)
+    private UserProfileDto ToProfileDto(GrowIT.Core.Entities.User user, string? tenantName, string role)
     {
         return new UserProfileDto
         {
@@ -208,7 +210,7 @@ public class ProfileController : ControllerBase
             FirstName = user.FirstName,
             LastName = user.LastName,
             Email = user.Email ?? string.Empty,
-            Role = user.Role,
+            Role = role,
             IsActive = user.IsActive,
             PhotoUrl = ToPublicPhotoUrl(user.PhotoUrl),
             NotifyInviteActivity = user.NotifyInviteActivity,

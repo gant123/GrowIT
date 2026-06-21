@@ -35,12 +35,8 @@ public sealed class GrowITUserClaimsPrincipalFactory
             identity.AddClaim(new Claim(ClaimTypes.Name, displayName));
         }
 
-        if (!string.IsNullOrWhiteSpace(user.Role) &&
-            !identity.HasClaim(c => c.Type == "role" && string.Equals(c.Value, user.Role, StringComparison.OrdinalIgnoreCase)))
-        {
-            identity.AddClaim(new Claim("role", user.Role));
-        }
-
+        // Role claims (ClaimTypes.Role) are added by the base factory from ASP.NET Identity,
+        // which is the single source of truth — no separate role claim is emitted here.
         return identity;
     }
 }

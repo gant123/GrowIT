@@ -70,7 +70,6 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
             entity.ToTable("Users");
             entity.Property(u => u.FirstName).HasDefaultValue(string.Empty);
             entity.Property(u => u.LastName).HasDefaultValue(string.Empty);
-            entity.Property(u => u.Role).HasDefaultValue(string.Empty);
             entity.Property(u => u.IsActive).HasDefaultValue(true);
             entity.Property(u => u.NotifyInviteActivity).HasDefaultValue(true);
             entity.Property(u => u.NotifySystemAlerts).HasDefaultValue(true);

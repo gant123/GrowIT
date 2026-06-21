@@ -9,8 +9,10 @@ public class User : IdentityUser<Guid>, IMustHaveTenant
     
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
-    public string Role { get; set; } = string.Empty;
-    
+
+    // Roles are owned by ASP.NET Core Identity (AspNetUserRoles/AspNetRoles).
+    // There is intentionally no Role column here — Identity is the single source of truth.
+
     public bool IsActive { get; set; } = true;
     public DateTime? DeactivatedAt { get; set; }
     public string? PhotoUrl { get; set; }
@@ -18,19 +20,4 @@ public class User : IdentityUser<Guid>, IMustHaveTenant
     public bool NotifySystemAlerts { get; set; } = true;
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-}
-
-public class Role : IMustHaveTenant
-{
-    public Guid Id { get; set; } = Guid.NewGuid();
-    public Guid TenantId { get; set; }
-    public string Name { get; set; } = string.Empty;
-}
-
-public class UserRole : IMustHaveTenant
-{
-    public Guid Id { get; set; } = Guid.NewGuid();
-    public Guid TenantId { get; set; }
-    public Guid UserId { get; set; }
-    public Guid RoleId { get; set; }
 }

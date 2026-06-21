@@ -7,9 +7,16 @@
             }
             else
             {
-                <AuthorizeView>
+                <AuthorizeView Context="authContext">
                     <Authorized>
-                        <RouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.MainLayout)" />
+                        @* Outer gate requires authentication for all non-public pages; the inner
+                           AuthorizeRouteView additionally enforces any [Authorize(Policy=...)]
+                           a page declares (defense in depth on top of the API policies). *@
+                        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(Layout.MainLayout)">
+                            <NotAuthorized>
+                                <RedirectToLanding />
+                            </NotAuthorized>
+                        </AuthorizeRouteView>
                     </Authorized>
                     <NotAuthorized>
                         <RedirectToLanding />

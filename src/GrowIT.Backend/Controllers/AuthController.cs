@@ -84,7 +84,6 @@ public class AuthController : ControllerBase
             LastName = request.LastName,
             Email = request.Email.Trim(),
             UserName = request.Email.Trim(),
-            Role = "Admin",
             IsActive = true,
             NotifyInviteActivity = true,
             NotifySystemAlerts = true,
@@ -403,7 +402,6 @@ public class AuthController : ControllerBase
             LastName = string.IsNullOrWhiteSpace(request.LastName) ? invite.LastName : request.LastName.Trim(),
             Email = normalizedEmail,
             UserName = normalizedEmail,
-            Role = string.IsNullOrWhiteSpace(invite.Role) ? "Member" : invite.Role,
             IsActive = true,
             NotifyInviteActivity = true,
             NotifySystemAlerts = true,
@@ -413,19 +411,40 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(user.FirstName) || string.IsNullOrWhiteSpace(user.LastName))
             return BadRequest("First name and last name are required.");
 
-        invite.AcceptedAt = DateTime.UtcNow;
-        invite.AcceptedUserId = user.Id;
-        var createResult = await _userManager.CreateAsync(user, request.Password);
-        if (!createResult.Succeeded)
-        {
-            return BadRequest(string.Join(" ", createResult.Errors.Select(e => e.Description)));
-        }
-
-        var assignedRole = string.IsNullOrWhiteSpace(user.Role) ? "Member" : user.Role;
+        var assignedRole = string.IsNullOrWhiteSpace(invite.Role) ? "Member" : invite.Role;
         await EnsureRoleAsync(assignedRole);
-        await _userManager.AddToRoleAsync(user, assignedRole);
-        await AddInviteAcceptedNotificationsAsync(invite, user);
-        await _context.SaveChangesAsync();
+
+        // Create the user, assign the Identity role, and consume the invite atomically.
+        // Identity is the only source of roles now, so a failed AddToRoleAsync must not
+        // leave a role-less account behind (and the invite must remain usable).
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            var createResult = await _userManager.CreateAsync(user, request.Password);
+            if (!createResult.Succeeded)
+            {
+                await transaction.RollbackAsync();
+                return BadRequest(string.Join(" ", createResult.Errors.Select(e => e.Description)));
+            }
+
+            var addRoleResult = await _userManager.AddToRoleAsync(user, assignedRole);
+            if (!addRoleResult.Succeeded)
+            {
+                await transaction.RollbackAsync();
+                return BadRequest(string.Join(" ", addRoleResult.Errors.Select(e => e.Description)));
+            }
+
+            invite.AcceptedAt = DateTime.UtcNow;
+            invite.AcceptedUserId = user.Id;
+            await AddInviteAcceptedNotificationsAsync(invite, user);
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
 
         var token = await _tokenService.CreateTokenAsync(user, user.TenantId);
 
@@ -486,7 +505,7 @@ public class AuthController : ControllerBase
                 TenantId = invite.TenantId,
                 UserId = userId,
                 Title = "Invite accepted",
-                Message = $"{displayName} joined the organization as {acceptedUser.Role}.",
+                Message = $"{displayName} joined the organization as {(string.IsNullOrWhiteSpace(invite.Role) ? "Member" : invite.Role)}.",
                 Link = InviteAuditLink,
                 IsRead = false,
                 CreatedAt = now

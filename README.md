@@ -34,17 +34,48 @@ grow.IT is a founder survivability and funding-readiness platform for early-stag
 
 ## Quick Start (Local Development)
 
-### 1. Build the solution
+The app does **not** auto-create or migrate the database on startup, so the database
+must exist and be migrated before the first run. Follow these steps in order.
+
+### 1. Start PostgreSQL
+
+Use the bundled container (exposes Postgres on host port `5433`):
+
+```bash
+docker compose up -d db
+```
+
+Or point at any local PostgreSQL 16 instance — just match the connection string below.
+
+### 2. Configure local secrets
+
+The host reads config from `src/GrowIT.Client/appsettings.Development.json` plus
+environment variables / user-secrets. Defaults exist for local dev, but keep real
+credentials out of git via user-secrets:
+
+```bash
+dotnet user-secrets --project src/GrowIT.Client set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5433;Database=GrowIT;Username=postgres;Password=your-password"
+dotnet user-secrets --project src/GrowIT.Client set "Jwt:Key" "your-long-random-secret-key"
+dotnet user-secrets --project src/GrowIT.Client set "SuperAdmin:Email" "you@example.com"
+dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpHost" "your-smtp-host"
+dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpUser" "your-user"
+dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpPass" "your-password"
+```
+
+> `SuperAdmin:Email` designates the single platform SuperAdmin (see
+> [Roles & Identity](#roles--identity)). A dev default is set in
+> `appsettings.Development.json`.
+
+### 3. Apply database migrations
+
+```bash
+dotnet ef database update --project src/GrowIT.Infrastructure --startup-project src/GrowIT.Client
+```
+
+### 4. Build and run
 
 ```bash
 dotnet build GrowIT.slnx
-```
-
-### 2. Run the App (single host)
-
-From repo root:
-
-```bash
 dotnet run --project src/GrowIT.Client
 ```
 
@@ -52,17 +83,16 @@ Default dev URLs:
 - `http://localhost:5245`
 - `https://localhost:7234`
 
-### 3. Configure local secrets
+### 5. Create the SuperAdmin
 
-Keep SMTP/API credentials out of git by using user-secrets for the web app host:
-
-```bash
-dotnet user-secrets --project src/GrowIT.Client set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5433;Database=GrowIT;Username=postgres;Password=your-password"
-dotnet user-secrets --project src/GrowIT.Client set "Jwt:Key" "your-long-random-secret-key"
-dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpHost" "your-smtp-host"
-dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpUser" "your-user"
-dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpPass" "your-password"
-```
+1. Register an account through the UI using the same email as `SuperAdmin:Email`
+   (registration creates a tenant + an `Admin` user and sends an email-confirmation link;
+   in dev, confirmation emails are written to `src/GrowIT.Client/dev-emails/`).
+2. Run the identity bootstrap to elevate that account and normalize Identity state:
+   ```bash
+   dotnet run --project src/GrowIT.Client -- --bootstrap-identity
+   ```
+3. Log out and back in so the new `SuperAdmin` role claim is issued.
 
 ## Database / EF Core Workflow
 
@@ -76,6 +106,12 @@ Run EF commands from the repository root:
 - **Add a new migration:**
   ```bash
   dotnet ef migrations add <MigrationName> --project src/GrowIT.Infrastructure --startup-project src/GrowIT.Client
+  ```
+
+- **Identity bootstrap** (idempotent — seeds roles, normalizes users, elevates the
+  configured `SuperAdmin:Email`):
+  ```bash
+  dotnet run --project src/GrowIT.Client -- --bootstrap-identity
   ```
 
 ## Scripts & Automation
@@ -120,6 +156,7 @@ Key configuration keys (can be set via `appsettings.json`, environment variables
 | `ConnectionStrings:DefaultConnection` | PostgreSQL connection string | - |
 | `Jwt:Key` | Secret key for JWT signing | - |
 | `Jwt:Issuer` / `Jwt:Audience` | JWT metadata | `growit-local` / `growit-internal` |
+| `SuperAdmin:Email` | Account elevated to SuperAdmin during identity bootstrap (blank = none) | set in `appsettings.Development.json` |
 | `ClientUrl` | Public URL of the application | `http://localhost:5245` |
 | `SyncfusionLicense` | License key for Syncfusion components | - |
 | `Email:SmtpHost` | SMTP server address | - |
@@ -145,10 +182,26 @@ npx playwright test --project=chromium
 
 ## Security & Tenancy
 
-- **Multi-Tenancy:** Tenant-scoped entities implementation uses EF Core global query filters (`IMustHaveTenant`).
-- **Authorization:** Authoritative policies are defined in the backend (`AdminOnly`, `AdminOrManager`, etc.).
-- **Audit Logs:** System-wide audit logging for sensitive operations.
-- **Reference:** See `docs/PERMISSIONS_MATRIX.md` for role details.
+- **Multi-Tenancy:** Tenant-scoped entities use EF Core global query filters (`IMustHaveTenant`). Globals (no tenant filter): `BlogPost`, `ContactSubmission`, `UnauthorizedAccessAttempt`, `UserSignInEvent`.
+- **Authorization:** Authoritative policies are defined in `Program.cs` (`SuperAdminOnly`, `AdminOnly`, `AdminOrManager`, `ServiceWriter`) and enforced on backend controllers. Identity (ASP.NET Core) is the authority for roles/claims.
+- **Audit Logs:** Tenant-scoped audit logging for sensitive operations (SuperAdmin sees all tenants).
+- **Reference:** See `docs/PERMISSIONS_MATRIX.md` for the full role/capability matrix.
+
+### Roles & Identity
+
+Roles form a strict hierarchy. **SuperAdmin is a superset** — it satisfies every lower-tier policy, but only SuperAdmin satisfies `SuperAdminOnly` (platform/site-wide controls, blog & contact submissions, email/system diagnostics, cross-tenant audit/security logs).
+
+| Role | Scope | Notes |
+|------|-------|-------|
+| `SuperAdmin` | Platform | Single account, set via `SuperAdmin:Email` + identity bootstrap. Not assignable through the UI/API by tenant admins. |
+| `Owner` | Tenant | Full control of one organization. **Not** a platform admin. |
+| `Admin` | Tenant | Organization administration (users, invites, org settings). |
+| `Manager` | Tenant | Reporting, financial config, approvals. |
+| `Case Manager` | Tenant | Service documentation and growth planning. |
+| `Analyst` | Tenant | Read-heavy access. |
+| `Member` | Tenant | Basic read-only workspace. |
+
+Elevated roles (`SuperAdmin`, `Owner`) can only be granted by an existing SuperAdmin.
 
 ## Working Agreements
 

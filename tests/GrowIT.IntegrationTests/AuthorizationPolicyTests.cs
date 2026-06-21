@@ -130,6 +130,19 @@ public class AuthorizationPolicyTests
     }
 
     [Fact]
+    public async Task SeedDemoData_AllowsSuperAdmin_ButReportsNotImplemented()
+    {
+        // SuperAdmin satisfies AdminOnly (superset), so it passes the policy and reaches the
+        // action, which is an honest 501 stub rather than a fake success.
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "SuperAdmin");
+
+        var response = await client.PostAsJsonAsync("/api/admin/seed-demo-data", new { });
+
+        Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
+    }
+
+    [Fact]
     public async Task UpdateUserRole_AllowsSuperAdminToGrantElevatedRole()
     {
         // A SuperAdmin passes the role-assignment gate; the request then fails only because
