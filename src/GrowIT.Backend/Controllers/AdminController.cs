@@ -126,19 +126,41 @@ public class AdminController : ControllerBase
         var users = await _context.Users
             .OrderBy(u => u.FirstName)
             .ThenBy(u => u.LastName)
-            .Select(u => new AdminUserListItemDto
+            .Select(u => new
             {
-                Id = u.Id,
-                FullName = (u.FirstName + " " + u.LastName).Trim(),
-                Email = u.Email ?? string.Empty,
-                Role = u.Role,
-                IsActive = u.IsActive,
-                DeactivatedAt = u.DeactivatedAt,
-                CreatedAt = u.CreatedAt
+                u.Id,
+                u.FirstName,
+                u.LastName,
+                u.Email,
+                u.IsActive,
+                u.DeactivatedAt,
+                u.CreatedAt
             })
             .ToListAsync();
 
-        return Ok(users);
+        // Roles come from ASP.NET Identity (AspNetUserRoles/AspNetRoles), the single source of truth.
+        var userIds = users.Select(u => u.Id).ToList();
+        var roleByUser = (await (
+                from ur in _context.UserRoles
+                join r in _context.Roles on ur.RoleId equals r.Id
+                where userIds.Contains(ur.UserId)
+                select new { ur.UserId, r.Name })
+            .ToListAsync())
+            .GroupBy(x => x.UserId)
+            .ToDictionary(g => g.Key, g => g.First().Name ?? "Member");
+
+        var result = users.Select(u => new AdminUserListItemDto
+        {
+            Id = u.Id,
+            FullName = (u.FirstName + " " + u.LastName).Trim(),
+            Email = u.Email ?? string.Empty,
+            Role = roleByUser.TryGetValue(u.Id, out var role) ? role : "Member",
+            IsActive = u.IsActive,
+            DeactivatedAt = u.DeactivatedAt,
+            CreatedAt = u.CreatedAt
+        }).ToList();
+
+        return Ok(result);
     }
 
     [HttpPut("users/{id:guid}/role")]
@@ -158,15 +180,17 @@ public class AdminController : ControllerBase
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
         if (user is null) return NotFound();
 
+        var existingRoles = await _userManager.GetRolesAsync(user);
+        var currentRole = existingRoles.FirstOrDefault() ?? "Member";
+
         // Only a SuperAdmin may change the role of a user who currently holds an elevated role.
-        if (ElevatedRoles.Contains(user.Role ?? string.Empty) && !IsSuperAdmin())
+        if (existingRoles.Any(r => ElevatedRoles.Contains(r)) && !IsSuperAdmin())
             return Forbid();
 
-        if (await WouldRemoveLastActiveAdminAsync(user, newRole, user.IsActive))
+        if (await WouldRemoveLastActiveAdminAsync(user, currentRole, newRole, user.IsActive))
             return BadRequest("At least one active admin must remain in the organization.");
 
         await EnsureRoleAsync(newRole);
-        var existingRoles = await _userManager.GetRolesAsync(user);
         if (existingRoles.Count > 0)
         {
             var removeResult = await _userManager.RemoveFromRolesAsync(user, existingRoles);
@@ -178,11 +202,9 @@ public class AdminController : ControllerBase
         if (!addResult.Succeeded)
             return BadRequest(string.Join(" ", addResult.Errors.Select(e => e.Description)));
 
-        user.Role = newRole;
-        await _context.SaveChangesAsync();
         await _userManager.UpdateSecurityStampAsync(user);
 
-        return Ok(ToAdminUserListItem(user));
+        return Ok(ToAdminUserListItem(user, newRole));
     }
 
     [HttpPost("users/{id:guid}/deactivate")]
@@ -194,9 +216,11 @@ public class AdminController : ControllerBase
 
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
         if (user is null) return NotFound();
-        if (!user.IsActive) return Ok(ToAdminUserListItem(user));
 
-        if (await WouldRemoveLastActiveAdminAsync(user, user.Role, false))
+        var currentRole = (await _userManager.GetRolesAsync(user)).FirstOrDefault() ?? "Member";
+        if (!user.IsActive) return Ok(ToAdminUserListItem(user, currentRole));
+
+        if (await WouldRemoveLastActiveAdminAsync(user, currentRole, currentRole, false))
             return BadRequest("At least one active admin must remain in the organization.");
 
         user.IsActive = false;
@@ -204,7 +228,7 @@ public class AdminController : ControllerBase
         await _context.SaveChangesAsync();
         await _userManager.UpdateSecurityStampAsync(user);
 
-        return Ok(ToAdminUserListItem(user));
+        return Ok(ToAdminUserListItem(user, currentRole));
     }
 
     [HttpPost("users/{id:guid}/reactivate")]
@@ -218,7 +242,8 @@ public class AdminController : ControllerBase
         await _context.SaveChangesAsync();
         await _userManager.UpdateSecurityStampAsync(user);
 
-        return Ok(ToAdminUserListItem(user));
+        var currentRole = (await _userManager.GetRolesAsync(user)).FirstOrDefault() ?? "Member";
+        return Ok(ToAdminUserListItem(user, currentRole));
     }
 
     [HttpGet("invites")]
@@ -916,12 +941,12 @@ public class AdminController : ControllerBase
     private static string FormatUtc(DateTime? value) =>
         value.HasValue ? value.Value.ToString("u") : "Never";
 
-    private static AdminUserListItemDto ToAdminUserListItem(User user) => new()
+    private static AdminUserListItemDto ToAdminUserListItem(User user, string role) => new()
     {
         Id = user.Id,
         FullName = (user.FirstName + " " + user.LastName).Trim(),
         Email = user.Email ?? string.Empty,
-        Role = user.Role,
+        Role = role,
         IsActive = user.IsActive,
         DeactivatedAt = user.DeactivatedAt,
         CreatedAt = user.CreatedAt
@@ -951,20 +976,25 @@ public class AdminController : ControllerBase
         return false;
     }
 
-    private async Task<bool> WouldRemoveLastActiveAdminAsync(User targetUser, string targetRole, bool targetIsActive)
+    private async Task<bool> WouldRemoveLastActiveAdminAsync(User targetUser, string currentRole, string targetRole, bool targetIsActive)
     {
-        var currentlyCountsAsAdmin = targetUser.IsActive && IsAdminRole(targetUser.Role);
+        var currentlyCountsAsAdmin = targetUser.IsActive && IsAdminRole(currentRole);
         var willCountAsAdmin = targetIsActive && IsAdminRole(targetRole);
 
         if (!currentlyCountsAsAdmin || willCountAsAdmin)
             return false;
 
-        return !await _context.Users.IgnoreQueryFilters()
-            .AnyAsync(u =>
-                u.TenantId == targetUser.TenantId &&
-                u.Id != targetUser.Id &&
-                u.IsActive &&
-                (u.Role.ToLower() == "admin" || u.Role.ToLower() == "owner"));
+        // Count other active admins/owners/super-admins in the same tenant via Identity roles.
+        return !await (
+            from u in _context.Users.IgnoreQueryFilters()
+            join ur in _context.UserRoles on u.Id equals ur.UserId
+            join r in _context.Roles on ur.RoleId equals r.Id
+            where u.TenantId == targetUser.TenantId
+                && u.Id != targetUser.Id
+                && u.IsActive
+                && (r.Name!.ToLower() == "admin" || r.Name!.ToLower() == "owner" || r.Name!.ToLower() == "superadmin")
+            select u.Id)
+            .AnyAsync();
     }
 
     private async Task EnsureRoleAsync(string roleName)

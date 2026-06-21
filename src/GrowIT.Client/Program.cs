@@ -536,25 +536,16 @@ static async Task EnsureIdentityBootstrapAsync(IServiceProvider services)
             }
         }
 
-        var desiredRole = string.IsNullOrWhiteSpace(user.Role) ? "Member" : user.Role.Trim();
-        if (!await userManager.IsInRoleAsync(user, desiredRole))
+        // Identity is the single source of truth for roles. Ensure every user has at least
+        // one role; default newcomers to "Member" without disturbing existing assignments.
+        var currentRoles = await userManager.GetRolesAsync(user);
+        if (currentRoles.Count == 0)
         {
-            var currentRoles = await userManager.GetRolesAsync(user);
-            if (currentRoles.Count > 0)
-            {
-                var removeRolesResult = await userManager.RemoveFromRolesAsync(user, currentRoles);
-                if (!removeRolesResult.Succeeded)
-                {
-                    throw new InvalidOperationException(
-                        $"Failed to remove roles for '{user.Id}': {string.Join(" ", removeRolesResult.Errors.Select(e => e.Description))}");
-                }
-            }
-
-            var addRoleResult = await userManager.AddToRoleAsync(user, desiredRole);
+            var addRoleResult = await userManager.AddToRoleAsync(user, "Member");
             if (!addRoleResult.Succeeded)
             {
                 throw new InvalidOperationException(
-                    $"Failed to add role '{desiredRole}' for '{user.Id}': {string.Join(" ", addRoleResult.Errors.Select(e => e.Description))}");
+                    $"Failed to add default role for '{user.Id}': {string.Join(" ", addRoleResult.Errors.Select(e => e.Description))}");
             }
         }
     }
@@ -589,17 +580,6 @@ static async Task EnsureConfiguredSuperAdminAsync(
             "Configured SuperAdmin '{Email}' was not found. Register that account, then re-run the identity bootstrap.",
             superAdminEmail);
         return;
-    }
-
-    if (!string.Equals(superUser.Role, SuperAdminRole, StringComparison.OrdinalIgnoreCase))
-    {
-        superUser.Role = SuperAdminRole;
-        var updateResult = await userManager.UpdateAsync(superUser);
-        if (!updateResult.Succeeded)
-        {
-            throw new InvalidOperationException(
-                $"Failed to set SuperAdmin role flag for '{superUser.Id}': {string.Join(" ", updateResult.Errors.Select(e => e.Description))}");
-        }
     }
 
     var currentRoles = await userManager.GetRolesAsync(superUser);

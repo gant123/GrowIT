@@ -84,7 +84,6 @@ public class AuthController : ControllerBase
             LastName = request.LastName,
             Email = request.Email.Trim(),
             UserName = request.Email.Trim(),
-            Role = "Admin",
             IsActive = true,
             NotifyInviteActivity = true,
             NotifySystemAlerts = true,
@@ -403,7 +402,6 @@ public class AuthController : ControllerBase
             LastName = string.IsNullOrWhiteSpace(request.LastName) ? invite.LastName : request.LastName.Trim(),
             Email = normalizedEmail,
             UserName = normalizedEmail,
-            Role = string.IsNullOrWhiteSpace(invite.Role) ? "Member" : invite.Role,
             IsActive = true,
             NotifyInviteActivity = true,
             NotifySystemAlerts = true,
@@ -421,7 +419,7 @@ public class AuthController : ControllerBase
             return BadRequest(string.Join(" ", createResult.Errors.Select(e => e.Description)));
         }
 
-        var assignedRole = string.IsNullOrWhiteSpace(user.Role) ? "Member" : user.Role;
+        var assignedRole = string.IsNullOrWhiteSpace(invite.Role) ? "Member" : invite.Role;
         await EnsureRoleAsync(assignedRole);
         await _userManager.AddToRoleAsync(user, assignedRole);
         await AddInviteAcceptedNotificationsAsync(invite, user);
@@ -486,7 +484,7 @@ public class AuthController : ControllerBase
                 TenantId = invite.TenantId,
                 UserId = userId,
                 Title = "Invite accepted",
-                Message = $"{displayName} joined the organization as {acceptedUser.Role}.",
+                Message = $"{displayName} joined the organization as {(string.IsNullOrWhiteSpace(invite.Role) ? "Member" : invite.Role)}.",
                 Link = InviteAuditLink,
                 IsRead = false,
                 CreatedAt = now

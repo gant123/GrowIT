@@ -29,7 +29,7 @@ public class TokenService
             new Claim("tenantId", tenantId.ToString()) // Crucial for Multi-tenancy!
         };
 
-        foreach (var role in (roles ?? RolesFromUser(user)).Where(r => !string.IsNullOrWhiteSpace(r)).Distinct(StringComparer.OrdinalIgnoreCase))
+        foreach (var role in (roles ?? Enumerable.Empty<string>()).Where(r => !string.IsNullOrWhiteSpace(r)).Distinct(StringComparer.OrdinalIgnoreCase))
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
         }
@@ -76,12 +76,10 @@ public class TokenService
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var role = roles.FirstOrDefault() ?? string.Empty;
         var user = new User
         {
             Id = userId,
-            Email = email,
-            Role = role
+            Email = email
         };
 
         return CreateToken(user, tenantId, roles);
@@ -111,8 +109,7 @@ public class TokenService
             var principalUser = new User
             {
                 Id = userId,
-                Email = email,
-                Role = roles.First()
+                Email = email
             };
 
             return CreateToken(principalUser, tenantId, roles);
@@ -135,14 +132,6 @@ public class TokenService
     {
         var roles = await _userManager.GetRolesAsync(user);
         return CreateToken(user, tenantId, roles);
-    }
-
-    private static IEnumerable<string> RolesFromUser(User user)
-    {
-        if (!string.IsNullOrWhiteSpace(user.Role))
-        {
-            yield return user.Role;
-        }
     }
 
     private string GetRequiredSetting(string key)
