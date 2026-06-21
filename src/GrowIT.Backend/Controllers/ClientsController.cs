@@ -31,11 +31,6 @@ public class ClientsController : ControllerBase
         _planLimits = planLimits;
     }
 
-    private bool IsSuperAdmin() =>
-        User.Claims.Any(c =>
-            (c.Type == ClaimTypes.Role || c.Type == "role") &&
-            string.Equals(c.Value?.Trim(), "SuperAdmin", StringComparison.OrdinalIgnoreCase));
-
     [HttpGet("{id}")]
     public async Task<ActionResult<ClientDetailDto>> GetClientDetail(Guid id)
     {
@@ -137,7 +132,7 @@ public class ClientsController : ControllerBase
         }
 
         // Enforce the tenant's plan client limit (SuperAdmin is exempt).
-        if (!IsSuperAdmin())
+        if (!User.IsSuperAdmin())
         {
             var usage = await _planLimits.GetUsageAsync();
             if (usage.AtClientLimit)

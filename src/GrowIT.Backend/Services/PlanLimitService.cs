@@ -11,6 +11,14 @@ namespace GrowIT.Backend.Services;
 /// its seat/record limits. Used to enforce plan limits on create operations and to show
 /// usage in the UI.
 /// </summary>
+/// <remarks>
+/// Limits are enforced as <em>soft</em> caps: callers read usage, then create. This
+/// check-then-create pattern is not atomic, so two concurrent creates from the same
+/// tenant could momentarily exceed a cap by one. This is acceptable for plan/seat
+/// limits (no safety or correctness impact, and the next read reflects the true count).
+/// If a contractually-binding hard cap is ever required, add a row lock on the tenant
+/// or a database CHECK constraint here.
+/// </remarks>
 public interface IPlanLimitService
 {
     Task<PlanUsageDto> GetUsageAsync(CancellationToken cancellationToken = default);
