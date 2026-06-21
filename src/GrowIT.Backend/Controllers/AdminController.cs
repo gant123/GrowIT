@@ -43,6 +43,7 @@ public class AdminController : ControllerBase
     private readonly ReportSchedulerState _schedulerState;
     private readonly UserManager<User> _userManager;
     private readonly RoleManager<IdentityRole<Guid>> _roleManager;
+    private readonly IPlanLimitService _planLimits;
 
     public AdminController(
         ApplicationDbContext context,
@@ -54,7 +55,8 @@ public class AdminController : ControllerBase
         IOptionsMonitor<ReportSchedulerOptions> schedulerOptions,
         ReportSchedulerState schedulerState,
         UserManager<User> userManager,
-        RoleManager<IdentityRole<Guid>> roleManager)
+        RoleManager<IdentityRole<Guid>> roleManager,
+        IPlanLimitService planLimits)
     {
         _context = context;
         _tenantService = tenantService;
@@ -66,6 +68,7 @@ public class AdminController : ControllerBase
         _schedulerState = schedulerState;
         _userManager = userManager;
         _roleManager = roleManager;
+        _planLimits = planLimits;
     }
 
     [HttpGet("organization")]
@@ -360,6 +363,17 @@ public class AdminController : ControllerBase
         var inviteRole = string.IsNullOrWhiteSpace(request.Role) ? "Member" : request.Role.Trim();
         if (!CanAssignRole(inviteRole))
             return BadRequest("That role cannot be assigned to an invite.");
+
+        // Enforce the tenant's plan user/seat limit (SuperAdmin is exempt).
+        if (!IsSuperAdmin())
+        {
+            var usage = await _planLimits.GetUsageAsync();
+            if (usage.AtUserLimit)
+            {
+                return StatusCode(StatusCodes.Status402PaymentRequired,
+                    $"Your {usage.PlanName} plan allows {usage.UsersMax} users ({usage.UsersUsed} in use, including pending invites). Upgrade your plan to add more.");
+            }
+        }
 
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         var invite = new OrganizationInvite

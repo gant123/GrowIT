@@ -67,6 +67,7 @@ builder.Services.AddSingleton<Microsoft.AspNetCore.Components.Server.Circuits.Ci
 // Backend services now run in-process with the Blazor Web App host.
 builder.Services.AddScoped<ICurrentTenantService, CurrentTenantService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<IPlanLimitService, PlanLimitService>();
 builder.Services.AddScoped<TokenService>();
 builder.Services.AddScoped<IUserClaimsPrincipalFactory<User>, GrowITUserClaimsPrincipalFactory>();
 builder.Services.AddScoped<IEmailService, EmailService>();
