@@ -39,7 +39,8 @@ _Last refreshed: 2026-06-20. Ordered by priority. Check the README "Quick Start"
 - [x] Endpoint-by-endpoint policy audit — every write route now has an explicit policy.
       Closed gaps: Clients (create / add-member / edit-member / delete-member) and Households
       (create / add-member) writes now require `ServiceWriter` (were authenticated-only).
-- [x] Expanded `403` integration tests (Clients/Households create + add-member). 18 passing.
+- [x] Expanded `403` integration tests — all six newly-gated Clients/Households write
+      endpoints covered (create, add/edit/delete member, household create + add-member). 21 passing.
 - [ ] **Product decision:** should `Manager` keep user/org/invite management, or be operational-only?
 - [ ] **Product decision:** is beta feedback meant to be per-tenant (current) or platform-wide to the founder/SuperAdmin?
 

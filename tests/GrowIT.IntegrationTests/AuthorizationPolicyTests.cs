@@ -152,7 +152,7 @@ public class AuthorizationPolicyTests
     }
 
     [Fact]
-    public async Task ServiceWriter_AddFamilyMember_RejectsViewerRole()
+    public async Task ServiceWriter_AddFamilyMember_RejectsAnalyst()
     {
         using var factory = new GrowItApiFactory();
         using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Analyst");
@@ -163,6 +163,46 @@ public class AuthorizationPolicyTests
             lastName = "Smith",
             relationship = "Child"
         });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ServiceWriter_UpdateFamilyMember_RejectsMember()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Member");
+
+        var response = await client.PutAsJsonAsync($"/api/clients/members/{Guid.NewGuid()}", new
+        {
+            firstName = "Kid",
+            lastName = "Smith",
+            relationship = "Child"
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ServiceWriter_DeleteFamilyMember_RejectsAnalyst()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Analyst");
+
+        var response = await client.DeleteAsync($"/api/clients/members/{Guid.NewGuid()}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ServiceWriter_AddHouseholdMember_RejectsMember()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Member");
+
+        var response = await client.PostAsync(
+            $"/api/households/{Guid.NewGuid()}/add-member/{Guid.NewGuid()}?role=Head",
+            content: null);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
