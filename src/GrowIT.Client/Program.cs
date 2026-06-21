@@ -536,17 +536,17 @@ static async Task EnsureIdentityBootstrapAsync(IServiceProvider services)
             }
         }
 
-        // Identity is the single source of truth for roles. Ensure every user has at least
-        // one role; default newcomers to "Member" without disturbing existing assignments.
+        // Identity is the single source of truth for roles. If this trips, the role
+        // backfill migration did not preserve an existing user's role and deploy should stop.
         var currentRoles = await userManager.GetRolesAsync(user);
         if (currentRoles.Count == 0)
         {
-            var addRoleResult = await userManager.AddToRoleAsync(user, "Member");
-            if (!addRoleResult.Succeeded)
-            {
-                throw new InvalidOperationException(
-                    $"Failed to add default role for '{user.Id}': {string.Join(" ", addRoleResult.Errors.Select(e => e.Description))}");
-            }
+            logger.LogCritical(
+                "Identity user {UserId} ({Email}) has no ASP.NET Identity role after role backfill.",
+                user.Id,
+                user.Email);
+            throw new InvalidOperationException(
+                $"Identity bootstrap found role-less user '{user.Id}'. Verify the role backfill migration before continuing.");
         }
     }
 

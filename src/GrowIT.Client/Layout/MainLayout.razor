@@ -355,7 +355,7 @@
                                         <i class="bi bi-chat-square-text"></i>
                                         Beta Feedback
                                     </NavLink>
-                                    @if (_canAccessAdminWorkspace)
+                                    @if (_canManageSiteContent)
                                     {
                                         <NavLink href="/beta-feedback-admin" class="dropdown-item" @onclick="() => _userMenuOpen = false">
                                             <i class="bi bi-clipboard-data"></i>
@@ -980,7 +980,7 @@
             "/reports" => _canAccessIntelligence,
             "/insights" => _canAccessIntelligence,
             "/settings" => _canAccessAdminWorkspace,
-            "/beta-feedback-admin" => _canAccessAdminWorkspace,
+            "/beta-feedback-admin" => _canManageSiteContent,
             "/super-admin/content" => _canManageSiteContent,
             _ => true
         };

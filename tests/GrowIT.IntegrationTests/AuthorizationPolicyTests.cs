@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using GrowIT.Backend.Tests.Infrastructure;
+using GrowIT.Core.Entities;
+using GrowIT.Shared.DTOs;
 
 namespace GrowIT.Backend.Tests;
 
@@ -13,6 +15,17 @@ public class AuthorizationPolicyTests
         using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Manager");
 
         var response = await client.PostAsJsonAsync("/api/admin/seed-demo-data", new { });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdminOnly_UserList_RejectsManager()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Manager");
+
+        var response = await client.GetAsync("/api/admin/users");
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -113,6 +126,71 @@ public class AuthorizationPolicyTests
         var response = await client.GetAsync("/api/admin/content/blog");
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SuperAdminOnly_FeedbackReview_RejectsTenantAdmin()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Admin");
+
+        var response = await client.GetAsync("/api/admin/feedback");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SuperAdminOnly_FeedbackReview_RejectsManager()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Manager");
+
+        var response = await client.GetAsync("/api/admin/feedback");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SuperAdminOnly_FeedbackReview_AllowsSuperAdmin()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "SuperAdmin");
+
+        var response = await client.GetAsync("/api/admin/feedback");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SuperAdminOnly_FeedbackReview_ReturnsPlatformFeedbackAcrossTenants()
+    {
+        var feedbackTenantId = Guid.NewGuid();
+        using var factory = new GrowItApiFactory();
+        await factory.SeedAsync(db =>
+        {
+            db.BetaFeedbacks.Add(new BetaFeedback
+            {
+                TenantId = feedbackTenantId,
+                UserId = Guid.NewGuid(),
+                Category = "Bug",
+                Severity = "High",
+                Title = "Cross-tenant feedback",
+                Message = "This belongs to the platform backlog.",
+                PageUrl = "/clients",
+                Status = "Open",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "SuperAdmin");
+
+        var items = await client.GetFromJsonAsync<List<BetaFeedbackListItemDto>>("/api/admin/feedback");
+
+        Assert.Contains(items ?? [], item =>
+            item.Title == "Cross-tenant feedback" &&
+            item.TenantId == feedbackTenantId);
     }
 
     [Fact]

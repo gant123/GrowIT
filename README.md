@@ -182,7 +182,7 @@ npx playwright test --project=chromium
 
 ## Security & Tenancy
 
-- **Multi-Tenancy:** Tenant-scoped entities use EF Core global query filters (`IMustHaveTenant`). Globals (no tenant filter): `BlogPost`, `ContactSubmission`, `UnauthorizedAccessAttempt`, `UserSignInEvent`.
+- **Multi-Tenancy:** Tenant-scoped entities use EF Core global query filters (`IMustHaveTenant`). Globals (no tenant filter): `BlogPost`, `ContactSubmission`, `BetaFeedback`, `UnauthorizedAccessAttempt`, `UserSignInEvent`.
 - **Authorization:** Authoritative policies are defined in `Program.cs` (`SuperAdminOnly`, `AdminOnly`, `AdminOrManager`, `ServiceWriter`) and enforced on backend controllers. Identity (ASP.NET Core) is the authority for roles/claims.
 - **Audit Logs:** Tenant-scoped audit logging for sensitive operations (SuperAdmin sees all tenants).
 - **Reference:** See `docs/PERMISSIONS_MATRIX.md` for the full role/capability matrix.
@@ -196,7 +196,7 @@ Roles form a strict hierarchy. **SuperAdmin is a superset** — it satisfies eve
 | `SuperAdmin` | Platform | Single account, set via `SuperAdmin:Email` + identity bootstrap. Not assignable through the UI/API by tenant admins. |
 | `Owner` | Tenant | Full control of one organization. **Not** a platform admin. |
 | `Admin` | Tenant | Organization administration (users, invites, org settings). |
-| `Manager` | Tenant | Reporting, financial config, approvals. |
+| `Manager` | Tenant | Operational service workflow, reporting, and approvals. No user/org/invite/billing/platform controls. |
 | `Case Manager` | Tenant | Service documentation and growth planning. |
 | `Analyst` | Tenant | Read-heavy access. |
 | `Member` | Tenant | Basic read-only workspace. |

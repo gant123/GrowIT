@@ -41,15 +41,20 @@ _Last refreshed: 2026-06-20. Ordered by priority. Check the README "Quick Start"
       (create / add-member) writes now require `ServiceWriter` (were authenticated-only).
 - [x] Expanded `403` integration tests — all six newly-gated Clients/Households write
       endpoints covered (create, add/edit/delete member, household create + add-member). 21 passing.
-- [ ] **Product decision:** should `Manager` keep user/org/invite management, or be operational-only?
-- [ ] **Product decision:** is beta feedback meant to be per-tenant (current) or platform-wide to the founder/SuperAdmin?
+- [x] **Product decision:** `Manager` is operational-only. Managers keep service/reporting/approval
+      scope, but no user/org/invite/billing/platform controls.
+- [x] **Product decision:** beta feedback is platform-owned with optional tenant/user attribution.
+      Only SuperAdmin reviews/triages the platform backlog.
 
 ## Operational / correctness
 
 - [x] `seed-demo-data` now returns an honest `501 Not Implemented` instead of fake success
       (and uses `AdminOnly` so SuperAdmin is included). Implement real seeding when needed.
-- [ ] Decide how migrations + bootstrap run in deployed environments (no auto-migrate on startup
-      today). Either add a guarded startup migrate, or document/script it for Docker.
+- [x] Role migration/bootstrap deploy strategy decided: backfill `AspNetUserRoles` from legacy
+      `Users.Role` before dropping the column, then run `--bootstrap-identity`; bootstrap fails
+      loudly if any existing user is role-less after migration.
+- [ ] Decide broader migration execution strategy for deployed environments (no auto-migrate on
+      startup today). Either add a guarded startup migrate, or document/script it for Docker.
 - [ ] Add a startup health check page (DB connectivity + pending migrations + SMTP diagnostics).
 
 ## QA pass (manual, per role)

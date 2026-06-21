@@ -1,12 +1,10 @@
-using GrowIT.Core.Interfaces;
-
 namespace GrowIT.Core.Entities;
 
-public class BetaFeedback : IMustHaveTenant
+public class BetaFeedback
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public Guid TenantId { get; set; }
-    public Guid UserId { get; set; }
+    public Guid? TenantId { get; set; }
+    public Guid? UserId { get; set; }
 
     public string Category { get; set; } = "Other";
     public string Severity { get; set; } = "Medium";

@@ -1,4 +1,5 @@
 @page "/beta-feedback-admin"
+@attribute [Authorize(Policy = "SuperAdminOnly")]
 @using GrowIT.Shared.DTOs
 @using Syncfusion.Blazor.Grids
 @using Syncfusion.Blazor.Navigations
@@ -21,7 +22,7 @@
 
     @if (!_hasAdminAccess)
     {
-        <div class="alert alert-warning">Feedback review is available to `Admin`, `Manager`, or `Owner` roles.</div>
+        <div class="alert alert-warning">Feedback review is available to platform SuperAdmins.</div>
     }
     else
     {
@@ -129,6 +130,7 @@
                                     </div>
                                 </Template>
                             </GridColumn>
+                            <GridColumn Field=@nameof(BetaFeedbackListItemDto.TenantName) HeaderText="Organization" Width="190" ClipMode="ClipMode.EllipsisWithTooltip" />
                             <GridColumn Field=@nameof(BetaFeedbackListItemDto.Status) HeaderText="Status" Width="130" TextAlign="TextAlign.Center">
                                 <Template>
                                     @{
@@ -177,6 +179,8 @@
                         <div class="col-md-6"><strong>Title:</strong> @_selected.Title</div>
                         <div class="col-md-3"><strong>Category:</strong> @_selected.Category</div>
                         <div class="col-md-3"><strong>Severity:</strong> @_selected.Severity</div>
+                        <div class="col-md-6"><strong>Organization:</strong> @(_selected.TenantName ?? "Unattributed")</div>
+                        <div class="col-md-6"><strong>Reporter:</strong> @(FormatReporter(_selected))</div>
                         <div class="col-md-6"><strong>Status:</strong> @_selected.Status</div>
                         <div class="col-md-6"><strong>Page:</strong> @(_selected.PageUrl ?? "-")</div>
                         <div class="col-12">
@@ -235,7 +239,7 @@
     protected override async Task OnInitializedAsync()
     {
         var access = await RoleAccessService.GetAccessAsync();
-        _hasAdminAccess = access.CanManageAdminWorkspace;
+        _hasAdminAccess = access.CanManageSiteContent;
         if (!_hasAdminAccess)
         {
             _isLoading = false;
@@ -344,4 +348,16 @@
         "low" => "badge-neutral",
         _ => "badge-info"
     };
+
+    private static string FormatReporter(BetaFeedbackListItemDto item)
+    {
+        if (!string.IsNullOrWhiteSpace(item.SubmittedByName) && !string.IsNullOrWhiteSpace(item.SubmittedByEmail))
+        {
+            return $"{item.SubmittedByName} ({item.SubmittedByEmail})";
+        }
+
+        return !string.IsNullOrWhiteSpace(item.SubmittedByName)
+            ? item.SubmittedByName
+            : item.SubmittedByEmail ?? "Unknown";
+    }
 }
