@@ -91,11 +91,6 @@
             
             <div class="nav-section">
                 <div class="nav-section-label">System</div>
-                <NavLink href="/organization" class="nav-item" title="Organization" @onclick="HandleNavSelected">
-                    <span class="nav-icon"><i class="bi bi-building"></i></span>
-                    <span class="nav-text">Organization</span>
-                </NavLink>
-
                 @if (_canAccessAdminWorkspace)
                 {
                     <NavLink href="/settings" class="nav-item" title="Settings" @onclick="HandleNavSelected">
@@ -217,17 +212,6 @@
             
             <div class="topbar-right">
                 <div class="topbar-actions">
-                    <div class="fiscal-year-container">
-                        <select @bind="_selectedFiscalYear" @bind:after="OnFiscalYearChanged" class="fiscal-select-input">
-                            <option value="FY24-25">FY 2024-25</option>
-                            <option value="FY23-24">FY 2023-24</option>
-                            <option value="FY22-23">FY 2022-23</option>
-                        </select>
-                        <i class="bi bi-chevron-down select-chevron"></i>
-                    </div>
-
-                    <div class="action-divider"></div>
-
                     <button class="topbar-btn theme-toggle" @onclick="ToggleTheme" title="Toggle theme">
                         @if (_currentTheme == "dark")
                         {
@@ -479,7 +463,6 @@
     private string _currentTheme = "light";
     private bool _sidebarCollapsed = false;
     private string _searchQuery = "";
-    private string _selectedFiscalYear = "FY24-25";
     private int _notificationCount;
     private bool _userMenuOpen = false;
     private bool _notificationsOpen = false;
@@ -508,7 +491,6 @@
         new("/growth-plans", "Growth Plans", "Capacity and scaling plans", "Impact", "bi bi-diagram-3", "growth plans scale"),
         new("/reports", "Reports", "Funding readiness reports", "Intelligence", "bi bi-pie-chart", "reports export funding"),
         new("/insights", "Insights", "Operational intelligence (beta)", "Intelligence", "bi bi-activity", "insights analytics"),
-        new("/organization", "Organization", "Organization profile and setup", "System", "bi bi-building", "organization org"),
         new("/settings", "Settings", "System preferences and controls", "System", "bi bi-gear", "settings preferences"),
         new("/super-admin/content", "Site Content", "Manage public blog and contact submissions", "System", "bi bi-journal-richtext", "site content blog contact super admin"),
         new("/profile", "Profile", "Account profile and preferences", "System", "bi bi-person-gear", "profile account user"),
@@ -604,15 +586,8 @@
         if (firstRender)
         {
             _currentTheme = await JS.InvokeAsync<string>("blazorInterop.getTheme");
-            _selectedFiscalYear = await JS.InvokeAsync<string>("fiscalYearManager.get");
             StateHasChanged();
         }
-    }
-
-    private async Task OnFiscalYearChanged()
-    {
-        await JS.InvokeVoidAsync("fiscalYearManager.set", _selectedFiscalYear);
-        await JS.InvokeVoidAsync("blazorInterop.showToast", $"Fiscal Year changed to {_selectedFiscalYear}", "success");
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
