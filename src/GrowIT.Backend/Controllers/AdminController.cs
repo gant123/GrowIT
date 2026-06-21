@@ -217,8 +217,13 @@ public class AdminController : ControllerBase
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
         if (user is null) return NotFound();
 
+        if (!user.IsActive)
+        {
+            var earlyRole = (await _userManager.GetRolesAsync(user)).FirstOrDefault() ?? "Member";
+            return Ok(ToAdminUserListItem(user, earlyRole));
+        }
+
         var currentRole = (await _userManager.GetRolesAsync(user)).FirstOrDefault() ?? "Member";
-        if (!user.IsActive) return Ok(ToAdminUserListItem(user, currentRole));
 
         if (await WouldRemoveLastActiveAdminAsync(user, currentRole, currentRole, false))
             return BadRequest("At least one active admin must remain in the organization.");
