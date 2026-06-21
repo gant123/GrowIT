@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GrowIT.Backend.Controllers;
 
-[Authorize(Policy = "AdminOrManager")]
+[Authorize(Policy = "SuperAdminOnly")]
 [ApiController]
 [Route("api/admin/feedback")]
 public class AdminFeedbackController : ControllerBase
@@ -53,29 +53,38 @@ public class AdminFeedbackController : ControllerBase
 
         var take = Math.Clamp(query.Take ?? 200, 1, 1000);
 
-        var users = _context.Users.AsNoTracking();
-        var items = await feedbackQuery
+        var feedback = await feedbackQuery
             .OrderByDescending(f => f.CreatedAt)
             .Take(take)
-            .GroupJoin(users, f => f.UserId, u => u.Id, (f, joined) => new { f, u = joined.FirstOrDefault() })
-            .Select(x => new BetaFeedbackListItemDto
-            {
-                Id = x.f.Id,
-                Category = x.f.Category,
-                Severity = x.f.Severity,
-                Title = x.f.Title,
-                Message = x.f.Message,
-                PageUrl = x.f.PageUrl,
-                Status = x.f.Status,
-                AdminNotes = x.f.AdminNotes,
-                UserId = x.f.UserId,
-                SubmittedByName = x.u == null ? null : (x.u.FirstName + " " + x.u.LastName).Trim(),
-                SubmittedByEmail = x.u == null ? null : x.u.Email,
-                CreatedAt = x.f.CreatedAt,
-                UpdatedAt = x.f.UpdatedAt,
-                ResolvedAt = x.f.ResolvedAt
-            })
             .ToListAsync();
+
+        var userIds = feedback.Where(f => f.UserId.HasValue).Select(f => f.UserId!.Value).Distinct().ToList();
+        var tenantIds = feedback.Where(f => f.TenantId.HasValue).Select(f => f.TenantId!.Value).Distinct().ToList();
+
+        var users = await _context.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id);
+
+        var tenants = await _context.Tenants
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(t => tenantIds.Contains(t.Id))
+            .ToDictionaryAsync(t => t.Id);
+
+        var items = feedback
+            .Select(f =>
+            {
+                var user = f.UserId.HasValue && users.TryGetValue(f.UserId.Value, out var matchedUser)
+                    ? matchedUser
+                    : null;
+                var tenant = f.TenantId.HasValue && tenants.TryGetValue(f.TenantId.Value, out var matchedTenant)
+                    ? matchedTenant
+                    : null;
+                return FeedbackController.Map(f, user, tenant);
+            })
+            .ToList();
 
         return Ok(items);
     }
@@ -95,8 +104,13 @@ public class AdminFeedbackController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == item.UserId);
-        return Ok(FeedbackController.Map(item, user));
+        var user = item.UserId.HasValue
+            ? await _context.Users.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(u => u.Id == item.UserId.Value)
+            : null;
+        var tenant = item.TenantId.HasValue
+            ? await _context.Tenants.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(t => t.Id == item.TenantId.Value)
+            : null;
+        return Ok(FeedbackController.Map(item, user, tenant));
     }
 
     private static string NormalizeStatus(string? value)

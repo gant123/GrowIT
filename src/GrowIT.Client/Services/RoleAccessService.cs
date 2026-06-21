@@ -17,7 +17,7 @@ public sealed class RoleAccessSnapshot
     public bool IsAnalyst { get; init; }
 
     // SuperAdmin is a strict superset: it implies every lower-tier capability.
-    public bool CanManageAdminWorkspace => IsSuperAdmin || IsOwner || IsAdmin || IsManager;
+    public bool CanManageAdminWorkspace => IsSuperAdmin || IsOwner || IsAdmin;
     public bool CanManageSiteContent => IsSuperAdmin;
     public bool CanViewPlatformDiagnostics => IsSuperAdmin;
     public bool CanAccessReports => IsSuperAdmin || IsOwner || IsAdmin || IsManager;

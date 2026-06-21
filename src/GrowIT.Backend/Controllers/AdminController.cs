@@ -15,13 +15,13 @@ using Microsoft.Extensions.Options;
 namespace GrowIT.Backend.Controllers;
 
 [ApiController]
-[Authorize(Policy = "AdminOrManager")]
+[Authorize(Policy = "AdminOnly")]
 [Route("api/[controller]")]
 public class AdminController : ControllerBase
 {
     private const string InviteAuditLink = "/settings?tab=invites";
 
-    // Roles a tenant Admin/Manager/Owner may assign to other users or invites.
+    // Roles a tenant Admin/Owner/SuperAdmin may assign to other users or invites.
     private static readonly HashSet<string> StandardAssignableRoles = new(StringComparer.OrdinalIgnoreCase)
     {
         "Admin", "Manager", "Case Manager", "Analyst", "Member"
