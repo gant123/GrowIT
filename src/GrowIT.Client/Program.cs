@@ -336,6 +336,20 @@ if (args.Contains("--bootstrap-identity", StringComparer.OrdinalIgnoreCase))
     return;
 }
 
+if (args.Contains("--seed-demo", StringComparer.OrdinalIgnoreCase))
+{
+    app.Logger.LogInformation("Seeding demo data...");
+    using var seedScope = app.Services.CreateScope();
+    var seeder = new DemoDataSeeder(
+        seedScope.ServiceProvider.GetRequiredService<ApplicationDbContext>(),
+        seedScope.ServiceProvider.GetRequiredService<UserManager<User>>(),
+        seedScope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>(),
+        seedScope.ServiceProvider.GetRequiredService<ILoggerFactory>().CreateLogger("DemoDataSeeder"));
+    await seeder.SeedAsync();
+    app.Logger.LogInformation("Demo data seeding completed.");
+    return;
+}
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
