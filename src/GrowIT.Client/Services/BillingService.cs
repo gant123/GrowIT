@@ -8,6 +8,7 @@ public interface IBillingService
     Task<BillingOverviewDto> GetOverviewAsync(CancellationToken ct = default);
     Task<PlanUsageDto> GetUsageAsync(CancellationToken ct = default);
     Task<string> CreateCheckoutSessionAsync(Guid planId, BillingInterval interval, CancellationToken ct = default);
+    Task<PlanChangeResultDto> ActivatePlanAsync(Guid planId, CancellationToken ct = default);
     Task<string> CreatePortalSessionAsync(CancellationToken ct = default);
     Task CreatePlanAsync(CreateSubscriptionPlanRequest request, CancellationToken ct = default);
     Task UpdatePlanAsync(Guid id, UpdateSubscriptionPlanRequest request, CancellationToken ct = default);
@@ -34,6 +35,12 @@ public class BillingService : BaseApiService, IBillingService
 
         return result?.Url ?? string.Empty;
     }
+
+    public async Task<PlanChangeResultDto> ActivatePlanAsync(Guid planId, CancellationToken ct = default) =>
+        await PostAsync<ActivatePlanRequest, PlanChangeResultDto>(
+            $"{Endpoint}/activate-plan",
+            new ActivatePlanRequest { PlanId = planId },
+            ct) ?? new PlanChangeResultDto();
 
     public async Task<string> CreatePortalSessionAsync(CancellationToken ct = default)
     {
