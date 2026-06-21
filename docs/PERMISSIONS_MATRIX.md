@@ -19,6 +19,7 @@ This matrix documents the current role intent for UI visibility and backend API 
 | Capability | SuperAdmin | Owner | Admin | Manager | Case Manager | Analyst | Member |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Dashboard / Clients / Households (view) | Yes | Yes | Yes | Yes | Yes | Yes | Yes |
+| Case files / Households (create / edit / members) | Yes | Yes | Yes | Yes | Yes | No | No |
 | Investments (create / reassign) | Yes | Yes | Yes | Yes | Yes | No | No |
 | Investments (approve / disburse / delete) | Yes | Yes | Yes | Yes | No | No | No |
 | Imprints (create) | Yes | Yes | Yes | Yes | Yes | No | No |
@@ -61,7 +62,8 @@ admins and platform-wide only for SuperAdmin.
 
 ## Recommended Next Hardening
 
-- Consolidate role storage to a single source of truth (drop or demote `User.Role`).
-- Add endpoint-by-endpoint policy annotation audit (all write routes).
-- Add route-level role gating (`AuthorizeRouteView`) for defense in depth.
+- ~~Consolidate role storage to a single source of truth~~ — done (Identity only).
+- ~~Endpoint-by-endpoint policy audit (all write routes)~~ — done; service-data writes
+  on Clients/Households now require `ServiceWriter` (previously only authenticated).
+- ~~Route-level role gating (`AuthorizeRouteView`)~~ — done (defense in depth).
 - Add a permissions admin page to preview effective access per role.

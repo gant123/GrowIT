@@ -25,6 +25,7 @@ public class HouseholdsController : ControllerBase
 
     // 1. Create a Family
     [HttpPost]
+    [Authorize(Policy = "ServiceWriter")]
     public async Task<ActionResult<CreateHouseholdResponseDto>> CreateHousehold(CreateHouseholdRequest request)
     {
         var tenantId = _tenantService.TenantId;
@@ -108,6 +109,7 @@ public class HouseholdsController : ControllerBase
 
     // 3. Add a Person to a Family
     [HttpPost("{householdId}/add-member/{clientId}")]
+    [Authorize(Policy = "ServiceWriter")]
     public async Task<IActionResult> AddMember(Guid householdId, Guid clientId, [FromQuery] HouseholdRole role)
     {
         var household = await _context.Households.FirstOrDefaultAsync(h => h.Id == householdId);

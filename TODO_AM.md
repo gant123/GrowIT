@@ -36,8 +36,10 @@ _Last refreshed: 2026-06-20. Ordered by priority. Check the README "Quick Start"
       `/super-admin/content` carries `[Authorize(Policy = "SuperAdminOnly")]`. Add the same
       attribute to other sensitive pages (Settings, BetaFeedbackAdmin) if redirect-on-deny is
       preferred over their current in-page messages.
-- [ ] Endpoint-by-endpoint policy audit — confirm every write route has an explicit policy.
-- [ ] Expand `403` integration tests (Financials, Investments approve/disburse, AdminContent).
+- [x] Endpoint-by-endpoint policy audit — every write route now has an explicit policy.
+      Closed gaps: Clients (create / add-member / edit-member / delete-member) and Households
+      (create / add-member) writes now require `ServiceWriter` (were authenticated-only).
+- [x] Expanded `403` integration tests (Clients/Households create + add-member). 18 passing.
 - [ ] **Product decision:** should `Manager` keep user/org/invite management, or be operational-only?
 - [ ] **Product decision:** is beta feedback meant to be per-tenant (current) or platform-wide to the founder/SuperAdmin?
 
@@ -70,7 +72,7 @@ Test `SuperAdmin`, `Owner`, `Admin`, `Manager`, `Case Manager`, `Member` against
 
 ## Cleanup / nice-to-have
 
-- [ ] Address remaining nullable warnings (`FinancialsController`, some Razor pages).
+- [x] Nullable warnings — solution builds clean (0 warnings) as of this pass.
 - [ ] Keep `docs/PERMISSIONS_MATRIX.md` in sync when policies change.
 
 ## Notes

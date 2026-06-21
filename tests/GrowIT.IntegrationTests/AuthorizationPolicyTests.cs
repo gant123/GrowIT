@@ -130,6 +130,44 @@ public class AuthorizationPolicyTests
     }
 
     [Fact]
+    public async Task ServiceWriter_CreateClient_RejectsAnalyst()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Analyst");
+
+        var response = await client.PostAsJsonAsync("/api/clients", new { firstName = "A", lastName = "B" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ServiceWriter_CreateHousehold_RejectsMember()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Member");
+
+        var response = await client.PostAsJsonAsync("/api/households", new { name = "Smith Household" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ServiceWriter_AddFamilyMember_RejectsViewerRole()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Analyst");
+
+        var response = await client.PostAsJsonAsync($"/api/clients/{Guid.NewGuid()}/members", new
+        {
+            firstName = "Kid",
+            lastName = "Smith",
+            relationship = "Child"
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
     public async Task SeedDemoData_AllowsSuperAdmin_ButReportsNotImplemented()
     {
         // SuperAdmin satisfies AdminOnly (superset), so it passes the policy and reaches the
