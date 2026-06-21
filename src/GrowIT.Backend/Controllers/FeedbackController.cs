@@ -32,8 +32,6 @@ public class FeedbackController : ControllerBase
     {
         var tenantId = _tenantService.TenantId;
         var userId = _currentUserService.UserId;
-        if (!tenantId.HasValue || tenantId == Guid.Empty)
-            return Unauthorized("No valid tenant context found.");
         if (!userId.HasValue || userId == Guid.Empty)
             return Unauthorized("No valid user context found.");
 
@@ -46,7 +44,7 @@ public class FeedbackController : ControllerBase
         var item = new BetaFeedback
         {
             Id = Guid.NewGuid(),
-            TenantId = tenantId.Value,
+            TenantId = tenantId.HasValue && tenantId.Value != Guid.Empty ? tenantId.Value : null,
             UserId = userId.Value,
             Category = NormalizeCategory(request.Category),
             Severity = NormalizeSeverity(request.Severity),
@@ -61,8 +59,11 @@ public class FeedbackController : ControllerBase
         await _context.SaveChangesAsync();
 
         var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId.Value);
+        var tenant = item.TenantId.HasValue
+            ? await _context.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == item.TenantId.Value)
+            : null;
 
-        return Ok(Map(item, user));
+        return Ok(Map(item, user, tenant));
     }
 
     [HttpGet("mine")]
@@ -77,7 +78,7 @@ public class FeedbackController : ControllerBase
             .Take(Math.Clamp(query.Take ?? 100, 1, 500))
             .ToListAsync();
 
-        return Ok(items.Select(f => Map(f, null)).ToList());
+        return Ok(items.Select(f => Map(f, null, null)).ToList());
     }
 
     private static IQueryable<BetaFeedback> ApplyQuery(IQueryable<BetaFeedback> source, BetaFeedbackQueryParams query)
@@ -139,7 +140,7 @@ public class FeedbackController : ControllerBase
         };
     }
 
-    internal static BetaFeedbackListItemDto Map(BetaFeedback item, User? user)
+    internal static BetaFeedbackListItemDto Map(BetaFeedback item, User? user, Tenant? tenant)
     {
         return new BetaFeedbackListItemDto
         {
@@ -151,6 +152,8 @@ public class FeedbackController : ControllerBase
             PageUrl = item.PageUrl,
             Status = item.Status,
             AdminNotes = item.AdminNotes,
+            TenantId = item.TenantId,
+            TenantName = tenant?.Name,
             UserId = item.UserId,
             SubmittedByName = user is null ? null : $"{user.FirstName} {user.LastName}".Trim(),
             SubmittedByEmail = user?.Email,

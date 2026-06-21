@@ -19,7 +19,9 @@ public class BetaFeedbackListItemDto
     public string? PageUrl { get; set; }
     public string Status { get; set; } = string.Empty;
     public string? AdminNotes { get; set; }
-    public Guid UserId { get; set; }
+    public Guid? TenantId { get; set; }
+    public string? TenantName { get; set; }
+    public Guid? UserId { get; set; }
     public string? SubmittedByName { get; set; }
     public string? SubmittedByEmail { get; set; }
     public DateTime CreatedAt { get; set; }

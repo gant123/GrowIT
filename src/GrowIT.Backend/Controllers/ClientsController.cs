@@ -114,6 +114,7 @@ public class ClientsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = "ServiceWriter")]
     public async Task<IActionResult> CreateClient(CreateClientRequest request)
     {
         var tenantId = _tenantService.TenantId;
@@ -230,6 +231,7 @@ public class ClientsController : ControllerBase
     }
 
     [HttpPost("{id}/members")]
+    [Authorize(Policy = "ServiceWriter")]
     public async Task<IActionResult> AddFamilyMember(Guid id, CreateFamilyMemberRequest request)
     {
         var client = await _context.Clients.FirstOrDefaultAsync(c => c.Id == id);
@@ -330,6 +332,7 @@ public class ClientsController : ControllerBase
     }
 
     [HttpPut("members/{memberId}")]
+    [Authorize(Policy = "ServiceWriter")]
     public async Task<IActionResult> UpdateFamilyMember(Guid memberId, CreateFamilyMemberRequest request)
     {
         var member = await _context.FamilyMembers
@@ -356,6 +359,7 @@ public class ClientsController : ControllerBase
     }
 
     [HttpDelete("members/{memberId}")]
+    [Authorize(Policy = "ServiceWriter")]
     public async Task<IActionResult> DeleteFamilyMember(Guid memberId)
     {
         var member = await _context.FamilyMembers
