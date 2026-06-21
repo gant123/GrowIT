@@ -21,21 +21,21 @@ _Last refreshed: 2026-06-20. Ordered by priority. Check the README "Quick Start"
 - [ ] Run bootstrap (provisions SuperAdmin): `dotnet run --project src/GrowIT.Client -- --bootstrap-identity`
 - [ ] Start the host, log in as SuperAdmin, confirm `Site Content` + diagnostics are visible.
 
-## Identity correctness (the big one)
+## Identity correctness
 
-- [ ] **Consolidate role storage to a single source of truth.** Today roles live in BOTH
-      ASP.NET Identity (`AspNetUserRoles`/`AspNetRoles`) and the denormalized `User.Role`
-      column, and `GrowITUserClaimsPrincipalFactory` emits both as claims. It works because
-      every write path keeps them in sync, but it's fragile. Decide: make Identity authoritative
-      and either drop `User.Role` or keep it as a read-only cached display value never used for
-      authz. Touch points: `TokenService`, `GrowITUserClaimsPrincipalFactory`, `AdminController`,
-      `AuthController`, bootstrap.
-- [ ] Reconcile `User.Role` ↔ Identity roles in bootstrap as a one-time repair (detect drift).
+- [x] **Consolidated role storage to a single source of truth.** Removed the denormalized
+      `User.Role` column (migration `RemoveUserRoleColumn`); ASP.NET Identity
+      (`AspNetUserRoles`/`AspNetRoles`) is now authoritative everywhere. Claims factory and
+      `TokenService` emit roles only from Identity.
+- [ ] Apply the migration in each environment (`dotnet ef database update`) and run
+      `--bootstrap-identity` afterward (ensures every user has ≥1 Identity role).
 
 ## Auth / permissions hardening
 
-- [ ] Route-level gating: switch `Routes.razor` to `AuthorizeRouteView` so protected pages enforce
-      roles at the router (defense in depth; today only the API enforces).
+- [x] Route-level gating: `Routes.razor` now uses `AuthorizeRouteView` (defense in depth);
+      `/super-admin/content` carries `[Authorize(Policy = "SuperAdminOnly")]`. Add the same
+      attribute to other sensitive pages (Settings, BetaFeedbackAdmin) if redirect-on-deny is
+      preferred over their current in-page messages.
 - [ ] Endpoint-by-endpoint policy audit — confirm every write route has an explicit policy.
 - [ ] Expand `403` integration tests (Financials, Investments approve/disburse, AdminContent).
 - [ ] **Product decision:** should `Manager` keep user/org/invite management, or be operational-only?
@@ -43,8 +43,8 @@ _Last refreshed: 2026-06-20. Ordered by priority. Check the README "Quick Start"
 
 ## Operational / correctness
 
-- [ ] `seed-demo-data` is currently a stub returning a success message — either implement real
-      seeding or hide the Settings action so it isn't misleading.
+- [x] `seed-demo-data` now returns an honest `501 Not Implemented` instead of fake success
+      (and uses `AdminOnly` so SuperAdmin is included). Implement real seeding when needed.
 - [ ] Decide how migrations + bootstrap run in deployed environments (no auto-migrate on startup
       today). Either add a guarded startup migrate, or document/script it for Docker.
 - [ ] Add a startup health check page (DB connectivity + pending migrations + SMTP diagnostics).

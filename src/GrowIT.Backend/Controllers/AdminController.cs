@@ -1036,21 +1036,19 @@ public class AdminController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Admin,Owner")]
+    [Authorize(Policy = "AdminOnly")]
     [HttpPost("seed-demo-data")]
-    public async Task<ActionResult<SeedDemoDataResponseDto>> SeedDemoData()
+    public ActionResult<SeedDemoDataResponseDto> SeedDemoData()
     {
         var tenantId = _tenantService.TenantId;
         if (!tenantId.HasValue || tenantId == Guid.Empty)
             return Unauthorized("No valid tenant context found.");
 
-        // NOTE: In a real implementation, this would involve a service 
-        // that seeds complex relational data (funds, programs, clients, etc.)
-        // For now, we'll return a stub to satisfy integration tests.
-
-        return Ok(new SeedDemoDataResponseDto
+        // Demo-data seeding is not implemented yet. Return 501 rather than a misleading
+        // success so callers don't assume data was created.
+        return StatusCode(StatusCodes.Status501NotImplemented, new SeedDemoDataResponseDto
         {
-            Message = "Demo data seeded successfully (Stub)."
+            Message = "Demo data seeding is not implemented yet."
         });
     }
 
