@@ -42,6 +42,16 @@
                     <span class="nav-icon"><i class="bi bi-house-door"></i></span>
                     <span class="nav-text">Households</span>
                 </NavLink>
+
+                <NavLink href="/tasks" class="nav-item" title="Tasks" @onclick="HandleNavSelected">
+                    <span class="nav-icon"><i class="bi bi-list-check"></i></span>
+                    <span class="nav-text">Tasks</span>
+                </NavLink>
+
+                <NavLink href="/documents" class="nav-item" title="Documents" @onclick="HandleNavSelected">
+                    <span class="nav-icon"><i class="bi bi-file-earmark-text"></i></span>
+                    <span class="nav-text">Documents</span>
+                </NavLink>
             </div>
             
             <div class="nav-section">
@@ -96,6 +106,11 @@
                     <NavLink href="/settings" class="nav-item" title="Settings" @onclick="HandleNavSelected">
                         <span class="nav-icon"><i class="bi bi-gear"></i></span>
                         <span class="nav-text">Settings</span>
+                    </NavLink>
+
+                    <NavLink href="/billing" class="nav-item" title="Billing" @onclick="HandleNavSelected">
+                        <span class="nav-icon"><i class="bi bi-credit-card"></i></span>
+                        <span class="nav-text">Billing</span>
                     </NavLink>
                 }
 
@@ -484,6 +499,8 @@
         new("/clients", "Case Files", "Directory of service records and households", "Main", "bi bi-people", "clients cases people directory"),
         new("/clients/create", "New Case File", "Create a founder case record", "Main", "bi bi-person-plus", "new create client case"),
         new("/households", "Households", "Manage household groupings", "Main", "bi bi-house-door", "households family homes"),
+        new("/tasks", "Tasks", "Team follow-ups and case work", "Main", "bi bi-list-check", "tasks todo follow up reminders"),
+        new("/documents", "Documents", "Client files and uploads", "Main", "bi bi-file-earmark-text", "documents files uploads attachments"),
         new("/funds", "Funds", "Available capital and balances", "Impact", "bi bi-wallet2", "funds money balance"),
         new("/programs", "Programs", "Program categories and funding logic", "Impact", "bi bi-folder2-open", "programs categories"),
         new("/investments", "Investments", "Document service investments", "Impact", "bi bi-cash-stack", "investments seeds spending aid"),
@@ -492,6 +509,7 @@
         new("/reports", "Reports", "Funding readiness reports", "Intelligence", "bi bi-pie-chart", "reports export funding"),
         new("/insights", "Insights", "Operational intelligence (beta)", "Intelligence", "bi bi-activity", "insights analytics"),
         new("/settings", "Settings", "System preferences and controls", "System", "bi bi-gear", "settings preferences"),
+        new("/billing", "Billing", "Plans, invoices, and payments", "System", "bi bi-credit-card", "billing plans invoices payments subscription upgrade"),
         new("/super-admin/content", "Site Content", "Manage public blog and contact submissions", "System", "bi bi-journal-richtext", "site content blog contact super admin"),
         new("/profile", "Profile", "Account profile and preferences", "System", "bi bi-person-gear", "profile account user"),
         new("/notifications", "Notifications", "Alerts and updates", "System", "bi bi-bell", "notifications alerts"),
@@ -878,6 +896,12 @@
             return "/reports";
         if (normalized.Contains("insight"))
             return "/insights";
+        if (normalized.Contains("task"))
+            return "/tasks";
+        if (normalized.Contains("document") || normalized.Contains("file"))
+            return "/documents";
+        if (normalized.Contains("billing") || normalized.Contains("invoice") || normalized.Contains("subscription") || normalized.Contains("upgrade"))
+            return "/billing";
         if (normalized.Contains("setting"))
             return "/settings";
         if (normalized.Contains("site content") || normalized.Contains("blog admin") || normalized.Contains("contact submissions"))
@@ -955,6 +979,7 @@
             "/reports" => _canAccessIntelligence,
             "/insights" => _canAccessIntelligence,
             "/settings" => _canAccessAdminWorkspace,
+            "/billing" => _canAccessAdminWorkspace,
             "/beta-feedback-admin" => _canManageSiteContent,
             "/super-admin/content" => _canManageSiteContent,
             _ => true
