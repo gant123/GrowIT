@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using GrowIT.Backend.Tests.Infrastructure;
+using GrowIT.Core.Entities;
+using GrowIT.Shared.DTOs;
 
 namespace GrowIT.Backend.Tests;
 
@@ -13,6 +15,17 @@ public class AuthorizationPolicyTests
         using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Manager");
 
         var response = await client.PostAsJsonAsync("/api/admin/seed-demo-data", new { });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdminOnly_UserList_RejectsManager()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Manager");
+
+        var response = await client.GetAsync("/api/admin/users");
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -116,6 +129,71 @@ public class AuthorizationPolicyTests
     }
 
     [Fact]
+    public async Task SuperAdminOnly_FeedbackReview_RejectsTenantAdmin()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Admin");
+
+        var response = await client.GetAsync("/api/admin/feedback");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SuperAdminOnly_FeedbackReview_RejectsManager()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Manager");
+
+        var response = await client.GetAsync("/api/admin/feedback");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SuperAdminOnly_FeedbackReview_AllowsSuperAdmin()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "SuperAdmin");
+
+        var response = await client.GetAsync("/api/admin/feedback");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SuperAdminOnly_FeedbackReview_ReturnsPlatformFeedbackAcrossTenants()
+    {
+        var feedbackTenantId = Guid.NewGuid();
+        using var factory = new GrowItApiFactory();
+        await factory.SeedAsync(db =>
+        {
+            db.BetaFeedbacks.Add(new BetaFeedback
+            {
+                TenantId = feedbackTenantId,
+                UserId = Guid.NewGuid(),
+                Category = "Bug",
+                Severity = "High",
+                Title = "Cross-tenant feedback",
+                Message = "This belongs to the platform backlog.",
+                PageUrl = "/clients",
+                Status = "Open",
+                CreatedAt = DateTime.UtcNow
+            });
+
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "SuperAdmin");
+
+        var items = await client.GetFromJsonAsync<List<BetaFeedbackListItemDto>>("/api/admin/feedback");
+
+        Assert.Contains(items ?? [], item =>
+            item.Title == "Cross-tenant feedback" &&
+            item.TenantId == feedbackTenantId);
+    }
+
+    [Fact]
     public async Task UpdateUserRole_RejectsEscalationToSuperAdminByAdmin()
     {
         using var factory = new GrowItApiFactory();
@@ -127,6 +205,84 @@ public class AuthorizationPolicyTests
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ServiceWriter_CreateClient_RejectsAnalyst()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Analyst");
+
+        var response = await client.PostAsJsonAsync("/api/clients", new { firstName = "A", lastName = "B" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ServiceWriter_CreateHousehold_RejectsMember()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Member");
+
+        var response = await client.PostAsJsonAsync("/api/households", new { name = "Smith Household" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ServiceWriter_AddFamilyMember_RejectsAnalyst()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Analyst");
+
+        var response = await client.PostAsJsonAsync($"/api/clients/{Guid.NewGuid()}/members", new
+        {
+            firstName = "Kid",
+            lastName = "Smith",
+            relationship = "Child"
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ServiceWriter_UpdateFamilyMember_RejectsMember()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Member");
+
+        var response = await client.PutAsJsonAsync($"/api/clients/members/{Guid.NewGuid()}", new
+        {
+            firstName = "Kid",
+            lastName = "Smith",
+            relationship = "Child"
+        });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ServiceWriter_DeleteFamilyMember_RejectsAnalyst()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Analyst");
+
+        var response = await client.DeleteAsync($"/api/clients/members/{Guid.NewGuid()}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ServiceWriter_AddHouseholdMember_RejectsMember()
+    {
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(Guid.NewGuid(), role: "Member");
+
+        var response = await client.PostAsync(
+            $"/api/households/{Guid.NewGuid()}/add-member/{Guid.NewGuid()}?role=Head",
+            content: null);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]
