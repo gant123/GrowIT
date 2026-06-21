@@ -1,16 +1,14 @@
-using System;
-using GrowIT.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore.Infrastructure;
+﻿using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace GrowIT.Infrastructure.Migrations
 {
-    [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260621012500_MakeBetaFeedbackPlatformOwned")]
+    /// <inheritdoc />
     public partial class MakeBetaFeedbackPlatformOwned : Migration
     {
+        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AlterColumn<Guid>(
@@ -30,8 +28,10 @@ namespace GrowIT.Infrastructure.Migrations
                 oldType: "uuid");
         }
 
+        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            // Backfill NULLs before restoring NOT NULL so the column alter does not fail.
             migrationBuilder.Sql("""
                 UPDATE "BetaFeedbacks"
                 SET "UserId" = '00000000-0000-0000-0000-000000000000'
@@ -47,7 +47,7 @@ namespace GrowIT.Infrastructure.Migrations
                 table: "BetaFeedbacks",
                 type: "uuid",
                 nullable: false,
-                defaultValue: Guid.Empty,
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"),
                 oldClrType: typeof(Guid),
                 oldType: "uuid",
                 oldNullable: true);
@@ -57,7 +57,7 @@ namespace GrowIT.Infrastructure.Migrations
                 table: "BetaFeedbacks",
                 type: "uuid",
                 nullable: false,
-                defaultValue: Guid.Empty,
+                defaultValue: new Guid("00000000-0000-0000-0000-000000000000"),
                 oldClrType: typeof(Guid),
                 oldType: "uuid",
                 oldNullable: true);
