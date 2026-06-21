@@ -233,8 +233,9 @@ public class BillingController : ControllerBase
     }
 
     // Switches the tenant to a plan without going through Stripe. Always allowed for free
-    // plans; for paid plans this is only permitted when Stripe is not configured (e.g. the
-    // demo environment), so production deployments still collect payment via checkout.
+    // plans; for paid plans this is only permitted when Stripe payments are unavailable
+    // (no secret key, e.g. the demo environment), so any deployment that can charge still
+    // collects payment via checkout.
     [HttpPost("activate-plan")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<PlanChangeResultDto>> ActivatePlan(ActivatePlanRequest request)
@@ -251,8 +252,12 @@ public class BillingController : ControllerBase
             return NotFound("Plan not found.");
         }
 
+        // Gate on the same condition the checkout path uses (a secret key is present, so
+        // Stripe can charge) rather than full webhook configuration — otherwise a
+        // key-but-no-webhook setup would let an admin activate a paid plan for free.
+        var stripePaymentsEnabled = !string.IsNullOrWhiteSpace(GetStripeSecretKey());
         var isFree = plan.PriceMonthly <= 0 && plan.PriceYearly <= 0;
-        if (!isFree && IsStripeConfigured())
+        if (!isFree && stripePaymentsEnabled)
         {
             return BadRequest("This plan requires payment. Use the checkout flow to subscribe.");
         }

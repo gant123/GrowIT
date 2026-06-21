@@ -87,6 +87,32 @@ public class BillingActivatePlanTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    // Regression guard: a secret key alone (webhook secret missing) still means Stripe can
+    // charge, so a paid plan must go through checkout — not free direct activation.
+    [Fact]
+    public async Task ActivatePlan_RequiresCheckout_WhenSecretKeySetButWebhookMissing()
+    {
+        var tenantId = Guid.NewGuid();
+        using var factory = new GrowItApiFactory(new Dictionary<string, string?>
+        {
+            ["Stripe:SecretKey"] = "sk_test_dummy",
+            ["Stripe:WebhookSecret"] = ""
+        });
+        var planId = Guid.Empty;
+        await factory.SeedAsync(db =>
+        {
+            var pro = new SubscriptionPlan { Name = "Pro", MaxUsers = 10, MaxClients = 500, PriceMonthly = 49, PriceYearly = 490 };
+            db.SubscriptionPlans.Add(pro);
+            planId = pro.Id;
+            return Task.CompletedTask;
+        });
+        using var client = factory.CreateTenantClient(tenantId, role: "Admin");
+
+        var response = await client.PostAsJsonAsync("/api/billing/activate-plan", new { planId });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Fact]
     public async Task ActivatePlan_ReturnsNotFound_ForUnknownPlan()
     {
