@@ -1,9 +1,12 @@
+using System.Security.Claims;
 using GrowIT.Core.Entities;
 using GrowIT.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using GrowIT.Core.Interfaces;
+using GrowIT.Backend.Services;
 using GrowIT.Shared.DTOs;
 using GrowIT.Shared.Enums; // Required for ImpactOutcome
 
@@ -16,11 +19,16 @@ public class ClientsController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
     private readonly ICurrentTenantService _tenantService;
+    private readonly IPlanLimitService _planLimits;
 
-    public ClientsController(ApplicationDbContext context, ICurrentTenantService tenantService)
+    public ClientsController(
+        ApplicationDbContext context,
+        ICurrentTenantService tenantService,
+        IPlanLimitService planLimits)
     {
         _context = context;
         _tenantService = tenantService;
+        _planLimits = planLimits;
     }
 
     [HttpGet("{id}")]
@@ -121,6 +129,17 @@ public class ClientsController : ControllerBase
         if (!tenantId.HasValue || tenantId == Guid.Empty)
         {
             return Unauthorized("No valid tenant context found.");
+        }
+
+        // Enforce the tenant's plan client limit (SuperAdmin is exempt).
+        if (!User.IsSuperAdmin())
+        {
+            var usage = await _planLimits.GetUsageAsync();
+            if (usage.AtClientLimit)
+            {
+                return StatusCode(StatusCodes.Status402PaymentRequired,
+                    $"Your {usage.PlanName} plan allows {usage.ClientsMax} clients ({usage.ClientsUsed} in use). Upgrade your plan to add more.");
+            }
         }
 
         if (request.HouseholdId.HasValue)

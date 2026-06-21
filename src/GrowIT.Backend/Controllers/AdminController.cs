@@ -43,6 +43,7 @@ public class AdminController : ControllerBase
     private readonly ReportSchedulerState _schedulerState;
     private readonly UserManager<User> _userManager;
     private readonly RoleManager<IdentityRole<Guid>> _roleManager;
+    private readonly IPlanLimitService _planLimits;
 
     public AdminController(
         ApplicationDbContext context,
@@ -54,7 +55,8 @@ public class AdminController : ControllerBase
         IOptionsMonitor<ReportSchedulerOptions> schedulerOptions,
         ReportSchedulerState schedulerState,
         UserManager<User> userManager,
-        RoleManager<IdentityRole<Guid>> roleManager)
+        RoleManager<IdentityRole<Guid>> roleManager,
+        IPlanLimitService planLimits)
     {
         _context = context;
         _tenantService = tenantService;
@@ -66,6 +68,7 @@ public class AdminController : ControllerBase
         _schedulerState = schedulerState;
         _userManager = userManager;
         _roleManager = roleManager;
+        _planLimits = planLimits;
     }
 
     [HttpGet("organization")]
@@ -184,7 +187,7 @@ public class AdminController : ControllerBase
         var currentRole = existingRoles.FirstOrDefault() ?? "Member";
 
         // Only a SuperAdmin may change the role of a user who currently holds an elevated role.
-        if (existingRoles.Any(r => ElevatedRoles.Contains(r)) && !IsSuperAdmin())
+        if (existingRoles.Any(r => ElevatedRoles.Contains(r)) && !User.IsSuperAdmin())
             return Forbid();
 
         if (await WouldRemoveLastActiveAdminAsync(user, currentRole, newRole, user.IsActive))
@@ -360,6 +363,17 @@ public class AdminController : ControllerBase
         var inviteRole = string.IsNullOrWhiteSpace(request.Role) ? "Member" : request.Role.Trim();
         if (!CanAssignRole(inviteRole))
             return BadRequest("That role cannot be assigned to an invite.");
+
+        // Enforce the tenant's plan user/seat limit (SuperAdmin is exempt).
+        if (!User.IsSuperAdmin())
+        {
+            var usage = await _planLimits.GetUsageAsync();
+            if (usage.AtUserLimit)
+            {
+                return StatusCode(StatusCodes.Status402PaymentRequired,
+                    $"Your {usage.PlanName} plan allows {usage.UsersMax} users ({usage.UsersUsed} in use, including pending invites). Upgrade your plan to add more.");
+            }
+        }
 
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         var invite = new OrganizationInvite
@@ -719,7 +733,7 @@ public class AdminController : ControllerBase
 
         // Tenant admins see only their own organization's audit trail (global query filter).
         // SuperAdmin sees the platform-wide trail across all tenants.
-        var query = IsSuperAdmin()
+        var query = User.IsSuperAdmin()
             ? _context.AuditLogs.IgnoreQueryFilters().AsNoTracking().AsQueryable()
             : _context.AuditLogs.AsNoTracking().AsQueryable();
 
@@ -785,7 +799,7 @@ public class AdminController : ControllerBase
         // SuperAdmin sees the full platform-wide security log (these tables are not
         // tenant-scoped). Tenant admins only see attempts tied to their own users or to
         // IPs that have signed in to their tenant.
-        var isSuperAdmin = IsSuperAdmin();
+        var isSuperAdmin = User.IsSuperAdmin();
         Guid tenantScope = Guid.Empty;
         if (!isSuperAdmin)
         {
@@ -989,18 +1003,13 @@ public class AdminController : ControllerBase
             || normalized.Equals("Owner", StringComparison.OrdinalIgnoreCase);
     }
 
-    private bool IsSuperAdmin() =>
-        User.Claims.Any(c =>
-            (c.Type == ClaimTypes.Role || c.Type == "role") &&
-            string.Equals(c.Value?.Trim(), "SuperAdmin", StringComparison.OrdinalIgnoreCase));
-
     // A standard role is always assignable by a tenant admin; an elevated role
     // (SuperAdmin/Owner) may only be assigned by a SuperAdmin. Unknown roles are rejected.
     private bool CanAssignRole(string role)
     {
         var normalized = role.Trim();
         if (StandardAssignableRoles.Contains(normalized)) return true;
-        if (ElevatedRoles.Contains(normalized)) return IsSuperAdmin();
+        if (ElevatedRoles.Contains(normalized)) return User.IsSuperAdmin();
         return false;
     }
 

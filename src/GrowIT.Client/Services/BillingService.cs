@@ -6,6 +6,7 @@ namespace GrowIT.Client.Services;
 public interface IBillingService
 {
     Task<BillingOverviewDto> GetOverviewAsync(CancellationToken ct = default);
+    Task<PlanUsageDto> GetUsageAsync(CancellationToken ct = default);
     Task<string> CreateCheckoutSessionAsync(Guid planId, BillingInterval interval, CancellationToken ct = default);
     Task<string> CreatePortalSessionAsync(CancellationToken ct = default);
     Task CreatePlanAsync(CreateSubscriptionPlanRequest request, CancellationToken ct = default);
@@ -20,6 +21,9 @@ public class BillingService : BaseApiService, IBillingService
 
     public async Task<BillingOverviewDto> GetOverviewAsync(CancellationToken ct = default) =>
         await GetAsync<BillingOverviewDto>($"{Endpoint}/overview", ct) ?? new BillingOverviewDto();
+
+    public async Task<PlanUsageDto> GetUsageAsync(CancellationToken ct = default) =>
+        await GetAsync<PlanUsageDto>($"{Endpoint}/usage", ct) ?? new PlanUsageDto();
 
     public async Task<string> CreateCheckoutSessionAsync(Guid planId, BillingInterval interval, CancellationToken ct = default)
     {

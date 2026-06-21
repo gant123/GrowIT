@@ -5,14 +5,31 @@
 @using Syncfusion.Blazor.Navigations
 @using GrowIT.Client.Shared 
 @inject IClientService ClientService
+@inject IBillingService BillingService
 @inject NavigationManager Nav
 
 <div class="dashboard fade-in mt-4">
     <PageHeader Title="Founder Case Directory" Subtitle="Track households, stability, and service readiness from one operational view.">
         <Actions>
-            <button class="btn-growit btn-primary-growit shadow-sm" @onclick="OpenCreateModal">
-                <i class="bi bi-plus-lg me-2"></i>New Case File
-            </button>
+            @if (_usage is not null && _usage.ClientsMax > 0)
+            {
+                <span class="badge text-bg-light me-2 align-self-center" title="Client usage on your @_usage.PlanName plan">
+                    @_usage.ClientsUsed / @_usage.ClientsMax clients
+                </span>
+            }
+            @if (_usage?.AtClientLimit == true)
+            {
+                <a class="btn-growit btn-secondary-growit shadow-sm" href="/billing"
+                   title="You've reached your @_usage.PlanName plan's client limit">
+                    <i class="bi bi-arrow-up-circle me-2"></i>Upgrade to add more
+                </a>
+            }
+            else
+            {
+                <button class="btn-growit btn-primary-growit shadow-sm" @onclick="OpenCreateModal">
+                    <i class="bi bi-plus-lg me-2"></i>New Case File
+                </button>
+            }
         </Actions>
     </PageHeader>
 
@@ -246,6 +263,7 @@
     private bool showCreateModal = false;
     private bool _isLoading = true;
     private string? _loadError;
+    private PlanUsageDto? _usage;
     private string _searchText = string.Empty;
     private LifePhase? _phaseFilter;
     private static readonly List<object> GridToolbarItems =
@@ -270,6 +288,13 @@
         try
         {
             clients = await ClientService.GetAllClientsAsync();
+            try { _usage = await BillingService.GetUsageAsync(); }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Usage indicator is non-critical; keep the directory usable.
+                // Log so transient failures are visible instead of vanishing.
+                Console.Error.WriteLine($"[Clients] Failed to load billing usage: {ex.Message}");
+            }
         }
         catch (Exception ex)
         {
@@ -312,7 +337,15 @@
     };
 
     private void NavigateToClient(Guid id) => Nav.NavigateTo($"clients/{id}");
-    private void OpenCreateModal() => showCreateModal = true;
+    private void OpenCreateModal()
+    {
+        if (_usage?.AtClientLimit == true)
+        {
+            Nav.NavigateTo("/billing");
+            return;
+        }
+        showCreateModal = true;
+    }
     private void SetPhaseFilter(LifePhase? phase) => _phaseFilter = phase;
 
     private async Task OnClientsToolbarClick(ClickEventArgs args)

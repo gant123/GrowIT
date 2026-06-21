@@ -28,6 +28,19 @@ public class SubscriptionPlanDto
     public bool CanCheckoutYearly { get; set; }
 }
 
+public class PlanUsageDto
+{
+    public string PlanName { get; set; } = "Free";
+    public int ClientsUsed { get; set; }
+    public int ClientsMax { get; set; }
+    public int UsersUsed { get; set; }
+    public int UsersMax { get; set; }
+
+    // A non-positive max means "unlimited" (fail open) — never reports at-limit.
+    public bool AtClientLimit => ClientsMax > 0 && ClientsUsed >= ClientsMax;
+    public bool AtUserLimit => UsersMax > 0 && UsersUsed >= UsersMax;
+}
+
 public class SubscriptionDto
 {
     public Guid Id { get; set; }

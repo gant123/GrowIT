@@ -24,17 +24,27 @@ public class BillingController : ControllerBase
     private readonly ICurrentTenantService _tenantService;
     private readonly ICurrentUserService _currentUserService;
     private readonly IConfiguration _configuration;
+    private readonly GrowIT.Backend.Services.IPlanLimitService _planLimits;
 
     public BillingController(
         ApplicationDbContext context,
         ICurrentTenantService tenantService,
         ICurrentUserService currentUserService,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        GrowIT.Backend.Services.IPlanLimitService planLimits)
     {
         _context = context;
         _tenantService = tenantService;
         _currentUserService = currentUserService;
         _configuration = configuration;
+        _planLimits = planLimits;
+    }
+
+    [HttpGet("usage")]
+    public async Task<ActionResult<PlanUsageDto>> GetUsage(CancellationToken cancellationToken)
+    {
+        await EnsureDefaultPlansAsync();
+        return Ok(await _planLimits.GetUsageAsync(cancellationToken));
     }
 
     [HttpGet("overview")]
