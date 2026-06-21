@@ -13,9 +13,14 @@ namespace GrowIT.Backend.Tests.Infrastructure;
 public sealed class GrowItApiFactory : WebApplicationFactory<Program>
 {
     private readonly string _dbName = $"growit-tests-{Guid.NewGuid():N}";
+    private readonly Dictionary<string, string?> _configOverrides;
 
-    public GrowItApiFactory()
+    public GrowItApiFactory(IDictionary<string, string?>? configOverrides = null)
     {
+        _configOverrides = configOverrides is null
+            ? new Dictionary<string, string?>()
+            : new Dictionary<string, string?>(configOverrides);
+
         Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", "Host=localhost;Port=5432;Database=growit-tests;Username=test;Password=test");
         Environment.SetEnvironmentVariable("Jwt__Key", "integration-test-signing-key-please-change-in-real-env");
         Environment.SetEnvironmentVariable("Jwt__Issuer", "growit-local");
@@ -29,15 +34,27 @@ public sealed class GrowItApiFactory : WebApplicationFactory<Program>
         builder.UseEnvironment("Development");
         builder.ConfigureAppConfiguration((_, configBuilder) =>
         {
-            configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+            // Pin Stripe to "not configured" by default so billing tests are deterministic
+            // regardless of any user-secrets/env on the host. Tests that need the
+            // Stripe-configured path pass overrides via the constructor.
+            var settings = new Dictionary<string, string?>
             {
                 ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Port=5432;Database=growit-tests;Username=test;Password=test",
                 ["Jwt:Key"] = "integration-test-signing-key-please-change-in-real-env",
                 ["Jwt:Issuer"] = "growit-local",
                 ["Jwt:Audience"] = "growit-internal",
                 ["ClientUrl"] = "https://localhost",
-                ["Reports:Scheduler:Enabled"] = "false"
-            });
+                ["Reports:Scheduler:Enabled"] = "false",
+                ["Stripe:SecretKey"] = "",
+                ["Stripe:WebhookSecret"] = ""
+            };
+
+            foreach (var kvp in _configOverrides)
+            {
+                settings[kvp.Key] = kvp.Value;
+            }
+
+            configBuilder.AddInMemoryCollection(settings);
         });
 
         builder.ConfigureServices(services =>

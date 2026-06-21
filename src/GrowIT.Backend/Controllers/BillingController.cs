@@ -492,8 +492,11 @@ public class BillingController : ControllerBase
             StartDate = DateTime.UtcNow
         };
 
+        // Preserve the original "free_activated" event for free plans (so existing audit
+        // queries keep matching); use a distinct type only for the new direct paid/demo path.
+        var isFree = plan.PriceMonthly <= 0 && plan.PriceYearly <= 0;
         _context.Subscriptions.Add(subscription);
-        await AddBillingEventAsync(tenantId, "subscription.activated", "Subscriptions", subscription.Id, new
+        await AddBillingEventAsync(tenantId, isFree ? "subscription.free_activated" : "subscription.activated", "Subscriptions", subscription.Id, new
         {
             planId = plan.Id,
             planName = plan.Name

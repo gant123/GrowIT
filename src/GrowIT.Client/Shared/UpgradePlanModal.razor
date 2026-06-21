@@ -217,10 +217,17 @@
             {
                 Nav.NavigateTo(url, forceLoad: true);
             }
+            else
+            {
+                _error = "Could not start checkout. Please try again.";
+            }
         }
         catch (ApiException ex)
         {
             _error = ex.Message;
+        }
+        finally
+        {
             _busyPlanId = null;
         }
     }
