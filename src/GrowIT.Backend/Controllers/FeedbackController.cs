@@ -58,7 +58,9 @@ public class FeedbackController : ControllerBase
         _context.BetaFeedbacks.Add(item);
         await _context.SaveChangesAsync();
 
-        var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId.Value);
+        // Ignore the tenant query filter: BetaFeedback is platform-owned and a SuperAdmin may
+        // submit without a tenant context, which would otherwise return null for their own record.
+        var user = await _context.Users.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId.Value);
         var tenant = item.TenantId.HasValue
             ? await _context.Tenants.AsNoTracking().FirstOrDefaultAsync(t => t.Id == item.TenantId.Value)
             : null;
