@@ -79,11 +79,16 @@ public sealed class DemoDataSeeder
         var org1 = await _db.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Id == superAdmin.TenantId);
         if (org1 is null)
         {
-            org1 = NewTenant("Hope Harbor Community Services", "Community Services", "11-50");
+            org1 = NewTenant("Hope Harbor Community Services", "Community Services", "11-50", SubscriptionPlanType.Enterprise);
             _db.Tenants.Add(org1);
             await _db.SaveChangesAsync();
             superAdmin.TenantId = org1.Id;
-            await _users.UpdateAsync(superAdmin);
+            var link = await _users.UpdateAsync(superAdmin);
+            if (!link.Succeeded)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to link SuperAdmin to demo org: {string.Join(" ", link.Errors.Select(e => e.Description))}");
+            }
         }
 
         var org1Staff = new List<User>
@@ -96,20 +101,23 @@ public sealed class DemoDataSeeder
         await SeedTenantDataAsync(org1, org1Staff);
 
         // --- Organizations 2 & 3: independent tenants with their own staff ---
-        await SeedOrganizationAsync("Riverside Family Network", "Family Services", "1-10", "riverside.org");
-        await SeedOrganizationAsync("Bright Futures Collective", "Youth & Education", "51-200", "brightfutures.org");
+        // Varied plan tiers so the subscription limits are visible in the demo:
+        // Riverside (Free, 3 staff) is already over the 2-seat cap, so new invites are blocked;
+        // Bright Futures runs on Pro.
+        await SeedOrganizationAsync("Riverside Family Network", "Family Services", "1-10", "riverside.org", SubscriptionPlanType.Free);
+        await SeedOrganizationAsync("Bright Futures Collective", "Youth & Education", "51-200", "brightfutures.org", SubscriptionPlanType.Pro);
 
         _log.LogInformation(
-            "Demo seed complete. SuperAdmin: {Email}. All seeded staff log in with password: {Password}",
-            SuperAdminEmail, DemoPassword);
+            "Demo seed complete. SuperAdmin: {Email}. All seeded staff log in with the shared demo password (see DemoDataSeeder.DemoPassword).",
+            SuperAdminEmail);
     }
 
-    private async Task SeedOrganizationAsync(string name, string type, string size, string domain)
+    private async Task SeedOrganizationAsync(string name, string type, string size, string domain, SubscriptionPlanType plan)
     {
         var tenant = await _db.Tenants.IgnoreQueryFilters().FirstOrDefaultAsync(t => t.Name == name);
         if (tenant is null)
         {
-            tenant = NewTenant(name, type, size);
+            tenant = NewTenant(name, type, size, plan);
             _db.Tenants.Add(tenant);
             await _db.SaveChangesAsync();
         }
@@ -134,6 +142,12 @@ public sealed class DemoDataSeeder
         }
 
         _log.LogInformation("Seeding demo data for org '{Name}'...", tenant.Name);
+
+        // All-or-nothing: the marker fund doubles as the "already seeded" sentinel, so it
+        // must only become visible if every batch below commits. A mid-seed failure would
+        // otherwise leave the org half-populated and permanently flagged as seeded.
+        await using var tx = await _db.Database.BeginTransactionAsync();
+
         var staffIds = staff.Select(s => s.Id).ToList();
 
         // Funds + programs (no dependencies)
@@ -178,7 +192,9 @@ public sealed class DemoDataSeeder
                     LastName = lastName,
                     Relationship = d == 0 && head.MaritalStatus == MaritalStatus.Married ? "Spouse" : "Child",
                     DateOfBirth = Utc(DateTime.UtcNow.AddYears(-_rng.Next(2, 17))),
-                    SchoolOrEmployer = "Lincoln Elementary",
+                    SchoolOrEmployer = d == 0 && head.MaritalStatus == MaritalStatus.Married
+                        ? "Various Employers"
+                        : "Lincoln Elementary",
                     Notes = "Added during intake.",
                 });
             }
@@ -317,6 +333,8 @@ public sealed class DemoDataSeeder
         });
 
         await _db.SaveChangesAsync();
+
+        await tx.CommitAsync();
         _log.LogInformation(
             "Org '{Name}': {Clients} clients, {Inv} investments, {Imp} imprints, {Plans} growth plans.",
             tenant.Name, clients.Count, investments.Count, imprints.Count, plans.Count);
@@ -333,7 +351,7 @@ public sealed class DemoDataSeeder
         }
 
         // No account yet: create one in a fresh org so the demo is self-contained.
-        var tenant = NewTenant("Hope Harbor Community Services", "Community Services", "11-50");
+        var tenant = NewTenant("Hope Harbor Community Services", "Community Services", "11-50", SubscriptionPlanType.Enterprise);
         _db.Tenants.Add(tenant);
         await _db.SaveChangesAsync();
 
@@ -392,13 +410,14 @@ public sealed class DemoDataSeeder
         }
     }
 
-    private static Tenant NewTenant(string name, string type, string size) => new()
+    private static Tenant NewTenant(string name, string type, string size, SubscriptionPlanType plan = SubscriptionPlanType.Free) => new()
     {
         Name = name,
         Address = "123 Mission St, Suite 200",
         ContactEmail = $"contact@{name.Split(' ')[0].ToLowerInvariant()}.org",
         OrganizationType = type,
         OrganizationSize = size,
+        SubscriptionPlan = plan,
         TrackPeople = true,
         TrackInvestments = true,
         TrackOutcomes = true,
