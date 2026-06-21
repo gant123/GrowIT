@@ -147,7 +147,7 @@ public class AdminController : ControllerBase
                 select new { ur.UserId, r.Name })
             .ToListAsync())
             .GroupBy(x => x.UserId)
-            .ToDictionary(g => g.Key, g => g.First().Name ?? "Member");
+            .ToDictionary(g => g.Key, g => HighestPrivilegeRole(g.Select(x => x.Name)));
 
         var result = users.Select(u => new AdminUserListItemDto
         {
@@ -956,6 +956,29 @@ public class AdminController : ControllerBase
         DeactivatedAt = user.DeactivatedAt,
         CreatedAt = user.CreatedAt
     };
+
+    // Highest-to-lowest privilege. Used to deterministically pick a single role to display
+    // if a user ever holds more than one (the app assigns exactly one, but defend anyway).
+    private static readonly string[] RolePriority =
+        { "SuperAdmin", "Owner", "Admin", "Manager", "Case Manager", "Analyst", "Member" };
+
+    private static string HighestPrivilegeRole(IEnumerable<string?> roles)
+    {
+        string? best = null;
+        var bestRank = int.MaxValue;
+        foreach (var role in roles)
+        {
+            if (string.IsNullOrWhiteSpace(role)) continue;
+            var idx = Array.FindIndex(RolePriority, r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase));
+            var rank = idx < 0 ? int.MaxValue - 1 : idx; // unknown roles rank just above "none"
+            if (rank < bestRank || (rank == bestRank && (best is null || string.CompareOrdinal(role, best) < 0)))
+            {
+                best = role.Trim();
+                bestRank = rank;
+            }
+        }
+        return best ?? "Member";
+    }
 
     private static bool IsAdminRole(string? role)
     {
