@@ -1,6 +1,7 @@
 @using static Microsoft.AspNetCore.Components.Web.RenderMode
 @{
-    const string AssetVersion = "20260621-1";
+    // Build-derived cache-busting token — advances automatically on every deploy.
+    var AssetVersion = GrowIT.Client.BuildInfo.AssetVersion;
 }
 
 <!DOCTYPE html>
