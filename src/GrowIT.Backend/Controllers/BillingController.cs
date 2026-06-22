@@ -181,7 +181,7 @@ public class BillingController : ControllerBase
 
         if (plan.PriceMonthly <= 0 && plan.PriceYearly <= 0)
         {
-            await ActivateFreeSubscriptionAsync(plan, tenantId.Value);
+            await ActivatePlanAsync(plan, tenantId.Value);
             return Ok(new BillingRedirectResponse { Url = BuildAbsoluteUrl("/billing") });
         }
 
@@ -230,6 +230,44 @@ public class BillingController : ControllerBase
             .CreateAsync(options, requestOptions: BuildStripeRequestOptions(secretKey));
 
         return Ok(new BillingRedirectResponse { Url = session.Url });
+    }
+
+    // Switches the tenant to a plan without going through Stripe. Always allowed for free
+    // plans; for paid plans this is only permitted when Stripe payments are unavailable
+    // (no secret key, e.g. the demo environment), so any deployment that can charge still
+    // collects payment via checkout.
+    [HttpPost("activate-plan")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<ActionResult<PlanChangeResultDto>> ActivatePlan(ActivatePlanRequest request)
+    {
+        var tenantId = _tenantService.TenantId;
+        if (!tenantId.HasValue || tenantId == Guid.Empty)
+        {
+            return Unauthorized("No valid tenant context found.");
+        }
+
+        var plan = await _context.SubscriptionPlans.FirstOrDefaultAsync(p => p.Id == request.PlanId);
+        if (plan is null)
+        {
+            return NotFound("Plan not found.");
+        }
+
+        // Gate on the same condition the checkout path uses (a secret key is present, so
+        // Stripe can charge) rather than full webhook configuration — otherwise a
+        // key-but-no-webhook setup would let an admin activate a paid plan for free.
+        var stripePaymentsEnabled = !string.IsNullOrWhiteSpace(GetStripeSecretKey());
+        var isFree = plan.PriceMonthly <= 0 && plan.PriceYearly <= 0;
+        if (!isFree && stripePaymentsEnabled)
+        {
+            return BadRequest("This plan requires payment. Use the checkout flow to subscribe.");
+        }
+
+        await ActivatePlanAsync(plan, tenantId.Value);
+
+        var message = isFree
+            ? $"Activated the {plan.Name} plan."
+            : $"Switched to the {plan.Name} plan (demo mode — no payment was collected).";
+        return Ok(new PlanChangeResultDto { PlanName = plan.Name, Message = message });
     }
 
     [HttpPost("portal-session")]
@@ -437,7 +475,9 @@ public class BillingController : ControllerBase
         };
     }
 
-    private async Task ActivateFreeSubscriptionAsync(SubscriptionPlan plan, Guid tenantId)
+    // Cancels the tenant's current active/trialing subscription and activates the given plan.
+    // Used for free-plan activation and for direct (non-Stripe) plan changes.
+    private async Task ActivatePlanAsync(SubscriptionPlan plan, Guid tenantId)
     {
         var existing = await _context.Subscriptions.FirstOrDefaultAsync(s =>
             s.TenantId == tenantId &&
@@ -457,10 +497,14 @@ public class BillingController : ControllerBase
             StartDate = DateTime.UtcNow
         };
 
+        // Preserve the original "free_activated" event for free plans (so existing audit
+        // queries keep matching); use a distinct type only for the new direct paid/demo path.
+        var isFree = plan.PriceMonthly <= 0 && plan.PriceYearly <= 0;
         _context.Subscriptions.Add(subscription);
-        await AddBillingEventAsync(tenantId, "subscription.free_activated", "Subscriptions", subscription.Id, new
+        await AddBillingEventAsync(tenantId, isFree ? "subscription.free_activated" : "subscription.activated", "Subscriptions", subscription.Id, new
         {
-            planId = plan.Id
+            planId = plan.Id,
+            planName = plan.Name
         });
 
         await _context.SaveChangesAsync();

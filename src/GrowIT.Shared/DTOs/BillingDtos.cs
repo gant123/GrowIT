@@ -96,6 +96,19 @@ public class CreateCheckoutSessionRequest
     public BillingInterval Interval { get; set; } = BillingInterval.Monthly;
 }
 
+public class ActivatePlanRequest
+{
+    public Guid PlanId { get; set; }
+}
+
+// Result of a direct (non-Stripe) plan activation — used for free plans and for the
+// demo path where Stripe is not configured. Lets the UI confirm and refresh limits.
+public class PlanChangeResultDto
+{
+    public string PlanName { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+}
+
 public class BillingRedirectResponse
 {
     public string Url { get; set; } = string.Empty;

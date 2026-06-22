@@ -1,0 +1,240 @@
+@using GrowIT.Shared.DTOs
+@using GrowIT.Shared.Enums
+@inject IBillingService BillingService
+@inject AppNotificationService Notifications
+@inject NavigationManager Nav
+
+@if (Show)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 1050;" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 shadow-lg"
+                 style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
+
+                <div class="modal-header" style="border-bottom: 1px solid var(--growit-border);">
+                    <div>
+                        <h5 class="modal-title fw-bold mb-1" style="color: var(--growit-text-primary);">
+                            <i class="bi bi-stars me-2" style="color: var(--growit-green);"></i>Choose your plan
+                        </h5>
+                        <p class="mb-0 small" style="color: var(--growit-text-secondary);">
+                            @(string.IsNullOrWhiteSpace(Reason) ? "Pick the plan that fits your organization." : Reason)
+                        </p>
+                    </div>
+                    <button type="button" class="btn btn-link text-decoration-none"
+                            style="color: var(--growit-text-muted);" @onclick="Close">
+                        <span class="oi oi-x fs-5"></span>
+                    </button>
+                </div>
+
+                <div class="modal-body p-4">
+                    @if (_loading)
+                    {
+                        <div class="loading-state py-5">
+                            <div class="spinner-growit"></div>
+                            <p class="loading-state-text">Loading plans...</p>
+                        </div>
+                    }
+                    else if (_overview is null)
+                    {
+                        <div class="alert alert-danger">@(_error ?? "Could not load plans.")</div>
+                    }
+                    else
+                    {
+                        @if (!string.IsNullOrWhiteSpace(_error))
+                        {
+                            <div class="alert alert-danger d-flex align-items-center mb-3 border-0" role="alert"
+                                 style="background-color: rgba(220, 53, 69, 0.1); color: #dc3545;">
+                                <span class="oi oi-warning me-2 fs-5"></span>
+                                <div class="small fw-bold">@_error</div>
+                            </div>
+                        }
+
+                        @if (!_overview.StripeConfigured)
+                        {
+                            <div class="alert d-flex align-items-center mb-4 border-0" role="alert"
+                                 style="background-color: rgba(13, 110, 253, 0.1); color: var(--growit-text-secondary);">
+                                <i class="bi bi-info-circle me-2 fs-5"></i>
+                                <div class="small">Demo mode — plan changes apply instantly and no payment is collected.</div>
+                            </div>
+                        }
+
+                        <div class="grid-3">
+                            @foreach (var plan in _overview.Plans)
+                            {
+                                var isCurrent = _overview.CurrentSubscription?.PlanId == plan.Id;
+                                var paid = plan.PriceMonthly > 0 || plan.PriceYearly > 0;
+                                var useStripe = paid && _overview.StripeConfigured;
+                                var busy = _busyPlanId == plan.Id;
+
+                                <div class="card-growit h-100 @(isCurrent ? "border-success" : "")"
+                                     style="@(isCurrent ? "border: 2px solid var(--growit-green);" : "")">
+                                    <div class="card-header">
+                                        <div>
+                                            <h3 class="section-title">@plan.Name</h3>
+                                            <div class="small text-muted">@plan.MaxUsers users · @plan.MaxClients clients</div>
+                                        </div>
+                                        @if (isCurrent)
+                                        {
+                                            <span class="badge-growit badge-success">Current</span>
+                                        }
+                                    </div>
+                                    <div class="card-body d-flex flex-column">
+                                        <div class="d-flex align-items-end gap-2 mb-1">
+                                            <div class="display-6 fw-bold">@plan.PriceMonthly.ToString("C0")</div>
+                                            <div class="text-muted mb-2">/mo</div>
+                                        </div>
+                                        <div class="mb-3 small text-muted">@plan.PriceYearly.ToString("C0") billed yearly</div>
+
+                                        @if (plan.Features.Any())
+                                        {
+                                            <ul class="list-unstyled small mb-4">
+                                                @foreach (var feature in plan.Features.Take(6))
+                                                {
+                                                    <li class="mb-2"><i class="bi bi-check2 text-success me-2"></i>@feature</li>
+                                                }
+                                            </ul>
+                                        }
+
+                                        <div class="mt-auto">
+                                            @if (isCurrent)
+                                            {
+                                                <button class="btn-growit btn-secondary-growit w-100" disabled>Current plan</button>
+                                            }
+                                            else if (useStripe)
+                                            {
+                                                <div class="d-flex gap-2">
+                                                    <button class="btn-growit btn-primary-growit flex-fill"
+                                                            @onclick="() => Checkout(plan.Id, BillingInterval.Monthly)"
+                                                            disabled="@(busy || !plan.CanCheckoutMonthly)">
+                                                        @(busy ? "..." : "Monthly")
+                                                    </button>
+                                                    <button class="btn-growit btn-secondary-growit flex-fill"
+                                                            @onclick="() => Checkout(plan.Id, BillingInterval.Yearly)"
+                                                            disabled="@(busy || !plan.CanCheckoutYearly)">
+                                                        Yearly
+                                                    </button>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <button class="btn-growit btn-primary-growit w-100"
+                                                        @onclick="() => Activate(plan.Id)" disabled="@busy">
+                                                    @if (busy)
+                                                    {
+                                                        <span>Switching...</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span><i class="bi bi-arrow-up-circle me-2"></i>@(paid ? "Switch to this plan" : "Switch to Free")</span>
+                                                    }
+                                                </button>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Show { get; set; }
+    [Parameter] public EventCallback<bool> ShowChanged { get; set; }
+    [Parameter] public EventCallback OnPlanChanged { get; set; }
+    [Parameter] public string? Reason { get; set; }
+
+    private BillingOverviewDto? _overview;
+    private bool _loading;
+    private bool _wasShown;
+    private Guid? _busyPlanId;
+    private string? _error;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Show && !_wasShown)
+        {
+            _wasShown = true;
+            await LoadAsync();
+        }
+        else if (!Show && _wasShown)
+        {
+            _wasShown = false;
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        _overview = null;
+        try
+        {
+            _overview = await BillingService.GetOverviewAsync();
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task Activate(Guid planId)
+    {
+        _busyPlanId = planId;
+        _error = null;
+        try
+        {
+            var result = await BillingService.ActivatePlanAsync(planId);
+            Notifications.Success(result.Message);
+            await OnPlanChanged.InvokeAsync();
+            await Close();
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busyPlanId = null;
+        }
+    }
+
+    private async Task Checkout(Guid planId, BillingInterval interval)
+    {
+        _busyPlanId = planId;
+        _error = null;
+        try
+        {
+            var url = await BillingService.CreateCheckoutSessionAsync(planId, interval);
+            if (!string.IsNullOrWhiteSpace(url))
+            {
+                Nav.NavigateTo(url, forceLoad: true);
+            }
+            else
+            {
+                _error = "Could not start checkout. Please try again.";
+            }
+        }
+        catch (ApiException ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busyPlanId = null;
+        }
+    }
+
+    private async Task Close()
+    {
+        Show = false;
+        await ShowChanged.InvokeAsync(false);
+    }
+}

@@ -19,10 +19,10 @@
             }
             @if (_usage?.AtClientLimit == true)
             {
-                <a class="btn-growit btn-secondary-growit shadow-sm" href="/billing"
-                   title="You've reached your @_usage.PlanName plan's client limit">
+                <button class="btn-growit btn-secondary-growit shadow-sm" @onclick="OpenUpgradeModal"
+                        title="You've reached your @_usage.PlanName plan's client limit">
                     <i class="bi bi-arrow-up-circle me-2"></i>Upgrade to add more
-                </a>
+                </button>
             }
             else
             {
@@ -254,6 +254,7 @@
     }
     
     <AddClientModal @bind-Show="showCreateModal" OnClientAdded="LoadClients" />
+    <UpgradePlanModal @bind-Show="_showUpgrade" OnPlanChanged="OnPlanChanged" Reason="@UpgradeReason" />
 
 </div>
 
@@ -264,6 +265,7 @@
     private bool _isLoading = true;
     private string? _loadError;
     private PlanUsageDto? _usage;
+    private bool _showUpgrade;
     private string _searchText = string.Empty;
     private LifePhase? _phaseFilter;
     private static readonly List<object> GridToolbarItems =
@@ -341,11 +343,20 @@
     {
         if (_usage?.AtClientLimit == true)
         {
-            Nav.NavigateTo("/billing");
+            OpenUpgradeModal();
             return;
         }
         showCreateModal = true;
     }
+
+    private void OpenUpgradeModal() => _showUpgrade = true;
+
+    private string UpgradeReason =>
+        _usage is null
+            ? "Pick the plan that fits your organization."
+            : $"You're using {_usage.ClientsUsed} of {_usage.ClientsMax} clients on the {_usage.PlanName} plan — upgrade for more capacity.";
+
+    private async Task OnPlanChanged() => await LoadClients();
     private void SetPhaseFilter(LifePhase? phase) => _phaseFilter = phase;
 
     private async Task OnClientsToolbarClick(ClickEventArgs args)
