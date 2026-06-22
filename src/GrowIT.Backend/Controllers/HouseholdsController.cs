@@ -77,34 +77,71 @@ public class HouseholdsController : ControllerBase
             .Include(h => h.Members) // This pulls in the Clients automatically
             .ToListAsync();
 
+        // Also pull the intake family members (spouse/children) recorded against each
+        // household's clients, so the household view matches what shows on a case file.
+        var clientIds = households.SelectMany(h => h.Members.Select(m => m.Id)).Distinct().ToList();
+        var familyByClient = (await _context.FamilyMembers
+                .Where(f => clientIds.Contains(f.ClientId))
+                .ToListAsync())
+            .GroupBy(f => f.ClientId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
         var items = households
             .Select(h =>
             {
                 var primary = h.Members.FirstOrDefault(m => m.Id == h.PrimaryClientId);
+
+                var clientMembers = h.Members.Select(m => new HouseholdMemberSummaryDto
+                {
+                    ClientId = m.Id,
+                    Name = $"{m.FirstName} {m.LastName}".Trim(),
+                    Role = m.HouseholdRole,
+                    Email = m.Email,
+                    IsCaseFile = true
+                });
+
+                var familyMembers = h.Members
+                    .SelectMany(m => familyByClient.TryGetValue(m.Id, out var fam) ? fam : Enumerable.Empty<FamilyMember>())
+                    .Select(f => new HouseholdMemberSummaryDto
+                    {
+                        ClientId = Guid.Empty,
+                        Name = $"{f.FirstName} {f.LastName}".Trim(),
+                        Role = MapRelationshipToRole(f.Relationship),
+                        Email = string.Empty,
+                        IsCaseFile = false
+                    });
+
+                var members = clientMembers
+                    .Concat(familyMembers)
+                    .OrderBy(m => m.Role)
+                    .ThenBy(m => m.Name)
+                    .ToList();
+
                 return new HouseholdDto
                 {
                     Id = h.Id,
                     Name = h.Name,
                     PrimaryClientId = h.PrimaryClientId,
                     PrimaryClientName = primary != null ? $"{primary.FirstName} {primary.LastName}".Trim() : null,
-                    MemberCount = h.Members.Count,
-                    Members = h.Members
-                        .OrderBy(m => m.FirstName)
-                        .ThenBy(m => m.LastName)
-                        .Select(m => new HouseholdMemberSummaryDto
-                        {
-                            ClientId = m.Id,
-                            Name = $"{m.FirstName} {m.LastName}".Trim(),
-                            Role = m.HouseholdRole,
-                            Email = m.Email
-                        })
-                        .ToList()
+                    MemberCount = members.Count,
+                    Members = members
                 };
             })
             .OrderBy(h => h.Name)
             .ToList();
 
         return Ok(items);
+    }
+
+    // Maps a free-text intake relationship onto the household role used for display.
+    private static HouseholdRole MapRelationshipToRole(string? relationship)
+    {
+        var rel = relationship?.Trim().ToLowerInvariant() ?? string.Empty;
+        if (rel.Contains("spouse") || rel.Contains("wife") || rel.Contains("husband") || rel.Contains("partner"))
+            return HouseholdRole.Spouse;
+        if (rel.Contains("child") || rel.Contains("son") || rel.Contains("daughter") || rel.Contains("dependent"))
+            return HouseholdRole.Dependent;
+        return HouseholdRole.Other;
     }
 
     // 3. Add a Person to a Family

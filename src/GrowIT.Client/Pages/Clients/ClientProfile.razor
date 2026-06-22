@@ -193,7 +193,7 @@ else
                             <div class="list-group list-group-flush timeline-list">
                                 @foreach (var item in client.Timeline)
                                 {
-                                    <div class="list-group-item p-4 d-flex gap-3 timeline-item">
+                                    <div class="list-group-item d-flex gap-3 timeline-item">
                                         <div class="d-flex flex-column align-items-center timeline-rail">
                                             <div class="timeline-dot @MapTimelineTone(item.ColorClass)">
                                                 <i class="@MapTimelineIcon(item.Icon)"></i>
@@ -201,7 +201,7 @@ else
                                             <div class="timeline-line"></div>
                                         </div>
 
-                                        <div class="flex-grow-1 pb-3">
+                                        <div class="flex-grow-1 timeline-content">
                                             <div class="d-flex justify-content-between align-items-start">
                                                 <h6 class="fw-bold mb-1">@item.Title</h6>
                                                 <div>

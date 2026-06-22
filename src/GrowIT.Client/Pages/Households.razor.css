@@ -266,6 +266,20 @@
 .role-pill.role-dependent { background: rgba(245,158,11,.12); color: #b45309; border-color: rgba(245,158,11,.24); }
 .role-pill.role-other { background: rgba(148,163,184,.12); color: var(--growit-text-muted); border-color: rgba(148,163,184,.22); }
 
+.member-kind-chip {
+    margin-left: .25rem;
+    padding: .12rem .45rem;
+    border-radius: 999px;
+    font-size: .62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    background: rgba(148,163,184,.12);
+    color: var(--growit-text-muted);
+    border: 1px solid rgba(148,163,184,.22);
+    flex-shrink: 0;
+}
+
 .member-empty-state {
     padding: .9rem;
     color: var(--growit-text-muted);

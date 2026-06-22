@@ -18,6 +18,10 @@ public class HouseholdMemberSummaryDto
     public string Name { get; set; } = string.Empty;
     public HouseholdRole Role { get; set; }
     public string Email { get; set; } = string.Empty;
+
+    // True for clients (each has its own case file); false for intake family members
+    // (spouse/children recorded against a client, with no separate case file).
+    public bool IsCaseFile { get; set; } = true;
 }
 
 public class CreateHouseholdResponseDto
