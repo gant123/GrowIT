@@ -2,9 +2,11 @@
 @using GrowIT.Shared.DTOs
 @using Syncfusion.Blazor.Grids
 @using Syncfusion.Blazor.Navigations
+@using GrowIT.Client.Shared
 @implements IDisposable
 @inject IAdminService AdminService
 @inject IRoleAccessService RoleAccessService
+@inject IBillingService BillingService
 @inject IJSRuntime JS
 
 <PageTitle>Settings - grow.IT</PageTitle>
@@ -344,6 +346,9 @@
                         <h2>Invite Team Members</h2>
                         <p>Send secure invitations so staff can join your organization workspace without creating a new tenant.</p>
                     </div>
+                    <button class="btn btn-outline-primary" @onclick="OpenUpgradeModal" title="View or change your subscription plan">
+                        <i class="bi bi-stars me-1"></i>Change plan
+                    </button>
                 </div>
                 <div class="settings-panel-body">
                     @if (!string.IsNullOrWhiteSpace(_inviteMessage))
@@ -352,8 +357,18 @@
                     }
                     @if (!string.IsNullOrWhiteSpace(_inviteError))
                     {
-                        <div class="alert alert-danger">@_inviteError</div>
+                        <div class="alert alert-danger d-flex justify-content-between align-items-center gap-3">
+                            <span>@_inviteError</span>
+                            @if (_inviteError.Contains("Upgrade your plan", StringComparison.OrdinalIgnoreCase))
+                            {
+                                <button class="btn btn-sm btn-primary flex-shrink-0" @onclick="OpenUpgradeModal">Upgrade plan</button>
+                            }
+                        </div>
                     }
+
+                    <UpgradePlanModal @bind-Show="_showUpgrade"
+                                      OnPlanChanged="OnInvitePlanChanged"
+                                      Reason="Upgrade your plan to invite more team members." />
 
                     <div class="invite-create-card">
                         <h3>Send Invitation</h3>
@@ -915,6 +930,7 @@
     private string? _inviteMessage;
     private string? _inviteError;
     private string? _lastInviteLink;
+    private bool _showUpgrade;
     private string? _auditLogError;
     private string? _emailDiagnosticsError;
     private string? _systemDiagnosticsError;
@@ -1091,6 +1107,16 @@
         {
             _isSavingOrganization = false;
         }
+    }
+
+    private void OpenUpgradeModal() => _showUpgrade = true;
+
+    // After a plan change, clear the limit error so the admin can retry the invite
+    // (the server re-checks the new plan's seat limit on the next send).
+    private void OnInvitePlanChanged()
+    {
+        _inviteError = null;
+        _inviteMessage = "Plan updated — you can now send the invitation.";
     }
 
     private async Task CreateInviteAsync()
