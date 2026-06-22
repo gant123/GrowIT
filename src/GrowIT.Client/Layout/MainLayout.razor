@@ -8,6 +8,7 @@
 @inject IProfileService ProfileService
 @inject IRoleAccessService RoleAccessService
 @inject IAdminService AdminService
+@inject BreadcrumbState BreadcrumbLabels
 
 <div class="growit-app" data-theme="@_currentTheme">
     <!-- Sidebar Overlay for Mobile -->
@@ -540,9 +541,17 @@
     protected override Task OnInitializedAsync()
     {
         Navigation.LocationChanged += OnLocationChanged;
+        BreadcrumbLabels.Changed += OnBreadcrumbChanged;
         UpdateBreadcrumbs();
         return Task.CompletedTask;
     }
+
+    private void OnBreadcrumbChanged() =>
+        InvokeAsync(() =>
+        {
+            UpdateBreadcrumbs();
+            StateHasChanged();
+        });
 
     protected override async Task OnParametersSetAsync()
     {
@@ -630,12 +639,20 @@
             path += "/" + segments[i];
             var previousSegment = i > 0 ? segments[i - 1] : null;
             var label = FormatBreadcrumbLabel(segments[i], previousSegment);
-            _breadcrumbs.Add(new Breadcrumb 
-            { 
-                Label = label, 
-                Href = path, 
-                IsLast = i == segments.Length - 1 
+            _breadcrumbs.Add(new Breadcrumb
+            {
+                Label = label,
+                Href = path,
+                IsLast = i == segments.Length - 1
             });
+        }
+
+        // A detail page can supply a friendly label (e.g. the client's name) for the
+        // current route, replacing the generic last crumb ("Case File", "Member Profile").
+        var detailLabel = BreadcrumbLabels.LabelFor(uri.AbsolutePath);
+        if (!string.IsNullOrWhiteSpace(detailLabel) && _breadcrumbs.Count > 0)
+        {
+            _breadcrumbs[^1].Label = detailLabel!;
         }
     }
 
@@ -1091,5 +1108,6 @@
     public void Dispose()
     {
         Navigation.LocationChanged -= OnLocationChanged;
+        BreadcrumbLabels.Changed -= OnBreadcrumbChanged;
     }
 }

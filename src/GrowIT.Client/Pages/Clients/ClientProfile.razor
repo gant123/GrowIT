@@ -3,6 +3,7 @@
 @using GrowIT.Client.Shared 
 @inject IClientService ClientService
 @inject NavigationManager Nav
+@inject BreadcrumbState Breadcrumb
 
 @if (_isLoading)
 {
@@ -274,6 +275,10 @@ else
         try
         {
             client = await ClientService.GetClientDetailAsync(Id);
+            if (client is not null)
+            {
+                Breadcrumb.Set($"/clients/{Id}", client.FullName);
+            }
         }
         catch (Exception ex)
         {

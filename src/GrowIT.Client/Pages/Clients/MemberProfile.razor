@@ -4,6 +4,7 @@
 @inject IClientService ClientService
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@inject BreadcrumbState Breadcrumb
 
 @if (_isLoading)
 {
@@ -187,8 +188,12 @@ else
         try
         {
             profile = await ClientService.GetMemberProfileAsync(Id);
-            var clientDetail = await ClientService.GetClientDetailAsync(profile.ClientId);
-            householdMembers = clientDetail?.HouseholdMembers ?? new();
+            if (profile is not null)
+            {
+                Breadcrumb.Set($"/clients/member/{Id}", profile.Name);
+                var clientDetail = await ClientService.GetClientDetailAsync(profile.ClientId);
+                householdMembers = clientDetail?.HouseholdMembers ?? new();
+            }
         }
         catch (Exception ex)
         {
