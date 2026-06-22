@@ -6,6 +6,7 @@
 @using GrowIT.Client.Shared 
 @inject IClientService ClientService
 @inject IBillingService BillingService
+@inject IRoleAccessService RoleAccessService
 @inject NavigationManager Nav
 
 <div class="dashboard fade-in mt-4">
@@ -26,6 +27,13 @@
             }
             else
             {
+                @if (_canManagePlan)
+                {
+                    <button class="btn-growit btn-secondary-growit shadow-sm" @onclick="OpenUpgradeModal"
+                            title="View or change your subscription plan">
+                        <i class="bi bi-stars me-2"></i>Change plan
+                    </button>
+                }
                 <button class="btn-growit btn-primary-growit shadow-sm" @onclick="OpenCreateModal">
                     <i class="bi bi-plus-lg me-2"></i>New Case File
                 </button>
@@ -266,6 +274,7 @@
     private string? _loadError;
     private PlanUsageDto? _usage;
     private bool _showUpgrade;
+    private bool _canManagePlan;
     private string _searchText = string.Empty;
     private LifePhase? _phaseFilter;
     private static readonly List<object> GridToolbarItems =
@@ -281,7 +290,16 @@
         }
     ];
 
-    protected override async Task OnInitializedAsync() => await LoadClients();
+    protected override async Task OnInitializedAsync()
+    {
+        try { _canManagePlan = (await RoleAccessService.GetAccessAsync()).CanManageAdminWorkspace; }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Non-critical: a missing access check just hides the optional "Change plan" button.
+            Console.Error.WriteLine($"[Clients] Failed to resolve plan-management access: {ex.Message}");
+        }
+        await LoadClients();
+    }
 
     private async Task LoadClients()
     {
