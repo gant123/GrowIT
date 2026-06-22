@@ -154,6 +154,10 @@
                                                         <div class="member-name-cell">
                                                             <span class="member-avatar">@GetInitials(member.Name)</span>
                                                             <span>@member.Name</span>
+                                                            @if (!member.IsCaseFile)
+                                                            {
+                                                                <span class="member-kind-chip" title="Intake family member — no separate case file">Family</span>
+                                                            }
                                                         </div>
                                                     </td>
                                                     <td>
