@@ -34,8 +34,11 @@ grow.IT is a founder survivability and funding-readiness platform for early-stag
 
 ## Quick Start (Local Development)
 
-The app does **not** auto-create or migrate the database on startup, so the database
-must exist and be migrated before the first run. Follow these steps in order.
+By default the app does **not** migrate the database on startup, so for local dev the
+database must exist and be migrated before the first run (follow these steps in order).
+For container/beta deploys you can instead set `Database__AutoMigrate=true` to apply
+migrations and bootstrap roles + the SuperAdmin automatically — see
+[Beta / Production deployment](#beta--production-deployment).
 
 ### 1. Start PostgreSQL
 
@@ -147,21 +150,71 @@ docker compose up -d --build
 - App: `http://localhost:5180`
 - Postgres: `localhost:5433`
 
-## Environment Variables
+## Configuration & Environment Variables
 
-Key configuration keys (can be set via `appsettings.json`, environment variables, or secrets):
+Configuration is read from the `appsettings.*.json` files **and then overridden by environment
+variables** (env vars always win). **Secrets are never committed** — the tracked
+`appsettings.Production.json` holds only non-secret config with blank placeholders, and real
+values are supplied per-environment via env vars (beta/prod) or `dotnet user-secrets` (local).
 
-| Key | Description | Default (Dev) |
-|-----|-------------|---------------|
-| `ConnectionStrings:DefaultConnection` | PostgreSQL connection string | - |
-| `Jwt:Key` | Secret key for JWT signing | - |
-| `Jwt:Issuer` / `Jwt:Audience` | JWT metadata | `growit-local` / `growit-internal` |
-| `SuperAdmin:Email` | Account elevated to SuperAdmin during identity bootstrap (blank = none) | set in `appsettings.Development.json` |
-| `ClientUrl` | Public URL of the application | `http://localhost:5245` |
-| `SyncfusionLicense` | License key for Syncfusion components | - |
-| `Email:SmtpHost` | SMTP server address | - |
-| `Email:DevFileFallbackEnabled` | If true, writes emails to disk instead of sending | `true` |
-| `Reports:Scheduler:Enabled` | Enables the background report runner | `true` |
+Use `:` for the config key, or `__` (double underscore) for the environment-variable form —
+e.g. `Jwt:Key` ↔ `Jwt__Key`.
+
+| Key | Description | Required for beta? | Default (Dev) |
+|-----|-------------|--------------------|---------------|
+| `ConnectionStrings:DefaultConnection` | PostgreSQL connection string | ✅ Yes | local default |
+| `Jwt:Key` | **Secret** — JWT signing key (use a long random value) | ✅ Yes | dev placeholder |
+| `Jwt:Issuer` / `Jwt:Audience` | JWT metadata | — | `growit-local` / `growit-internal` |
+| `SuperAdmin:Email` | Account elevated to SuperAdmin during identity bootstrap (blank = none) | ✅ Yes | set in `appsettings.Development.json` |
+| `Database:AutoMigrate` | If true, apply migrations + bootstrap roles/SuperAdmin on startup | recommended | `false` |
+| `ClientUrl` | Public URL of the application (used in email links + redirects) | ✅ Yes | `http://localhost:5245` |
+| `Email:SmtpHost` / `Email:SmtpPort` / `Email:UseSsl` | SMTP server | ✅ Yes | host blank in dev |
+| `Email:SmtpUser` | **Secret** — SMTP username | ✅ Yes | blank |
+| `Email:SmtpPass` | **Secret** — SMTP password / API key | ✅ Yes | blank |
+| `Email:FromEmail` | From address (domain must have SPF/DKIM to avoid spam) | ✅ Yes | `dev@growit.local` |
+| `Email:DevFileFallbackEnabled` | If true, writes emails to disk instead of sending | — | `true` (dev) / `false` (prod) |
+| `Stripe:SecretKey` | **Secret** — Stripe API key (paid plans require checkout once set) | for billing | blank |
+| `Stripe:WebhookSecret` | **Secret** — Stripe webhook signing secret | for billing | blank |
+| `Stripe:Plans:{Pro,Enterprise}:{Monthly,Yearly}PriceId` | Stripe price IDs per plan/interval | for billing | blank |
+| `SyncfusionLicense` | License key for Syncfusion components | ✅ Yes | embedded |
+| `Reports:Scheduler:Enabled` | Enables the background report runner | — | `true` |
+
+> ⚠️ **Email is onboarding-critical.** Sign-in requires a confirmed email
+> (`RequireConfirmedEmail = true`) and prod has no file fallback, so a tester **cannot log in
+> until they receive and click a confirmation email**. Verify SMTP delivery (and the from-domain's
+> SPF/DKIM) before inviting users.
+
+## Beta / Production deployment
+
+The container stack (`docker compose up -d --build`) runs `db` + `client`. For a real beta:
+
+1. **Set secrets via environment variables** (never in committed files). With Docker Compose,
+   put these in `.env` (copied from `.env.docker.example`). Minimum set:
+   ```bash
+   ConnectionStrings__DefaultConnection="Host=...;Port=5432;Database=GrowIT;Username=...;Password=..."
+   Jwt__Key="<long-random-secret>"          # generate e.g. with: openssl rand -base64 48
+   SuperAdmin__Email="you@example.com"
+   ClientUrl="https://your-beta-domain"
+   Email__SmtpUser="<smtp-user>"
+   Email__SmtpPass="<smtp-pass-or-api-key>"
+   Database__AutoMigrate="true"             # apply migrations + bootstrap on startup
+   # When enabling billing:
+   Stripe__SecretKey="sk_..."
+   Stripe__WebhookSecret="whsec_..."
+   ```
+
+2. **First boot** with `Database__AutoMigrate=true` applies pending migrations and seeds roles +
+   promotes `SuperAdmin__Email` automatically. (Manual alternative: `dotnet ef database update`
+   then `dotnet run --project src/GrowIT.Client -- --bootstrap-identity`.)
+
+3. **Do not** run `--seed-demo` against beta — it creates fake demo organizations/clients.
+
+4. **Verify before inviting testers:** register → confirm email → log in works, and an invite
+   email is actually delivered (not spam-filtered).
+
+> 🔐 **Rotate any previously-committed secrets.** Blanking a value in the file does not remove
+> it from git history — rotate the SMTP credential that was committed earlier and use a fresh
+> `Jwt__Key` before going live.
 
 ## Testing
 

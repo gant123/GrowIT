@@ -35,6 +35,11 @@ QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 builder.Configuration.AddJsonFile("wwwroot/appsettings.json", optional: true, reloadOnChange: true);
 builder.Configuration.AddJsonFile($"wwwroot/appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
 
+// Re-apply environment variables LAST so they always win over the JSON files above.
+// Secrets (Jwt__Key, Email__SmtpPass, Stripe__SecretKey, SuperAdmin__Email, …) are
+// supplied per-environment via env vars / user-secrets and are never committed.
+builder.Configuration.AddEnvironmentVariables();
+
 var defaultConnectionString = GetRequiredConnectionString(builder.Configuration, "DefaultConnection");
 var jwtKey = GetRequiredConfigurationValue(builder.Configuration, "Jwt:Key");
 var jwtIssuer = GetRequiredConfigurationValue(builder.Configuration, "Jwt:Issuer");
@@ -350,6 +355,22 @@ if (args.Contains("--seed-demo", StringComparer.OrdinalIgnoreCase))
     await seeder.SeedAsync();
     app.Logger.LogInformation("Demo data seeding completed.");
     return;
+}
+
+// Opt-in startup database setup for container/beta deploys (off by default). When
+// Database:AutoMigrate is true, apply pending EF migrations and ensure roles + the
+// configured SuperAdmin exist — so a fresh environment is ready without remembering
+// separate CLI steps. Leave it off where migrations are applied out-of-band.
+if (app.Configuration.GetValue("Database:AutoMigrate", false))
+{
+    app.Logger.LogInformation("Database:AutoMigrate enabled — applying migrations and bootstrapping identity...");
+    using (var migrateScope = app.Services.CreateScope())
+    {
+        var migrateDb = migrateScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        await migrateDb.Database.MigrateAsync();
+    }
+    await EnsureIdentityBootstrapAsync(app.Services);
+    app.Logger.LogInformation("Startup database setup complete.");
 }
 
 if (!app.Environment.IsDevelopment())
