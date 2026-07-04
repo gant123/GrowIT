@@ -23,22 +23,37 @@ public class DocumentsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<DocumentDto>>> GetDocuments([FromQuery] Guid? clientId = null)
+    public async Task<ActionResult<List<DocumentDto>>> GetDocuments([FromQuery] DocumentQueryParams query)
     {
-        var query = _context.Documents
+        var pageNumber = Math.Max(1, query.PageNumber);
+        var pageSize = Math.Clamp(query.PageSize, 1, 100);
+
+        var documentsQuery = _context.Documents
             .Join(_context.Clients,
                 document => document.ClientId,
                 client => client.Id,
                 (document, client) => new { document, client });
 
-        if (clientId.HasValue)
+        if (query.ClientId.HasValue)
         {
-            query = query.Where(x => x.document.ClientId == clientId.Value);
+            documentsQuery = documentsQuery.Where(x => x.document.ClientId == query.ClientId.Value);
         }
 
-        var documents = await query
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim();
+            documentsQuery = documentsQuery.Where(x =>
+                x.document.FileType.Contains(search) ||
+                x.document.FileUrl.Contains(search) ||
+                x.client.FirstName.Contains(search) ||
+                x.client.LastName.Contains(search));
+        }
+
+        var documents = await documentsQuery
             .OrderBy(x => x.client.LastName)
             .ThenBy(x => x.client.FirstName)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .Select(x => new DocumentDto
             {
                 Id = x.document.Id,

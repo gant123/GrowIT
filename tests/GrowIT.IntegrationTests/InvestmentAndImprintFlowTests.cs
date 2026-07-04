@@ -97,6 +97,183 @@ public class InvestmentAndImprintFlowTests
     }
 
     [Fact]
+    public async Task Investment_SecondApprovalCannotOverspendFund()
+    {
+        using var factory = new GrowItApiFactory();
+        var tenantId = Guid.NewGuid();
+        var clientId = Guid.NewGuid();
+        var fundId = Guid.NewGuid();
+        var programId = Guid.NewGuid();
+        var firstInvestmentId = Guid.NewGuid();
+        var secondInvestmentId = Guid.NewGuid();
+
+        await factory.SeedAsync(db =>
+        {
+            db.Clients.Add(new ClientEntity
+            {
+                Id = clientId,
+                TenantId = tenantId,
+                FirstName = "Jordan",
+                LastName = "Client",
+                HouseholdCount = 1,
+                StabilityScore = 5,
+                LifePhase = LifePhase.Crisis
+            });
+
+            db.Funds.Add(new Fund
+            {
+                Id = fundId,
+                TenantId = tenantId,
+                Name = "Emergency Fund",
+                TotalAmount = 100m,
+                AvailableAmount = 100m
+            });
+
+            db.Programs.Add(new GrowIT.Core.Entities.Program
+            {
+                Id = programId,
+                TenantId = tenantId,
+                Name = "Emergency Assistance",
+                DefaultUnitCost = 100m
+            });
+
+            db.Investments.AddRange(
+                new Investment
+                {
+                    Id = firstInvestmentId,
+                    TenantId = tenantId,
+                    ClientId = clientId,
+                    FundId = fundId,
+                    ProgramId = programId,
+                    Amount = 100m,
+                    SnapshotUnitCost = 100m,
+                    Reason = "First request",
+                    Status = InvestmentStatus.Pending
+                },
+                new Investment
+                {
+                    Id = secondInvestmentId,
+                    TenantId = tenantId,
+                    ClientId = clientId,
+                    FundId = fundId,
+                    ProgramId = programId,
+                    Amount = 100m,
+                    SnapshotUnitCost = 100m,
+                    Reason = "Second request",
+                    Status = InvestmentStatus.Pending
+                });
+
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateTenantClient(tenantId, role: "Admin");
+        var firstApproval = await client.PostAsJsonAsync($"/api/investments/{firstInvestmentId}/approve", new ApproveInvestmentRequest());
+        firstApproval.EnsureSuccessStatusCode();
+
+        var secondApproval = await client.PostAsJsonAsync($"/api/investments/{secondInvestmentId}/approve", new ApproveInvestmentRequest());
+        Assert.Equal(HttpStatusCode.BadRequest, secondApproval.StatusCode);
+
+        var funds = await (await client.GetAsync("/api/financials/funds"))
+            .ReadRequiredJsonAsync<List<FundDto>>();
+
+        Assert.Single(funds);
+        Assert.Equal(0m, funds[0].AvailableAmount);
+    }
+
+    [Fact]
+    public async Task MemberProfile_ReturnsRequestedFundedAndRemainingNeed()
+    {
+        using var factory = new GrowItApiFactory();
+        var tenantId = Guid.NewGuid();
+        var clientId = Guid.NewGuid();
+        var memberId = Guid.NewGuid();
+        var fundId = Guid.NewGuid();
+        var programId = Guid.NewGuid();
+
+        await factory.SeedAsync(db =>
+        {
+            db.Clients.Add(new ClientEntity
+            {
+                Id = clientId,
+                TenantId = tenantId,
+                FirstName = "Riley",
+                LastName = "Household",
+                HouseholdCount = 2,
+                StabilityScore = 5,
+                LifePhase = LifePhase.Crisis
+            });
+
+            db.FamilyMembers.Add(new FamilyMember
+            {
+                Id = memberId,
+                TenantId = tenantId,
+                ClientId = clientId,
+                FirstName = "Avery",
+                LastName = "Household",
+                Relationship = "Child"
+            });
+
+            db.Funds.Add(new Fund
+            {
+                Id = fundId,
+                TenantId = tenantId,
+                Name = "Child Support Fund",
+                TotalAmount = 1000m,
+                AvailableAmount = 800m
+            });
+
+            db.Programs.Add(new GrowIT.Core.Entities.Program
+            {
+                Id = programId,
+                TenantId = tenantId,
+                Name = "School Support",
+                DefaultUnitCost = 150m
+            });
+
+            db.Investments.AddRange(
+                new Investment
+                {
+                    TenantId = tenantId,
+                    ClientId = clientId,
+                    FamilyMemberId = memberId,
+                    FundId = fundId,
+                    ProgramId = programId,
+                    Amount = 200m,
+                    SnapshotUnitCost = 150m,
+                    Reason = "Funded uniforms",
+                    Status = InvestmentStatus.Approved,
+                    CreatedAt = DateTime.UtcNow.AddDays(-2)
+                },
+                new Investment
+                {
+                    TenantId = tenantId,
+                    ClientId = clientId,
+                    FamilyMemberId = memberId,
+                    FundId = fundId,
+                    ProgramId = programId,
+                    Amount = 300m,
+                    SnapshotUnitCost = 150m,
+                    Reason = "Pending school fees",
+                    Status = InvestmentStatus.Pending,
+                    CreatedAt = DateTime.UtcNow.AddDays(-1)
+                });
+
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateTenantClient(tenantId, role: "Admin");
+        var response = await client.GetAsync($"/api/clients/members/{memberId}");
+
+        response.EnsureSuccessStatusCode();
+        var profile = await response.ReadRequiredJsonAsync<FamilyMemberProfileDto>();
+
+        Assert.Equal(500m, profile.RequestedNeed);
+        Assert.Equal(200m, profile.FundedAmount);
+        Assert.Equal(300m, profile.RemainingNeed);
+        Assert.NotNull(profile.LastSupportDate);
+    }
+
+    [Fact]
     public async Task Imprint_Create_RejectsInvestmentFromDifferentClient()
     {
         using var factory = new GrowItApiFactory();

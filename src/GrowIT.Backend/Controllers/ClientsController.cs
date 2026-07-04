@@ -9,6 +9,7 @@ using GrowIT.Core.Interfaces;
 using GrowIT.Backend.Services;
 using GrowIT.Shared.DTOs;
 using GrowIT.Shared.Enums; // Required for ImpactOutcome
+using InvestmentStatus = GrowIT.Shared.Enums.InvestmentStatus;
 
 namespace GrowIT.Backend.Controllers;
 
@@ -82,6 +83,11 @@ public class ClientsController : ControllerBase
             ColorClass = imp.Outcome == ImpactOutcome.Improved ? "text-primary" : "text-warning"
         }));
 
+        var childFunding = investments
+            .Where(i => i.FamilyMemberId.HasValue)
+            .GroupBy(i => i.FamilyMemberId!.Value)
+            .ToDictionary(g => g.Key, BuildFundingSummary);
+
         // 5. Construct Final DTO with Sorted Timeline
         var detail = new ClientDetailDto
         {
@@ -92,7 +98,6 @@ public class ClientsController : ControllerBase
             Phone = client.Phone,
             Address = client.Address,
             DateOfBirth = client.DateOfBirth,
-            SSNLast4 = MaskSsnLast4(client.SSNLast4),
             MaskedSSNLast4 = MaskSsnLast4(client.SSNLast4),
             PhotoUrl = client.PhotoUrl,
             StabilityScore = client.StabilityScore,
@@ -115,7 +120,11 @@ public class ClientsController : ControllerBase
                 Name = $"{f.FirstName} {f.LastName}",
                 Relationship = f.Relationship,
                 Age = CalculateAge(f.DateOfBirth),
-                School = f.SchoolOrEmployer
+                School = f.SchoolOrEmployer,
+                RequestedNeed = childFunding.TryGetValue(f.Id, out var funding) ? funding.RequestedNeed : 0m,
+                FundedAmount = childFunding.TryGetValue(f.Id, out funding) ? funding.FundedAmount : 0m,
+                RemainingNeed = childFunding.TryGetValue(f.Id, out funding) ? funding.RemainingNeed : 0m,
+                LastSupportDate = childFunding.TryGetValue(f.Id, out funding) ? funding.LastSupportDate : null
             }).ToList()
         };
 
@@ -162,7 +171,7 @@ public class ClientsController : ControllerBase
             Phone = request.Phone?.Trim() ?? "",
             Address = request.Address.Trim(),
             DateOfBirth = ToUtcDate(request.DateOfBirth),
-            SSNLast4 = string.IsNullOrWhiteSpace(request.SSNLast4) ? null : request.SSNLast4.Trim(),
+            SSNLast4 = NormalizeSsnLast4(request.SSNLast4),
             PhotoUrl = string.IsNullOrWhiteSpace(request.PhotoUrl) ? null : request.PhotoUrl.Trim(),
             MaritalStatus = request.MaritalStatus,
             EmploymentStatus = request.EmploymentStatus,
@@ -245,7 +254,7 @@ public class ClientsController : ControllerBase
         client.Phone = request.Phone?.Trim() ?? string.Empty;
         client.Address = request.Address.Trim();
         client.DateOfBirth = ToUtcDate(request.DateOfBirth);
-        client.SSNLast4 = string.IsNullOrWhiteSpace(request.SSNLast4) ? null : request.SSNLast4.Trim();
+        client.SSNLast4 = NormalizeSsnLast4(request.SSNLast4);
         client.PhotoUrl = string.IsNullOrWhiteSpace(request.PhotoUrl) ? null : request.PhotoUrl.Trim();
         client.MaritalStatus = request.MaritalStatus;
         client.EmploymentStatus = request.EmploymentStatus;
@@ -289,7 +298,11 @@ public class ClientsController : ControllerBase
         _context.FamilyMembers.Add(member);
         await _context.SaveChangesAsync();
 
-        return Ok(new { Message = "Member Added", Id = member.Id });
+        return Ok(new EntityCreatedResponse
+        {
+            Message = "Member Added",
+            Id = member.Id
+        });
     }
 
     // --- INDIVIDUAL MEMBER PROFILE (UPDATED) ---
@@ -344,6 +357,8 @@ public class ClientsController : ControllerBase
             ColorClass = imp.Outcome == ImpactOutcome.Improved ? "text-primary" : "text-warning"
         }));
 
+        var fundingSummary = BuildFundingSummary(investments);
+
         return Ok(new FamilyMemberProfileDto
         {
             Id = member.Id,
@@ -355,6 +370,10 @@ public class ClientsController : ControllerBase
             School = member.SchoolOrEmployer,
             Notes = member.Notes,
             TotalInvested = investments.Sum(i => i.Amount),
+            RequestedNeed = fundingSummary.RequestedNeed,
+            FundedAmount = fundingSummary.FundedAmount,
+            RemainingNeed = fundingSummary.RemainingNeed,
+            LastSupportDate = fundingSummary.LastSupportDate,
             
             // 4. Return the merged list sorted by date
             Timeline = timeline.OrderByDescending(t => t.Date).ToList()
@@ -458,4 +477,41 @@ public class ClientsController : ControllerBase
         var lastFour = value.Trim();
         return lastFour.Length == 4 ? $"***-**-{lastFour}" : "***-**-****";
     }
+
+    private static string? NormalizeSsnLast4(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var digits = new string(value.Where(char.IsDigit).ToArray());
+        return digits.Length == 4 ? digits : null;
+    }
+
+    private static FundingSummary BuildFundingSummary(IEnumerable<Investment> investments)
+    {
+        var relevant = investments
+            .Where(i => i.Status != InvestmentStatus.Cancelled && i.Status != InvestmentStatus.Returned)
+            .ToList();
+
+        var funded = relevant
+            .Where(i => i.Status is InvestmentStatus.Approved or InvestmentStatus.Disbursed or InvestmentStatus.Completed)
+            .ToList();
+
+        var requestedNeed = relevant.Sum(i => i.Amount);
+        var fundedAmount = funded.Sum(i => i.Amount);
+
+        return new FundingSummary(
+            requestedNeed,
+            fundedAmount,
+            Math.Max(0m, requestedNeed - fundedAmount),
+            funded.OrderByDescending(i => i.CreatedAt).FirstOrDefault()?.CreatedAt);
+    }
+
+    private readonly record struct FundingSummary(
+        decimal RequestedNeed,
+        decimal FundedAmount,
+        decimal RemainingNeed,
+        DateTime? LastSupportDate);
 }

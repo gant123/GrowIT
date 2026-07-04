@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Net;
 using GrowIT.Backend.Tests.Infrastructure;
 using GrowIT.Core.Entities;
 using GrowIT.Infrastructure.Data;
@@ -76,5 +77,44 @@ public class BackendHardeningTests
         Assert.DoesNotContain("requestPayloadJson", body, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("internalNote", body, StringComparison.OrdinalIgnoreCase);
         Assert.Contains("impact-summary", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task CreateInvestment_RejectsInvalidDtoBeforeWriting()
+    {
+        var tenantId = Guid.NewGuid();
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(tenantId, role: "Admin");
+
+        var response = await client.PostAsJsonAsync("/api/investments", new CreateInvestmentRequest
+        {
+            ClientId = Guid.Empty,
+            FundId = Guid.Empty,
+            ProgramId = Guid.Empty,
+            Amount = 0m,
+            Reason = ""
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        Assert.Empty(await db.Investments.IgnoreQueryFilters().ToListAsync());
+    }
+
+    [Fact]
+    public async Task GenerateReport_RejectsUnsupportedFormat()
+    {
+        var tenantId = Guid.NewGuid();
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(tenantId, role: "Admin");
+
+        var response = await client.PostAsJsonAsync("/api/reports/generate", new GenerateReportRequest
+        {
+            ReportType = ReportContract.ImpactSummary,
+            Format = "xml"
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 }

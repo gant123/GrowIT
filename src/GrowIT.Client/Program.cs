@@ -277,6 +277,8 @@ builder.Services.AddScoped<IInsightsService, InsightsService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IImprintService, ImprintService>();
 builder.Services.AddScoped<IReportService, ReportService>();
+builder.Services.AddScoped<IReportManagementService, ReportManagementService>();
+builder.Services.AddScoped<IAscScoreService, AscScoreService>();
 builder.Services.AddScoped<IGrowthPlanService, GrowthPlanService>();
 builder.Services.AddScoped<IHouseholdService, HouseholdService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
@@ -289,6 +291,7 @@ builder.Services.AddScoped<IContentService, ContentService>();
 builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
+builder.Services.AddScoped<IOrganizationReadinessService, OrganizationReadinessService>();
 
 builder.Services.AddHttpClient("GrowITApi", (sp, client) =>
     {

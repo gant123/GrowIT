@@ -65,6 +65,14 @@ public class TaskService : BaseApiService, ITaskService
             parts.Add("includeCompleted=true");
         }
 
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            parts.Add($"search={Uri.EscapeDataString(query.Search)}");
+        }
+
+        parts.Add($"pageNumber={query.PageNumber}");
+        parts.Add($"pageSize={query.PageSize}");
+
         return parts.Count == 0 ? string.Empty : "?" + string.Join("&", parts);
     }
 }

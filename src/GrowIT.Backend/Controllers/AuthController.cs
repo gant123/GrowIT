@@ -59,7 +59,7 @@ public class AuthController : ControllerBase
             
         if (existingUser)
         {
-            return BadRequest(new { Message = "User with this email already exists." });
+            return BadRequest(new MessageResponse { Message = "User with this email already exists." });
         }
 
         // 1. Create the Tenant (Organization)
@@ -125,7 +125,7 @@ public class AuthController : ControllerBase
         {
             await transaction.RollbackAsync();
             _logger.LogError(ex, "Registration failed for {Email}.", request.Email);
-            return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "Registration failed. Please try again." });
+            return StatusCode(StatusCodes.Status500InternalServerError, new MessageResponse { Message = "Registration failed. Please try again." });
         }
 
         try
@@ -215,7 +215,7 @@ public class AuthController : ControllerBase
         if (user == null)
         {
             // Security: Don't reveal if user exists
-            return Ok(new { Message = "If your email is in our system, you will receive a reset link." });
+            return Ok(new MessageResponse { Message = "If your email is in our system, you will receive a reset link." });
         }
 
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
@@ -240,7 +240,7 @@ public class AuthController : ControllerBase
             _logger.LogError(ex, "Failed to send password reset email for {Email}.", user.Email ?? request.Email.Trim());
         }
 
-        return Ok(new { Message = "If your email is in our system, you will receive a reset link." });
+        return Ok(new MessageResponse { Message = "If your email is in our system, you will receive a reset link." });
     }
 
     [HttpGet("confirm-email")]
@@ -296,7 +296,7 @@ public class AuthController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Email))
         {
-            return BadRequest(new { Message = "Email is required." });
+            return BadRequest(new MessageResponse { Message = "Email is required." });
         }
 
         var normalizedEmail = request.Email.Trim().ToUpperInvariant();
@@ -305,12 +305,12 @@ public class AuthController : ControllerBase
             .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
         if (user is null)
         {
-            return Ok(new { Message = "If your email is in our system, you will receive a confirmation link." });
+            return Ok(new MessageResponse { Message = "If your email is in our system, you will receive a confirmation link." });
         }
 
         if (user.EmailConfirmed)
         {
-            return Ok(new { Message = "Your email is already confirmed. You can sign in." });
+            return Ok(new MessageResponse { Message = "Your email is already confirmed. You can sign in." });
         }
 
         try
@@ -320,10 +320,10 @@ public class AuthController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to resend confirmation email for {Email}.", user.Email);
-            return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "We could not resend the confirmation email right now. Please try again." });
+            return StatusCode(StatusCodes.Status500InternalServerError, new MessageResponse { Message = "We could not resend the confirmation email right now. Please try again." });
         }
 
-        return Ok(new { Message = "If your email is in our system, you will receive a confirmation link." });
+        return Ok(new MessageResponse { Message = "If your email is in our system, you will receive a confirmation link." });
     }
 
     [HttpGet("invites/validate")]
@@ -471,18 +471,18 @@ public class AuthController : ControllerBase
             .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
         if (user == null)
         {
-            return BadRequest(new { Message = "Invalid or expired token." });
+            return BadRequest(new MessageResponse { Message = "Invalid or expired token." });
         }
 
         var result = await _userManager.ResetPasswordAsync(user, request.Token, request.NewPassword);
         if (!result.Succeeded)
         {
-            return BadRequest(new { Message = string.Join(" ", result.Errors.Select(e => e.Description)) });
+            return BadRequest(new MessageResponse { Message = string.Join(" ", result.Errors.Select(e => e.Description)) });
         }
 
         await _userManager.UpdateSecurityStampAsync(user);
 
-        return Ok(new { Message = "Password has been reset successfully." });
+        return Ok(new MessageResponse { Message = "Password has been reset successfully." });
     }
 
     private static string HashToken(string token)

@@ -11,5 +11,9 @@ public class FamilyMemberProfileDto
     public string School { get; set; } = string.Empty;
     public string Notes { get; set; } = string.Empty;
     public decimal TotalInvested { get; set; }
+    public decimal RequestedNeed { get; set; }
+    public decimal FundedAmount { get; set; }
+    public decimal RemainingNeed { get; set; }
+    public DateTime? LastSupportDate { get; set; }
     public List<TimelineItemDto> Timeline { get; set; } = new();
 }

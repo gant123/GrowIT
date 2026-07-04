@@ -39,7 +39,7 @@ public class BffAuthController : ControllerBase
     {
         var tokens = _antiforgery.GetAndStoreTokens(HttpContext);
         Response.Headers.CacheControl = "no-store, no-cache, max-age=0";
-        return Ok(new { token = tokens.RequestToken });
+        return Ok(new AntiforgeryTokenResponse(tokens.RequestToken ?? string.Empty));
     }
 
     [AllowAnonymous]
@@ -228,4 +228,6 @@ public class BffAuthController : ControllerBase
             return false;
         }
     }
+
+    private sealed record AntiforgeryTokenResponse(string Token);
 }

@@ -81,6 +81,11 @@
                     <span class="nav-icon"><i class="bi bi-diagram-3"></i></span>
                     <span class="nav-text">Growth Plans</span>
                 </NavLink>
+
+                <NavLink href="/organization" class="nav-item" title="ASC Score" @onclick="HandleNavSelected">
+                    <span class="nav-icon"><i class="bi bi-patch-check"></i></span>
+                    <span class="nav-text">ASC Score</span>
+                </NavLink>
             </div>
             
             @if (_canAccessIntelligence)
@@ -507,6 +512,7 @@
         new("/investments", "Service Records", "Record support provided and related costs", "Impact", "bi bi-cash-stack", "investments seeds spending aid"),
         new("/imprints", "Outcomes", "Record outcomes, milestones, and proof", "Impact", "bi bi-check2-circle", "imprints milestones outcomes"),
         new("/growth-plans", "Growth Plans", "Plans for next steps and support", "Impact", "bi bi-diagram-3", "growth plans scale"),
+        new("/organization", "ASC Score", "Organization readiness score and tier blockers", "Impact", "bi bi-patch-check", "organization asc score accountability stability capacity readiness"),
         new("/reports", "Reports", "Generate and export reports", "Intelligence", "bi bi-pie-chart", "reports export funding"),
         new("/insights", "Insights", "Helpful patterns and alerts (beta)", "Intelligence", "bi bi-activity", "insights analytics"),
         new("/settings", "Settings", "Organization details and team access", "System", "bi bi-gear", "settings preferences"),

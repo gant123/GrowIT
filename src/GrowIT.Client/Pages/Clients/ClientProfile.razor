@@ -156,15 +156,25 @@ else
                                                     <div class="small text-secondary household-meta">
                                                         @member.Relationship • @member.Age yrs
                                                     </div>
+                                                    <div class="small text-secondary household-meta">
+                                                        Need @member.RequestedNeed.ToString("C0") • Funded @member.FundedAmount.ToString("C0") • Remaining @member.RemainingNeed.ToString("C0")
+                                                    </div>
                                                 </div>
                                             </div>
-                                            @if (!string.IsNullOrEmpty(member.School))
-                                            {
-                                                <span class="badge-growit badge-neutral household-tag">
-                                                    @member.School
+                                            <div class="text-end">
+                                                <span class="badge-growit @(member.RemainingNeed > 0 ? "badge-warning" : "badge-success") household-tag">
+                                                    @member.RemainingNeed.ToString("C0") gap
                                                 </span>
-                                            }
+                                                @if (member.LastSupportDate.HasValue)
+                                                {
+                                                    <div class="small text-secondary mt-1">@member.LastSupportDate.Value.ToString("MMM dd")</div>
+                                                }
+                                            </div>
                                         </div>
+                                        @if (!string.IsNullOrEmpty(member.School))
+                                        {
+                                            <div class="small text-secondary mt-2">@member.School</div>
+                                        }
                                     </li>
                                 }
                             </ul>

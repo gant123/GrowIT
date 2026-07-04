@@ -30,6 +30,9 @@ public class TasksController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<TaskListDto>>> GetTasks([FromQuery] TaskQueryParams query)
     {
+        var pageNumber = Math.Max(1, query.PageNumber);
+        var pageSize = Math.Clamp(query.PageSize, 1, 100);
+
         var tasks = _context.Tasks
             .Include(t => t.Client)
             .Include(t => t.AssignedUser)
@@ -54,9 +57,20 @@ public class TasksController : ControllerBase
             tasks = tasks.Where(t => t.Status == GrowIT.Shared.Enums.TaskStatus.Pending);
         }
 
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim();
+            tasks = tasks.Where(t =>
+                t.Notes.Contains(search) ||
+                (t.Client != null && (t.Client.FirstName.Contains(search) || t.Client.LastName.Contains(search))) ||
+                (t.AssignedUser != null && (t.AssignedUser.FirstName.Contains(search) || t.AssignedUser.LastName.Contains(search))));
+        }
+
         var result = await tasks
             .OrderBy(t => t.Status)
             .ThenBy(t => t.DueDate)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .Select(t => new TaskListDto
             {
                 Id = t.Id,

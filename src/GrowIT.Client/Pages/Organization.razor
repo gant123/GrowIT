@@ -1,12 +1,288 @@
 @page "/organization"
+@using GrowIT.Shared.DTOs
+@implements IDisposable
+@inject IOrganizationReadinessService ReadinessService
 @inject NavigationManager Navigation
 
-@* Organization configuration now lives in Settings -> Organization. This route is kept
-   as a redirect so existing links/bookmarks don't 404. *@
+<PageTitle>ASC Score - Grow.IT</PageTitle>
+
+<div class="asc-page">
+    <PageHeader Title="ASC Score" Subtitle="Accountability, Stability & Capacity shows how ready your organization looks based on saved Grow.IT data." />
+
+    @if (_isLoading)
+    {
+        <section class="asc-loading">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p>Calculating ASC from saved organization data...</p>
+        </section>
+    }
+    else if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <section class="asc-alert" role="alert">
+            <div class="asc-alert-icon"><i class="bi bi-exclamation-triangle"></i></div>
+            <div>
+                <h2>ASC could not be loaded.</h2>
+                <p>@_error</p>
+                <button class="btn btn-primary" @onclick="LoadScoreAsync">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    <span>Retry</span>
+                </button>
+            </div>
+        </section>
+    }
+    else if (_score is not null)
+    {
+        <section class="asc-hero">
+            <div class="asc-hero-main">
+                <div class="asc-title-row">
+                    <span class="asc-logo">ASC</span>
+                    <div>
+                        <h2>@_score.FullName</h2>
+                        <p>@_score.Label</p>
+                    </div>
+                </div>
+
+                <div class="asc-score-strip">
+                    <div class="asc-score-number">
+                        @if (_score.IsScored && _score.Score.HasValue)
+                        {
+                            <strong>@_score.Score.Value.ToString("0.0")</strong>
+                            <span>/ 10</span>
+                        }
+                        else
+                        {
+                            <strong>--</strong>
+                            <span>Unscored</span>
+                        }
+                    </div>
+
+                    <div class="asc-score-copy">
+                        <span class="asc-status-pill @GetStatusClass(_score.ScoreStatus)">@_score.ScoreStatus</span>
+                        <h3>@_score.TierName</h3>
+                        <p>@_score.TierDescription</p>
+                    </div>
+                </div>
+
+                <div class="asc-meter" aria-label="ASC score scale">
+                    @foreach (var tier in _score.Tiers.Where(t => t.Name != "Unscored"))
+                    {
+                        <div class="asc-meter-segment" style="--tier-color:@tier.Color">
+                            <span>@tier.Range</span>
+                        </div>
+                    }
+                    @if (_score.Score.HasValue)
+                    {
+                        <div class="asc-meter-marker" style="left:@ScoreMarkerLeft%">
+                            <span>@_score.Score.Value.ToString("0.0")</span>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <aside class="asc-trust-panel">
+                <div class="asc-trust-icon"><i class="bi bi-patch-check"></i></div>
+                <h3>Earned, not given</h3>
+                <p>@_score.Disclosure</p>
+                <button class="btn btn-outline-light" @onclick="@(() => Navigation.NavigateTo("/reports"))">
+                    <i class="bi bi-file-earmark-bar-graph"></i>
+                    <span>Reports</span>
+                </button>
+            </aside>
+        </section>
+
+        <section class="asc-evidence-grid">
+            <div class="asc-evidence-item">
+                <span>People tracked</span>
+                <strong>@(_score.Evidence.Clients + _score.Evidence.HouseholdMembers)</strong>
+            </div>
+            <div class="asc-evidence-item">
+                <span>Programs</span>
+                <strong>@_score.Evidence.Programs</strong>
+            </div>
+            <div class="asc-evidence-item">
+                <span>Money sources</span>
+                <strong>@_score.Evidence.Funds</strong>
+            </div>
+            <div class="asc-evidence-item">
+                <span>Funds available</span>
+                <strong>@FormatMoney(_score.Evidence.FundsAvailable)</strong>
+            </div>
+            <div class="asc-evidence-item">
+                <span>Outcomes</span>
+                <strong>@_score.Evidence.Outcomes</strong>
+            </div>
+            <div class="asc-evidence-item">
+                <span>Verified months</span>
+                <strong>@_score.Evidence.VerifiedActivityMonths</strong>
+            </div>
+        </section>
+
+        <section class="asc-work-grid">
+            <div class="asc-panel asc-blockers">
+                <div class="asc-panel-header">
+                    <span><i class="bi bi-lock"></i></span>
+                    <div>
+                        <h2>What is blocking the next tier</h2>
+                        <p>These are the clearest missing pieces Grow.IT sees right now.</p>
+                    </div>
+                </div>
+
+                @if (_score.MissingItems.Count == 0)
+                {
+                    <p class="asc-empty">No major blockers are showing right now. Keep records current before sharing externally.</p>
+                }
+                else
+                {
+                    <ul class="asc-action-list">
+                        @foreach (var item in _score.MissingItems)
+                        {
+                            <li><i class="bi bi-arrow-right-circle"></i><span>@item</span></li>
+                        }
+                    </ul>
+                }
+            </div>
+
+            <div class="asc-panel asc-next">
+                <div class="asc-panel-header">
+                    <span><i class="bi bi-signpost-split"></i></span>
+                    <div>
+                        <h2>Next steps</h2>
+                        <p>Focus here before trying to move up the ASC tier list.</p>
+                    </div>
+                </div>
+
+                <ul class="asc-action-list">
+                    @foreach (var item in _score.NextSteps)
+                    {
+                        <li><i class="bi bi-check2-circle"></i><span>@item</span></li>
+                    }
+                </ul>
+
+                <div class="asc-quick-actions">
+                    <button class="btn btn-outline-primary" @onclick="@(() => Navigation.NavigateTo("/settings"))">
+                        <i class="bi bi-buildings"></i>
+                        <span>Organization</span>
+                    </button>
+                    <button class="btn btn-outline-primary" @onclick="@(() => Navigation.NavigateTo("/programs"))">
+                        <i class="bi bi-folder2-open"></i>
+                        <span>Programs</span>
+                    </button>
+                    <button class="btn btn-outline-primary" @onclick="@(() => Navigation.NavigateTo("/documents"))">
+                        <i class="bi bi-file-earmark-text"></i>
+                        <span>Documents</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section class="asc-pillars-section">
+            <div class="asc-section-heading">
+                <span>Pillars that power ASC</span>
+                <h2>Where the score comes from</h2>
+            </div>
+
+            <div class="asc-pillars-grid">
+                @foreach (var pillar in _score.Pillars)
+                {
+                    <article class="asc-pillar">
+                        <div class="asc-pillar-top">
+                            <span class="asc-pillar-icon"><i class="@pillar.Icon"></i></span>
+                            <span class="asc-pillar-status @GetPillarStatusClass(pillar.Status)">@pillar.Status</span>
+                        </div>
+                        <h3>@pillar.Label</h3>
+                        <div class="asc-pillar-score">
+                            <div class="asc-pillar-bar">
+                                <span style="width:@GetPillarPercent(pillar)%"></span>
+                            </div>
+                            <strong>@pillar.Score.ToString("0.00") / @pillar.MaxScore.ToString("0.0")</strong>
+                        </div>
+                        @if (pillar.Evidence.Count > 0)
+                        {
+                            <p>@pillar.Evidence[0]</p>
+                        }
+                        else if (pillar.MissingItems.Count > 0)
+                        {
+                            <p>@pillar.MissingItems[0]</p>
+                        }
+                    </article>
+                }
+            </div>
+        </section>
+
+        <section class="asc-tier-section">
+            <div class="asc-section-heading">
+                <span>ASC tier list</span>
+                <h2>Hard to move up on purpose</h2>
+            </div>
+
+            <div class="asc-tier-grid">
+                @foreach (var tier in _score.Tiers)
+                {
+                    <article class="asc-tier-card @(tier.Name == _score.TierName ? "active" : null)" style="--tier-color:@tier.Color">
+                        <span class="asc-tier-icon"><i class="@tier.Icon"></i></span>
+                        <span class="asc-tier-range">@tier.Range</span>
+                        <h3>@tier.Name</h3>
+                        <p>@tier.Description</p>
+                    </article>
+                }
+            </div>
+        </section>
+    }
+</div>
 
 @code {
-    protected override void OnInitialized()
+    private AscScoreDto? _score;
+    private bool _isLoading = true;
+    private string? _error;
+    private readonly CancellationTokenSource _cts = new();
+
+    private decimal ScoreMarkerLeft => _score?.Score is decimal score
+        ? Math.Clamp(score * 10m, 0m, 100m)
+        : 0m;
+
+    protected override async Task OnInitializedAsync()
     {
-        Navigation.NavigateTo("/settings", replace: true);
+        await LoadScoreAsync();
+    }
+
+    private async Task LoadScoreAsync()
+    {
+        _isLoading = true;
+        _error = null;
+
+        try
+        {
+            _score = await ReadinessService.GetAscScoreAsync(_cts.Token);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private static string FormatMoney(decimal value) =>
+        value.ToString("C0", System.Globalization.CultureInfo.CurrentCulture);
+
+    private static decimal GetPillarPercent(AscScorePillarDto pillar) =>
+        pillar.MaxScore <= 0 ? 0 : Math.Clamp(pillar.Score / pillar.MaxScore * 100m, 0m, 100m);
+
+    private static string GetStatusClass(string status) =>
+        status.Equals("Verified", StringComparison.OrdinalIgnoreCase) ? "verified" :
+        status.Equals("Provisional", StringComparison.OrdinalIgnoreCase) ? "provisional" :
+        "unscored";
+
+    private static string GetPillarStatusClass(string status) =>
+        status.Equals("Strong", StringComparison.OrdinalIgnoreCase) ? "strong" :
+        status.Equals("Building", StringComparison.OrdinalIgnoreCase) ? "building" :
+        "needs-work";
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
     }
 }

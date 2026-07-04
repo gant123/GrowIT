@@ -1,4 +1,5 @@
 using GrowIT.Shared.Enums;
+using System.Text.Json.Serialization;
 namespace GrowIT.Shared.DTOs;
 
 public class ClientDetailDto
@@ -16,6 +17,7 @@ public class ClientDetailDto
     public string Phone { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;
     public DateTime? DateOfBirth { get; set; }
+    [JsonIgnore]
     public string? SSNLast4 { get; set; }
     public string? MaskedSSNLast4 { get; set; }
     public string? PhotoUrl { get; set; }
@@ -46,6 +48,10 @@ public class FamilyMemberDto
     public string Relationship { get; set; } = string.Empty;
     public int Age { get; set; }
     public string School { get; set; } = string.Empty;
+    public decimal RequestedNeed { get; set; }
+    public decimal FundedAmount { get; set; }
+    public decimal RemainingNeed { get; set; }
+    public DateTime? LastSupportDate { get; set; }
 }
 
 public class TimelineItemDto

@@ -22,6 +22,15 @@ public class TaskQueryParams
     public Guid? AssignedTo { get; set; }
     public GrowIT.Shared.Enums.TaskStatus? Status { get; set; }
     public bool IncludeCompleted { get; set; }
+
+    [MaxLength(200)]
+    public string? Search { get; set; }
+
+    [Range(1, 100000)]
+    public int PageNumber { get; set; } = 1;
+
+    [Range(1, 100)]
+    public int PageSize { get; set; } = 100;
 }
 
 public class CreateTaskRequest
