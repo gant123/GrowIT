@@ -45,14 +45,20 @@ public class ReportsController : ControllerBase
 
         if (!string.IsNullOrWhiteSpace(query.ReportType))
         {
-            var reportType = query.ReportType.Trim();
+            var reportType = NormalizeReportType(query.ReportType, allowCustom: true);
             runs = runs.Where(r => r.ReportType == reportType);
         }
 
         if (!string.IsNullOrWhiteSpace(query.Format))
         {
-            var format = query.Format.Trim();
+            var format = NormalizeReportFormat(query.Format);
             runs = runs.Where(r => r.Format == format);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Status))
+        {
+            var status = NormalizeReportStatus(query.Status);
+            runs = runs.Where(r => r.Status == status || (status == "Generated" && string.IsNullOrWhiteSpace(r.Status)));
         }
 
         if (query.DateFrom.HasValue)
@@ -86,13 +92,6 @@ public class ReportsController : ControllerBase
             })
             .ToListAsync();
 
-        if (!string.IsNullOrWhiteSpace(query.Status))
-        {
-            items = items
-                .Where(i => string.Equals(i.Status, query.Status, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-        }
-
         return Ok(items);
     }
 
@@ -116,7 +115,7 @@ public class ReportsController : ControllerBase
 
         if (!string.IsNullOrWhiteSpace(query.Frequency))
         {
-            var frequency = query.Frequency.Trim();
+            var frequency = NormalizeFrequency(query.Frequency);
             schedules = schedules.Where(s => s.Frequency == frequency);
         }
 
@@ -151,14 +150,17 @@ public class ReportsController : ControllerBase
             return Unauthorized("No valid tenant context found.");
         }
 
+        var reportType = NormalizeReportType(request.ReportType, allowCustom: true);
+        var format = NormalizeReportFormat(request.Format);
+
         var run = new ReportRun
         {
             Id = Guid.NewGuid(),
             TenantId = tenantId.Value,
-            Name = BuildReportName(request),
-            Format = string.IsNullOrWhiteSpace(request.Format) ? "pdf" : request.Format!.Trim(),
-            ReportType = string.IsNullOrWhiteSpace(request.ReportType) ? "custom-report" : request.ReportType.Trim(),
-            RequestPayloadJson = JsonSerializer.Serialize(request),
+            Name = BuildReportName(reportType),
+            Format = format,
+            ReportType = reportType,
+            RequestPayloadJson = JsonSerializer.Serialize(NormalizeGenerateRequest(request, reportType, format)),
             Status = "Queued",
             RequestedByUserId = _currentUserService.UserId,
             GeneratedAt = DateTime.UtcNow
@@ -169,7 +171,7 @@ public class ReportsController : ControllerBase
         try
         {
             // Validate generation path and precompute status without storing the file payload.
-            await BuildDatasetAsync(run, request, HttpContext.RequestAborted);
+            await BuildDatasetAsync(run, NormalizeGenerateRequest(request, reportType, format), HttpContext.RequestAborted);
             run.Status = "Generated";
             run.CompletedAt = DateTime.UtcNow;
             run.ErrorMessage = null;
@@ -278,20 +280,15 @@ public class ReportsController : ControllerBase
             return Unauthorized("No valid tenant context found.");
         }
 
-        if (string.IsNullOrWhiteSpace(request.Name))
-            return BadRequest("Name is required.");
-        if (string.IsNullOrWhiteSpace(request.Frequency))
-            return BadRequest("Frequency is required.");
-
         var item = new ReportSchedule
         {
             Id = Guid.NewGuid(),
             TenantId = tenantId.Value,
             Name = request.Name.Trim(),
-            ReportType = NormalizeReportType(request.ReportType),
+            ReportType = NormalizeReportType(request.ReportType, allowCustom: false),
             Format = NormalizeReportFormat(request.Format),
-            Frequency = request.Frequency.Trim(),
-            NextRun = request.NextRun,
+            Frequency = NormalizeFrequency(request.Frequency),
+            NextRun = NormalizeUtc(request.NextRun),
             CreatedByUserId = _currentUserService.UserId
         };
 
@@ -319,11 +316,11 @@ public class ReportsController : ControllerBase
         if (existing == null)
             return NotFound();
 
-        existing.Name = string.IsNullOrWhiteSpace(request.Name) ? existing.Name : request.Name.Trim();
-        existing.ReportType = NormalizeReportType(request.ReportType, existing.ReportType);
+        existing.Name = request.Name.Trim();
+        existing.ReportType = NormalizeReportType(request.ReportType, allowCustom: false);
         existing.Format = NormalizeReportFormat(request.Format, existing.Format);
-        existing.Frequency = string.IsNullOrWhiteSpace(request.Frequency) ? existing.Frequency : request.Frequency.Trim();
-        existing.NextRun = request.NextRun;
+        existing.Frequency = NormalizeFrequency(request.Frequency);
+        existing.NextRun = NormalizeUtc(request.NextRun);
         existing.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
@@ -355,20 +352,36 @@ public class ReportsController : ControllerBase
         return NoContent();
     }
 
-    private static string BuildReportName(GenerateReportRequest request)
+    private static string BuildReportName(string reportType)
     {
-        var type = string.IsNullOrWhiteSpace(request.ReportType) ? "custom-report" : request.ReportType.Trim();
-        return $"{type}-{DateTime.UtcNow:yyyyMMdd-HHmm}";
+        return $"{reportType}-{DateTime.UtcNow:yyyyMMdd-HHmm}";
     }
 
-    private static string NormalizeReportType(string? value, string fallback = "impact-summary")
+    private static GenerateReportRequest NormalizeGenerateRequest(GenerateReportRequest request, string reportType, string format)
     {
-        if (string.IsNullOrWhiteSpace(value))
+        return new GenerateReportRequest
         {
-            return fallback;
+            ReportType = reportType,
+            Format = format,
+            FiscalYear = string.IsNullOrWhiteSpace(request.FiscalYear) ? null : request.FiscalYear.Trim(),
+            DateFrom = request.DateFrom,
+            DateTo = request.DateTo,
+            GroupBy = string.IsNullOrWhiteSpace(request.GroupBy) ? null : request.GroupBy.Trim()
+        };
+    }
+
+    private static string NormalizeReportType(string? value, bool allowCustom, string fallback = ReportContract.ImpactSummary)
+    {
+        var normalized = string.IsNullOrWhiteSpace(value)
+            ? fallback
+            : value.Trim().ToLowerInvariant();
+
+        if (ReportContract.SupportedReportTypes.Any(t => string.Equals(t, normalized, StringComparison.OrdinalIgnoreCase)))
+        {
+            return normalized;
         }
 
-        return value.Trim();
+        return allowCustom ? ReportContract.CustomReport : fallback;
     }
 
     private static string NormalizeReportFormat(string? value, string fallback = "pdf")
@@ -380,6 +393,40 @@ public class ReportsController : ControllerBase
             "excel" => "excel",
             "csv" => "csv",
             _ => fallback
+        };
+    }
+
+    private static string NormalizeReportStatus(string? value, string fallback = "Generated")
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
+        var normalized = value.Trim();
+        return ReportContract.SupportedStatuses.FirstOrDefault(s => string.Equals(s, normalized, StringComparison.OrdinalIgnoreCase))
+            ?? fallback;
+    }
+
+    private static string NormalizeFrequency(string? value, string fallback = "Monthly")
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
+        var normalized = value.Trim();
+        return ReportContract.SupportedFrequencies.FirstOrDefault(f => string.Equals(f, normalized, StringComparison.OrdinalIgnoreCase))
+            ?? fallback;
+    }
+
+    private static DateTime NormalizeUtc(DateTime value)
+    {
+        return value.Kind switch
+        {
+            DateTimeKind.Utc => value,
+            DateTimeKind.Local => value.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
         };
     }
 

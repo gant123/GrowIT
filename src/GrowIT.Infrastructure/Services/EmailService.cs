@@ -2,8 +2,10 @@ using GrowIT.Core.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Net;
-using System.Net.Mail;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 
 namespace GrowIT.Infrastructure.Services;
 
@@ -11,17 +13,19 @@ public class EmailService : IEmailService
 {
     private readonly IConfiguration _config;
     private readonly ILogger<EmailService> _logger;
+    private readonly IHttpClientFactory _httpClientFactory;
 
-    public EmailService(IConfiguration config, ILogger<EmailService> logger)
+    public EmailService(IConfiguration config, ILogger<EmailService> logger, IHttpClientFactory httpClientFactory)
     {
         _config = config;
         _logger = logger;
+        _httpClientFactory = httpClientFactory;
     }
 
     public async Task SendEmailAsync(string to, string subject, string body)
     {
         var result = await SendEmailInternalAsync(to, subject, body, throwOnFailure: true);
-        if (!result.Succeeded && string.Equals(result.DeliveryMode, "Failed", StringComparison.OrdinalIgnoreCase))
+        if (!result.Succeeded)
         {
             throw new InvalidOperationException(result.Error ?? "Email send failed.");
         }
@@ -32,60 +36,101 @@ public class EmailService : IEmailService
 
     private async Task<EmailSendResult> SendEmailInternalAsync(string to, string subject, string body, bool throwOnFailure)
     {
-        var smtpHost = _config["Email:SmtpHost"]?.Trim();
-        var smtpUser = _config["Email:SmtpUser"]?.Trim();
-        var smtpPass = _config["Email:SmtpPass"];
-        var fromEmail = _config["Email:FromEmail"]?.Trim();
-        var smtpPort = ParseSmtpPort(_config["Email:SmtpPort"]);
-        var useSsl = ResolveUseSsl(smtpHost, smtpPort);
+        var apiKey = ResolveResendApiKey();
+        var from = ResolveFromAddress();
+        var apiUrl = ResolveResendApiUrl();
         var timeoutMs = int.TryParse(_config["Email:TimeoutMs"], out var parsedTimeout)
             ? Math.Clamp(parsedTimeout, 1000, 120000)
             : 15000;
 
-        if (string.IsNullOrEmpty(smtpHost) || string.IsNullOrEmpty(smtpUser) || 
-            smtpUser.Contains("YOUR_") || (smtpPass != null && smtpPass.Contains("YOUR_")))
+        if (string.IsNullOrWhiteSpace(apiKey) || IsPlaceholder(apiKey))
         {
-            _logger.LogWarning("SMTP is not configured or using placeholders. Email to {To} with subject '{Subject}' will not be sent. Body: {Body}", to, subject, body);
+            if (ShouldUseDevelopmentFileFallback())
+            {
+                var filePath = await WriteDevelopmentEmailFileAsync(to, subject, body);
+                _logger.LogWarning(
+                    "Resend API key is not configured. Email written to development fallback at {FilePath}. To={To} Subject={Subject}",
+                    filePath, to, subject);
+                return new EmailSendResult
+                {
+                    Succeeded = true,
+                    DeliveryMode = "DevFileFallback",
+                    Message = "Resend is not configured, but a development email file was generated.",
+                    FallbackFilePath = filePath
+                };
+            }
+
+            var message = "Resend API key is not configured. Email was not sent.";
+            _logger.LogWarning("{Message} To={To} Subject={Subject}", message, to, subject);
+            if (throwOnFailure)
+                throw new InvalidOperationException(message);
+
             return new EmailSendResult
             {
                 Succeeded = false,
                 DeliveryMode = "SkippedUnconfigured",
-                Message = "SMTP is not configured. Email was not sent."
+                Message = message,
+                Error = message
             };
         }
 
-        if (string.IsNullOrWhiteSpace(fromEmail))
+        if (string.IsNullOrWhiteSpace(from))
         {
-            fromEmail = smtpUser;
+            var message = "Email:FromEmail is required for Resend delivery.";
+            _logger.LogWarning("{Message} To={To} Subject={Subject}", message, to, subject);
+            if (throwOnFailure)
+                throw new InvalidOperationException(message);
+
+            return new EmailSendResult
+            {
+                Succeeded = false,
+                DeliveryMode = "SkippedUnconfigured",
+                Message = message,
+                Error = message
+            };
         }
 
         try
         {
-            using var client = new SmtpClient(smtpHost, smtpPort)
+            using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeoutMs));
+            var client = _httpClientFactory.CreateClient();
+            using var request = new HttpRequestMessage(HttpMethod.Post, apiUrl);
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            request.Content = JsonContent.Create(new
             {
-                DeliveryMethod = SmtpDeliveryMethod.Network,
-                UseDefaultCredentials = false,
-                Credentials = new NetworkCredential(smtpUser, smtpPass),
-                EnableSsl = useSsl,
-                Timeout = timeoutMs
-            };
+                from,
+                to = new[] { to },
+                subject,
+                html = body
+            });
 
-            var mailMessage = new MailMessage
+            using var response = await client.SendAsync(request, cts.Token);
+            var responseBody = await response.Content.ReadAsStringAsync(cts.Token);
+            if (!response.IsSuccessStatusCode)
             {
-                From = new MailAddress(fromEmail!),
-                Subject = subject,
-                Body = body,
-                IsBodyHtml = true
-            };
-            mailMessage.To.Add(to);
+                var message = $"Resend email send failed with HTTP {(int)response.StatusCode} ({response.ReasonPhrase}).";
+                _logger.LogError("{Message} Response={ResponseBody} To={To} Subject={Subject}", message, responseBody, to, subject);
+                if (throwOnFailure)
+                    throw new InvalidOperationException($"{message} {ExtractResendError(responseBody)}".Trim());
 
-            await client.SendMailAsync(mailMessage);
-            _logger.LogInformation("Email sent to {To} successfully.", to);
+                return new EmailSendResult
+                {
+                    Succeeded = false,
+                    DeliveryMode = "Resend",
+                    Message = "Email send failed via Resend.",
+                    Error = $"{message} {ExtractResendError(responseBody)}".Trim()
+                };
+            }
+
+            var resendId = ExtractResendId(responseBody);
+            _logger.LogInformation("Email sent to {To} successfully via Resend. ResendId={ResendId}", to, resendId);
             return new EmailSendResult
             {
                 Succeeded = true,
-                DeliveryMode = "Smtp",
-                Message = "Email sent successfully via SMTP."
+                DeliveryMode = "Resend",
+                Message = string.IsNullOrWhiteSpace(resendId)
+                    ? "Email sent successfully via Resend."
+                    : $"Email sent successfully via Resend. Id: {resendId}"
             };
         }
         catch (Exception ex)
@@ -94,13 +139,13 @@ public class EmailService : IEmailService
             {
                 var filePath = await WriteDevelopmentEmailFileAsync(to, subject, body);
                 _logger.LogWarning(ex,
-                    "SMTP send failed in Development. Email written to file fallback at {FilePath}. To={To} Subject={Subject}",
+                    "Resend send failed in Development. Email written to file fallback at {FilePath}. To={To} Subject={Subject}",
                     filePath, to, subject);
                 return new EmailSendResult
                 {
                     Succeeded = true,
                     DeliveryMode = "DevFileFallback",
-                    Message = "SMTP failed, but a development email file was generated.",
+                    Message = "Resend failed, but a development email file was generated.",
                     FallbackFilePath = filePath
                 };
             }
@@ -119,23 +164,87 @@ public class EmailService : IEmailService
         }
     }
 
-    private int ParseSmtpPort(string? configuredPort)
+    private string? ResolveResendApiKey()
     {
-        if (int.TryParse(configuredPort, out var port) && port > 0 && port <= 65535)
-            return port;
+        var apiKey = _config["Email:ResendApiKey"]?.Trim();
+        if (!string.IsNullOrWhiteSpace(apiKey))
+            return apiKey;
 
-        return 587;
+        apiKey = _config["Resend:ApiKey"]?.Trim();
+        if (!string.IsNullOrWhiteSpace(apiKey))
+            return apiKey;
+
+        // Temporary rollout compatibility for environments that stored the Resend key
+        // as the SMTP password when using smtp.resend.com.
+        var smtpHost = _config["Email:SmtpHost"]?.Trim();
+        var smtpPass = _config["Email:SmtpPass"]?.Trim();
+        return string.Equals(smtpHost, "smtp.resend.com", StringComparison.OrdinalIgnoreCase)
+            ? smtpPass
+            : null;
     }
 
-    private bool ResolveUseSsl(string? smtpHost, int smtpPort)
+    private string? ResolveFromAddress()
     {
-        var configured = _config["Email:UseSsl"];
-        if (!string.IsNullOrWhiteSpace(configured) && bool.TryParse(configured, out var useSsl))
-            return useSsl;
+        var fromEmail = _config["Email:FromEmail"]?.Trim();
+        if (string.IsNullOrWhiteSpace(fromEmail))
+            return null;
 
-        return (smtpHost?.Contains("mailtrap", StringComparison.OrdinalIgnoreCase) ?? false)
-            || smtpPort == 587
-            || smtpPort == 465;
+        if (fromEmail.Contains('<') && fromEmail.Contains('>'))
+            return fromEmail;
+
+        var fromName = _config["Email:FromName"]?.Trim();
+        return string.IsNullOrWhiteSpace(fromName)
+            ? fromEmail
+            : $"{fromName} <{fromEmail}>";
+    }
+
+    private string ResolveResendApiUrl()
+    {
+        var baseUrl = _config["Email:ResendBaseUrl"]?.Trim();
+        if (string.IsNullOrWhiteSpace(baseUrl))
+            baseUrl = "https://api.resend.com";
+
+        return $"{baseUrl.TrimEnd('/')}/emails";
+    }
+
+    private static bool IsPlaceholder(string value) =>
+        value.Contains("YOUR_", StringComparison.OrdinalIgnoreCase)
+        || value.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase)
+        || value.Contains("CHANGEME", StringComparison.OrdinalIgnoreCase)
+        || value.Contains("<", StringComparison.OrdinalIgnoreCase);
+
+    private static string? ExtractResendId(string responseBody)
+    {
+        try
+        {
+            using var json = JsonDocument.Parse(responseBody);
+            return json.RootElement.TryGetProperty("id", out var id) ? id.GetString() : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string ExtractResendError(string responseBody)
+    {
+        if (string.IsNullOrWhiteSpace(responseBody))
+            return string.Empty;
+
+        try
+        {
+            using var json = JsonDocument.Parse(responseBody);
+            if (json.RootElement.TryGetProperty("message", out var message))
+                return message.GetString() ?? string.Empty;
+            if (json.RootElement.TryGetProperty("error", out var error))
+                return error.ValueKind == JsonValueKind.String ? error.GetString() ?? string.Empty : error.ToString();
+        }
+        catch
+        {
+            // Keep the raw response below.
+        }
+
+        return responseBody.Length > 500 ? responseBody[..500] : responseBody;
     }
 
     private bool ShouldUseDevelopmentFileFallback()

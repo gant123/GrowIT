@@ -3,6 +3,7 @@ using GrowIT.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using GrowIT.Core.Interfaces;
 using GrowIT.Shared.DTOs;
 using GrowIT.Shared.Enums;
@@ -31,6 +32,9 @@ public class InvestmentsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<PaginatedResult<InvestmentListDto>>> GetInvestments([FromQuery] InvestmentQueryParams query)
     {
+        var pageNumber = Math.Max(1, query.PageNumber);
+        var pageSize = Math.Clamp(query.PageSize, 1, 100);
+
         var dbQuery = _context.Investments
             .Include(i => i.Client)
             .Include(i => i.FamilyMember)
@@ -44,21 +48,22 @@ public class InvestmentsController : ControllerBase
         if (query.Status.HasValue)
             dbQuery = dbQuery.Where(i => i.Status == query.Status.Value);
 
-        if (!string.IsNullOrEmpty(query.SearchTerm))
+        if (!string.IsNullOrWhiteSpace(query.SearchTerm))
         {
+            var searchTerm = query.SearchTerm.Trim();
             dbQuery = dbQuery.Where(i => 
-                (i.Client != null && (i.Client.FirstName + " " + i.Client.LastName).Contains(query.SearchTerm)) ||
-                (i.FamilyMember != null && (i.FamilyMember.FirstName + " " + i.FamilyMember.LastName).Contains(query.SearchTerm)) ||
-                i.Reason.Contains(query.SearchTerm) || 
-                i.PayeeName.Contains(query.SearchTerm));
+                (i.Client != null && (i.Client.FirstName + " " + i.Client.LastName).Contains(searchTerm)) ||
+                (i.FamilyMember != null && (i.FamilyMember.FirstName + " " + i.FamilyMember.LastName).Contains(searchTerm)) ||
+                i.Reason.Contains(searchTerm) ||
+                i.PayeeName.Contains(searchTerm));
         }
 
         var totalCount = await dbQuery.CountAsync();
 
         var items = await dbQuery
             .OrderByDescending(i => i.CreatedAt)
-            .Skip((query.PageNumber - 1) * query.PageSize)
-            .Take(query.PageSize)
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .Select(i => new InvestmentListDto
             {
                 Id = i.Id,
@@ -77,8 +82,8 @@ public class InvestmentsController : ControllerBase
         {
             Items = items,
             TotalCount = totalCount,
-            PageNumber = query.PageNumber,
-            PageSize = query.PageSize
+            PageNumber = pageNumber,
+            PageSize = pageSize
         });
     }
 
@@ -125,13 +130,13 @@ public class InvestmentsController : ControllerBase
         var fund = await _context.Funds.FirstOrDefaultAsync(f => f.Id == request.FundId && f.TenantId == tenantId.Value);
         if (fund == null) return NotFound("Fund not found");
 
-        var programExists = await _context.Programs.AnyAsync(p => p.Id == request.ProgramId && p.TenantId == tenantId.Value);
-        if (!programExists) return BadRequest("Invalid program.");
+        var program = await _context.Programs.FirstOrDefaultAsync(p => p.Id == request.ProgramId && p.TenantId == tenantId.Value);
+        if (program == null) return BadRequest("Invalid program.");
 
         if (request.FamilyMemberId.HasValue)
         {
             var memberExists = await _context.FamilyMembers
-                .AnyAsync(fm => fm.Id == request.FamilyMemberId.Value && fm.ClientId == request.ClientId);
+                .AnyAsync(fm => fm.Id == request.FamilyMemberId.Value && fm.ClientId == request.ClientId && fm.TenantId == tenantId.Value);
             if (!memberExists) return BadRequest("Family member not found for the selected client.");
         }
 
@@ -149,11 +154,11 @@ public class InvestmentsController : ControllerBase
             FundId = request.FundId,
             ProgramId = request.ProgramId,
             Amount = request.Amount,
-            PayeeName = request.PayeeName,
-            Reason = request.Reason,
+            PayeeName = request.PayeeName?.Trim() ?? string.Empty,
+            Reason = request.Reason?.Trim() ?? string.Empty,
             Status = InvestmentStatus.Pending,
             TenantId = tenantId.Value,
-            SnapshotUnitCost = request.Amount, 
+            SnapshotUnitCost = program.DefaultUnitCost,
             CreatedBy = _currentUserService.UserId ?? Guid.Empty 
         };
 
@@ -161,15 +166,21 @@ public class InvestmentsController : ControllerBase
         _context.Investments.Add(investment);
         await _context.SaveChangesAsync();
 
-        return Ok(new { Message = "Investment Recorded", NewFundBalance = fund.AvailableAmount, InvestmentId = investment.Id });
+        return Ok(new InvestmentActionResponse
+        {
+            Message = "Investment Recorded",
+            NewFundBalance = fund.AvailableAmount,
+            InvestmentId = investment.Id
+        });
     }
 
     [HttpPost("{id}/approve")]
     [Authorize(Policy = "AdminOrManager")]
     public async Task<IActionResult> ApproveInvestment(Guid id, [FromBody] ApproveInvestmentRequest request)
     {
+        await using var transaction = await BeginTransactionIfSupportedAsync();
+
         var investment = await _context.Investments
-            .Include(i => i.Fund)
             .FirstOrDefaultAsync(i => i.Id == id);
         if (investment == null) return NotFound();
 
@@ -178,21 +189,41 @@ public class InvestmentsController : ControllerBase
             return BadRequest("Only pending or draft investments can be approved.");
         }
 
-        if (investment.Fund == null)
+        var fundExists = await _context.Funds.AnyAsync(f => f.Id == investment.FundId);
+        if (!fundExists)
         {
             return BadRequest("Investment fund was not found.");
         }
 
-        if (investment.Fund.AvailableAmount < investment.Amount)
+        var balanceUpdated = await TryDecreaseFundBalanceAsync(investment.FundId, investment.Amount);
+        if (!balanceUpdated)
         {
-            return BadRequest($"Insufficient funds. Available: ${investment.Fund.AvailableAmount}");
+            var available = await _context.Funds
+                .Where(f => f.Id == investment.FundId)
+                .Select(f => f.AvailableAmount)
+                .FirstOrDefaultAsync();
+            return BadRequest($"Insufficient funds. Available: ${available}");
         }
 
-        investment.Fund.AvailableAmount -= investment.Amount;
         investment.Status = InvestmentStatus.Approved;
         
         await _context.SaveChangesAsync();
-        return Ok(new { Message = "Investment Approved", NewFundBalance = investment.Fund.AvailableAmount });
+        if (transaction != null)
+        {
+            await transaction.CommitAsync();
+        }
+
+        var newBalance = await _context.Funds
+            .Where(f => f.Id == investment.FundId)
+            .Select(f => f.AvailableAmount)
+            .FirstAsync();
+
+        return Ok(new InvestmentActionResponse
+        {
+            Message = "Investment Approved",
+            NewFundBalance = newBalance,
+            InvestmentId = investment.Id
+        });
     }
 
     [HttpPost("{id}/disburse")]
@@ -217,14 +248,15 @@ public class InvestmentsController : ControllerBase
     [Authorize(Policy = "AdminOrManager")]
     public async Task<IActionResult> DeleteInvestment(Guid id)
     {
+        await using var transaction = await BeginTransactionIfSupportedAsync();
+
         var investment = await _context.Investments
-            .Include(i => i.Fund)
             .FirstOrDefaultAsync(i => i.Id == id);
         if (investment == null) return NotFound();
 
-        if (investment.Status == InvestmentStatus.Approved && investment.Fund != null)
+        if (investment.Status == InvestmentStatus.Approved)
         {
-            investment.Fund.AvailableAmount += investment.Amount;
+            await IncreaseFundBalanceAsync(investment.FundId, investment.Amount);
         }
         else if (investment.Status == InvestmentStatus.Disbursed || investment.Status == InvestmentStatus.Completed)
         {
@@ -233,6 +265,10 @@ public class InvestmentsController : ControllerBase
 
         _context.Investments.Remove(investment);
         await _context.SaveChangesAsync();
+        if (transaction != null)
+        {
+            await transaction.CommitAsync();
+        }
         return NoContent();
     }
 
@@ -254,11 +290,56 @@ public class InvestmentsController : ControllerBase
             }
         }
 
-        // Track the change for the AuditLog
         investment.FamilyMemberId = request.NewFamilyMemberId;
-        investment.Reason = $"[REASSIGNED: {request.ReassignReason}] " + investment.Reason;
 
         await _context.SaveChangesAsync();
         return Ok();
+    }
+
+    private async Task<bool> TryDecreaseFundBalanceAsync(Guid fundId, decimal amount)
+    {
+        if (_context.Database.IsRelational())
+        {
+            var updatedFunds = await _context.Funds
+                .Where(f => f.Id == fundId && f.AvailableAmount >= amount)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(f => f.AvailableAmount, f => f.AvailableAmount - amount));
+
+            return updatedFunds > 0;
+        }
+
+        var fund = await _context.Funds.FirstOrDefaultAsync(f => f.Id == fundId);
+        if (fund == null || fund.AvailableAmount < amount)
+        {
+            return false;
+        }
+
+        fund.AvailableAmount -= amount;
+        return true;
+    }
+
+    private async Task IncreaseFundBalanceAsync(Guid fundId, decimal amount)
+    {
+        if (_context.Database.IsRelational())
+        {
+            await _context.Funds
+                .Where(f => f.Id == fundId)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(f => f.AvailableAmount, f => f.AvailableAmount + amount));
+            return;
+        }
+
+        var fund = await _context.Funds.FirstOrDefaultAsync(f => f.Id == fundId);
+        if (fund != null)
+        {
+            fund.AvailableAmount += amount;
+        }
+    }
+
+    private async Task<IDbContextTransaction?> BeginTransactionIfSupportedAsync()
+    {
+        return _context.Database.IsRelational()
+            ? await _context.Database.BeginTransactionAsync()
+            : null;
     }
 }

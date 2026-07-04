@@ -546,7 +546,7 @@
                         <div class="email-diagnostics-header">
                             <div>
                                 <h3>Email Delivery Diagnostics</h3>
-                                <p>Validate SMTP configuration and send a live test email from this environment.</p>
+                                <p>Validate Resend configuration and send a live test email from this environment.</p>
                             </div>
                             <button class="btn btn-outline-secondary btn-sm"
                                     disabled="@_isLoadingEmailDiagnostics"
@@ -578,19 +578,19 @@
                                 <strong>@(_emailDiagnostics?.EnvironmentName ?? "-")</strong>
                             </div>
                             <div class="diag-item">
-                                <span>SMTP Host</span>
-                                <strong>@(_emailDiagnostics?.SmtpHost ?? "Not configured")</strong>
+                                <span>Provider</span>
+                                <strong>@(_emailDiagnostics?.Provider ?? "Resend")</strong>
                             </div>
                             <div class="diag-item">
-                                <span>Port / SSL</span>
-                                <strong>@($"{_emailDiagnostics?.SmtpPort?.ToString() ?? "-"} / {(_emailDiagnostics?.UseSsl is null ? "-" : (_emailDiagnostics.UseSsl.Value ? "SSL" : "No SSL"))}")</strong>
+                                <span>API URL</span>
+                                <strong>@(_emailDiagnostics?.ResendBaseUrl ?? "https://api.resend.com")</strong>
                             </div>
                             <div class="diag-item">
-                                <span>SMTP User</span>
-                                <strong>@(_emailDiagnostics?.SmtpUserMasked ?? "-")</strong>
+                                <span>API Key</span>
+                                <strong>@(_emailDiagnostics?.ResendApiKeyMasked ?? "-")</strong>
                             </div>
                             <div class="diag-item">
-                                <span>Password</span>
+                                <span>Key Status</span>
                                 <strong>@((_emailDiagnostics?.HasPassword ?? false) ? "Configured" : "Missing")</strong>
                             </div>
                             <div class="diag-item">
@@ -611,7 +611,7 @@
                                 </div>
                                 <div class="col-md-5">
                                     <label class="form-label">Subject (optional)</label>
-                                    <InputText class="form-control" @bind-Value="_testEmailRequest.Subject" placeholder="grow.IT SMTP Test" />
+                                    <InputText class="form-control" @bind-Value="_testEmailRequest.Subject" placeholder="grow.IT Resend Test" />
                                 </div>
                                 <div class="col-md-2 d-flex align-items-end">
                                     <button class="btn btn-primary w-100"

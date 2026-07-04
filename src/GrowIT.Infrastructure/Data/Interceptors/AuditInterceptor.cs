@@ -1,6 +1,7 @@
 using GrowIT.Core.Entities;
 using GrowIT.Core.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using System.Text.Json;
 
@@ -28,7 +29,6 @@ public class AuditInterceptor : SaveChangesInterceptor
         var userId = _currentUserService.UserId;
         var tenantId = _tenantService.TenantId;
 
-        // 1. Identify Changed Entities (excluding AuditLogs themselves to prevent loops)
         var entries = context.ChangeTracker.Entries<object>()
             .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted)
             .Where(e => !(e.Entity is AuditLog)) 
@@ -38,7 +38,6 @@ public class AuditInterceptor : SaveChangesInterceptor
 
         foreach (var entry in entries)
         {
-            // 2. Determine Action
             var actionType = entry.State switch
             {
                 EntityState.Added => "Create",
@@ -47,17 +46,14 @@ public class AuditInterceptor : SaveChangesInterceptor
                 _ => "Unknown"
             };
 
-            // 3. Serialize Data (Snapshot)
-            // Note: For 'Added', OldData is null. For 'Deleted', NewData is null.
-            var oldValues = entry.State == EntityState.Modified || entry.State == EntityState.Deleted 
-                ? JsonSerializer.Serialize(entry.OriginalValues.ToObject()) 
+            var oldValues = entry.State == EntityState.Modified || entry.State == EntityState.Deleted
+                ? SerializeAuditValues(entry, useOriginalValues: true)
                 : null;
 
-            var newValues = entry.State == EntityState.Added || entry.State == EntityState.Modified 
-                ? JsonSerializer.Serialize(entry.CurrentValues.ToObject()) 
+            var newValues = entry.State == EntityState.Added || entry.State == EntityState.Modified
+                ? SerializeAuditValues(entry, useOriginalValues: false)
                 : null;
 
-            // 4. Create Log Record
             var audit = new AuditLog
             {
                 Id = Guid.NewGuid(),
@@ -74,7 +70,6 @@ public class AuditInterceptor : SaveChangesInterceptor
             auditEntries.Add(audit);
         }
 
-        // 5. Add Audit Logs to Context
         if (auditEntries.Any())
         {
             await context.Set<AuditLog>().AddRangeAsync(auditEntries, cancellationToken);
@@ -83,10 +78,45 @@ public class AuditInterceptor : SaveChangesInterceptor
         return await base.SavingChangesAsync(eventData, result, cancellationToken);
     }
 
-    private Guid? GetPrimaryKey(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry entry)
+    private static string SerializeAuditValues(EntityEntry entry, bool useOriginalValues)
     {
-        // Simplistic assumption: PK is a single GUID named 'Id'
-        // For production, you might want a more robust way to find the PK property
+        var values = new Dictionary<string, object?>();
+
+        foreach (var property in entry.Properties)
+        {
+            if (entry.State == EntityState.Modified &&
+                !property.IsModified &&
+                !property.Metadata.IsPrimaryKey())
+            {
+                continue;
+            }
+
+            var name = property.Metadata.Name;
+            values[name] = IsSensitiveProperty(name)
+                ? "[REDACTED]"
+                : useOriginalValues ? property.OriginalValue : property.CurrentValue;
+        }
+
+        return JsonSerializer.Serialize(values);
+    }
+
+    private static bool IsSensitiveProperty(string propertyName)
+    {
+        var name = propertyName.ToLowerInvariant();
+        return name.Contains("password", StringComparison.Ordinal)
+            || name.Contains("token", StringComparison.Ordinal)
+            || name.Contains("secret", StringComparison.Ordinal)
+            || name.Contains("ssn", StringComparison.Ordinal)
+            || name.Contains("hash", StringComparison.Ordinal)
+            || name.Contains("securitystamp", StringComparison.Ordinal)
+            || name.Contains("apikey", StringComparison.Ordinal)
+            || name.Contains("api_key", StringComparison.Ordinal)
+            || name.Contains("stripe", StringComparison.Ordinal)
+            || name.Contains("card", StringComparison.Ordinal);
+    }
+
+    private Guid? GetPrimaryKey(EntityEntry entry)
+    {
         var idProperty = entry.Properties.FirstOrDefault(p => p.Metadata.IsPrimaryKey());
         if (idProperty != null && idProperty.CurrentValue is Guid guidVal)
         {

@@ -36,7 +36,7 @@ builder.Configuration.AddJsonFile("wwwroot/appsettings.json", optional: true, re
 builder.Configuration.AddJsonFile($"wwwroot/appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true);
 
 // Re-apply environment variables LAST so they always win over the JSON files above.
-// Secrets (Jwt__Key, Email__SmtpPass, Stripe__SecretKey, SuperAdmin__Email, …) are
+// Secrets (Jwt__Key, Email__ResendApiKey, Stripe__SecretKey, SuperAdmin__Email, ...) are
 // supplied per-environment via env vars / user-secrets and are never committed.
 builder.Configuration.AddEnvironmentVariables();
 

@@ -17,6 +17,7 @@ public class ClientDetailDto
     public string Address { get; set; } = string.Empty;
     public DateTime? DateOfBirth { get; set; }
     public string? SSNLast4 { get; set; }
+    public string? MaskedSSNLast4 { get; set; }
     public string? PhotoUrl { get; set; }
     public int HouseholdCount { get; set; }
     public MaritalStatus MaritalStatus { get; set; }

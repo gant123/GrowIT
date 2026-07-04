@@ -653,24 +653,33 @@ public class AdminController : ControllerBase
 
     private EmailDiagnosticsDto BuildEmailDiagnosticsDto()
     {
+        var resendApiKey = ResolveResendApiKey();
+        var resendBaseUrl = _config["Email:ResendBaseUrl"]?.Trim();
+        if (string.IsNullOrWhiteSpace(resendBaseUrl))
+            resendBaseUrl = "https://api.resend.com";
+
         var smtpHost = _config["Email:SmtpHost"]?.Trim();
         var smtpUser = _config["Email:SmtpUser"]?.Trim();
         var smtpPass = _config["Email:SmtpPass"];
         var fromEmail = _config["Email:FromEmail"]?.Trim();
         var env = _config["ASPNETCORE_ENVIRONMENT"] ?? HttpContext.RequestServices.GetService<IWebHostEnvironment>()?.EnvironmentName ?? "Unknown";
 
-        var hasPlaceholders = (smtpUser?.Contains("YOUR_", StringComparison.OrdinalIgnoreCase) ?? false)
+        var hasPlaceholders = IsPlaceholder(resendApiKey)
+            || (smtpUser?.Contains("YOUR_", StringComparison.OrdinalIgnoreCase) ?? false)
             || (smtpPass?.Contains("YOUR_", StringComparison.OrdinalIgnoreCase) ?? false);
 
         return new EmailDiagnosticsDto
         {
             EnvironmentName = env,
+            Provider = "Resend",
+            ResendBaseUrl = resendBaseUrl,
+            ResendApiKeyMasked = MaskCredential(resendApiKey),
             SmtpHost = smtpHost,
             SmtpPort = int.TryParse(_config["Email:SmtpPort"], out var port) ? port : null,
             UseSsl = bool.TryParse(_config["Email:UseSsl"], out var ssl) ? ssl : null,
             FromEmail = fromEmail,
             SmtpUserMasked = MaskCredential(smtpUser),
-            HasPassword = !string.IsNullOrWhiteSpace(smtpPass),
+            HasPassword = !string.IsNullOrWhiteSpace(resendApiKey),
             HasPlaceholders = hasPlaceholders,
             DevFileFallbackEnabled = !string.IsNullOrWhiteSpace(_config["Email:DevFileFallbackEnabled"])
                 ? bool.TryParse(_config["Email:DevFileFallbackEnabled"], out var fallbackEnabled) && fallbackEnabled
@@ -699,7 +708,7 @@ public class AdminController : ControllerBase
             return BadRequest("A target email is required.");
 
         var subject = string.IsNullOrWhiteSpace(request?.Subject)
-            ? $"grow.IT SMTP Test ({DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC)"
+            ? $"grow.IT Resend Test ({DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC)"
             : request!.Subject!.Trim();
 
         var body = $@"
@@ -948,14 +957,40 @@ public class AdminController : ControllerBase
 
     private static string BuildEmailDiagnosticsStatusSummary(EmailDiagnosticsDto dto)
     {
-        if (string.IsNullOrWhiteSpace(dto.SmtpHost) || string.IsNullOrWhiteSpace(dto.SmtpUserMasked))
-            return "SMTP not configured";
+        if (string.IsNullOrWhiteSpace(dto.ResendApiKeyMasked))
+            return "Resend not configured";
+        if (string.IsNullOrWhiteSpace(dto.FromEmail))
+            return "Resend missing from email";
         if (dto.HasPlaceholders)
-            return "SMTP configured with placeholders";
+            return "Resend configured with placeholders";
         if (dto.DevFileFallbackEnabled)
-            return "SMTP configured (development file fallback enabled)";
-        return "SMTP configured";
+            return "Resend configured (development file fallback enabled)";
+        return "Resend configured";
     }
+
+    private string? ResolveResendApiKey()
+    {
+        var apiKey = _config["Email:ResendApiKey"]?.Trim();
+        if (!string.IsNullOrWhiteSpace(apiKey))
+            return apiKey;
+
+        apiKey = _config["Resend:ApiKey"]?.Trim();
+        if (!string.IsNullOrWhiteSpace(apiKey))
+            return apiKey;
+
+        var smtpHost = _config["Email:SmtpHost"]?.Trim();
+        var smtpPass = _config["Email:SmtpPass"]?.Trim();
+        return string.Equals(smtpHost, "smtp.resend.com", StringComparison.OrdinalIgnoreCase)
+            ? smtpPass
+            : null;
+    }
+
+    private static bool IsPlaceholder(string? value) =>
+        !string.IsNullOrWhiteSpace(value)
+        && (value.Contains("YOUR_", StringComparison.OrdinalIgnoreCase)
+            || value.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase)
+            || value.Contains("CHANGEME", StringComparison.OrdinalIgnoreCase)
+            || value.Contains("<", StringComparison.OrdinalIgnoreCase));
 
     private static string FormatUtc(DateTime? value) =>
         value.HasValue ? value.Value.ToString("u") : "Never";

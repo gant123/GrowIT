@@ -207,7 +207,10 @@ public class AuthController : ControllerBase
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
     {
-        var user = await _userManager.FindByEmailAsync(request.Email.Trim());
+        var normalizedEmail = request.Email.Trim().ToUpperInvariant();
+        var user = await _userManager.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
 
         if (user == null)
         {
@@ -296,7 +299,10 @@ public class AuthController : ControllerBase
             return BadRequest(new { Message = "Email is required." });
         }
 
-        var user = await _userManager.FindByEmailAsync(request.Email.Trim());
+        var normalizedEmail = request.Email.Trim().ToUpperInvariant();
+        var user = await _userManager.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
         if (user is null)
         {
             return Ok(new { Message = "If your email is in our system, you will receive a confirmation link." });
@@ -459,7 +465,10 @@ public class AuthController : ControllerBase
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
     {
-        var user = await _userManager.FindByEmailAsync(request.Email.Trim());
+        var normalizedEmail = request.Email.Trim().ToUpperInvariant();
+        var user = await _userManager.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
         if (user == null)
         {
             return BadRequest(new { Message = "Invalid or expired token." });

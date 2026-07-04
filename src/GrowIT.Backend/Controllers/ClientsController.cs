@@ -92,7 +92,8 @@ public class ClientsController : ControllerBase
             Phone = client.Phone,
             Address = client.Address,
             DateOfBirth = client.DateOfBirth,
-            SSNLast4 = client.SSNLast4,
+            SSNLast4 = MaskSsnLast4(client.SSNLast4),
+            MaskedSSNLast4 = MaskSsnLast4(client.SSNLast4),
             PhotoUrl = client.PhotoUrl,
             StabilityScore = client.StabilityScore,
             LifePhase = client.LifePhase,
@@ -113,7 +114,7 @@ public class ClientsController : ControllerBase
                 Id = f.Id,
                 Name = $"{f.FirstName} {f.LastName}",
                 Relationship = f.Relationship,
-                Age = f.DateOfBirth.HasValue ? (int)((DateTime.Now - f.DateOfBirth.Value).TotalDays / 365.25) : 0,
+                Age = CalculateAge(f.DateOfBirth),
                 School = f.SchoolOrEmployer
             }).ToList()
         };
@@ -155,11 +156,11 @@ public class ClientsController : ControllerBase
 
         var newClient = new Client
         {
-            FirstName = request.FirstName,
-            LastName = request.LastName,
-            Email = request.Email ?? "",
-            Phone = request.Phone ?? "",
-            Address = request.Address,
+            FirstName = request.FirstName.Trim(),
+            LastName = request.LastName.Trim(),
+            Email = request.Email?.Trim() ?? "",
+            Phone = request.Phone?.Trim() ?? "",
+            Address = request.Address.Trim(),
             DateOfBirth = ToUtcDate(request.DateOfBirth),
             SSNLast4 = string.IsNullOrWhiteSpace(request.SSNLast4) ? null : request.SSNLast4.Trim(),
             PhotoUrl = string.IsNullOrWhiteSpace(request.PhotoUrl) ? null : request.PhotoUrl.Trim(),
@@ -177,13 +178,23 @@ public class ClientsController : ControllerBase
         _context.Clients.Add(newClient);
         await _context.SaveChangesAsync();
 
-        return Ok(new { Message = "Client Created", ClientId = newClient.Id });
+        return Ok(new EntityCreatedResponse
+        {
+            Message = "Client Created",
+            Id = newClient.Id,
+            ClientId = newClient.Id
+        });
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<ClientDto>>> GetAll()
+    public async Task<ActionResult<List<ClientDto>>> GetAll([FromQuery] int take = 500)
     {
+        var limit = Math.Clamp(take, 1, 1000);
+
         var clients = await _context.Clients
+            .OrderBy(c => c.LastName)
+            .ThenBy(c => c.FirstName)
+            .Take(limit)
             .Select(c => new ClientDto
             {
                 Id = c.Id,
@@ -228,11 +239,11 @@ public class ClientsController : ControllerBase
             }
         }
 
-        client.FirstName = request.FirstName;
-        client.LastName = request.LastName;
-        client.Email = request.Email ?? string.Empty;
-        client.Phone = request.Phone ?? string.Empty;
-        client.Address = request.Address;
+        client.FirstName = request.FirstName.Trim();
+        client.LastName = request.LastName.Trim();
+        client.Email = request.Email?.Trim() ?? string.Empty;
+        client.Phone = request.Phone?.Trim() ?? string.Empty;
+        client.Address = request.Address.Trim();
         client.DateOfBirth = ToUtcDate(request.DateOfBirth);
         client.SSNLast4 = string.IsNullOrWhiteSpace(request.SSNLast4) ? null : request.SSNLast4.Trim();
         client.PhotoUrl = string.IsNullOrWhiteSpace(request.PhotoUrl) ? null : request.PhotoUrl.Trim();
@@ -339,7 +350,7 @@ public class ClientsController : ControllerBase
             ClientId = member.ClientId,
             Name = $"{member.FirstName} {member.LastName}",
             Relationship = member.Relationship,
-            Age = member.DateOfBirth.HasValue ? (int)((DateTime.Now - member.DateOfBirth.Value).TotalDays / 365.25) : 0,
+            Age = CalculateAge(member.DateOfBirth),
             DateOfBirth = member.DateOfBirth,
             School = member.SchoolOrEmployer,
             Notes = member.Notes,
@@ -417,5 +428,34 @@ public class ClientsController : ControllerBase
         }
 
         return DateTime.SpecifyKind(value.Value.Date, DateTimeKind.Utc);
+    }
+
+    private static int CalculateAge(DateTime? dateOfBirth)
+    {
+        if (!dateOfBirth.HasValue)
+        {
+            return 0;
+        }
+
+        var today = DateTime.UtcNow.Date;
+        var birthDate = dateOfBirth.Value.Date;
+        var age = today.Year - birthDate.Year;
+        if (birthDate > today.AddYears(-age))
+        {
+            age--;
+        }
+
+        return Math.Max(0, age);
+    }
+
+    private static string? MaskSsnLast4(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var lastFour = value.Trim();
+        return lastFour.Length == 4 ? $"***-**-{lastFour}" : "***-**-****";
     }
 }

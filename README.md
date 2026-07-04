@@ -60,9 +60,8 @@ credentials out of git via user-secrets:
 dotnet user-secrets --project src/GrowIT.Client set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5433;Database=GrowIT;Username=postgres;Password=your-password"
 dotnet user-secrets --project src/GrowIT.Client set "Jwt:Key" "your-long-random-secret-key"
 dotnet user-secrets --project src/GrowIT.Client set "SuperAdmin:Email" "you@example.com"
-dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpHost" "your-smtp-host"
-dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpUser" "your-user"
-dotnet user-secrets --project src/GrowIT.Client set "Email:SmtpPass" "your-password"
+dotnet user-secrets --project src/GrowIT.Client set "Email:ResendApiKey" "re_your-resend-api-key"
+dotnet user-secrets --project src/GrowIT.Client set "Email:FromEmail" "info@moemedia.cloud"
 ```
 
 > `SuperAdmin:Email` designates the single platform SuperAdmin (see
@@ -168,10 +167,10 @@ e.g. `Jwt:Key` ↔ `Jwt__Key`.
 | `SuperAdmin:Email` | Account elevated to SuperAdmin during identity bootstrap (blank = none) | ✅ Yes | set in `appsettings.Development.json` |
 | `Database:AutoMigrate` | If true, apply migrations + bootstrap roles/SuperAdmin on startup | recommended | `false` |
 | `ClientUrl` | Public URL of the application (used in email links + redirects) | ✅ Yes | `http://localhost:5245` |
-| `Email:SmtpHost` / `Email:SmtpPort` / `Email:UseSsl` | SMTP server | ✅ Yes | host blank in dev |
-| `Email:SmtpUser` | **Secret** — SMTP username | ✅ Yes | blank |
-| `Email:SmtpPass` | **Secret** — SMTP password / API key | ✅ Yes | blank |
+| `Email:ResendApiKey` | **Secret** — Resend API key used for transactional email | ✅ Yes | blank |
+| `Email:ResendBaseUrl` | Resend API base URL | — | `https://api.resend.com` |
 | `Email:FromEmail` | From address (domain must have SPF/DKIM to avoid spam) | ✅ Yes | `dev@growit.local` |
+| `Email:FromName` | Friendly sender name | — | `grow.IT` |
 | `Email:DevFileFallbackEnabled` | If true, writes emails to disk instead of sending | — | `true` (dev) / `false` (prod) |
 | `Stripe:SecretKey` | **Secret** — Stripe API key (paid plans require checkout once set) | for billing | blank |
 | `Stripe:WebhookSecret` | **Secret** — Stripe webhook signing secret | for billing | blank |
@@ -181,7 +180,7 @@ e.g. `Jwt:Key` ↔ `Jwt__Key`.
 
 > ⚠️ **Email is onboarding-critical.** Sign-in requires a confirmed email
 > (`RequireConfirmedEmail = true`) and prod has no file fallback, so a tester **cannot log in
-> until they receive and click a confirmation email**. Verify SMTP delivery (and the from-domain's
+> until they receive and click a confirmation email**. Verify Resend delivery (and the from-domain's
 > SPF/DKIM) before inviting users.
 
 ## Beta / Production deployment
@@ -195,8 +194,8 @@ The container stack (`docker compose up -d --build`) runs `db` + `client`. For a
    Jwt__Key="<long-random-secret>"          # generate e.g. with: openssl rand -base64 48
    SuperAdmin__Email="you@example.com"
    ClientUrl="https://your-beta-domain"
-   Email__SmtpUser="<smtp-user>"
-   Email__SmtpPass="<smtp-pass-or-api-key>"
+   Email__ResendApiKey="re_..."
+   Email__FromEmail="info@moemedia.cloud"
    Database__AutoMigrate="true"             # apply migrations + bootstrap on startup
    # When enabling billing:
    Stripe__SecretKey="sk_..."
@@ -213,7 +212,7 @@ The container stack (`docker compose up -d --build`) runs `db` + `client`. For a
    email is actually delivered (not spam-filtered).
 
 > 🔐 **Rotate any previously-committed secrets.** Blanking a value in the file does not remove
-> it from git history — rotate the SMTP credential that was committed earlier and use a fresh
+> it from git history — rotate the Resend credential that was committed earlier and use a fresh
 > `Jwt__Key` before going live.
 
 ## Testing

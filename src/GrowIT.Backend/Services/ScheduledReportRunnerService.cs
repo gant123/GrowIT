@@ -99,12 +99,12 @@ public class ScheduledReportRunnerService : BackgroundService
             cancellationToken.ThrowIfCancellationRequested();
 
             var runRequestedAt = DateTime.UtcNow;
-            var reportType = string.IsNullOrWhiteSpace(schedule.ReportType)
-                ? (string.IsNullOrWhiteSpace(options.DefaultReportType) ? "impact-summary" : options.DefaultReportType.Trim())
-                : schedule.ReportType.Trim();
-            var format = string.IsNullOrWhiteSpace(schedule.Format)
-                ? (string.IsNullOrWhiteSpace(options.DefaultFormat) ? "pdf" : options.DefaultFormat.Trim())
-                : schedule.Format.Trim().ToLowerInvariant();
+            var reportType = NormalizeReportType(string.IsNullOrWhiteSpace(schedule.ReportType)
+                ? options.DefaultReportType
+                : schedule.ReportType);
+            var format = NormalizeReportFormat(string.IsNullOrWhiteSpace(schedule.Format)
+                ? options.DefaultFormat
+                : schedule.Format);
             var request = new GenerateReportRequest
             {
                 ReportType = reportType,
@@ -135,6 +135,32 @@ public class ScheduledReportRunnerService : BackgroundService
         await context.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Scheduled report runner processed {Count} schedules.", processed);
         return processed;
+    }
+
+    private static string NormalizeReportType(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return ReportContract.ImpactSummary;
+        }
+
+        var normalized = value.Trim().ToLowerInvariant();
+        return ReportContract.SupportedReportTypes.Any(t => string.Equals(t, normalized, StringComparison.OrdinalIgnoreCase))
+            ? normalized
+            : ReportContract.ImpactSummary;
+    }
+
+    private static string NormalizeReportFormat(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "pdf";
+        }
+
+        var normalized = value.Trim().ToLowerInvariant();
+        return ReportContract.SupportedFormats.Any(f => string.Equals(f, normalized, StringComparison.OrdinalIgnoreCase))
+            ? normalized
+            : "pdf";
     }
 
     private static DateTime ComputeNextRun(string? frequency, DateTime currentNextRun, DateTime nowUtc)

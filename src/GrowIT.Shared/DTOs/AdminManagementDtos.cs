@@ -113,6 +113,9 @@ public class AdminAuditLogItemDto
 public class EmailDiagnosticsDto
 {
     public string EnvironmentName { get; set; } = string.Empty;
+    public string Provider { get; set; } = "Resend";
+    public string? ResendBaseUrl { get; set; }
+    public string? ResendApiKeyMasked { get; set; }
     public string? SmtpHost { get; set; }
     public int? SmtpPort { get; set; }
     public bool? UseSsl { get; set; }

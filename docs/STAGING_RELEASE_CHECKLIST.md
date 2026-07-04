@@ -5,7 +5,7 @@
 - [ ] `ConnectionStrings:DefaultConnection` set correctly
 - [ ] `ClientUrl` points to deployed client URL
 - [ ] `Cors:AllowedOrigins` includes deployed client URL only
-- [ ] `Email` SMTP values set (non-placeholder)
+- [ ] `Email:ResendApiKey` and `Email:FromEmail` set (non-placeholder)
 - [ ] `Reports:Scheduler:Enabled=true`
 - [ ] `Reports:Scheduler` poll interval reviewed (`PollSeconds`)
 
