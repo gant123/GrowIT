@@ -132,6 +132,36 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
             property.SetColumnType("decimal(18,2)");
         }
 
+        builder.Entity<Fund>(entity =>
+        {
+            entity.HasIndex(f => new { f.TenantId, f.Name }).IsUnique();
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_Funds_TotalAmount_NonNegative", "\"TotalAmount\" >= 0");
+                table.HasCheckConstraint("CK_Funds_AvailableAmount_NonNegative", "\"AvailableAmount\" >= 0");
+                table.HasCheckConstraint("CK_Funds_AvailableAmount_NotOverTotal", "\"AvailableAmount\" <= \"TotalAmount\"");
+            });
+        });
+
+        builder.Entity<GrowIT.Core.Entities.Program>(entity =>
+        {
+            entity.HasIndex(p => new { p.TenantId, p.Name }).IsUnique();
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_Programs_DefaultUnitCost_NonNegative", "\"DefaultUnitCost\" >= 0");
+                table.HasCheckConstraint("CK_Programs_CapacityLimit_Positive", "\"CapacityLimit\" IS NULL OR \"CapacityLimit\" > 0");
+            });
+        });
+
+        builder.Entity<Investment>(entity =>
+        {
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_Investments_Amount_Positive", "\"Amount\" > 0");
+                table.HasCheckConstraint("CK_Investments_SnapshotUnitCost_NonNegative", "\"SnapshotUnitCost\" >= 0");
+            });
+        });
+
         // D. Public content indexes
         // -------------------------------------------------------------
         builder.Entity<BlogPost>()

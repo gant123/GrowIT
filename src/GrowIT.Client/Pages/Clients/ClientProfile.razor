@@ -106,7 +106,7 @@ else
                             </div>
                             <div class="detail-row">
                                 <span>SSN last 4</span>
-                                <strong>@(string.IsNullOrWhiteSpace(client.SSNLast4) ? "Not set" : client.SSNLast4)</strong>
+                                <strong>@(string.IsNullOrWhiteSpace(client.MaskedSSNLast4) ? "Not set" : client.MaskedSSNLast4)</strong>
                             </div>
                             <div class="detail-row">
                                 <span>Next follow-up</span>

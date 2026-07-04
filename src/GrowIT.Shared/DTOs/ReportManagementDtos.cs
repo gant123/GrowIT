@@ -1,6 +1,7 @@
 namespace GrowIT.Shared.DTOs;
 
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 public static class ReportContract
 {
@@ -198,6 +199,7 @@ public class ReportRunDetailDto
     public DateTime? DateTo { get; set; }
     public string? GroupBy { get; set; }
 
+    [JsonIgnore]
     public string RequestPayloadJson { get; set; } = "{}";
     public List<ReportRunTimelineItemDto> Timeline { get; set; } = new();
     public List<ReportRunDownloadEventDto> DownloadEvents { get; set; } = new();

@@ -24,7 +24,7 @@ public class TaskService : BaseApiService, ITaskService
 
     public async Task<Guid> CreateTaskAsync(CreateTaskRequest request, CancellationToken ct = default)
     {
-        var response = await PostAsync<CreateTaskRequest, CreateResponse>(Endpoint, request, ct);
+        var response = await PostAsync<CreateTaskRequest, EntityCreatedResponse>(Endpoint, request, ct);
         return response?.TaskId ?? Guid.Empty;
     }
 
@@ -66,10 +66,5 @@ public class TaskService : BaseApiService, ITaskService
         }
 
         return parts.Count == 0 ? string.Empty : "?" + string.Join("&", parts);
-    }
-
-    private class CreateResponse
-    {
-        public Guid TaskId { get; set; }
     }
 }

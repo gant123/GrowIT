@@ -106,7 +106,7 @@ public class ProfileController : ControllerBase
 
         await _userManager.UpdateSecurityStampAsync(user);
 
-        return Ok(new { Message = "Password updated successfully." });
+        return Ok(new MessageResponse { Message = "Password updated successfully." });
     }
 
     [HttpPut("notification-preferences")]

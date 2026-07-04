@@ -29,9 +29,15 @@ public class AuditInterceptor : SaveChangesInterceptor
         var userId = _currentUserService.UserId;
         var tenantId = _tenantService.TenantId;
 
+        var manuallyAuditedRecordIds = context.ChangeTracker.Entries<AuditLog>()
+            .Where(e => e.State == EntityState.Added && e.Entity.RecordId != Guid.Empty)
+            .Select(e => e.Entity.RecordId)
+            .ToHashSet();
+
         var entries = context.ChangeTracker.Entries<object>()
             .Where(e => e.State == EntityState.Added || e.State == EntityState.Modified || e.State == EntityState.Deleted)
             .Where(e => !(e.Entity is AuditLog)) 
+            .Where(e => !HasManualAuditEntry(e, manuallyAuditedRecordIds))
             .ToList();
 
         var auditEntries = new List<AuditLog>();
@@ -123,6 +129,18 @@ public class AuditInterceptor : SaveChangesInterceptor
             return guidVal;
         }
         return null; 
+    }
+
+    private Guid? PeekPrimaryKey(EntityEntry entry)
+    {
+        var idProperty = entry.Properties.FirstOrDefault(p => p.Metadata.IsPrimaryKey());
+        return idProperty?.CurrentValue is Guid guidVal ? guidVal : null;
+    }
+
+    private bool HasManualAuditEntry(EntityEntry entry, HashSet<Guid> manuallyAuditedRecordIds)
+    {
+        var id = PeekPrimaryKey(entry);
+        return id.HasValue && manuallyAuditedRecordIds.Contains(id.Value);
     }
 
     private static Guid? TryGetEntityTenantId(object entity)

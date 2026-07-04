@@ -106,7 +106,12 @@ public class TasksController : ControllerBase
         _context.Tasks.Add(task);
         await _context.SaveChangesAsync();
 
-        return Ok(new { Message = "Task created", TaskId = task.Id });
+        return Ok(new EntityCreatedResponse
+        {
+            Message = "Task created",
+            Id = task.Id,
+            TaskId = task.Id
+        });
     }
 
     [HttpPut("{id:guid}")]

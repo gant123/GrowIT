@@ -653,13 +653,13 @@
                 </div>
 
                 <div class="growit-report-detail-section">
-                    <div class="d-flex justify-content-between align-items-center gap-2">
-                        <h4 class="mb-0">Report Settings</h4>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="CopyReportPayloadAsync">
-                            <i class="bi bi-clipboard me-1"></i>Copy
-                        </button>
+                    <h4>Report Settings</h4>
+                    <div class="growit-report-detail-grid">
+                        <div><span>Fiscal year</span><strong>@DisplayValue(_reportDetail.FiscalYear)</strong></div>
+                        <div><span>Date from</span><strong>@FormatLocalDate(_reportDetail.DateFrom)</strong></div>
+                        <div><span>Date to</span><strong>@FormatLocalDate(_reportDetail.DateTo)</strong></div>
+                        <div><span>Group by</span><strong>@DisplayValue(_reportDetail.GroupBy)</strong></div>
                     </div>
-                    <pre class="growit-report-code">@_reportDetail.RequestPayloadJson</pre>
                 </div>
             }
         </div>
@@ -863,14 +863,6 @@
     private void CloseReportDetails()
     {
         _showReportDetailDrawer = false;
-    }
-
-    private async Task CopyReportPayloadAsync()
-    {
-        if (string.IsNullOrWhiteSpace(_reportDetail?.RequestPayloadJson)) return;
-        await JS.InvokeVoidAsync("blazorInterop.copyToClipboard", _reportDetail.RequestPayloadJson);
-        _pageMessage = "Report request payload copied.";
-        _pageError = null;
     }
 
     private async Task SaveScheduleAsync()

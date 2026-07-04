@@ -241,7 +241,11 @@ public class InvestmentsController : ControllerBase
         investment.Status = InvestmentStatus.Disbursed;
         
         await _context.SaveChangesAsync();
-        return Ok(new { Message = "Investment Disbursed" });
+        return Ok(new InvestmentActionResponse
+        {
+            Message = "Investment Disbursed",
+            InvestmentId = investment.Id
+        });
     }
 
     [HttpDelete("{id}")]

@@ -1,4 +1,5 @@
 using GrowIT.Infrastructure.Data;
+using GrowIT.Infrastructure.Data.Interceptors;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -78,9 +79,10 @@ public sealed class GrowItApiFactory : WebApplicationFactory<Program>
             services.RemoveAll(typeof(DbContextOptions<ApplicationDbContext>));
             services.RemoveAll<ApplicationDbContext>();
 
-            services.AddDbContext<ApplicationDbContext>(options =>
+            services.AddDbContext<ApplicationDbContext>((sp, options) =>
             {
-                options.UseInMemoryDatabase(_dbName);
+                options.UseInMemoryDatabase(_dbName)
+                    .AddInterceptors(sp.GetRequiredService<AuditInterceptor>());
             });
 
             services.AddAuthentication(options =>

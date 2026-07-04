@@ -81,7 +81,12 @@ public class DocumentsController : ControllerBase
         _context.Documents.Add(document);
         await _context.SaveChangesAsync();
 
-        return Ok(new { Message = "Document created", DocumentId = document.Id });
+        return Ok(new EntityCreatedResponse
+        {
+            Message = "Document created",
+            Id = document.Id,
+            DocumentId = document.Id
+        });
     }
 
     [HttpPut("{id:guid}")]

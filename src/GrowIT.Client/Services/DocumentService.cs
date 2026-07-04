@@ -24,7 +24,7 @@ public class DocumentService : BaseApiService, IDocumentService
 
     public async Task<Guid> CreateDocumentAsync(CreateDocumentRequest request, CancellationToken ct = default)
     {
-        var response = await PostAsync<CreateDocumentRequest, CreateResponse>(Endpoint, request, ct);
+        var response = await PostAsync<CreateDocumentRequest, EntityCreatedResponse>(Endpoint, request, ct);
         return response?.DocumentId ?? Guid.Empty;
     }
 
@@ -33,9 +33,4 @@ public class DocumentService : BaseApiService, IDocumentService
 
     public Task DeleteDocumentAsync(Guid id, CancellationToken ct = default) =>
         DeleteAsync($"{Endpoint}/{id}", ct);
-
-    private class CreateResponse
-    {
-        public Guid DocumentId { get; set; }
-    }
 }
