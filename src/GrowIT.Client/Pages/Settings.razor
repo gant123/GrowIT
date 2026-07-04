@@ -261,6 +261,7 @@
                         <GridColumns>
                             <GridColumn Field=@nameof(AdminUserListItemDto.FullName) HeaderText="Name" Width="180" MinWidth="140"></GridColumn>
                             <GridColumn Field=@nameof(AdminUserListItemDto.Email) HeaderText="Email" Width="220" MinWidth="180"></GridColumn>
+                            <GridColumn Field=@nameof(AdminUserListItemDto.OrganizationName) HeaderText="Organization" Width="220" MinWidth="160"></GridColumn>
                             <GridColumn HeaderText="Status" Width="120" TextAlign="TextAlign.Center">
                                 <Template>
                                     @{
@@ -1034,7 +1035,7 @@
                 TrackPrograms = _organization.TrackPrograms
             };
 
-            _users = await usersTask;
+            _users = SortUsers(await usersTask);
             InitializeRoleDrafts(_users);
             _invites = await invitesTask;
             _inviteActivity = await inviteActivityTask;
@@ -1489,11 +1490,15 @@
             _users.Add(updated);
         }
 
-        _users = _users
-            .OrderBy(u => u.FullName, StringComparer.OrdinalIgnoreCase)
+        _users = SortUsers(_users);
+    }
+
+    private static List<AdminUserListItemDto> SortUsers(IEnumerable<AdminUserListItemDto> users) =>
+        users
+            .OrderBy(u => u.OrganizationName, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(u => u.FullName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(u => u.Email, StringComparer.OrdinalIgnoreCase)
             .ToList();
-    }
 
     private void InitializeRoleDrafts(IEnumerable<AdminUserListItemDto> users)
     {

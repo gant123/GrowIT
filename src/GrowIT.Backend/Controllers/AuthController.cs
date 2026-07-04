@@ -270,6 +270,7 @@ public class AuthController : ControllerBase
             return Ok(new ConfirmEmailResultDto
             {
                 Succeeded = true,
+                AlreadyConfirmed = true,
                 Message = "Your email is already confirmed. You can sign in."
             });
         }
@@ -287,6 +288,7 @@ public class AuthController : ControllerBase
         return Ok(new ConfirmEmailResultDto
         {
             Succeeded = true,
+            AlreadyConfirmed = false,
             Message = "Your email has been confirmed. You can sign in."
         });
     }

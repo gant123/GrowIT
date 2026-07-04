@@ -27,7 +27,7 @@
             else
             {
                 <div class="auth-header">
-                    <h1>@(_confirmed ? "Email confirmed" : "Email confirmation failed")</h1>
+                    <h1>@GetConfirmationTitle()</h1>
                     <p>@_message</p>
                 </div>
 
@@ -50,6 +50,7 @@
     private string _currentTheme = "light";
     private bool _isLoading = true;
     private bool _confirmed;
+    private bool _alreadyConfirmed;
     private string _message = "We could not process the confirmation link.";
 
     [SupplyParameterFromQuery(Name = "userId")]
@@ -71,6 +72,7 @@
         {
             var result = await AuthService.ConfirmEmail(UserId, Token);
             _confirmed = result?.Succeeded == true;
+            _alreadyConfirmed = result?.AlreadyConfirmed == true;
             _message = result?.Message ?? _message;
         }
         catch (ApiException ex)
@@ -102,5 +104,15 @@
         }
 
         return "/login";
+    }
+
+    private string GetConfirmationTitle()
+    {
+        if (!_confirmed)
+        {
+            return "Email confirmation failed";
+        }
+
+        return _alreadyConfirmed ? "Email already confirmed" : "Email confirmed";
     }
 }

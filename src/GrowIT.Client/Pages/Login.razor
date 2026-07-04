@@ -343,12 +343,12 @@
 
         try
         {
-            await AuthService.ResendConfirmationEmail(new ResendConfirmationEmailRequest
+            var response = await AuthService.ResendConfirmationEmail(new ResendConfirmationEmailRequest
             {
                 Email = _email
             });
 
-            Notifications.Success("If your account exists, a new confirmation email has been sent.");
+            Notifications.Success(response?.Message ?? "If your account exists, a confirmation link will be sent.");
         }
         catch (ApiException ex)
         {

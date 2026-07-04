@@ -3,6 +3,9 @@ using System.Net.Http.Json;
 using GrowIT.Backend.Tests.Infrastructure;
 using GrowIT.Core.Entities;
 using GrowIT.Shared.DTOs;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using GrowIT.Infrastructure.Data;
 
 namespace GrowIT.Backend.Tests;
 
@@ -313,4 +316,117 @@ public class AuthorizationPolicyTests
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+
+    [Fact]
+    public async Task SuperAdmin_UserList_ReturnsUsersAcrossOrganizationsWithOrganizationName()
+    {
+        using var factory = new GrowItApiFactory();
+        var tenantA = Guid.NewGuid();
+        var tenantB = Guid.NewGuid();
+
+        await factory.SeedAsync(db =>
+        {
+            db.Tenants.AddRange(
+                new Tenant { Id = tenantA, Name = "Alpha Org" },
+                new Tenant { Id = tenantB, Name = "Beta Org" });
+            db.Users.AddRange(
+                NewAdminTestUser(tenantA, "alpha@example.test", "Alpha", "User"),
+                NewAdminTestUser(tenantB, "beta@example.test", "Beta", "User"));
+
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateTenantClient(tenantA, role: "SuperAdmin");
+
+        var users = await client.GetFromJsonAsync<List<AdminUserListItemDto>>("/api/admin/users");
+
+        Assert.Contains(users ?? [], u => u.Email == "alpha@example.test" && u.OrganizationName == "Alpha Org");
+        Assert.Contains(users ?? [], u => u.Email == "beta@example.test" && u.OrganizationName == "Beta Org");
+    }
+
+    [Fact]
+    public async Task TenantAdmin_UserList_StaysScopedToOwnOrganization()
+    {
+        using var factory = new GrowItApiFactory();
+        var tenantA = Guid.NewGuid();
+        var tenantB = Guid.NewGuid();
+
+        await factory.SeedAsync(db =>
+        {
+            db.Tenants.AddRange(
+                new Tenant { Id = tenantA, Name = "Alpha Org" },
+                new Tenant { Id = tenantB, Name = "Beta Org" });
+            db.Users.AddRange(
+                NewAdminTestUser(tenantA, "alpha@example.test", "Alpha", "User"),
+                NewAdminTestUser(tenantB, "beta@example.test", "Beta", "User"));
+
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateTenantClient(tenantA, role: "Admin");
+
+        var users = await client.GetFromJsonAsync<List<AdminUserListItemDto>>("/api/admin/users");
+
+        Assert.Contains(users ?? [], u => u.Email == "alpha@example.test");
+        Assert.DoesNotContain(users ?? [], u => u.Email == "beta@example.test");
+    }
+
+    [Fact]
+    public async Task SuperAdmin_CanChangeAndDeactivateUserInAnotherOrganization()
+    {
+        using var factory = new GrowItApiFactory();
+        var tenantA = Guid.NewGuid();
+        var tenantB = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+
+        await factory.SeedAsync(db =>
+        {
+            db.Tenants.AddRange(
+                new Tenant { Id = tenantA, Name = "Alpha Org" },
+                new Tenant { Id = tenantB, Name = "Beta Org" });
+            db.Users.Add(NewAdminTestUser(tenantB, "target@example.test", "Target", "User", targetUserId));
+
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateTenantClient(tenantA, role: "SuperAdmin");
+
+        var roleResponse = await client.PutAsJsonAsync($"/api/admin/users/{targetUserId}/role", new UpdateAdminUserRoleRequest
+        {
+            Role = "Manager"
+        });
+        roleResponse.EnsureSuccessStatusCode();
+        var rolePayload = await roleResponse.Content.ReadFromJsonAsync<AdminUserListItemDto>();
+
+        Assert.Equal("Manager", rolePayload?.Role);
+        Assert.Equal("Beta Org", rolePayload?.OrganizationName);
+
+        var deactivateResponse = await client.PostAsJsonAsync($"/api/admin/users/{targetUserId}/deactivate", new { });
+        deactivateResponse.EnsureSuccessStatusCode();
+        var deactivatePayload = await deactivateResponse.Content.ReadFromJsonAsync<AdminUserListItemDto>();
+
+        Assert.False(deactivatePayload?.IsActive);
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var user = await db.Users.IgnoreQueryFilters().FirstAsync(u => u.Id == targetUserId);
+        Assert.False(user.IsActive);
+    }
+
+    private static User NewAdminTestUser(Guid tenantId, string email, string firstName, string lastName, Guid? id = null) => new()
+    {
+        Id = id ?? Guid.NewGuid(),
+        TenantId = tenantId,
+        FirstName = firstName,
+        LastName = lastName,
+        Email = email,
+        UserName = email,
+        NormalizedEmail = email.ToUpperInvariant(),
+        NormalizedUserName = email.ToUpperInvariant(),
+        SecurityStamp = Guid.NewGuid().ToString("N"),
+        ConcurrencyStamp = Guid.NewGuid().ToString("N"),
+        IsActive = true,
+        EmailConfirmed = true,
+        CreatedAt = DateTime.UtcNow
+    };
 }

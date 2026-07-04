@@ -15,7 +15,7 @@ public interface IAuthService
     Task<InviteValidationDto?> ValidateInvite(string token, string email);
     Task<AuthResponseDto?> AcceptInvite(AcceptInviteRequest request);
     Task<ConfirmEmailResultDto?> ConfirmEmail(string userId, string token);
-    Task<bool> ResendConfirmationEmail(ResendConfirmationEmailRequest request);
+    Task<MessageResponse?> ResendConfirmationEmail(ResendConfirmationEmailRequest request);
 }
 
 public class AuthService : BaseApiService, IAuthService
@@ -143,12 +143,12 @@ public class AuthService : BaseApiService, IAuthService
         return await response.Content.ReadFromJsonAsync<ConfirmEmailResultDto>(_jsonOptions);
     }
 
-    public async Task<bool> ResendConfirmationEmail(ResendConfirmationEmailRequest request)
+    public async Task<MessageResponse?> ResendConfirmationEmail(ResendConfirmationEmailRequest request)
     {
         var response = await _http.PostAsJsonAsync("api/auth/resend-confirmation", request, _jsonOptions);
         if (response.IsSuccessStatusCode)
         {
-            return true;
+            return await response.Content.ReadFromJsonAsync<MessageResponse>(_jsonOptions);
         }
 
         var body = await response.Content.ReadAsStringAsync();

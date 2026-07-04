@@ -126,12 +126,18 @@ public class AdminController : ControllerBase
     [HttpGet("users")]
     public async Task<ActionResult<List<AdminUserListItemDto>>> GetUsers()
     {
-        var users = await _context.Users
+        var userQuery = User.IsSuperAdmin()
+            ? _context.Users.IgnoreQueryFilters()
+            : _context.Users;
+
+        var users = await userQuery
+            .AsNoTracking()
             .OrderBy(u => u.FirstName)
             .ThenBy(u => u.LastName)
             .Select(u => new
             {
                 u.Id,
+                u.TenantId,
                 u.FirstName,
                 u.LastName,
                 u.Email,
@@ -140,6 +146,14 @@ public class AdminController : ControllerBase
                 u.CreatedAt
             })
             .ToListAsync();
+
+        var tenantIds = users.Select(u => u.TenantId).Distinct().ToList();
+        var tenantNames = await _context.Tenants
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(t => tenantIds.Contains(t.Id))
+            .Select(t => new { t.Id, t.Name })
+            .ToDictionaryAsync(t => t.Id, t => t.Name);
 
         // Roles come from ASP.NET Identity (AspNetUserRoles/AspNetRoles), the single source of truth.
         var userIds = users.Select(u => u.Id).ToList();
@@ -155,6 +169,10 @@ public class AdminController : ControllerBase
         var result = users.Select(u => new AdminUserListItemDto
         {
             Id = u.Id,
+            TenantId = u.TenantId,
+            OrganizationName = tenantNames.TryGetValue(u.TenantId, out var organizationName)
+                ? organizationName
+                : "Unknown organization",
             FullName = (u.FirstName + " " + u.LastName).Trim(),
             Email = u.Email ?? string.Empty,
             Role = roleByUser.TryGetValue(u.Id, out var role) ? role : "Member",
@@ -180,7 +198,7 @@ public class AdminController : ControllerBase
         if (!CanAssignRole(newRole))
             return BadRequest("That role cannot be assigned.");
 
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+        var user = await GetAdminTargetUserQuery().FirstOrDefaultAsync(u => u.Id == id);
         if (user is null) return NotFound();
 
         var existingRoles = await _userManager.GetRolesAsync(user);
@@ -207,7 +225,7 @@ public class AdminController : ControllerBase
 
         await _userManager.UpdateSecurityStampAsync(user);
 
-        return Ok(ToAdminUserListItem(user, newRole));
+        return Ok(await ToAdminUserListItemAsync(user, newRole));
     }
 
     [HttpPost("users/{id:guid}/deactivate")]
@@ -217,13 +235,13 @@ public class AdminController : ControllerBase
         if (currentUserId == id)
             return BadRequest("You cannot deactivate your own account.");
 
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+        var user = await GetAdminTargetUserQuery().FirstOrDefaultAsync(u => u.Id == id);
         if (user is null) return NotFound();
 
         if (!user.IsActive)
         {
             var earlyRole = (await _userManager.GetRolesAsync(user)).FirstOrDefault() ?? "Member";
-            return Ok(ToAdminUserListItem(user, earlyRole));
+            return Ok(await ToAdminUserListItemAsync(user, earlyRole));
         }
 
         var currentRole = (await _userManager.GetRolesAsync(user)).FirstOrDefault() ?? "Member";
@@ -236,13 +254,13 @@ public class AdminController : ControllerBase
         await _context.SaveChangesAsync();
         await _userManager.UpdateSecurityStampAsync(user);
 
-        return Ok(ToAdminUserListItem(user, currentRole));
+        return Ok(await ToAdminUserListItemAsync(user, currentRole));
     }
 
     [HttpPost("users/{id:guid}/reactivate")]
     public async Task<ActionResult<AdminUserListItemDto>> ReactivateUser(Guid id)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+        var user = await GetAdminTargetUserQuery().FirstOrDefaultAsync(u => u.Id == id);
         if (user is null) return NotFound();
 
         user.IsActive = true;
@@ -251,7 +269,7 @@ public class AdminController : ControllerBase
         await _userManager.UpdateSecurityStampAsync(user);
 
         var currentRole = (await _userManager.GetRolesAsync(user)).FirstOrDefault() ?? "Member";
-        return Ok(ToAdminUserListItem(user, currentRole));
+        return Ok(await ToAdminUserListItemAsync(user, currentRole));
     }
 
     [HttpGet("invites")]
@@ -995,16 +1013,34 @@ public class AdminController : ControllerBase
     private static string FormatUtc(DateTime? value) =>
         value.HasValue ? value.Value.ToString("u") : "Never";
 
-    private static AdminUserListItemDto ToAdminUserListItem(User user, string role) => new()
+    private IQueryable<User> GetAdminTargetUserQuery() =>
+        User.IsSuperAdmin()
+            ? _context.Users.IgnoreQueryFilters()
+            : _context.Users;
+
+    private async Task<AdminUserListItemDto> ToAdminUserListItemAsync(User user, string role)
     {
-        Id = user.Id,
-        FullName = (user.FirstName + " " + user.LastName).Trim(),
-        Email = user.Email ?? string.Empty,
-        Role = role,
-        IsActive = user.IsActive,
-        DeactivatedAt = user.DeactivatedAt,
-        CreatedAt = user.CreatedAt
-    };
+        var organizationName = await _context.Tenants
+            .IgnoreQueryFilters()
+            .Where(t => t.Id == user.TenantId)
+            .Select(t => t.Name)
+            .FirstOrDefaultAsync();
+
+        return new AdminUserListItemDto
+        {
+            Id = user.Id,
+            TenantId = user.TenantId,
+            OrganizationName = string.IsNullOrWhiteSpace(organizationName)
+                ? "Unknown organization"
+                : organizationName,
+            FullName = (user.FirstName + " " + user.LastName).Trim(),
+            Email = user.Email ?? string.Empty,
+            Role = role,
+            IsActive = user.IsActive,
+            DeactivatedAt = user.DeactivatedAt,
+            CreatedAt = user.CreatedAt
+        };
+    }
 
     // Highest-to-lowest privilege. Used to deterministically pick a single role to display
     // if a user ever holds more than one (the app assigns exactly one, but defend anyway).
