@@ -10,7 +10,7 @@
 @inject NavigationManager Nav
 
 <div class="dashboard fade-in mt-4">
-    <PageHeader Title="Founder Case Directory" Subtitle="Track households, stability, and service readiness from one operational view.">
+    <PageHeader Title="People & Households" Subtitle="Save information about the people you serve once, then reuse it in service records, reports, and impact summaries.">
         <Actions>
             @if (_usage is not null && _usage.ClientsMax > 0)
             {
@@ -35,7 +35,7 @@
                     </button>
                 }
                 <button class="btn-growit btn-primary-growit shadow-sm" @onclick="OpenCreateModal">
-                    <i class="bi bi-plus-lg me-2"></i>New Case File
+                    <i class="bi bi-plus-lg me-2"></i>Add Person or Household
                 </button>
             }
         </Actions>
@@ -45,7 +45,7 @@
     {
         <div class="loading-state">
             <div class="spinner-growit"></div>
-            <p class="loading-state-text">Loading founder directory...</p>
+            <p class="loading-state-text">Loading people and households...</p>
         </div>
     }
     else if (!string.IsNullOrWhiteSpace(_loadError))
@@ -61,12 +61,12 @@
             <div class="card-body">
                 <div class="empty-state">
                     <i class="bi bi-people empty-state-icon"></i>
-                    <div class="empty-state-title">No case files yet</div>
+                    <div class="empty-state-title">No people or households yet</div>
                     <div class="empty-state-description">
-                        Start your service model by creating the first household profile. grow.IT will begin building capacity and impact clarity as you serve.
+                        Add the first person or household your organization serves. Grow.IT will reuse this profile when you record services and create impact reports.
                     </div>
                     <button class="btn-growit btn-primary-growit" @onclick="OpenCreateModal">
-                        <i class="bi bi-plus-lg me-2"></i>Create First Case File
+                        <i class="bi bi-plus-lg me-2"></i>Add First Person or Household
                     </button>
                 </div>
             </div>
@@ -79,18 +79,18 @@
                 <div class="client-metric-card">
                     <div class="metric-icon success"><i class="bi bi-people"></i></div>
                     <div class="metric-content">
-                        <div class="metric-label">Active Case Files</div>
+                        <div class="metric-label">Saved Profiles</div>
                         <div class="metric-value">@clients.Count</div>
-                        <div class="metric-subtext">Founders documenting service in progress</div>
+                        <div class="metric-subtext">People or households in Grow.IT</div>
                     </div>
                 </div>
 
                 <div class="client-metric-card">
                     <div class="metric-icon danger"><i class="bi bi-exclamation-triangle"></i></div>
                     <div class="metric-content">
-                        <div class="metric-label">Crisis Phase</div>
+                        <div class="metric-label">Urgent Need</div>
                         <div class="metric-value">@PhaseCount(LifePhase.Crisis)</div>
-                        <div class="metric-subtext">Priority support and stabilization</div>
+                        <div class="metric-subtext">Needs priority support</div>
                     </div>
                 </div>
 
@@ -99,14 +99,14 @@
                     <div class="metric-content">
                         <div class="metric-label">Avg Stability Score</div>
                         <div class="metric-value">@AverageStability.ToString("0.0")<span class="metric-value-suffix">/10</span></div>
-                        <div class="metric-subtext">Capacity signal across the portfolio</div>
+                        <div class="metric-subtext">Overall stability across saved profiles</div>
                     </div>
                 </div>
 
                 <div class="client-metric-card">
                     <div class="metric-icon primary"><i class="bi bi-clipboard-data"></i></div>
                     <div class="metric-content">
-                        <div class="metric-label">Readiness Signal</div>
+                        <div class="metric-label">Ready for Reports</div>
                         <div class="metric-value">@ReadinessSignal</div>
                         <div class="metric-subtext">@ReadinessSummary</div>
                     </div>
@@ -148,10 +148,10 @@
 
             <div class="card-growit">
                 <div class="card-header">
-                    <h3 class="section-title">Case Files</h3>
+                    <h3 class="section-title">Saved People & Households</h3>
                     <div class="directory-header-meta">
                         <span class="badge-growit badge-neutral">@FilteredClients.Count() shown</span>
-                        <span class="text-muted small">Use column filters and sorting for grant-ready segmentation</span>
+                        <span class="text-muted small">Filter or export this list when you need a report or spreadsheet.</span>
                     </div>
                 </div>
                 <div class="card-body p-0">
@@ -173,7 +173,7 @@
                         <GridEvents TValue="ClientDto" OnToolbarClick="OnClientsToolbarClick"></GridEvents>
 
                         <GridColumns>
-                            <GridColumn Field=@nameof(ClientDto.Name) HeaderText="Client Name" Width="260" ClipMode="ClipMode.EllipsisWithTooltip">
+                            <GridColumn Field=@nameof(ClientDto.Name) HeaderText="Name" Width="260" ClipMode="ClipMode.EllipsisWithTooltip">
                                 <Template>
                                 @{
                                     var client = (ClientDto)context;
@@ -190,7 +190,7 @@
                             </Template>
                         </GridColumn>
 
-                        <GridColumn Field=@nameof(ClientDto.LifePhase) HeaderText="Life Phase" Width="140" TextAlign="TextAlign.Center">
+                        <GridColumn Field=@nameof(ClientDto.LifePhase) HeaderText="Progress Stage" Width="140" TextAlign="TextAlign.Center">
                             <Template>
                                 @{
                                     var phase = ((ClientDto)context).LifePhase;
@@ -248,7 +248,7 @@
                                     var client = (ClientDto)context;
                                     <div class="directory-actions-cell">
                                         <button class="btn-growit btn-ghost-growit btn-sm" @onclick="() => NavigateToClient(client.Id)">
-                                            <i class="bi bi-folder2-open me-1"></i>View File
+                                            <i class="bi bi-folder2-open me-1"></i>View Profile
                                         </button>
                                     </div>
                                 }
@@ -372,7 +372,7 @@
     private string UpgradeReason =>
         _usage is null
             ? "Pick the plan that fits your organization."
-            : $"You're using {_usage.ClientsUsed} of {_usage.ClientsMax} clients on the {_usage.PlanName} plan — upgrade for more capacity.";
+            : $"You're using {_usage.ClientsUsed} of {_usage.ClientsMax} profiles on the {_usage.PlanName} plan - upgrade to add more.";
 
     private async Task OnPlanChanged() => await LoadClients();
     private void SetPhaseFilter(LifePhase? phase) => _phaseFilter = phase;

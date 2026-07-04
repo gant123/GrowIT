@@ -9,7 +9,7 @@
             <div class="modal-content border-0 shadow-lg" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
                 <div class="modal-header border-bottom" style="border-color: var(--growit-border);">
                     <h5 class="modal-title fw-bold">
-                        <span class="oi oi-person me-2 text-primary"></span>New Case File
+                        <span class="oi oi-person me-2 text-primary"></span>Add Person or Household
                     </h5>
                     <button type="button" class="btn-close btn-close-white" @onclick="Close"></button>
                 </div>
@@ -18,11 +18,11 @@
                         <DataAnnotationsValidator />
                         
                        <div class="mb-3">
-    <label class="form-label small fw-bold text-muted">First Name</label>
+    <label class="form-label small fw-bold text-muted">First name</label>
     <InputText @bind-Value="request.FirstName" class="form-control" placeholder="e.g. Robert" style="@ThemeInputStyle" />
 </div>
 <div class="mb-3">
-    <label class="form-label small fw-bold text-muted">Last Name</label>
+    <label class="form-label small fw-bold text-muted">Last name</label>
     <InputText @bind-Value="request.LastName" class="form-control" placeholder="e.g. Gant" style="@ThemeInputStyle" />
 </div>
 
@@ -44,26 +44,26 @@
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-muted">Date of Birth</label>
+                                <label class="form-label small fw-bold text-muted">Date of birth</label>
                                 <InputDate @bind-Value="request.DateOfBirth" class="form-control" style="@ThemeInputStyle" />
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-muted">SSN Last 4</label>
+                                <label class="form-label small fw-bold text-muted">Last 4 digits of SSN</label>
                                 <InputText @bind-Value="request.SSNLast4" class="form-control" maxlength="4" style="@ThemeInputStyle" />
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-muted">Next Follow-Up</label>
+                                <label class="form-label small fw-bold text-muted">Next follow-up date</label>
                                 <InputDate @bind-Value="request.NextFollowupDate" class="form-control" style="@ThemeInputStyle" />
                             </div>
                         </div>
 
                         <div class="row g-3 mb-3">
                             <div class="col-4">
-                                <label class="form-label small fw-bold text-muted">Household Size</label>
+                                <label class="form-label small fw-bold text-muted">How many people are in the household?</label>
                                 <InputNumber @bind-Value="request.HouseholdCount" class="form-control" style="@ThemeInputStyle" />
                             </div>
                             <div class="col-4">
-                                <label class="form-label small fw-bold text-muted">Stability (1-10)</label>
+                                <label class="form-label small fw-bold text-muted">How stable is the situation? (1-10)</label>
                                 <InputSelect @bind-Value="request.StabilityScore" class="form-select" style="@ThemeInputStyle">
                                     @for (int i = 1; i <= 10; i++)
                                     {
@@ -72,7 +72,7 @@
                                 </InputSelect>
                             </div>
                             <div class="col-4">
-                                <label class="form-label small fw-bold text-muted">Life Phase</label>
+                                <label class="form-label small fw-bold text-muted">Current stage</label>
                                 <InputSelect @bind-Value="request.LifePhase" class="form-select" style="@ThemeInputStyle">
                                     <option value="@LifePhase.Crisis">Crisis</option>
                                     <option value="@LifePhase.Stable">Stable</option>
@@ -83,7 +83,7 @@
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-muted">Marital</label>
+                                <label class="form-label small fw-bold text-muted">Marital status</label>
                                 <InputSelect @bind-Value="request.MaritalStatus" class="form-select" style="@ThemeInputStyle">
                                     @foreach (var status in Enum.GetValues<MaritalStatus>())
                                     {
@@ -92,7 +92,7 @@
                                 </InputSelect>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-muted">Employment</label>
+                                <label class="form-label small fw-bold text-muted">Employment status</label>
                                 <InputSelect @bind-Value="request.EmploymentStatus" class="form-select" style="@ThemeInputStyle">
                                     @foreach (var status in Enum.GetValues<EmploymentStatus>())
                                     {
@@ -101,7 +101,7 @@
                                 </InputSelect>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-muted">Household Role</label>
+                                <label class="form-label small fw-bold text-muted">Role in household</label>
                                 <InputSelect @bind-Value="request.HouseholdRole" class="form-select" style="@ThemeInputStyle">
                                     @foreach (var role in Enum.GetValues<HouseholdRole>())
                                     {
@@ -114,7 +114,7 @@
                         <div class="d-flex justify-content-end gap-2 border-top pt-3" style="border-color: var(--growit-border);">
                             <button type="button" class="btn btn-outline-secondary" @onclick="Close">Cancel</button>
                             <button type="submit" class="btn btn-primary fw-bold">
-                                <span class="oi oi-check me-2"></span>Create Profile
+                                <span class="oi oi-check me-2"></span>Save Profile
                             </button>
                         </div>
                     </EditForm>

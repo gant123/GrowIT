@@ -12,7 +12,7 @@
 <PageTitle>Settings - grow.IT</PageTitle>
 
 <div class="settings-page">
-    <PageHeader Title="Settings" Subtitle="Manage organization configuration, team access, and operational controls." />
+    <PageHeader Title="Settings" Subtitle="Keep your organization details, team access, and account options up to date." />
 
     @if (!string.IsNullOrWhiteSpace(_pageError))
     {
@@ -25,14 +25,14 @@
     <section class="settings-overview-shell">
         <div class="settings-overview-hero">
             <div class="settings-overview-copy">
-                <span class="settings-overview-kicker">Workspace Control Center</span>
-                <h2>Admin Workspace</h2>
+                <span class="settings-overview-kicker">Organization Basics</span>
+                <h2>Saved information Grow.IT can reuse</h2>
                 <p>
-                    Manage your organization profile, team access, and system diagnostics from one central hub.
+                    Your organization profile helps reports, documents, and portfolio content use the same name, contact details, and service focus.
                 </p>
                 <div class="settings-overview-badges">
-                    <span class="settings-overview-badge"><i class="bi bi-shield-check"></i> Identity-managed access</span>
-                    <span class="settings-overview-badge"><i class="bi bi-activity"></i> Live diagnostics</span>
+                    <span class="settings-overview-badge"><i class="bi bi-shield-check"></i> Team access</span>
+                    <span class="settings-overview-badge"><i class="bi bi-activity"></i> Saved organization details</span>
                 </div>
             </div>
 
@@ -57,7 +57,7 @@
             <div class="settings-access-icon"><i class="bi bi-shield-lock"></i></div>
             <div>
                 <h2>Settings access is restricted.</h2>
-                <p>This workspace is limited to `Admin`, `Manager`, or `Owner` roles. Request elevated access if you need to manage configuration or team controls.</p>
+                <p>Only Admin, Manager, or Owner roles can change organization details or team access.</p>
             </div>
         </section>
     }
@@ -67,8 +67,8 @@
             <aside class="settings-rail">
                 <div class="settings-rail-header">
                     <span class="settings-rail-kicker">Sections</span>
-                    <h2>Admin workspace</h2>
-                    <p>Select the control surface you need. Each section is tuned for a different layer of operational governance.</p>
+                    <h2>Settings</h2>
+                    <p>Choose what you need to update. Organization details are reused across reports, documents, and portfolio content.</p>
                 </div>
 
                 <div class="settings-tabbar" role="tablist" aria-label="Settings sections">
@@ -76,14 +76,14 @@
                         <span class="settings-tab-icon"><i class="bi bi-buildings"></i></span>
                         <span class="settings-tab-content">
                             <span class="settings-tab-title">Organization</span>
-                            <span class="settings-tab-copy">Profile and modules</span>
+                            <span class="settings-tab-copy">Saved details</span>
                         </span>
                     </button>
                     <button class="settings-tab @(ActiveTab == "users" ? "active" : null)" @onclick="@(() => SetActiveTab("users"))">
                         <span class="settings-tab-icon"><i class="bi bi-people"></i></span>
                         <span class="settings-tab-content">
                             <span class="settings-tab-title">Users & Roles</span>
-                            <span class="settings-tab-copy">Team access control</span>
+                            <span class="settings-tab-copy">Team access</span>
                         </span>
                     </button>
                     <button class="settings-tab @(ActiveTab == "invites" ? "active" : null)" @onclick="@(() => SetActiveTab("invites"))">
@@ -97,7 +97,7 @@
                         <span class="settings-tab-icon"><i class="bi bi-shield-check"></i></span>
                         <span class="settings-tab-content">
                             <span class="settings-tab-title">System Health</span>
-                            <span class="settings-tab-copy">Diagnostics & audits</span>
+                            <span class="settings-tab-copy">Security and activity</span>
                         </span>
                     </button>
                 </div>
@@ -132,7 +132,7 @@
                             </span>
                             <span class="settings-stage-chip">
                                 <i class="bi bi-stars"></i>
-                                Enterprise workspace
+                                Workspace
                             </span>
                         </div>
                     </div>
@@ -143,7 +143,7 @@
                 <div class="settings-panel-header">
                     <div>
                         <h2>Organization Profile</h2>
-                        <p>Update the organization profile and module configuration used throughout the platform.</p>
+                        <p>Save the core details Grow.IT should reuse in reports, documents, and portfolio content.</p>
                     </div>
                 </div>
                 <div class="settings-panel-body">
@@ -156,19 +156,19 @@
                         <EditForm Model="_organizationEdit" OnValidSubmit="SaveOrganizationAsync">
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label">Organization Name</label>
+                                    <label class="form-label">Organization name</label>
                                     <InputText class="form-control" @bind-Value="_organizationEdit.Name" />
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Contact Email</label>
+                                    <label class="form-label">Main contact email</label>
                                     <InputText class="form-control" @bind-Value="_organizationEdit.ContactEmail" />
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Organization Type</label>
+                                    <label class="form-label">What type of organization is this?</label>
                                     <InputText class="form-control" @bind-Value="_organizationEdit.OrganizationType" />
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Organization Size</label>
+                                    <label class="form-label">Organization size</label>
                                     <InputText class="form-control" @bind-Value="_organizationEdit.OrganizationSize" />
                                 </div>
                                 <div class="col-12">
@@ -181,29 +181,29 @@
                                 <label class="module-card @(_organizationEdit.TrackPeople ? "selected" : null)">
                                     <InputCheckbox @bind-Value="_organizationEdit.TrackPeople" />
                                     <div>
-                                        <strong><i class="bi bi-people"></i> People / Clients</strong>
-                                        <span>Case files, households, and member profiles</span>
+                                        <strong><i class="bi bi-people"></i> People & Households</strong>
+                                        <span>Profiles for the people or households you serve</span>
                                     </div>
                                 </label>
                                 <label class="module-card @(_organizationEdit.TrackInvestments ? "selected" : null)">
                                     <InputCheckbox @bind-Value="_organizationEdit.TrackInvestments" />
                                     <div>
-                                        <strong><i class="bi bi-cash-stack"></i> Investments</strong>
-                                        <span>Service costs, disbursements, and funding usage</span>
+                                        <strong><i class="bi bi-cash-stack"></i> Service Records</strong>
+                                        <span>Support provided, costs, and money source use</span>
                                     </div>
                                 </label>
                                 <label class="module-card @(_organizationEdit.TrackOutcomes ? "selected" : null)">
                                     <InputCheckbox @bind-Value="_organizationEdit.TrackOutcomes" />
                                     <div>
-                                        <strong><i class="bi bi-check2-circle"></i> Outcomes / Imprints</strong>
-                                        <span>Milestones, evidence, and impact verification</span>
+                                        <strong><i class="bi bi-check2-circle"></i> Outcomes</strong>
+                                        <span>Changes, milestones, and proof of impact</span>
                                     </div>
                                 </label>
                                 <label class="module-card @(_organizationEdit.TrackPrograms ? "selected" : null)">
                                     <InputCheckbox @bind-Value="_organizationEdit.TrackPrograms" />
                                     <div>
                                         <strong><i class="bi bi-folder2-open"></i> Programs</strong>
-                                        <span>Service models, capacity assumptions, and categories</span>
+                                        <span>Services your organization offers and what they usually cost</span>
                                     </div>
                                 </label>
                             </div>
@@ -214,7 +214,7 @@
                                     {
                                         <span class="spinner-border spinner-border-sm me-2" role="status"></span>
                                     }
-                                    <span>Save Organization Settings</span>
+                                    <span>Save Organization Details</span>
                                 </button>
                             </div>
                         </EditForm>
@@ -229,7 +229,7 @@
                 <div class="settings-panel-header">
                     <div>
                         <h2>Users & Roles</h2>
-                        <p>Manage roles and access state for users in your organization. Invite new team members from the Invites tab.</p>
+                        <p>Choose who can view, add, edit, approve, or manage information in Grow.IT. Invite new team members from the Invites tab.</p>
                     </div>
                 </div>
                 <div class="settings-panel-body">
@@ -1227,19 +1227,19 @@
 
     private string GetActiveTabEyebrow() => ActiveTab switch
     {
-        "organization" => "Workspace Identity",
-        "users" => "Access Control",
-        "invites" => "Invite Operations",
-        "security" => "System Monitoring",
-        _ => "Administration"
+        "organization" => "Saved Organization Details",
+        "users" => "Team Access",
+        "invites" => "Team Invitations",
+        "security" => "Security and Activity",
+        _ => "Settings"
     };
 
     private string GetActiveTabDescription() => ActiveTab switch
     {
-        "organization" => "Workspace profile and operating modules.",
-        "users" => "Team membership and role-based access.",
-        "invites" => "Manage and track organization invitations.",
-        "security" => "Diagnostics, audit trail, and system health.",
+        "organization" => "The organization details Grow.IT can reuse in reports, documents, and portfolio content.",
+        "users" => "Who can view, add, edit, approve, or manage information.",
+        "invites" => "Invite people to help manage your organization in Grow.IT.",
+        "security" => "Review system health, security activity, and important account checks.",
         _ => "Manage organization settings."
     };
 

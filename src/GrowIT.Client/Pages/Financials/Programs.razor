@@ -7,7 +7,7 @@
 <PageTitle>Programs - grow.IT</PageTitle>
 
 <div class="programs-page">
-    <PageHeader Title="Programs & Services" Subtitle="Define repeatable service models so each act of care becomes measurable, fundable, and scalable.">
+    <PageHeader Title="Programs & Services" Subtitle="Save what your organization does, who it serves, and what it usually costs. Grow.IT reuses this in service records, reports, and portfolio content.">
         <Actions>
             @if (_canManageFinancials)
             {
@@ -22,7 +22,7 @@
     @if (!_canManageFinancials)
     {
         <div class="alert alert-info" role="alert">
-            You have read-only access to programs. `Admin`, `Manager`, or `Owner` roles can create and edit program definitions.
+            You can view programs, but only Admin, Manager, or Owner roles can add or edit them.
         </div>
     }
 
@@ -45,21 +45,21 @@
         <div class="program-kpi-card">
             <div class="program-kpi-icon capacity"><i class="bi bi-speedometer2"></i></div>
             <div>
-                <div class="program-kpi-label">With Capacity Limits</div>
+                <div class="program-kpi-label">With Service Limits</div>
                 <div class="program-kpi-value">@ProgramsWithCapacity</div>
             </div>
         </div>
         <div class="program-kpi-card">
             <div class="program-kpi-icon unit"><i class="bi bi-cash-coin"></i></div>
             <div>
-                <div class="program-kpi-label">Avg Unit Cost</div>
+                <div class="program-kpi-label">Avg Cost Each Time</div>
                 <div class="program-kpi-value">@AverageUnitCostLabel</div>
             </div>
         </div>
         <div class="program-kpi-card">
             <div class="program-kpi-icon readiness"><i class="bi bi-clipboard-data"></i></div>
             <div>
-                <div class="program-kpi-label">Capacity-Ready Models</div>
+                <div class="program-kpi-label">Ready for Reports</div>
                 <div class="program-kpi-value">@CapacityReadyPrograms</div>
             </div>
         </div>
@@ -68,8 +68,8 @@
     <section class="program-panel">
         <div class="program-panel-header">
             <div>
-                <h2>Program Catalog</h2>
-                <p>Maintain service definitions and cost assumptions used across investments and reporting.</p>
+                <h2>Saved Programs</h2>
+                <p>These programs are reused when your team records services, calculates costs, and generates reports.</p>
             </div>
             <div class="program-panel-meta">@(FilteredPrograms.Count()) program(s)</div>
         </div>
@@ -90,7 +90,7 @@
             <div class="program-empty">
                 <div class="program-empty-icon"><i class="bi bi-folder-x"></i></div>
                 <h3>No programs found</h3>
-                <p>Create your first service model to standardize what you do, what it costs, and how it scales.</p>
+                <p>Add the first program or service your organization offers. Use everyday language; Grow.IT will use it in records and reports.</p>
                 @if (_canManageFinancials)
                 {
                     <button class="btn btn-outline-primary" @onclick="OpenCreateModal">
@@ -127,14 +127,14 @@
                             }
                             else
                             {
-                                <span class="capacity-chip missing">No capacity limit</span>
+                                <span class="capacity-chip missing">No service limit</span>
                             }
                         </div>
                         <div class="program-card-body">
                             <p class="program-description">@(string.IsNullOrWhiteSpace(p.Description) ? "No description provided yet." : p.Description)</p>
                             <div class="program-attributes">
                                 <div class="program-attr">
-                                    <span class="label">Capacity</span>
+                                    <span class="label">Service Limit</span>
                                     <span class="value">@(p.CapacityLimit.HasValue ? $"{p.CapacityLimit} per {p.CapacityPeriod}" : "Not set")</span>
                                 </div>
                                 <div class="program-attr">
@@ -158,7 +158,7 @@
                 <div class="modal-header">
                     <div>
                         <h5 class="modal-title">New Program</h5>
-                        <div class="modal-subtitle">Define a repeatable service model that can be measured, costed, and explained to funders.</div>
+                        <div class="modal-subtitle">Describe the service in your own words. This information will be reused in service records, reports, and portfolio drafts.</div>
                     </div>
                     <button type="button" class="btn-close" @onclick="CloseCreateModal"></button>
                 </div>
@@ -170,23 +170,23 @@
 
                     <div class="row g-3">
                         <div class="col-12">
-                            <label class="form-label">Program Name</label>
+                            <label class="form-label">What is the program or service called?</label>
                             <input @bind="newProgram.Name" class="form-control" placeholder="e.g. Community Care Box Distribution" />
                         </div>
                         <div class="col-12">
-                            <label class="form-label">Description</label>
-                            <textarea @bind="newProgram.Description" class="form-control" rows="4" placeholder="Describe what this service provides and what outcome it supports."></textarea>
+                            <label class="form-label">What does this program do?</label>
+                            <textarea @bind="newProgram.Description" class="form-control" rows="4" placeholder="Example: We provide food boxes and follow-up support for families facing short-term food insecurity."></textarea>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Default Unit Cost</label>
+                            <label class="form-label">About how much does one service cost?</label>
                             <input @bind="newProgram.DefaultUnitCost" type="number" step="0.01" min="0" class="form-control" placeholder="e.g. 150.00" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Capacity Limit</label>
+                            <label class="form-label">How many can you serve in a period?</label>
                             <input @bind="newProgram.CapacityLimit" type="number" class="form-control" placeholder="e.g. 50" />
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Capacity Period</label>
+                            <label class="form-label">What time period does that number cover?</label>
                             <select @bind="newProgram.CapacityPeriod" class="form-select">
                                 <option value="">None</option>
                                 <option value="Weekly">Weekly</option>

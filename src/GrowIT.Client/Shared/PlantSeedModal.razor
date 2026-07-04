@@ -15,9 +15,9 @@
                 <div class="modal-header" style="border-bottom: 1px solid var(--growit-border);">
                     <div>
                         <h5 class="modal-title fw-bold mb-1" style="color: var(--growit-text-primary);">
-                            <span class="oi oi-briefcase me-2" style="color: var(--growit-green);"></span>New Investment
+                            <span class="oi oi-briefcase me-2" style="color: var(--growit-green);"></span>New Service Record
                         </h5>
-                        <p class="mb-0 small text-uppercase fw-bold" style="color: var(--growit-text-secondary);">Action: Plant a Seed</p>
+                        <p class="mb-0 small text-uppercase fw-bold" style="color: var(--growit-text-secondary);">Saved for reports and portfolio content</p>
                     </div>
                     <button type="button" class="btn btn-link text-decoration-none" style="color: var(--growit-text-muted);" @onclick="Close">
                         <span class="oi oi-x fs-5"></span>
@@ -29,7 +29,7 @@
                     {
                         <div class="text-center py-5">
                             <div class="spinner-border" style="color: var(--growit-green);" role="status"></div>
-                            <p class="mt-2 small" style="color: var(--growit-text-secondary);">Checking fertile ground...</p>
+                            <p class="mt-2 small" style="color: var(--growit-text-secondary);">Loading saved people, programs, and money sources...</p>
                         </div>
                     }
                     else
@@ -39,41 +39,41 @@
 
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Beneficiary (Household)</label>
+                                    <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Who received support?</label>
                                     <select class="form-select form-select-lg" style="@ThemeInputStyle" 
                                             value="@request.ClientId" 
                                             @onchange="OnClientChanged">
-                                        <option value="">-- Select Client --</option>
+                                        <option value="">Select a person or household</option>
                                         @foreach (var c in clients) { <option value="@c.Id">@c.Name</option> }
                                     </select>
                                 </div>
 
                                 <div class="col-md-6">
-                                    <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Individual Member (Optional)</label>
+                                    <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Specific household member (optional)</label>
                                     <InputSelect @bind-Value="request.FamilyMemberId" class="form-select form-select-lg" style="@ThemeInputStyle" disabled="@(!members.Any())">
-                                        <option value="">Entire Household</option>
+                                        <option value="">Entire household</option>
                                         @foreach (var m in members) { <option value="@m.Id">@m.Name (@m.Relationship)</option> }
                                     </InputSelect>
                                 </div>
 
                                 <div class="col-md-6">
-                                    <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Program</label>
+                                    <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Which program or service?</label>
                                     <InputSelect @bind-Value="request.ProgramId" class="form-select" style="@ThemeInputStyle">
-                                        <option value="">-- Select Program --</option>
+                                        <option value="">Select a program</option>
                                         @foreach (var p in programs) { <option value="@p.Id">@p.Name</option> }
                                     </InputSelect>
                                 </div>
 
                                 <div class="col-md-6">
-                                    <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Fund Source</label>
+                                    <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Which money source paid for it?</label>
                                     <InputSelect @bind-Value="request.FundId" class="form-select" style="@ThemeInputStyle">
-                                        <option value="">-- Select Fund --</option>
+                                        <option value="">Select a money source</option>
                                         @foreach (var f in funds) { <option value="@f.Id">@f.Name ($@f.AvailableAmount.ToString("N0"))</option> }
                                     </InputSelect>
                                 </div>
 
                                 <div class="col-md-6">
-                                    <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Amount</label>
+                                    <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">How much did it cost?</label>
                                     <div class="input-group">
                                         <span class="input-group-text fw-bold" 
                                               style="background-color: var(--growit-bg-primary); border-color: var(--growit-border); color: var(--growit-green);">$</span>
@@ -82,12 +82,13 @@
                                 </div>
 
                                 <div class="col-md-6">
-                                    <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Payee</label>
+                                    <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Who was paid? (Optional)</label>
                                     <InputText @bind-Value="request.PayeeName" class="form-control" placeholder="e.g. Entergy" style="@ThemeInputStyle" />
                                 </div>
 
                                 <div class="col-12">
-                                    <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Notes</label>
+                                    <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">What happened?</label>
+                                    <div class="form-text mb-2" style="color: var(--growit-text-muted);">Write this in your own words. Grow.IT can reuse it later for reports and funding narratives.</div>
                                     <InputTextArea @bind-Value="request.Reason" class="form-control" rows="2" style="@ThemeInputStyle" />
                                 </div>
                             </div>
@@ -98,7 +99,7 @@
                                         @onclick="Close">Cancel</button>
                                 <button type="submit" class="btn px-4 shadow-sm fw-bold text-white" 
                                         style="background-color: var(--growit-green); border: none;">
-                                    <span class="oi oi-check me-2"></span>Plant Seed
+                                    <span class="oi oi-check me-2"></span>Save Service Record
                                 </button>
                             </div>
                         </EditForm>

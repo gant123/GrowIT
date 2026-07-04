@@ -34,9 +34,9 @@
                     <span class="nav-text">Dashboard</span>
                 </NavLink>
                 
-                <NavLink href="/clients" class="nav-item" title="Case Files" @onclick="HandleNavSelected">
+                <NavLink href="/clients" class="nav-item" title="People & Households" @onclick="HandleNavSelected">
                     <span class="nav-icon"><i class="bi bi-people"></i></span>
-                    <span class="nav-text">Case Files</span>
+                    <span class="nav-text">People</span>
                 </NavLink>
 
                 <NavLink href="/households" class="nav-item" title="Households" @onclick="HandleNavSelected">
@@ -67,14 +67,14 @@
                     <span class="nav-text">Programs</span>
                 </NavLink>
 
-                <NavLink href="/investments" class="nav-item" title="Service Investments" @onclick="HandleNavSelected">
+                <NavLink href="/investments" class="nav-item" title="Service Records" @onclick="HandleNavSelected">
                     <span class="nav-icon"><i class="bi bi-cash-stack"></i></span>
-                    <span class="nav-text">Investments</span>
+                    <span class="nav-text">Service Records</span>
                 </NavLink>
                 
-                <NavLink href="/imprints" class="nav-item" title="Imprints" @onclick="HandleNavSelected">
+                <NavLink href="/imprints" class="nav-item" title="Outcomes" @onclick="HandleNavSelected">
                     <span class="nav-icon"><i class="bi bi-check2-circle"></i></span>
-                    <span class="nav-text">Imprints</span>
+                    <span class="nav-text">Outcomes</span>
                 </NavLink>
 
                 <NavLink href="/growth-plans" class="nav-item" title="Growth Plans" @onclick="HandleNavSelected">
@@ -419,7 +419,7 @@
                     {
                         <button class="btn btn-primary btn-plant" @onclick="OpenPlantSeedModal">
                             <i class="bi bi-plus-lg"></i>
-                            <span>Plant Seed</span>
+                            <span>Add Service</span>
                         </button>
                     }
                 </div>
@@ -496,20 +496,20 @@
 
     private static readonly List<QuickNavItem> QuickNavItems =
     [
-        new("/", "Dashboard", "Founder survivability and capacity view", "Main", "bi bi-grid-1x2", "dashboard home overview"),
-        new("/clients", "Case Files", "Directory of service records and households", "Main", "bi bi-people", "clients cases people directory"),
-        new("/clients/create", "New Case File", "Create a founder case record", "Main", "bi bi-person-plus", "new create client case"),
+        new("/", "Dashboard", "Saved data, next steps, and organization progress", "Main", "bi bi-grid-1x2", "dashboard home overview"),
+        new("/clients", "People & Households", "Profiles for people and households served", "Main", "bi bi-people", "clients cases people directory"),
+        new("/clients/create", "New Profile", "Add a person or household profile", "Main", "bi bi-person-plus", "new create client case"),
         new("/households", "Households", "Manage household groupings", "Main", "bi bi-house-door", "households family homes"),
         new("/tasks", "Tasks", "Team follow-ups and case work", "Main", "bi bi-list-check", "tasks todo follow up reminders"),
         new("/documents", "Documents", "Client files and uploads", "Main", "bi bi-file-earmark-text", "documents files uploads attachments"),
-        new("/funds", "Funds", "Available capital and balances", "Impact", "bi bi-wallet2", "funds money balance"),
-        new("/programs", "Programs", "Program categories and funding logic", "Impact", "bi bi-folder2-open", "programs categories"),
-        new("/investments", "Investments", "Document service investments", "Impact", "bi bi-cash-stack", "investments seeds spending aid"),
-        new("/imprints", "Imprints", "Document outcomes and milestones", "Impact", "bi bi-check2-circle", "imprints milestones outcomes"),
-        new("/growth-plans", "Growth Plans", "Capacity and scaling plans", "Impact", "bi bi-diagram-3", "growth plans scale"),
-        new("/reports", "Reports", "Funding readiness reports", "Intelligence", "bi bi-pie-chart", "reports export funding"),
-        new("/insights", "Insights", "Operational intelligence (beta)", "Intelligence", "bi bi-activity", "insights analytics"),
-        new("/settings", "Settings", "System preferences and controls", "System", "bi bi-gear", "settings preferences"),
+        new("/funds", "Money Sources", "Grants, donations, budgets, and balances", "Impact", "bi bi-wallet2", "funds money balance"),
+        new("/programs", "Programs", "Services your organization provides", "Impact", "bi bi-folder2-open", "programs categories"),
+        new("/investments", "Service Records", "Record support provided and related costs", "Impact", "bi bi-cash-stack", "investments seeds spending aid"),
+        new("/imprints", "Outcomes", "Record outcomes, milestones, and proof", "Impact", "bi bi-check2-circle", "imprints milestones outcomes"),
+        new("/growth-plans", "Growth Plans", "Plans for next steps and support", "Impact", "bi bi-diagram-3", "growth plans scale"),
+        new("/reports", "Reports", "Generate and export reports", "Intelligence", "bi bi-pie-chart", "reports export funding"),
+        new("/insights", "Insights", "Helpful patterns and alerts (beta)", "Intelligence", "bi bi-activity", "insights analytics"),
+        new("/settings", "Settings", "Organization details and team access", "System", "bi bi-gear", "settings preferences"),
         new("/billing", "Billing", "Plans, invoices, and payments", "System", "bi bi-credit-card", "billing plans invoices payments subscription upgrade"),
         new("/super-admin/content", "Site Content", "Manage public blog and contact submissions", "System", "bi bi-journal-richtext", "site content blog contact super admin"),
         new("/profile", "Profile", "Account profile and preferences", "System", "bi bi-person-gear", "profile account user"),
@@ -662,15 +662,17 @@
         {
             return previousSegment?.ToLowerInvariant() switch
             {
-                "clients" => "Case File",
+                "clients" => "Profile",
                 "member" => "Member Profile",
                 _ => "Details"
             };
         }
 
-        if (segment.Equals("clients", StringComparison.OrdinalIgnoreCase)) return "Case Files";
+        if (segment.Equals("clients", StringComparison.OrdinalIgnoreCase)) return "People";
         if (segment.Equals("growth-plans", StringComparison.OrdinalIgnoreCase)) return "Growth Plans";
-        if (segment.Equals("imprints", StringComparison.OrdinalIgnoreCase)) return "Imprints";
+        if (segment.Equals("imprints", StringComparison.OrdinalIgnoreCase)) return "Outcomes";
+        if (segment.Equals("investments", StringComparison.OrdinalIgnoreCase)) return "Service Records";
+        if (segment.Equals("funds", StringComparison.OrdinalIgnoreCase)) return "Money Sources";
 
         var label = segment.Replace("-", " ");
         return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(label);

@@ -5,16 +5,16 @@
 @inject IRoleAccessService RoleAccessService
 @inject ILogger<Funds> Logger
 
-<PageTitle>Funds - grow.IT</PageTitle>
+<PageTitle>Money Sources - grow.IT</PageTitle>
 
 <div class="funds-page">
-    <PageHeader Title="Funds" Subtitle="Manage capital sources, monitor deployment, and protect service capacity with real-time balance visibility.">
+    <PageHeader Title="Money Sources" Subtitle="Save grants, donations, budgets, or other money your organization can use. Grow.IT connects this information to service records and reports.">
         <Actions>
             @if (_canManageFinancials)
             {
                 <button class="btn btn-primary" @onclick="CreateNew">
                     <i class="bi bi-plus-lg"></i>
-                    <span>Create Fund</span>
+                    <span>Add Money Source</span>
                 </button>
             }
         </Actions>
@@ -23,7 +23,7 @@
     @if (!_canManageFinancials)
     {
         <div class="alert alert-info" role="alert">
-            You have read-only access to funds. `Admin`, `Manager`, or `Owner` roles can create and edit funds.
+            You can view money sources, but only Admin, Manager, or Owner roles can add or edit them.
         </div>
     }
 
@@ -39,28 +39,28 @@
         <div class="funds-kpi-card">
             <div class="funds-kpi-icon total"><i class="bi bi-wallet2"></i></div>
             <div>
-                <div class="funds-kpi-label">Fund Sources</div>
+                <div class="funds-kpi-label">Money Sources</div>
                 <div class="funds-kpi-value">@(funds?.Count ?? 0)</div>
             </div>
         </div>
         <div class="funds-kpi-card">
             <div class="funds-kpi-icon available"><i class="bi bi-piggy-bank"></i></div>
             <div>
-                <div class="funds-kpi-label">Available Capital</div>
+                <div class="funds-kpi-label">Available Money</div>
                 <div class="funds-kpi-value">@TotalAvailable.ToString("C0")</div>
             </div>
         </div>
         <div class="funds-kpi-card">
             <div class="funds-kpi-icon deployed"><i class="bi bi-arrow-up-right-circle"></i></div>
             <div>
-                <div class="funds-kpi-label">Deployed</div>
+                <div class="funds-kpi-label">Used</div>
                 <div class="funds-kpi-value">@TotalDeployed.ToString("C0")</div>
             </div>
         </div>
         <div class="funds-kpi-card">
             <div class="funds-kpi-icon coverage"><i class="bi bi-shield-check"></i></div>
             <div>
-                <div class="funds-kpi-label">Healthy Funds</div>
+                <div class="funds-kpi-label">Still Available</div>
                 <div class="funds-kpi-value">@HealthyFundCount</div>
             </div>
         </div>
@@ -69,8 +69,8 @@
     <section class="funds-panel">
         <div class="funds-panel-header">
             <div>
-                <h2>Funding Sources</h2>
-                <p>Track total budget, deployed amount, and remaining capacity for each source.</p>
+                <h2>Saved Money Sources</h2>
+                <p>Track the original amount, how much has been used, and what remains for each grant, donation pool, or budget.</p>
             </div>
             @if (funds != null)
             {
@@ -82,20 +82,20 @@
         {
             <div class="funds-loading">
                 <div class="spinner-border text-success" role="status"></div>
-                <p>Auditing funds...</p>
+                <p>Loading money sources...</p>
             </div>
         }
         else if (!funds.Any())
         {
             <div class="funds-empty">
                 <div class="funds-empty-icon"><i class="bi bi-wallet2"></i></div>
-                <h3>No funds configured</h3>
-                <p>Create a fund source before documenting service investments so costs and capacity remain measurable from day one.</p>
+                <h3>No money sources yet</h3>
+                <p>Add a grant, donation pool, budget, or other funding source before recording services that use money.</p>
                 @if (_canManageFinancials)
                 {
                     <button class="btn btn-outline-primary" @onclick="CreateNew">
                         <i class="bi bi-plus-lg"></i>
-                        <span>Initialize First Fund</span>
+                        <span>Add First Money Source</span>
                     </button>
                 }
             </div>
@@ -132,22 +132,22 @@
                                     <strong>@fund.AvailableAmount.ToString("C0")</strong>
                                 </div>
                                 <div class="money-block">
-                                    <span class="label">Deployed</span>
+                                    <span class="label">Used</span>
                                     <strong>@used.ToString("C0")</strong>
                                 </div>
                                 <div class="money-block">
-                                    <span class="label">Total Budget</span>
+                                    <span class="label">Original Amount</span>
                                     <strong>@fund.TotalAmount.ToString("C0")</strong>
                                 </div>
                                 <div class="money-block">
-                                    <span class="label">Utilization</span>
+                                    <span class="label">Percent Used</span>
                                     <strong>@percent%</strong>
                                 </div>
                             </div>
 
                             <div class="utilization-wrap">
                                 <div class="utilization-header">
-                                    <span>Utilization</span>
+                                    <span>Percent Used</span>
                                     <span>@percent%</span>
                                 </div>
                                 <div class="utilization-track" role="progressbar" aria-valuenow="@percent" aria-valuemin="0" aria-valuemax="100">
@@ -236,8 +236,8 @@
 
     private static string GetStatusLabel(int percent) => percent switch
     {
-        >= 90 => "Near Capacity",
-        >= 70 => "Watch Utilization",
-        _ => "Healthy Capacity"
+        >= 90 => "Almost Used Up",
+        >= 70 => "Watch Closely",
+        _ => "Money Available"
     };
 }

@@ -10,7 +10,7 @@
 
 <div class="page-reports">
     <!-- Page Header -->
-    <PageHeader Title="Funding Readiness Reports" Subtitle="Turn day-to-day service into verifiable financial intelligence and funder-ready evidence.">
+    <PageHeader Title="Reports" Subtitle="Choose the information you need, generate a report, review it, and export it for funders, board members, or your own records.">
         <Actions>
             @if (_hasReportAccess)
             {
@@ -28,7 +28,7 @@
     @if (!_hasReportAccess)
     {
         <div class="alert alert-warning" role="alert">
-            Reports are available to `Admin`, `Manager`, or `Owner` roles.
+            Reports are available to Admin, Manager, or Owner roles.
         </div>
     }
     else
@@ -42,17 +42,34 @@
         <div class="alert alert-danger" role="alert">@_pageError</div>
     }
 
+    <div class="card-growit mb-4" style="border-left: 4px solid var(--growit-green);">
+        <div class="card-body">
+            <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+                <div>
+                    <h2 class="section-title mb-2">How reports work</h2>
+                    <p class="mb-0 text-muted">Grow.IT uses the people, programs, money sources, service records, and outcomes you already saved. You should not have to rebuild the same report by hand.</p>
+                </div>
+                <div class="d-flex flex-wrap gap-2 align-items-start">
+                    <span class="badge-growit badge-success">1. Select</span>
+                    <span class="badge-growit badge-success">2. Generate</span>
+                    <span class="badge-growit badge-success">3. Review</span>
+                    <span class="badge-growit badge-success">4. Export</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Report Templates -->
     <div class="report-section">
-        <h2 class="section-title">Return on Impact</h2>
+        <h2 class="section-title">Quick Reports</h2>
         <div class="report-cards">
             <div class="report-card @(_isGenerating ? "opacity-75" : "")" @onclick=@(() => GenerateReport("impact-summary"))>
                 <div class="report-icon">
                     <i class="bi bi-pie-chart"></i>
                 </div>
                 <div class="report-content">
-                    <h3 class="report-title">Seed to Harvest Summary</h3>
-                    <p class="report-desc">Overview of families served, capital deployed, and verified outcomes.</p>
+                    <h3 class="report-title">Impact Summary</h3>
+                    <p class="report-desc">A plain-language overview of who you served, what support was provided, and what changed.</p>
                 </div>
                 <div class="report-action">
                     <i class="bi bi-chevron-right"></i>
@@ -64,8 +81,8 @@
                     <i class="bi bi-cash-stack"></i>
                 </div>
                 <div class="report-content">
-                    <h3 class="report-title">Financial Intelligence Detail</h3>
-                    <p class="report-desc">Complete breakdown of all service costs and model repeatability.</p>
+                    <h3 class="report-title">Service Cost Detail</h3>
+                    <p class="report-desc">A breakdown of service records, costs, money sources, and spending history.</p>
                 </div>
                 <div class="report-action">
                     <i class="bi bi-chevron-right"></i>
@@ -77,8 +94,8 @@
                     <i class="bi bi-check2-circle"></i>
                 </div>
                 <div class="report-content">
-                    <h3 class="report-title">Outcomes by Category</h3>
-                    <p class="report-desc">Documented imprints grouped by outcome category with verification status.</p>
+                    <h3 class="report-title">Outcomes by Type</h3>
+                    <p class="report-desc">Saved outcomes grouped by the kind of change they show, with any proof attached.</p>
                 </div>
                 <div class="report-action">
                     <i class="bi bi-chevron-right"></i>
@@ -90,8 +107,8 @@
                     <i class="bi bi-credit-card"></i>
                 </div>
                 <div class="report-content">
-                    <h3 class="report-title">Funding Utilization</h3>
-                    <p class="report-desc">Track spending by funding source, grant, and budget allocation.</p>
+                    <h3 class="report-title">Money Source Use</h3>
+                    <p class="report-desc">See how each fund, grant, or budget source has been used and what remains.</p>
                 </div>
                 <div class="report-action">
                     <i class="bi bi-chevron-right"></i>
@@ -103,8 +120,8 @@
                     <i class="bi bi-graph-up-arrow"></i>
                 </div>
                 <div class="report-content">
-                    <h3 class="report-title">Season Progression</h3>
-                    <p class="report-desc">Track how people move through Crisis, Planting, Growing, and Harvest seasons.</p>
+                    <h3 class="report-title">Progress Over Time</h3>
+                    <p class="report-desc">Track how people or households move from urgent need toward more stability.</p>
                 </div>
                 <div class="report-action">
                     <i class="bi bi-chevron-right"></i>
@@ -116,8 +133,8 @@
                     <i class="bi bi-people"></i>
                 </div>
                 <div class="report-content">
-                    <h3 class="report-title">Demographic Breakdown</h3>
-                    <p class="report-desc">People served by household size, income level, and employment status.</p>
+                    <h3 class="report-title">People Served Breakdown</h3>
+                    <p class="report-desc">Summarize the people and households served by details like household size, income, or employment.</p>
                 </div>
                 <div class="report-action">
                     <i class="bi bi-chevron-right"></i>
@@ -128,21 +145,21 @@
 
     <!-- Custom Report Builder -->
     <div class="report-section">
-        <h2 class="section-title">Custom Report</h2>
+        <h2 class="section-title">Build Your Own Report</h2>
         <div class="custom-report-builder">
             <div class="builder-row">
                 <div class="builder-field">
-                    <label>Report Type</label>
+                    <label>What information do you want?</label>
                     <select @bind="_customReportType">
-                        <option value="investments">Investments</option>
-                        <option value="imprints">Imprints</option>
-                        <option value="people">People</option>
+                        <option value="investments">Service records and costs</option>
+                        <option value="imprints">Outcomes and proof</option>
+                        <option value="people">People and households</option>
                         <option value="growth-plans">Growth Plans</option>
                     </select>
                 </div>
                 
                 <div class="builder-field">
-                    <label>Fiscal Year</label>
+                    <label>Year</label>
                     <select @bind="_customFiscalYear">
                         <option value="FY24-25">FY24-25</option>
                         <option value="FY23-24">FY23-24</option>
@@ -151,7 +168,7 @@
                 </div>
                 
                 <div class="builder-field">
-                    <label>Date Range</label>
+                    <label>Date range</label>
                     <div class="date-range-inputs">
                         <input type="date" @bind="_customDateFrom" />
                         <span>to</span>
@@ -162,12 +179,12 @@
             
             <div class="builder-row">
                 <div class="builder-field">
-                    <label>Group By</label>
+                    <label>Organize by</label>
                     <select @bind="_customGroupBy">
-                        <option value="none">No Grouping</option>
+                        <option value="none">Do not group</option>
                         <option value="category">Category</option>
-                        <option value="season">Season</option>
-                        <option value="funding-source">Funding Source</option>
+                        <option value="season">Progress stage</option>
+                        <option value="funding-source">Money source</option>
                         <option value="month">Month</option>
                     </select>
                 </div>
@@ -188,7 +205,7 @@
                             <span class="spinner-border spinner-border-sm me-2" role="status"></span>
                         }
                         <i class="bi bi-download me-2"></i>
-                        Generate Report
+                        Generate
                     </button>
                 </div>
             </div>
@@ -197,25 +214,25 @@
 
     <!-- Recent Reports -->
     <div class="report-section">
-        <h2 class="section-title">Recent Reports</h2>
+        <h2 class="section-title">Review and Export Reports</h2>
         <div class="card-growit mb-3">
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-lg-3 col-md-6">
                         <label class="form-label">Search</label>
-                        <input class="form-control" placeholder="Name, type, format..." @bind="_recentSearch" />
+                        <input class="form-control" placeholder="Search reports..." @bind="_recentSearch" />
                     </div>
                     <div class="col-lg-2 col-md-6">
                         <label class="form-label">Type</label>
                         <select class="form-select" @bind="_recentReportTypeFilter">
                             <option value="">All</option>
                             <option value="impact-summary">Impact Summary</option>
-                            <option value="investment-detail">Investment Detail</option>
+                            <option value="investment-detail">Service Cost Detail</option>
                             <option value="outcomes-by-category">Outcomes by Category</option>
-                            <option value="funding-utilization">Funding Utilization</option>
+                            <option value="funding-utilization">Money Source Use</option>
                             <option value="season-progression">Season Progression</option>
                             <option value="demographic-breakdown">Demographic Breakdown</option>
-                            <option value="investments">Custom Investments</option>
+                            <option value="investments">Custom Service Records</option>
                         </select>
                     </div>
                     <div class="col-lg-2 col-md-4">
@@ -367,34 +384,34 @@
             }
             else
             {
-                <div class="p-4 text-center text-muted">No recent reports found.</div>
+                <div class="p-4 text-center text-muted">No reports yet. Generate a quick report or build your own report above.</div>
             }
         </div>
     </div>
 
     <!-- Scheduled Reports -->
     <div class="report-section">
-        <h2 class="section-title">Scheduled Reports</h2>
-        <p class="section-desc">Set up automatic reports to be generated and emailed on a schedule.</p>
+        <h2 class="section-title">Automatic Reports</h2>
+        <p class="section-desc">Set up reports Grow.IT should prepare on a schedule, so your team does not have to remember to run them manually.</p>
         
         <div class="scheduled-reports">
             <div class="card-growit mb-3">
                 <div class="card-header">
-                    <h3 class="section-title mb-0">@(_editingScheduleId.HasValue ? "Edit Schedule" : "Create Schedule")</h3>
+                    <h3 class="section-title mb-0">@(_editingScheduleId.HasValue ? "Edit Automatic Report" : "Create Automatic Report")</h3>
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-lg-3 col-md-6">
-                            <label class="form-label">Name</label>
+                            <label class="form-label">Report name</label>
                             <input class="form-control" @bind="_scheduleForm.Name" placeholder="Weekly Impact Summary" />
                         </div>
                         <div class="col-lg-2 col-md-6">
-                            <label class="form-label">Report Type</label>
+                            <label class="form-label">Report type</label>
                             <select class="form-select" @bind="_scheduleForm.ReportType">
                                 <option value="impact-summary">Impact Summary</option>
-                                <option value="investment-detail">Investment Detail</option>
+                                <option value="investment-detail">Service Cost Detail</option>
                                 <option value="outcomes-by-category">Outcomes by Category</option>
-                                <option value="funding-utilization">Funding Utilization</option>
+                                <option value="funding-utilization">Money Source Use</option>
                                 <option value="season-progression">Season Progression</option>
                                 <option value="demographic-breakdown">Demographic Breakdown</option>
                             </select>
@@ -408,7 +425,7 @@
                             </select>
                         </div>
                         <div class="col-lg-2 col-md-4">
-                            <label class="form-label">Frequency</label>
+                            <label class="form-label">How often?</label>
                             <select class="form-select" @bind="_scheduleForm.Frequency">
                                 <option value="Daily">Daily</option>
                                 <option value="Weekly">Weekly</option>
@@ -416,7 +433,7 @@
                             </select>
                         </div>
                         <div class="col-lg-2 col-md-4">
-                            <label class="form-label">Next Run</label>
+                            <label class="form-label">Next report date</label>
                             <input class="form-control" type="date" @bind="_scheduleForm.NextRunDate" />
                         </div>
                         <div class="col-lg-1 col-md-12 d-flex align-items-end justify-content-end gap-2">
@@ -509,7 +526,7 @@
             else
             {
                 <div class="empty-scheduled">
-                    <p>No scheduled reports yet.</p>
+                    <p>No automatic reports yet.</p>
                 </div>
             }
         </div>
@@ -524,8 +541,8 @@
     <aside class="growit-report-drawer" role="dialog" aria-modal="true" aria-label="Report run details">
         <div class="growit-report-drawer-header">
             <div>
-                <div class="small text-muted text-uppercase fw-semibold">Report Run Details</div>
-                <h3 class="mb-1">@(_reportDetail?.Name ?? "Loading…")</h3>
+                <div class="small text-muted text-uppercase fw-semibold">Report Details</div>
+                <h3 class="mb-1">@(_reportDetail?.Name ?? "Loading...")</h3>
                 @if (_reportDetail is not null)
                 {
                     <div class="d-flex flex-wrap gap-2 align-items-center">
@@ -552,14 +569,14 @@
             else if (_reportDetail is not null)
             {
                 <div class="growit-report-detail-section">
-                    <h4>Run Summary</h4>
+                    <h4>Summary</h4>
                     <div class="growit-report-detail-grid">
-                        <div><span>Generated</span><strong>@FormatLocalTimestamp(_reportDetail.GeneratedAt)</strong></div>
-                        <div><span>Completed</span><strong>@FormatLocalTimestamp(_reportDetail.CompletedAt)</strong></div>
-                        <div><span>Last Downloaded</span><strong>@FormatLocalTimestamp(_reportDetail.LastDownloadedAt)</strong></div>
-                        <div><span>Run Time</span><strong>@FormatDuration(_reportDetail.DurationMs)</strong></div>
-                        <div><span>Fiscal Year</span><strong>@DisplayValue(_reportDetail.FiscalYear)</strong></div>
-                        <div><span>Grouping</span><strong>@DisplayValue(_reportDetail.GroupBy)</strong></div>
+                        <div><span>Created</span><strong>@FormatLocalTimestamp(_reportDetail.GeneratedAt)</strong></div>
+                        <div><span>Finished</span><strong>@FormatLocalTimestamp(_reportDetail.CompletedAt)</strong></div>
+                        <div><span>Last exported</span><strong>@FormatLocalTimestamp(_reportDetail.LastDownloadedAt)</strong></div>
+                        <div><span>Time to create</span><strong>@FormatDuration(_reportDetail.DurationMs)</strong></div>
+                        <div><span>Year</span><strong>@DisplayValue(_reportDetail.FiscalYear)</strong></div>
+                        <div><span>Organized by</span><strong>@DisplayValue(_reportDetail.GroupBy)</strong></div>
                         <div><span>Date From</span><strong>@FormatLocalDate(_reportDetail.DateFrom)</strong></div>
                         <div><span>Date To</span><strong>@FormatLocalDate(_reportDetail.DateTo)</strong></div>
                     </div>
@@ -568,13 +585,13 @@
                 @if (!string.IsNullOrWhiteSpace(_reportDetail.ErrorMessage))
                 {
                     <div class="growit-report-detail-section">
-                        <h4>Failure Details</h4>
+                    <h4>What went wrong</h4>
                         <pre class="growit-report-code growit-report-code-danger">@_reportDetail.ErrorMessage</pre>
                     </div>
                 }
 
                 <div class="growit-report-detail-section">
-                    <h4>Run History</h4>
+                    <h4>History</h4>
                     @if (_reportDetail.Timeline?.Count > 0)
                     {
                         <div class="growit-report-timeline">
@@ -598,12 +615,12 @@
                     }
                     else
                     {
-                        <div class="small text-muted">No lifecycle events recorded.</div>
+                        <div class="small text-muted">No history recorded.</div>
                     }
                 </div>
 
                 <div class="growit-report-detail-section">
-                    <h4>Download History</h4>
+                    <h4>Export History</h4>
                     @if (_reportDetail.DownloadEvents?.Count > 0)
                     {
                         <div class="growit-report-downloads">
@@ -631,13 +648,13 @@
                     }
                     else
                     {
-                        <div class="small text-muted">No download events recorded yet.</div>
+                        <div class="small text-muted">No exports recorded yet.</div>
                     }
                 </div>
 
                 <div class="growit-report-detail-section">
                     <div class="d-flex justify-content-between align-items-center gap-2">
-                        <h4 class="mb-0">Request Payload</h4>
+                        <h4 class="mb-0">Report Settings</h4>
                         <button type="button" class="btn btn-outline-secondary btn-sm" @onclick="CopyReportPayloadAsync">
                             <i class="bi bi-clipboard me-1"></i>Copy
                         </button>

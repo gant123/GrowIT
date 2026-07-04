@@ -14,10 +14,10 @@
                         <h5 class="modal-title fw-bold mb-1" style="color: var(--growit-text-primary);">
                             <span class="oi @(IsEditMode ? "oi-pencil" : "oi-dollar") me-2" 
                                   style="color: @(IsEditMode ? "var(--growit-warning)" : "var(--growit-green)");"></span>
-                            @(IsEditMode ? "Adjust Fund Budget" : "Initialize New Fund")
+                            @(IsEditMode ? "Update Money Source" : "Add Money Source")
                         </h5>
                         <p class="mb-0 small text-uppercase fw-bold" style="color: var(--growit-text-secondary);">
-                            @(IsEditMode ? "Change Management" : "Financial Source Configuration")
+                            @(IsEditMode ? "Explain the change" : "Saved for service records and reports")
                         </p>
                     </div>
                     <button type="button" class="btn btn-link text-decoration-none" 
@@ -40,16 +40,16 @@
                         <DataAnnotationsValidator />
 
                         <div class="mb-3">
-                            <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Fund Name</label>
+                            <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">What is this money source called?</label>
                             <InputText @bind-Value="request.Name" 
                                        class="form-control form-control-lg" 
-                                       placeholder="e.g. General Benevolence 2026" 
+                                       placeholder="e.g. General Donations 2026" 
                                        style="@ThemeInputStyle" />
                             <ValidationMessage For="@(() => request.Name)" />
                         </div>
 
                         <div class="mb-4">
-                            <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Total Budget</label>
+                            <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">How much money is available?</label>
                             <div class="input-group input-group-lg">
                                 <span class="input-group-text fw-bold" 
                                       style="background-color: var(--growit-bg-primary); border-color: var(--growit-border); color: var(--growit-green);">$</span>
@@ -62,7 +62,7 @@
                             {
                                 <div class="mt-2 small d-flex align-items-center" style="color: var(--growit-text-secondary);">
                                     <span class="oi oi-info me-2 text-warning"></span>
-                                    <span>Current Usage: <strong>@((FundToEdit.TotalAmount - FundToEdit.AvailableAmount).ToString("C0"))</strong>. New budget cannot be lower than this.</span>
+                                    <span>Already used: <strong>@((FundToEdit.TotalAmount - FundToEdit.AvailableAmount).ToString("C0"))</strong>. The new amount cannot be lower than what has already been used.</span>
                                 </div>
                             }
                             <ValidationMessage For="@(() => request.TotalAmount)" />
@@ -72,17 +72,17 @@
                         {
                             <div class="mb-4 p-3 rounded border border-warning bg-opacity-10" style="background-color: rgba(245, 158, 11, 0.1);">
                                 <label class="form-label small fw-bold text-uppercase text-warning">
-                                    <span class="oi oi-warning me-1"></span> Reason for Adjustment (Required)
+                                    <span class="oi oi-warning me-1"></span> Why are you changing this? (Required)
                                 </label>
                                 <InputTextArea @bind-Value="changeReason" 
                                              class="form-control" 
                                              rows="2"
-                                             placeholder="Why are you changing this budget? (e.g. Donor reduced grant funding)" 
+                                             placeholder="Example: A donor reduced the grant amount." 
                                              style="@ThemeInputStyle" />
-                                <div class="form-text small text-warning opacity-75">This explanation will be permanently recorded in the audit log.</div>
+                                <div class="form-text small text-warning opacity-75">Grow.IT keeps this note so your team can understand the change later.</div>
                                 @if (showReasonError) 
                                 {
-                                    <div class="text-danger small mt-1">An explanation is required to audit this change.</div>
+                                    <div class="text-danger small mt-1">Please add a short explanation for this change.</div>
                                 }
                             </div>
                         }
@@ -95,7 +95,7 @@
                             <button type="submit" class="btn px-4 shadow-sm fw-bold text-white" 
                                     style="background-color: @(IsEditMode ? "var(--growit-warning)" : "var(--growit-green)"); border: none;">
                                 <span class="oi @(IsEditMode ? "oi-pencil" : "oi-plus") me-2"></span>
-                                @(IsEditMode ? "Confirm Change" : "Create Fund")
+                                @(IsEditMode ? "Save Change" : "Save Money Source")
                             </button>
                         </div>
                     </EditForm>

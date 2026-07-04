@@ -10,7 +10,7 @@
             <div class="modal-content border-0 shadow-lg" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
                 <div class="modal-header border-bottom" style="border-color: var(--growit-border);">
                     <div>
-                        <h5 class="modal-title fw-bold mb-1">Investment Details</h5>
+                        <h5 class="modal-title fw-bold mb-1">Service Record Details</h5>
                         <div class="small text-muted">@(_detail?.PersonName ?? "Loading...")</div>
                     </div>
                     <button type="button" class="btn-close btn-close-white" @onclick="Close"></button>
@@ -26,12 +26,12 @@
                     {
                         <div class="text-center py-4">
                             <div class="spinner-border text-info" role="status"></div>
-                            <p class="small mt-2 mb-0 text-muted">Loading investment details...</p>
+                            <p class="small mt-2 mb-0 text-muted">Loading service record details...</p>
                         </div>
                     }
                     else if (_detail == null)
                     {
-                        <div class="alert alert-secondary mb-0">Investment not found.</div>
+                        <div class="alert alert-secondary mb-0">Service record not found.</div>
                     }
                     else
                     {
@@ -49,15 +49,15 @@
                                 <div>@_detail.PersonName</div>
                             </div>
                             <div class="col-md-6">
-                                <div class="small text-muted text-uppercase fw-bold">Amount</div>
+                                <div class="small text-muted text-uppercase fw-bold">Cost</div>
                                 <div class="fw-bold">@_detail.Amount.ToString("C2")</div>
                             </div>
                             <div class="col-md-12">
-                                <div class="small text-muted text-uppercase fw-bold">Purpose</div>
+                                <div class="small text-muted text-uppercase fw-bold">What was provided?</div>
                                 <div>@_detail.Purpose</div>
                             </div>
                             <div class="col-md-12">
-                                <div class="small text-muted text-uppercase fw-bold">Program / Category</div>
+                                <div class="small text-muted text-uppercase fw-bold">Program or service type</div>
                                 <div>@(string.IsNullOrWhiteSpace(_detail.Category) ? "Unspecified" : _detail.Category)</div>
                             </div>
                             <div class="col-md-12">
@@ -85,7 +85,7 @@
                             <button class="btn btn-secondary"
                                     disabled="@_isMutating"
                                     @onclick="DisburseAsync">
-                                Disburse
+                                Mark Paid
                             </button>
                         }
                         @if (CanDelete && _detail != null)
@@ -99,7 +99,7 @@
                     </div>
                     @if (_detail != null && !CanApproveDisburse && !CanDelete)
                     {
-                        <div class="small text-muted">Read-only access. Approval, disbursement, and deletion require elevated permissions.</div>
+                        <div class="small text-muted">Read-only access. Approval, payment, and deletion require elevated permissions.</div>
                     }
                     <button class="btn btn-outline-secondary" @onclick="Close">Close</button>
                 </div>
@@ -130,7 +130,7 @@
         if (InvestmentId == Guid.Empty)
         {
             _detail = null;
-            _error = "Invalid investment id.";
+            _error = "Invalid service record id.";
             return;
         }
 
@@ -150,7 +150,7 @@
             _loadedId = InvestmentId;
             if (_detail == null)
             {
-                _error = "Investment not found.";
+                _error = "Service record not found.";
             }
         }
         catch (Exception ex)
@@ -194,7 +194,7 @@
         _error = null;
         try
         {
-            if (!await JS.InvokeAsync<bool>("confirm", "Mark this investment as disbursed?"))
+            if (!await JS.InvokeAsync<bool>("confirm", "Mark this service record as paid?"))
                 return;
 
             await InvestmentService.DisburseInvestmentAsync(_detail.Id);
@@ -219,7 +219,7 @@
         _error = null;
         try
         {
-            if (!await JS.InvokeAsync<bool>("confirm", "Delete this investment?"))
+            if (!await JS.InvokeAsync<bool>("confirm", "Delete this service record?"))
                 return;
 
             await InvestmentService.DeleteInvestmentAsync(_detail.Id);

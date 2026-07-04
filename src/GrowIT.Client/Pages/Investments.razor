@@ -9,15 +9,15 @@
 @inject IRoleAccessService RoleAccessService
 @inject IJSRuntime JS
 
-<PageTitle>Investments - grow.IT</PageTitle>
+<PageTitle>Service Records - grow.IT</PageTitle>
 
 <div class="dashboard fade-in mt-4 investment-page-shell">
-    <PageHeader Title="Service Investments" Subtitle="Document real-time service costs to build capacity, repeatability, and funding readiness.">
+    <PageHeader Title="Service Records" Subtitle="Record the support your organization provided, what it cost, and which program or money source it connects to. Grow.IT reuses this in reports.">
         <Actions>
             @if (_canDocumentServiceRecords)
             {
                 <button class="btn-growit btn-primary-growit" @onclick="OpenNewInvestment">
-                    <i class="bi bi-plus-lg me-2"></i>Plant Seed
+                    <i class="bi bi-plus-lg me-2"></i>Add Service Record
                 </button>
             }
         </Actions>
@@ -25,7 +25,7 @@
 
     @if (!_canDocumentServiceRecords)
     {
-        <div class="alert alert-info mb-3">You have read-only access to investments. `Case Manager`, `Manager`, `Admin`, or `Owner` can create investment records.</div>
+        <div class="alert alert-info mb-3">You can view service records, but only Case Manager, Manager, Admin, or Owner roles can create them.</div>
     }
 
     <div class="card-growit mb-4">
@@ -39,7 +39,7 @@
                 </div>
                 <div class="col-md-4">
                     <select class="form-select-growit" @bind="StatusFilter">
-                        <option value="">All Statuses</option>
+                            <option value="">All statuses</option>
                         @foreach (var status in Enum.GetValues<GrowIT.Shared.Enums.InvestmentStatus>())
                         {
                             <option value="@status">@status</option>
@@ -54,7 +54,7 @@
     {
         <div class="loading-state">
             <div class="spinner-growit"></div>
-            <p class="loading-state-text">Loading investments...</p>
+            <p class="loading-state-text">Loading service records...</p>
         </div>
     }
     else
@@ -98,8 +98,8 @@
                                 <span class="fw-600 text-primary">@inv.PersonName</span>
                             </Template>
                         </GridColumn>
-                        <GridColumn Field=@nameof(InvestmentListDto.Purpose) HeaderText="Purpose" Width="260" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
-                        <GridColumn Field=@nameof(InvestmentListDto.Amount) HeaderText="Amount" Width="140" TextAlign="TextAlign.Right">
+                        <GridColumn Field=@nameof(InvestmentListDto.Purpose) HeaderText="What was provided?" Width="260" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                        <GridColumn Field=@nameof(InvestmentListDto.Amount) HeaderText="Cost" Width="140" TextAlign="TextAlign.Right">
                             <Template>
                                 @{
                                     var inv = (context as InvestmentListDto)!;

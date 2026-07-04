@@ -6,16 +6,16 @@
 @inject IInvestmentService InvestmentService
 @inject IRoleAccessService RoleAccessService
 
-<PageTitle>Imprints - grow.IT</PageTitle>
+<PageTitle>Outcomes - grow.IT</PageTitle>
 
 <div class="imprints-page">
-    <PageHeader Title="Imprints" Subtitle="Document verified outcomes and milestones so service translates into credible impact evidence.">
+    <PageHeader Title="Outcomes" Subtitle="Save the changes, milestones, and proof your organization can use in impact reports and funding narratives.">
         <Actions>
             @if (_canDocumentServiceRecords)
             {
                 <button class="btn btn-primary" @onclick="OpenNewImprint">
                     <i class="bi bi-plus-lg"></i>
-                    <span>Record Imprint</span>
+                    <span>Add Outcome</span>
                 </button>
             }
         </Actions>
@@ -23,7 +23,7 @@
 
     @if (!_canDocumentServiceRecords)
     {
-        <div class="alert alert-info mb-3">You have read-only access to imprints. `Case Manager`, `Manager`, `Admin`, or `Owner` can record outcomes.</div>
+        <div class="alert alert-info mb-3">You can view outcomes, but only Case Manager, Manager, Admin, or Owner roles can add them.</div>
     }
 
     @if (!string.IsNullOrWhiteSpace(_loadError))
@@ -38,7 +38,7 @@
         <div class="imprint-kpi-card">
             <div class="imprint-kpi-icon total"><i class="bi bi-journal-check"></i></div>
             <div>
-                <div class="imprint-kpi-label">Total Imprints</div>
+                <div class="imprint-kpi-label">Total Outcomes</div>
                 <div class="imprint-kpi-value">@_allImprints.Count</div>
             </div>
         </div>
@@ -52,7 +52,7 @@
         <div class="imprint-kpi-card">
             <div class="imprint-kpi-icon people"><i class="bi bi-people"></i></div>
             <div>
-                <div class="imprint-kpi-label">People Documented</div>
+                <div class="imprint-kpi-label">People With Outcomes</div>
                 <div class="imprint-kpi-value">@DistinctPeopleCount</div>
             </div>
         </div>
@@ -68,8 +68,8 @@
     <section class="imprint-panel">
         <div class="imprint-panel-header">
             <div>
-                <h2>Impact Records</h2>
-                <p>Search, filter, and review the milestones that prove service outcomes over time.</p>
+                <h2>Saved Outcomes</h2>
+                <p>Search, filter, and review the changes and milestones your organization has recorded.</p>
             </div>
             <div class="imprint-panel-meta">@FilteredImprints.Count() result(s)</div>
         </div>
@@ -85,7 +85,7 @@
             <div class="imprint-filter-field">
                 <label>Category</label>
                 <select class="form-select" @bind="_categoryFilter">
-                    <option value="">All Categories</option>
+                    <option value="">All categories</option>
                     @foreach (var cat in Enum.GetNames(typeof(ImprintCategory)))
                     {
                         <option value="@cat">@cat</option>
@@ -98,7 +98,7 @@
         {
             <div class="imprint-loading">
                 <div class="spinner-border text-primary" role="status"></div>
-                <p>Loading imprints...</p>
+                <p>Loading outcomes...</p>
             </div>
         }
         else if (FilteredImprints.Any())
@@ -132,7 +132,7 @@
                             {
                                 <span class="verification-pill pending">
                                     <i class="bi bi-hourglass-split"></i>
-                                    Pending Verification
+                                    Needs Proof
                                 </span>
                             }
                         </div>
@@ -144,13 +144,13 @@
         {
             <div class="imprint-empty">
                 <div class="imprint-empty-icon"><i class="bi bi-journal-x"></i></div>
-                <h3>No imprints found</h3>
-                <p>Start documenting service outcomes to build a reliable impact history for funding readiness.</p>
+                <h3>No outcomes yet</h3>
+                <p>Add outcomes as your work creates change. Grow.IT can reuse them in impact reports and portfolio content.</p>
                 @if (_canDocumentServiceRecords)
                 {
                     <button class="btn btn-outline-primary" @onclick="OpenNewImprint">
                         <i class="bi bi-plus-lg"></i>
-                        <span>Record First Imprint</span>
+                        <span>Add First Outcome</span>
                     </button>
                 }
             </div>
@@ -165,8 +165,8 @@
             <div class="modal-content growit-modal-shell">
                 <div class="modal-header">
                     <div>
-                        <h5 class="modal-title">Record Imprint</h5>
-                        <div class="modal-subtitle">Capture an outcome while service details are still current and verifiable.</div>
+                        <h5 class="modal-title">Add Outcome</h5>
+                        <div class="modal-subtitle">Describe what changed in plain language. Add proof or follow-up details if you have them.</div>
                     </div>
                     <button type="button" class="btn-close" @onclick="CloseCreateModal"></button>
                 </div>
@@ -187,9 +187,9 @@
 
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label">Client</label>
+                                    <label class="form-label">Who does this outcome belong to?</label>
                                     <select class="form-select" value="@_createRequest.ClientId" @onchange="OnCreateClientChanged">
-                                        <option value="">Select client</option>
+                                        <option value="">Select a person or household</option>
                                         @foreach (var client in _clients.OrderBy(c => c.Name))
                                         {
                                             <option value="@client.Id">@client.Name</option>
@@ -197,7 +197,7 @@
                                     </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Family Member (Optional)</label>
+                                    <label class="form-label">Specific household member (optional)</label>
                                     <InputSelect class="form-select" @bind-Value="_createRequest.FamilyMemberId">
                                         <option value="">Entire household</option>
                                         @foreach (var member in _selectedMembers)
@@ -207,7 +207,7 @@
                                     </InputSelect>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Linked Investment (Optional)</label>
+                                    <label class="form-label">Related service record (optional)</label>
                                     <InputSelect class="form-select" @bind-Value="_createRequest.InvestmentId">
                                         <option value="">None</option>
                                         @foreach (var inv in _selectedClientInvestments)
@@ -217,11 +217,11 @@
                                     </InputSelect>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Date Occurred</label>
+                                    <label class="form-label">When did this happen?</label>
                                     <InputDate class="form-control" @bind-Value="_createRequest.DateOccurred" />
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Category</label>
+                                    <label class="form-label">What type of outcome is this?</label>
                                     <InputSelect class="form-select" @bind-Value="_createRequest.Category">
                                         @foreach (var cat in Enum.GetValues<ImprintCategory>())
                                         {
@@ -230,7 +230,7 @@
                                     </InputSelect>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Outcome</label>
+                                    <label class="form-label">Was the situation improved or changed?</label>
                                     <InputSelect class="form-select" @bind-Value="_createRequest.Outcome">
                                         @foreach (var outcome in Enum.GetValues<ImpactOutcome>())
                                         {
@@ -239,15 +239,15 @@
                                     </InputSelect>
                                 </div>
                                 <div class="col-12">
-                                    <label class="form-label">Title</label>
+                                    <label class="form-label">Short title</label>
                                     <InputText class="form-control" @bind-Value="_createRequest.Title" placeholder="Example: Household retained housing for 90 days" />
                                 </div>
                                 <div class="col-12">
-                                    <label class="form-label">Notes</label>
-                                    <InputTextArea class="form-control" rows="4" @bind-Value="_createRequest.Notes" placeholder="Record context, evidence source, and follow-up details." />
+                                    <label class="form-label">What changed?</label>
+                                    <InputTextArea class="form-control" rows="4" @bind-Value="_createRequest.Notes" placeholder="Example: The household kept stable housing for 90 days. Proof: lease renewal confirmed on file." />
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Follow-up Date (Optional)</label>
+                                    <label class="form-label">Follow-up date (optional)</label>
                                     <InputDate class="form-control" @bind-Value="_createRequest.FollowupDate" />
                                 </div>
                             </div>
@@ -259,7 +259,7 @@
                                     {
                                         <span class="spinner-border spinner-border-sm me-2" role="status"></span>
                                     }
-                                    <span>Save Imprint</span>
+                                    <span>Save Outcome</span>
                                 </button>
                             </div>
                         </EditForm>
