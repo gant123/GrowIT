@@ -20,6 +20,7 @@
             @if (_isLoading)
             {
                 <div class="auth-header">
+                    <div class="confirmation-state-icon loading"><i class="bi bi-hourglass-split"></i></div>
                     <h1>Confirming your email</h1>
                     <p>Please wait while we activate your account.</p>
                 </div>
@@ -27,9 +28,30 @@
             else
             {
                 <div class="auth-header">
+                    <div class="confirmation-state-icon @GetStateIconClass()">
+                        <i class="@GetStateIcon()"></i>
+                    </div>
                     <h1>@GetConfirmationTitle()</h1>
                     <p>@_message</p>
                 </div>
+
+                @if (!_confirmed)
+                {
+                    <div class="auth-context-strip confirmation-help">
+                        <div class="context-chip">
+                            <span class="label">Need help?</span>
+                            <span class="value">Links can expire or break when copied from email.</span>
+                        </div>
+                    </div>
+                }
+
+                @if (!string.IsNullOrWhiteSpace(_resendMessage))
+                {
+                    <div class="auth-alert success">
+                        <i class="bi bi-check2-circle"></i>
+                        <span>@_resendMessage</span>
+                    </div>
+                }
 
                 <div class="auth-footer">
                     @if (_confirmed)
@@ -38,6 +60,19 @@
                     }
                     else
                     {
+                        @if (!string.IsNullOrWhiteSpace(_email))
+                        {
+                            <button type="button" class="btn btn-primary btn-block" @onclick="ResendConfirmationAsync" disabled="@_isResending">
+                                @if (_isResending)
+                                {
+                                    <span>Sending new link...</span>
+                                }
+                                else
+                                {
+                                    <span>Send a new confirmation link</span>
+                                }
+                            </button>
+                        }
                         <a href="/login" class="btn btn-primary btn-block">Back to sign in</a>
                     }
                 </div>
@@ -51,6 +86,9 @@
     private bool _isLoading = true;
     private bool _confirmed;
     private bool _alreadyConfirmed;
+    private bool _isResending;
+    private string? _email;
+    private string? _resendMessage;
     private string _message = "We could not process the confirmation link.";
 
     [SupplyParameterFromQuery(Name = "userId")]
@@ -59,8 +97,13 @@
     [SupplyParameterFromQuery(Name = "token")]
     public string? Token { get; set; }
 
+    [SupplyParameterFromQuery(Name = "email")]
+    public string? Email { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
+        _email = Email;
+
         if (string.IsNullOrWhiteSpace(UserId) || string.IsNullOrWhiteSpace(Token))
         {
             _message = "The confirmation link is incomplete.";
@@ -73,6 +116,7 @@
             var result = await AuthService.ConfirmEmail(UserId, Token);
             _confirmed = result?.Succeeded == true;
             _alreadyConfirmed = result?.AlreadyConfirmed == true;
+            _email = string.IsNullOrWhiteSpace(result?.Email) ? _email : result.Email;
             _message = result?.Message ?? _message;
         }
         catch (ApiException ex)
@@ -97,13 +141,14 @@
 
     private string BuildLoginUrl()
     {
-        var builder = "/login?reason=email-confirmed";
-        if (!string.IsNullOrWhiteSpace(UserId))
+        var reason = _alreadyConfirmed ? "email-already-confirmed" : "email-confirmed";
+        var builder = $"/login?reason={Uri.EscapeDataString(reason)}";
+        if (!string.IsNullOrWhiteSpace(_email))
         {
-            return builder;
+            builder += $"&email={Uri.EscapeDataString(_email)}";
         }
 
-        return "/login";
+        return builder;
     }
 
     private string GetConfirmationTitle()
@@ -114,5 +159,54 @@
         }
 
         return _alreadyConfirmed ? "Email already confirmed" : "Email confirmed";
+    }
+
+    private string GetStateIconClass()
+    {
+        if (!_confirmed)
+        {
+            return "failed";
+        }
+
+        return _alreadyConfirmed ? "already" : "confirmed";
+    }
+
+    private string GetStateIcon()
+    {
+        if (!_confirmed)
+        {
+            return "bi bi-exclamation-triangle";
+        }
+
+        return _alreadyConfirmed ? "bi bi-patch-check" : "bi bi-check2-circle";
+    }
+
+    private async Task ResendConfirmationAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_email))
+        {
+            _message = "Enter your email on the sign-in page to request a new confirmation link.";
+            return;
+        }
+
+        _isResending = true;
+        _resendMessage = null;
+
+        try
+        {
+            var result = await AuthService.ResendConfirmationEmail(new ResendConfirmationEmailRequest
+            {
+                Email = _email
+            });
+            _resendMessage = result?.Message ?? "If your account exists, a confirmation link will be sent.";
+        }
+        catch (ApiException ex)
+        {
+            _message = ex.Message;
+        }
+        finally
+        {
+            _isResending = false;
+        }
     }
 }

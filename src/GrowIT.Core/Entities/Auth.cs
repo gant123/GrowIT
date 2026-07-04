@@ -18,6 +18,10 @@ public class User : IdentityUser<Guid>, IMustHaveTenant
     public string? PhotoUrl { get; set; }
     public bool NotifyInviteActivity { get; set; } = true;
     public bool NotifySystemAlerts { get; set; } = true;
+    public DateTime? LastConfirmationEmailSentAt { get; set; }
+    public int ConfirmationEmailSendCount { get; set; }
+    public DateTime? LastPasswordResetEmailSentAt { get; set; }
+    public int PasswordResetEmailSendCount { get; set; }
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

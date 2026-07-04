@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using GrowIT.Core.Entities;
@@ -20,6 +21,9 @@ namespace GrowIT.Backend.Controllers;
 public class AdminController : ControllerBase
 {
     private const string InviteAuditLink = "/settings?tab=invites";
+    private static readonly TimeSpan InviteResendCooldown = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan TestEmailCooldown = TimeSpan.FromMinutes(2);
+    private static readonly ConcurrentDictionary<string, DateTime> TestEmailLastSentAt = new(StringComparer.OrdinalIgnoreCase);
 
     // Roles a tenant Admin/Owner/SuperAdmin may assign to other users or invites.
     private static readonly HashSet<string> StandardAssignableRoles = new(StringComparer.OrdinalIgnoreCase)
@@ -450,6 +454,20 @@ public class AdminController : ControllerBase
         if (invite.AcceptedAt != null) return BadRequest("Invite has already been accepted.");
         if (invite.RevokedAt != null) return BadRequest("Invite has been revoked.");
 
+        if (invite.SentAt.HasValue && invite.SentAt.Value > DateTime.UtcNow.Subtract(InviteResendCooldown))
+        {
+            var nextAllowedAt = invite.SentAt.Value.Add(InviteResendCooldown);
+            var remaining = nextAllowedAt - DateTime.UtcNow;
+            var minutes = Math.Max(1, (int)Math.Ceiling(remaining.TotalMinutes));
+
+            return Ok(new CreateOrganizationInviteResponse
+            {
+                InviteId = invite.Id,
+                Message = $"This invite was already sent recently. Try again in about {minutes} minute{(minutes == 1 ? string.Empty : "s")}.",
+                InviteLink = string.Empty
+            });
+        }
+
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         invite.TokenHash = HashToken(token);
         invite.ExpiresAt = DateTime.UtcNow.AddDays(7);
@@ -725,17 +743,36 @@ public class AdminController : ControllerBase
         if (string.IsNullOrWhiteSpace(targetEmail))
             return BadRequest("A target email is required.");
 
+        var now = DateTime.UtcNow;
+        var throttleKey = $"{currentUserId.Value:N}:{targetEmail.Trim().ToUpperInvariant()}";
+        if (TestEmailLastSentAt.TryGetValue(throttleKey, out var lastSentAt) && now.Subtract(lastSentAt) < TestEmailCooldown)
+        {
+            return Ok(new SendTestEmailResponse
+            {
+                Succeeded = false,
+                DeliveryMode = "Throttled",
+                Message = BuildTestEmailCooldownMessage(lastSentAt),
+                Error = "RateLimited",
+                TargetEmail = targetEmail
+            });
+        }
+
         var subject = string.IsNullOrWhiteSpace(request?.Subject)
-            ? $"grow.IT Resend Test ({DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC)"
+            ? $"grow.IT Resend Test ({now:yyyy-MM-dd HH:mm} UTC)"
             : request!.Subject!.Trim();
 
         var body = $@"
             <p>This is a grow.IT test email sent from the Settings security workspace.</p>
             <p><strong>Environment:</strong> {(_config["ASPNETCORE_ENVIRONMENT"] ?? "Unknown")}</p>
-            <p><strong>Sent At (UTC):</strong> {DateTime.UtcNow:O}</p>
+            <p><strong>Sent At (UTC):</strong> {now:O}</p>
             <p><strong>Tenant:</strong> {_tenantService.TenantId}</p>";
 
+        TestEmailLastSentAt[throttleKey] = now;
         var result = await _emailService.SendEmailDetailedAsync(targetEmail, subject, body);
+        if (!result.Succeeded)
+        {
+            TestEmailLastSentAt.TryRemove(throttleKey, out _);
+        }
 
         return Ok(new SendTestEmailResponse
         {
@@ -958,6 +995,14 @@ public class AdminController : ControllerBase
     {
         var bytes = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token));
         return Convert.ToHexString(bytes);
+    }
+
+    private static string BuildTestEmailCooldownMessage(DateTime lastSentAt)
+    {
+        var retryAt = lastSentAt.Add(TestEmailCooldown);
+        var remaining = retryAt.Subtract(DateTime.UtcNow);
+        var minutes = Math.Max(1, (int)Math.Ceiling(remaining.TotalMinutes));
+        return $"A test email was already sent recently. Please wait about {minutes} minute{(minutes == 1 ? string.Empty : "s")} before sending another one.";
     }
 
     private bool IsDevelopment() =>

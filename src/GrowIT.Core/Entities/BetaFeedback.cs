@@ -11,6 +11,8 @@ public class BetaFeedback
     public string Title { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
     public string? PageUrl { get; set; }
+    public string? SubmissionFingerprint { get; set; }
+    public string? IdempotencyKey { get; set; }
     public string Status { get; set; } = "Open";
     public string? AdminNotes { get; set; }
 

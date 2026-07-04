@@ -275,6 +275,10 @@
         {
             Notifications.Success("Your email is confirmed. You can sign in now.");
         }
+        else if (string.Equals(Reason, "email-already-confirmed", StringComparison.OrdinalIgnoreCase))
+        {
+            Notifications.Success("Your email was already confirmed. You can sign in now.");
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

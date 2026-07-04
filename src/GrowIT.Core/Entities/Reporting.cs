@@ -11,6 +11,8 @@ public class ReportRun : IMustHaveTenant
     public string Format { get; set; } = "pdf";
     public string ReportType { get; set; } = string.Empty;
     public string RequestPayloadJson { get; set; } = "{}";
+    public string? RequestFingerprint { get; set; }
+    public string? IdempotencyKey { get; set; }
     public string Status { get; set; } = "Queued";
     public string? ErrorMessage { get; set; }
     public DateTime? CompletedAt { get; set; }

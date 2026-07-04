@@ -4,6 +4,7 @@ using GrowIT.Core.Entities;
 using GrowIT.Infrastructure.Data;
 using GrowIT.Shared.DTOs;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GrowIT.Backend.Tests;
@@ -36,8 +37,10 @@ public class AuthEmailConfirmationTests
 
         Assert.True(first?.Succeeded);
         Assert.False(first?.AlreadyConfirmed);
+        Assert.Equal("confirm@example.test", first?.Email);
         Assert.True(second?.Succeeded);
         Assert.True(second?.AlreadyConfirmed);
+        Assert.Equal("confirm@example.test", second?.Email);
         Assert.Contains("already confirmed", second?.Message ?? string.Empty, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -58,6 +61,71 @@ public class AuthEmailConfirmationTests
 
         Assert.Contains("already confirmed", message?.Message ?? string.Empty, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("confirmation link", message?.Message ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ResendConfirmation_ThrottlesRepeatedRequests_ForUnconfirmedUser()
+    {
+        using var factory = new GrowItApiFactory(new Dictionary<string, string?>
+        {
+            ["ASPNETCORE_ENVIRONMENT"] = "Development",
+            ["Email:DevFileFallbackEnabled"] = "true",
+            ["Email:DevFileFallbackDirectory"] = "/tmp/growit-test-emails"
+        });
+        var user = await CreateConfirmationUserAsync(factory, emailConfirmed: false);
+
+        using var client = factory.CreateClient();
+        var request = new ResendConfirmationEmailRequest
+        {
+            Email = "confirm@example.test"
+        };
+
+        var firstResponse = await client.PostAsJsonAsync("/api/auth/resend-confirmation", request);
+        firstResponse.EnsureSuccessStatusCode();
+
+        var secondResponse = await client.PostAsJsonAsync("/api/auth/resend-confirmation", request);
+        secondResponse.EnsureSuccessStatusCode();
+        var secondMessage = await secondResponse.Content.ReadFromJsonAsync<MessageResponse>();
+
+        Assert.Contains("already sent recently", secondMessage?.Message ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var storedUser = await db.Users.IgnoreQueryFilters().FirstAsync(u => u.Id == user.Id);
+
+        Assert.Equal(1, storedUser.ConfirmationEmailSendCount);
+        Assert.NotNull(storedUser.LastConfirmationEmailSentAt);
+    }
+
+    [Fact]
+    public async Task ForgotPassword_ThrottlesRepeatedRequests_ForSameUser()
+    {
+        using var factory = new GrowItApiFactory(new Dictionary<string, string?>
+        {
+            ["ASPNETCORE_ENVIRONMENT"] = "Development",
+            ["Email:DevFileFallbackEnabled"] = "true",
+            ["Email:DevFileFallbackDirectory"] = "/tmp/growit-test-emails"
+        });
+        var user = await CreateConfirmationUserAsync(factory, emailConfirmed: true);
+
+        using var client = factory.CreateClient();
+        var request = new ForgotPasswordRequest
+        {
+            Email = "confirm@example.test"
+        };
+
+        var firstResponse = await client.PostAsJsonAsync("/api/auth/forgot-password", request);
+        firstResponse.EnsureSuccessStatusCode();
+
+        var secondResponse = await client.PostAsJsonAsync("/api/auth/forgot-password", request);
+        secondResponse.EnsureSuccessStatusCode();
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var storedUser = await db.Users.IgnoreQueryFilters().FirstAsync(u => u.Id == user.Id);
+
+        Assert.Equal(1, storedUser.PasswordResetEmailSendCount);
+        Assert.NotNull(storedUser.LastPasswordResetEmailSentAt);
     }
 
     private static async Task<User> CreateConfirmationUserAsync(GrowItApiFactory factory, bool emailConfirmed)

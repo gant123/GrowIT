@@ -1165,7 +1165,10 @@
             var response = await AdminService.ResendInviteAsync(inviteId, _cts.Token);
             if (_disposed) return;
             _inviteMessage = response.Message;
-            _lastInviteLink = response.InviteLink;
+            if (!string.IsNullOrWhiteSpace(response.InviteLink))
+            {
+                _lastInviteLink = response.InviteLink;
+            }
             _invites = await AdminService.GetInvitesAsync(_cts.Token);
             _inviteActivity = await AdminService.GetInviteActivityAsync(30, _cts.Token);
         }

@@ -1,0 +1,44 @@
+.confirmation-state-icon {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    margin: 0 auto 1rem;
+    border-radius: 50%;
+    font-size: 1.6rem;
+}
+
+.confirmation-state-icon.loading {
+    color: #0f2f5f;
+    background: #e0f2fe;
+}
+
+.confirmation-state-icon.confirmed {
+    color: #14532d;
+    background: #dcfce7;
+}
+
+.confirmation-state-icon.already {
+    color: #075985;
+    background: #e0f2fe;
+}
+
+.confirmation-state-icon.failed {
+    color: #991b1b;
+    background: #fee2e2;
+}
+
+.confirmation-help {
+    margin: 1rem 0;
+}
+
+.auth-alert.success {
+    border-color: #bbf7d0;
+    color: #14532d;
+    background: #f0fdf4;
+}
+
+.auth-alert i {
+    flex: 0 0 auto;
+    font-size: 1.1rem;
+}

@@ -9,6 +9,7 @@ using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using System.Globalization;
 using System.Net;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
@@ -28,6 +29,8 @@ public interface IReportManagementService
 
 public sealed class ReportManagementService : IReportManagementService
 {
+    private static readonly TimeSpan DuplicateReportWindow = TimeSpan.FromMinutes(2);
+
     private readonly ApplicationDbContext _context;
     private readonly ICurrentTenantService _tenantService;
     private readonly ICurrentUserService _currentUserService;
@@ -150,6 +153,27 @@ public sealed class ReportManagementService : IReportManagementService
         var reportType = NormalizeReportType(request.ReportType, allowCustom: true);
         var format = NormalizeReportFormat(request.Format);
         var normalizedRequest = NormalizeGenerateRequest(request, reportType, format);
+        var now = DateTime.UtcNow;
+        var requestPayloadJson = JsonSerializer.Serialize(normalizedRequest);
+        var requestFingerprint = Sha256Hex(requestPayloadJson);
+        var requestedByUserId = _currentUserService.UserId;
+        var recentSince = now.Subtract(DuplicateReportWindow);
+
+        var existing = await _context.ReportRuns
+            .AsNoTracking()
+            .Where(r =>
+                r.TenantId == tenantId.Value &&
+                r.RequestedByUserId == requestedByUserId &&
+                r.RequestFingerprint == requestFingerprint &&
+                r.GeneratedAt >= recentSince &&
+                r.Status != "Failed")
+            .OrderByDescending(r => r.GeneratedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (existing is not null)
+        {
+            return MapRecentReport(existing);
+        }
 
         var run = new ReportRun
         {
@@ -158,13 +182,39 @@ public sealed class ReportManagementService : IReportManagementService
             Name = BuildReportName(reportType),
             Format = format,
             ReportType = reportType,
-            RequestPayloadJson = JsonSerializer.Serialize(normalizedRequest),
+            RequestPayloadJson = requestPayloadJson,
+            RequestFingerprint = requestFingerprint,
+            IdempotencyKey = BuildIdempotencyKey("report", tenantId.Value, requestedByUserId, requestFingerprint, now, DuplicateReportWindow),
             Status = "Queued",
-            RequestedByUserId = _currentUserService.UserId,
-            GeneratedAt = DateTime.UtcNow
+            RequestedByUserId = requestedByUserId,
+            GeneratedAt = now
         };
 
         _context.ReportRuns.Add(run);
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            var duplicate = await _context.ReportRuns
+                .AsNoTracking()
+                .Where(r =>
+                    r.TenantId == tenantId.Value &&
+                    r.RequestedByUserId == requestedByUserId &&
+                    r.RequestFingerprint == requestFingerprint &&
+                    r.GeneratedAt >= recentSince &&
+                    r.Status != "Failed")
+                .OrderByDescending(r => r.GeneratedAt)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (duplicate is null)
+            {
+                throw;
+            }
+
+            return MapRecentReport(duplicate);
+        }
 
         try
         {
@@ -327,6 +377,17 @@ public sealed class ReportManagementService : IReportManagementService
     private static string BuildReportName(string reportType)
     {
         return $"{reportType}-{DateTime.UtcNow:yyyyMMdd-HHmm}";
+    }
+
+    private static string BuildIdempotencyKey(string scope, Guid tenantId, Guid? userId, string fingerprint, DateTime now, TimeSpan window)
+    {
+        var bucketTicks = now.Ticks - (now.Ticks % window.Ticks);
+        return Sha256Hex($"{scope}|{tenantId}|{userId?.ToString() ?? "system"}|{fingerprint}|{bucketTicks}");
+    }
+
+    private static string Sha256Hex(string value)
+    {
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
     }
 
     private static GenerateReportRequest NormalizeGenerateRequest(GenerateReportRequest request, string reportType, string format)

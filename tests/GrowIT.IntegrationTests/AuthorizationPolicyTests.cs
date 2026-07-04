@@ -413,6 +413,52 @@ public class AuthorizationPolicyTests
         Assert.False(user.IsActive);
     }
 
+    [Fact]
+    public async Task ResendInvite_ThrottlesRecentInviteWithoutRotatingToken()
+    {
+        using var factory = new GrowItApiFactory();
+        var tenantId = Guid.NewGuid();
+        var inviteId = Guid.NewGuid();
+        var sentAt = DateTime.UtcNow.AddMinutes(-2);
+        const string originalTokenHash = "ORIGINAL_HASH";
+
+        await factory.SeedAsync(db =>
+        {
+            db.Tenants.Add(new Tenant { Id = tenantId, Name = "Invite Test Org" });
+            db.OrganizationInvites.Add(new OrganizationInvite
+            {
+                Id = inviteId,
+                TenantId = tenantId,
+                Email = "invitee@example.test",
+                FirstName = "Invite",
+                LastName = "User",
+                Role = "Member",
+                TokenHash = originalTokenHash,
+                CreatedAt = DateTime.UtcNow.AddMinutes(-3),
+                SentAt = sentAt,
+                ExpiresAt = DateTime.UtcNow.AddDays(7)
+            });
+
+            return Task.CompletedTask;
+        });
+
+        using var client = factory.CreateTenantClient(tenantId, role: "Admin");
+        var response = await client.PostAsJsonAsync($"/api/admin/invites/{inviteId}/resend", new { });
+
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<CreateOrganizationInviteResponse>();
+
+        Assert.Contains("already sent recently", payload?.Message ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        Assert.True(string.IsNullOrWhiteSpace(payload?.InviteLink));
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var invite = await db.OrganizationInvites.IgnoreQueryFilters().FirstAsync(i => i.Id == inviteId);
+
+        Assert.Equal(originalTokenHash, invite.TokenHash);
+        Assert.Equal(sentAt, invite.SentAt);
+    }
+
     private static User NewAdminTestUser(Guid tenantId, string email, string firstName, string lastName, Guid? id = null) => new()
     {
         Id = id ?? Guid.NewGuid(),

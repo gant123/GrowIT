@@ -19,6 +19,8 @@ namespace GrowIT.Backend.Controllers;
 public class AuthController : ControllerBase
 {
     private const string InviteAuditLink = "/settings?tab=invites";
+    private static readonly TimeSpan ConfirmationEmailCooldown = TimeSpan.FromMinutes(10);
+    private static readonly TimeSpan PasswordResetEmailCooldown = TimeSpan.FromMinutes(10);
     private readonly ApplicationDbContext _context;
     private readonly TokenService _tokenService;
     private readonly IEmailService _emailService;
@@ -218,6 +220,12 @@ public class AuthController : ControllerBase
             return Ok(new MessageResponse { Message = "If your email is in our system, you will receive a reset link." });
         }
 
+        var reservation = await TryReservePasswordResetEmailSendAsync(user);
+        if (!reservation.Reserved)
+        {
+            return Ok(new MessageResponse { Message = "If your email is in our system, you will receive a reset link." });
+        }
+
         var token = await _userManager.GeneratePasswordResetTokenAsync(user);
 
         // Send email
@@ -237,6 +245,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
+            await ReleasePasswordResetEmailReservationAsync(user);
             _logger.LogError(ex, "Failed to send password reset email for {Email}.", user.Email ?? request.Email.Trim());
         }
 
@@ -271,16 +280,19 @@ public class AuthController : ControllerBase
             {
                 Succeeded = true,
                 AlreadyConfirmed = true,
+                Email = user.Email ?? string.Empty,
                 Message = "Your email is already confirmed. You can sign in."
             });
         }
 
-        var result = await _userManager.ConfirmEmailAsync(user, token);
+        var normalizedToken = token.Trim().Replace(' ', '+');
+        var result = await _userManager.ConfirmEmailAsync(user, normalizedToken);
         if (!result.Succeeded)
         {
             return BadRequest(new ConfirmEmailResultDto
             {
                 Succeeded = false,
+                Email = user.Email ?? string.Empty,
                 Message = string.Join(" ", result.Errors.Select(e => e.Description))
             });
         }
@@ -289,6 +301,7 @@ public class AuthController : ControllerBase
         {
             Succeeded = true,
             AlreadyConfirmed = false,
+            Email = user.Email ?? string.Empty,
             Message = "Your email has been confirmed. You can sign in."
         });
     }
@@ -317,7 +330,11 @@ public class AuthController : ControllerBase
 
         try
         {
-            await SendEmailConfirmationAsync(user);
+            var sendResult = await SendEmailConfirmationAsync(user);
+            if (!sendResult.Sent)
+            {
+                return Ok(new MessageResponse { Message = sendResult.Message });
+            }
         }
         catch (Exception ex)
         {
@@ -537,22 +554,267 @@ public class AuthController : ControllerBase
         }
     }
 
-    private async Task SendEmailConfirmationAsync(User user)
+    private async Task<ConfirmationEmailSendResult> SendEmailConfirmationAsync(User user)
     {
+        var reservation = await TryReserveConfirmationEmailSendAsync(user);
+        if (!reservation.Reserved)
+        {
+            return new ConfirmationEmailSendResult(false, BuildConfirmationCooldownMessage(reservation.LastSentAt));
+        }
+
         var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
         var clientUrl = _config["ClientUrl"] ?? throw new InvalidOperationException("ClientUrl configuration is required.");
+        var email = user.Email ?? throw new InvalidOperationException("User email is required.");
         var confirmationLink =
-            $"{clientUrl.TrimEnd('/')}/confirm-email?userId={HttpUtility.UrlEncode(user.Id.ToString())}&token={HttpUtility.UrlEncode(token)}";
+            $"{clientUrl.TrimEnd('/')}/confirm-email?userId={HttpUtility.UrlEncode(user.Id.ToString())}&email={HttpUtility.UrlEncode(email)}&token={HttpUtility.UrlEncode(token)}";
+        var safeConfirmationLink = HttpUtility.HtmlEncode(confirmationLink);
 
         var body = $@"
-            <h1>Confirm your grow.IT email</h1>
-            <p>Welcome to grow.IT. Confirm your email to activate your workspace and sign in.</p>
-            <p><a href='{confirmationLink}'>{confirmationLink}</a></p>
-            <p>If you did not create this account, you can ignore this email.</p>";
+<!doctype html>
+<html lang='en'>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <title>Confirm your grow.IT email</title>
+</head>
+<body style='margin:0;background:#f4f7fb;font-family:Arial,Helvetica,sans-serif;color:#10203c;'>
+  <table role='presentation' width='100%' cellspacing='0' cellpadding='0' style='background:#f4f7fb;padding:32px 16px;'>
+    <tr>
+      <td align='center'>
+        <table role='presentation' width='100%' cellspacing='0' cellpadding='0' style='max-width:560px;background:#ffffff;border:1px solid #dbe3ef;'>
+          <tr>
+            <td style='padding:28px 28px 16px;'>
+              <div style='font-size:24px;font-weight:800;color:#0f2f5f;letter-spacing:0;'>grow<span style='color:#16803d;'>.IT</span></div>
+              <h1 style='margin:24px 0 8px;font-size:26px;line-height:1.25;color:#10203c;'>Confirm your email</h1>
+              <p style='margin:0;color:#475569;font-size:16px;line-height:1.6;'>Welcome to grow.IT. Confirm this email address so your workspace can be activated and you can sign in.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style='padding:8px 28px 24px;'>
+              <a href='{safeConfirmationLink}' style='display:inline-block;background:#16803d;color:#ffffff;text-decoration:none;font-weight:700;padding:13px 20px;border-radius:6px;'>Confirm email</a>
+            </td>
+          </tr>
+          <tr>
+            <td style='padding:0 28px 24px;'>
+              <p style='margin:0 0 8px;color:#64748b;font-size:13px;line-height:1.5;'>If the button does not work, copy and paste this link into your browser:</p>
+              <p style='margin:0;word-break:break-all;font-size:13px;line-height:1.5;'><a href='{safeConfirmationLink}' style='color:#0f5c2d;'>{safeConfirmationLink}</a></p>
+            </td>
+          </tr>
+          <tr>
+            <td style='padding:18px 28px;background:#f8fafc;border-top:1px solid #e2e8f0;'>
+              <p style='margin:0;color:#64748b;font-size:13px;line-height:1.5;'>If you did not create this account, you can ignore this email.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>";
 
-        await _emailService.SendEmailAsync(
-            user.Email ?? throw new InvalidOperationException("User email is required."),
-            "Confirm your grow.IT account",
-            body);
+        try
+        {
+            await _emailService.SendEmailAsync(
+                email,
+                "Confirm your grow.IT email",
+                body);
+        }
+        catch
+        {
+            await ReleaseConfirmationEmailReservationAsync(user);
+            throw;
+        }
+
+        return new ConfirmationEmailSendResult(true, "Confirmation email sent.");
     }
+
+    private async Task<ConfirmationEmailReservation> TryReserveConfirmationEmailSendAsync(User user)
+    {
+        var now = DateTime.UtcNow;
+        var cutoff = now.Subtract(ConfirmationEmailCooldown);
+
+        if (_context.Database.IsRelational())
+        {
+            var affected = await _context.Users
+                .IgnoreQueryFilters()
+                .Where(u => u.Id == user.Id &&
+                    !u.EmailConfirmed &&
+                    (u.LastConfirmationEmailSentAt == null || u.LastConfirmationEmailSentAt <= cutoff))
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(u => u.LastConfirmationEmailSentAt, now)
+                    .SetProperty(u => u.ConfirmationEmailSendCount, u => u.ConfirmationEmailSendCount + 1));
+
+            if (affected == 1)
+            {
+                user.LastConfirmationEmailSentAt = now;
+                user.ConfirmationEmailSendCount += 1;
+                return new ConfirmationEmailReservation(true, now);
+            }
+
+            var lastSent = await _context.Users
+                .IgnoreQueryFilters()
+                .Where(u => u.Id == user.Id)
+                .Select(u => u.LastConfirmationEmailSentAt)
+                .FirstOrDefaultAsync();
+
+            return new ConfirmationEmailReservation(false, lastSent);
+        }
+
+        var storedUser = await _context.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == user.Id);
+
+        if (storedUser is null || storedUser.EmailConfirmed)
+        {
+            return new ConfirmationEmailReservation(false, storedUser?.LastConfirmationEmailSentAt);
+        }
+
+        if (storedUser.LastConfirmationEmailSentAt.HasValue &&
+            storedUser.LastConfirmationEmailSentAt.Value > cutoff)
+        {
+            return new ConfirmationEmailReservation(false, storedUser.LastConfirmationEmailSentAt);
+        }
+
+        storedUser.LastConfirmationEmailSentAt = now;
+        storedUser.ConfirmationEmailSendCount += 1;
+        await _context.SaveChangesAsync();
+
+        user.LastConfirmationEmailSentAt = now;
+        user.ConfirmationEmailSendCount = storedUser.ConfirmationEmailSendCount;
+        return new ConfirmationEmailReservation(true, now);
+    }
+
+    private async Task ReleaseConfirmationEmailReservationAsync(User user)
+    {
+        if (_context.Database.IsRelational())
+        {
+            await _context.Users
+                .IgnoreQueryFilters()
+                .Where(u => u.Id == user.Id)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(u => u.LastConfirmationEmailSentAt, (DateTime?)null)
+                    .SetProperty(u => u.ConfirmationEmailSendCount, u => u.ConfirmationEmailSendCount > 0 ? u.ConfirmationEmailSendCount - 1 : 0));
+
+            user.LastConfirmationEmailSentAt = null;
+            user.ConfirmationEmailSendCount = Math.Max(0, user.ConfirmationEmailSendCount - 1);
+            return;
+        }
+
+        var storedUser = await _context.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == user.Id);
+
+        if (storedUser is null)
+        {
+            return;
+        }
+
+        storedUser.LastConfirmationEmailSentAt = null;
+        storedUser.ConfirmationEmailSendCount = Math.Max(0, storedUser.ConfirmationEmailSendCount - 1);
+        await _context.SaveChangesAsync();
+
+        user.LastConfirmationEmailSentAt = null;
+        user.ConfirmationEmailSendCount = storedUser.ConfirmationEmailSendCount;
+    }
+
+    private static string BuildConfirmationCooldownMessage(DateTime? lastSentAt)
+    {
+        if (!lastSentAt.HasValue)
+        {
+            return "A confirmation email was already requested recently. Check your inbox before requesting another one.";
+        }
+
+        var nextAllowedAt = lastSentAt.Value.Add(ConfirmationEmailCooldown);
+        var remaining = nextAllowedAt - DateTime.UtcNow;
+        var minutes = Math.Max(1, (int)Math.Ceiling(remaining.TotalMinutes));
+        return $"A confirmation email was already sent recently. Check your inbox or try again in about {minutes} minute{(minutes == 1 ? string.Empty : "s")}.";
+    }
+
+    private sealed record ConfirmationEmailReservation(bool Reserved, DateTime? LastSentAt);
+    private sealed record ConfirmationEmailSendResult(bool Sent, string Message);
+
+    private async Task<PasswordResetEmailReservation> TryReservePasswordResetEmailSendAsync(User user)
+    {
+        var now = DateTime.UtcNow;
+        var cutoff = now.Subtract(PasswordResetEmailCooldown);
+
+        if (_context.Database.IsRelational())
+        {
+            var affected = await _context.Users
+                .IgnoreQueryFilters()
+                .Where(u => u.Id == user.Id &&
+                    u.IsActive &&
+                    (u.LastPasswordResetEmailSentAt == null || u.LastPasswordResetEmailSentAt <= cutoff))
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(u => u.LastPasswordResetEmailSentAt, now)
+                    .SetProperty(u => u.PasswordResetEmailSendCount, u => u.PasswordResetEmailSendCount + 1));
+
+            if (affected == 1)
+            {
+                user.LastPasswordResetEmailSentAt = now;
+                user.PasswordResetEmailSendCount += 1;
+                return new PasswordResetEmailReservation(true);
+            }
+
+            return new PasswordResetEmailReservation(false);
+        }
+
+        var storedUser = await _context.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == user.Id);
+
+        if (storedUser is null || !storedUser.IsActive)
+        {
+            return new PasswordResetEmailReservation(false);
+        }
+
+        if (storedUser.LastPasswordResetEmailSentAt.HasValue &&
+            storedUser.LastPasswordResetEmailSentAt.Value > cutoff)
+        {
+            return new PasswordResetEmailReservation(false);
+        }
+
+        storedUser.LastPasswordResetEmailSentAt = now;
+        storedUser.PasswordResetEmailSendCount += 1;
+        await _context.SaveChangesAsync();
+
+        user.LastPasswordResetEmailSentAt = now;
+        user.PasswordResetEmailSendCount = storedUser.PasswordResetEmailSendCount;
+        return new PasswordResetEmailReservation(true);
+    }
+
+    private async Task ReleasePasswordResetEmailReservationAsync(User user)
+    {
+        if (_context.Database.IsRelational())
+        {
+            await _context.Users
+                .IgnoreQueryFilters()
+                .Where(u => u.Id == user.Id)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(u => u.LastPasswordResetEmailSentAt, (DateTime?)null)
+                    .SetProperty(u => u.PasswordResetEmailSendCount, u => u.PasswordResetEmailSendCount > 0 ? u.PasswordResetEmailSendCount - 1 : 0));
+
+            user.LastPasswordResetEmailSentAt = null;
+            user.PasswordResetEmailSendCount = Math.Max(0, user.PasswordResetEmailSendCount - 1);
+            return;
+        }
+
+        var storedUser = await _context.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Id == user.Id);
+
+        if (storedUser is null)
+        {
+            return;
+        }
+
+        storedUser.LastPasswordResetEmailSentAt = null;
+        storedUser.PasswordResetEmailSendCount = Math.Max(0, storedUser.PasswordResetEmailSendCount - 1);
+        await _context.SaveChangesAsync();
+
+        user.LastPasswordResetEmailSentAt = null;
+        user.PasswordResetEmailSendCount = storedUser.PasswordResetEmailSendCount;
+    }
+
+    private sealed record PasswordResetEmailReservation(bool Reserved);
 }

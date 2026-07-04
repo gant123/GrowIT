@@ -3,6 +3,7 @@ using System;
 using GrowIT.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace GrowIT.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260704191254_AddPasswordResetEmailSendTracking")]
+    partial class AddPasswordResetEmailSendTracking
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -115,9 +118,6 @@ namespace GrowIT.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("IdempotencyKey")
-                        .HasColumnType("text");
-
                     b.Property<string>("Message")
                         .IsRequired()
                         .HasColumnType("text");
@@ -136,9 +136,6 @@ namespace GrowIT.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<string>("SubmissionFingerprint")
-                        .HasColumnType("text");
-
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid");
 
@@ -153,14 +150,6 @@ namespace GrowIT.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("IdempotencyKey")
-                        .IsUnique()
-                        .HasFilter("\"IdempotencyKey\" IS NOT NULL");
-
-                    b.HasIndex("UserId", "SubmissionFingerprint", "CreatedAt");
 
                     b.ToTable("BetaFeedbacks");
                 });
@@ -891,9 +880,6 @@ namespace GrowIT.Infrastructure.Migrations
                     b.Property<DateTime>("GeneratedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("IdempotencyKey")
-                        .HasColumnType("text");
-
                     b.Property<DateTime?>("LastDownloadedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -903,9 +889,6 @@ namespace GrowIT.Infrastructure.Migrations
 
                     b.Property<string>("ReportType")
                         .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("RequestFingerprint")
                         .HasColumnType("text");
 
                     b.Property<string>("RequestPayloadJson")
@@ -923,12 +906,6 @@ namespace GrowIT.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("IdempotencyKey")
-                        .IsUnique()
-                        .HasFilter("\"IdempotencyKey\" IS NOT NULL");
-
-                    b.HasIndex("TenantId", "RequestedByUserId", "RequestFingerprint", "GeneratedAt");
 
                     b.ToTable("ReportRuns");
                 });

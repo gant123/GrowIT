@@ -73,6 +73,8 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
             entity.Property(u => u.IsActive).HasDefaultValue(true);
             entity.Property(u => u.NotifyInviteActivity).HasDefaultValue(true);
             entity.Property(u => u.NotifySystemAlerts).HasDefaultValue(true);
+            entity.Property(u => u.ConfirmationEmailSendCount).HasDefaultValue(0);
+            entity.Property(u => u.PasswordResetEmailSendCount).HasDefaultValue(0);
         });
 
         builder.Entity<IdentityRole<Guid>>(entity =>
@@ -176,6 +178,23 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
             .HasIndex(c => c.SubmittedAt);
         builder.Entity<ContactSubmission>()
             .HasIndex(c => c.IsReviewed);
+
+        builder.Entity<BetaFeedback>(entity =>
+        {
+            entity.HasIndex(f => f.CreatedAt);
+            entity.HasIndex(f => new { f.UserId, f.SubmissionFingerprint, f.CreatedAt });
+            entity.HasIndex(f => f.IdempotencyKey)
+                .IsUnique()
+                .HasFilter("\"IdempotencyKey\" IS NOT NULL");
+        });
+
+        builder.Entity<ReportRun>(entity =>
+        {
+            entity.HasIndex(r => new { r.TenantId, r.RequestedByUserId, r.RequestFingerprint, r.GeneratedAt });
+            entity.HasIndex(r => r.IdempotencyKey)
+                .IsUnique()
+                .HasFilter("\"IdempotencyKey\" IS NOT NULL");
+        });
 
         builder.Entity<UnauthorizedAccessAttempt>()
             .HasIndex(a => a.OccurredAt);

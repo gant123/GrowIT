@@ -19,6 +19,7 @@ public class ConfirmEmailResultDto
 {
     public bool Succeeded { get; set; }
     public bool AlreadyConfirmed { get; set; }
+    public string Email { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
 }
 

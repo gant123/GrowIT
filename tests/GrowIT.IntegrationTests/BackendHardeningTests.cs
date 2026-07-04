@@ -117,4 +117,115 @@ public class BackendHardeningTests
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task GenerateReport_ReusesRecentMatchingRun()
+    {
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(tenantId, userId, role: "Admin");
+
+        var request = new GenerateReportRequest
+        {
+            ReportType = ReportContract.ImpactSummary,
+            Format = "pdf"
+        };
+
+        var first = await client.PostAsJsonAsync("/api/reports/generate", request);
+        var second = await client.PostAsJsonAsync("/api/reports/generate", request);
+
+        first.EnsureSuccessStatusCode();
+        second.EnsureSuccessStatusCode();
+        var firstReport = await first.Content.ReadFromJsonAsync<RecentReport>();
+        var secondReport = await second.Content.ReadFromJsonAsync<RecentReport>();
+
+        Assert.NotNull(firstReport);
+        Assert.NotNull(secondReport);
+        Assert.Equal(firstReport!.Id, secondReport!.Id);
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var reportRuns = await db.ReportRuns.IgnoreQueryFilters()
+            .Where(r => r.TenantId == tenantId && r.RequestedByUserId == userId)
+            .ToListAsync();
+
+        Assert.Single(reportRuns);
+        Assert.False(string.IsNullOrWhiteSpace(reportRuns[0].RequestFingerprint));
+        Assert.False(string.IsNullOrWhiteSpace(reportRuns[0].IdempotencyKey));
+    }
+
+    [Fact]
+    public async Task SubmitFeedback_ReusesRecentMatchingSubmission()
+    {
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        using var factory = new GrowItApiFactory();
+        using var client = factory.CreateTenantClient(tenantId, userId, role: "Admin");
+
+        var request = new CreateBetaFeedbackRequest
+        {
+            Category = "Bug",
+            Severity = "High",
+            Title = "Email button issue",
+            Message = "The confirmation button was clicked twice.",
+            PageUrl = "/confirm-email"
+        };
+
+        var first = await client.PostAsJsonAsync("/api/feedback", request);
+        var second = await client.PostAsJsonAsync("/api/feedback", request);
+
+        first.EnsureSuccessStatusCode();
+        second.EnsureSuccessStatusCode();
+        var firstFeedback = await first.Content.ReadFromJsonAsync<BetaFeedbackListItemDto>();
+        var secondFeedback = await second.Content.ReadFromJsonAsync<BetaFeedbackListItemDto>();
+
+        Assert.NotNull(firstFeedback);
+        Assert.NotNull(secondFeedback);
+        Assert.Equal(firstFeedback!.Id, secondFeedback!.Id);
+
+        using var scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var feedbackItems = await db.BetaFeedbacks.IgnoreQueryFilters()
+            .Where(f => f.UserId == userId)
+            .ToListAsync();
+
+        Assert.Single(feedbackItems);
+        Assert.False(string.IsNullOrWhiteSpace(feedbackItems[0].SubmissionFingerprint));
+        Assert.False(string.IsNullOrWhiteSpace(feedbackItems[0].IdempotencyKey));
+    }
+
+    [Fact]
+    public async Task SendTestEmail_ThrottlesRepeatedSuccessfulSend()
+    {
+        var tenantId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        using var factory = new GrowItApiFactory(new Dictionary<string, string?>
+        {
+            ["ASPNETCORE_ENVIRONMENT"] = "Development",
+            ["Email:DevFileFallbackEnabled"] = "true",
+            ["Email:DevFileFallbackDirectory"] = "/tmp/growit-test-emails"
+        });
+        using var client = factory.CreateTenantClient(tenantId, userId, role: "SuperAdmin");
+
+        var request = new SendTestEmailRequest
+        {
+            ToEmail = $"test-{Guid.NewGuid():N}@example.com"
+        };
+
+        var first = await client.PostAsJsonAsync("/api/admin/email-test", request);
+        var second = await client.PostAsJsonAsync("/api/admin/email-test", request);
+
+        first.EnsureSuccessStatusCode();
+        second.EnsureSuccessStatusCode();
+        var firstResult = await first.Content.ReadFromJsonAsync<SendTestEmailResponse>();
+        var secondResult = await second.Content.ReadFromJsonAsync<SendTestEmailResponse>();
+
+        Assert.NotNull(firstResult);
+        Assert.NotNull(secondResult);
+        Assert.True(firstResult!.Succeeded);
+        Assert.False(secondResult!.Succeeded);
+        Assert.Equal("Throttled", secondResult.DeliveryMode);
+        Assert.Contains("already sent recently", secondResult.Message, StringComparison.OrdinalIgnoreCase);
+    }
 }
