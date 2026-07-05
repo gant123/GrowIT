@@ -442,7 +442,7 @@ public class BillingController : ControllerBase
         }
 
         _context.SubscriptionPlans.AddRange(
-            BuildDefaultPlan("Free", 0, 0, 2, 25, "Basic client records", "Tasks", "Impact snapshots"),
+            BuildDefaultPlan("Free", 0, 0, 2, 25, "Basic client records", "Follow-ups", "Impact snapshots"),
             BuildDefaultPlan("Pro", 49, 490, 10, 500, "Full case management", "Financial tracking", "Reports", "Documents"),
             BuildDefaultPlan("Enterprise", 149, 1490, 100, 5000, "Advanced reporting", "Priority support", "Multi-team operations", "Audit visibility"));
 

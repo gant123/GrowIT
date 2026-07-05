@@ -164,6 +164,23 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
             });
         });
 
+        builder.Entity<AppTask>(entity =>
+        {
+            entity.HasOne(t => t.AssignedUser)
+                .WithMany()
+                .HasForeignKey(t => t.AssignedTo)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasOne(t => t.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(t => t.CreatedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasIndex(t => new { t.TenantId, t.Status, t.DueDate });
+            entity.HasIndex(t => t.CreatedByUserId);
+            entity.Property(t => t.Type).HasDefaultValue(GrowIT.Shared.Enums.ActionItemType.ClientFollowUp);
+        });
+
         // D. Public content indexes
         // -------------------------------------------------------------
         builder.Entity<BlogPost>()

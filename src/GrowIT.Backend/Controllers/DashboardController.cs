@@ -119,7 +119,7 @@ public class DashboardController : ControllerBase
             Color = m.Outcome == ImpactOutcome.Improved ? "text-primary" : "text-warning"
         }));
 
-        // 8. TASKS: Pending Follow-Ups
+        // 8. Follow-ups: pending action items.
         var followUps = await _context.Tasks
             .Include(t => t.Client)
             .Include(t => t.AssignedUser)

@@ -21,7 +21,7 @@ public class DashboardStatsDto
     // "Recent Activity" (Feed)
     public List<ActivityItem> RecentActivity { get; set; } = new();
     
-    // "To-Grow List" (Tasks)
+    // "To-Grow List" (follow-up action items)
     public List<TaskItem> PendingFollowUps { get; set; } = new();
 }
 

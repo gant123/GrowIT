@@ -300,20 +300,27 @@ public sealed class DemoDataSeeder
         }
         _db.GrowthPlans.AddRange(plans);
 
-        // Tasks
+        // Follow-up action items
         var taskStatuses = new[] { GrowIT.Shared.Enums.TaskStatus.Pending, GrowIT.Shared.Enums.TaskStatus.Completed };
         var tasks = new List<AppTask>();
         for (var i = 0; i < 5; i++)
         {
             var client = clients[_rng.Next(clients.Count)];
+            var status = taskStatuses[_rng.Next(taskStatuses.Length)];
             tasks.Add(new AppTask
             {
                 TenantId = tenant.Id,
                 ClientId = client.Id,
                 AssignedTo = staffIds[_rng.Next(staffIds.Count)],
+                CreatedByUserId = staffIds[_rng.Next(staffIds.Count)],
+                Type = GrowIT.Shared.Enums.ActionItemType.ClientFollowUp,
                 DueDate = Utc(DateTime.UtcNow.AddDays(_rng.Next(-10, 20))),
-                Status = taskStatuses[_rng.Next(taskStatuses.Length)],
+                Status = status,
                 Notes = "Follow up on documentation and next steps.",
+                CreatedAt = Utc(DateTime.UtcNow.AddDays(-_rng.Next(5, 60))),
+                CompletedAt = status == GrowIT.Shared.Enums.TaskStatus.Completed
+                    ? Utc(DateTime.UtcNow.AddDays(-_rng.Next(1, 20)))
+                    : null
             });
         }
         _db.Tasks.AddRange(tasks);

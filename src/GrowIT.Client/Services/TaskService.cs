@@ -5,6 +5,7 @@ namespace GrowIT.Client.Services;
 public interface ITaskService
 {
     Task<List<TaskListDto>> GetTasksAsync(TaskQueryParams? query = null, CancellationToken ct = default);
+    Task<List<TaskAssigneeDto>> GetAssigneesAsync(CancellationToken ct = default);
     Task<Guid> CreateTaskAsync(CreateTaskRequest request, CancellationToken ct = default);
     Task UpdateTaskAsync(Guid id, UpdateTaskRequest request, CancellationToken ct = default);
     Task UpdateTaskStatusAsync(Guid id, GrowIT.Shared.Enums.TaskStatus status, CancellationToken ct = default);
@@ -22,6 +23,9 @@ public class TaskService : BaseApiService, ITaskService
         return await GetAsync<List<TaskListDto>>($"{Endpoint}{BuildQuery(query)}", ct) ?? [];
     }
 
+    public async Task<List<TaskAssigneeDto>> GetAssigneesAsync(CancellationToken ct = default) =>
+        await GetAsync<List<TaskAssigneeDto>>($"{Endpoint}/assignees", ct) ?? [];
+
     public async Task<Guid> CreateTaskAsync(CreateTaskRequest request, CancellationToken ct = default)
     {
         var response = await PostAsync<CreateTaskRequest, EntityCreatedResponse>(Endpoint, request, ct);
@@ -32,7 +36,7 @@ public class TaskService : BaseApiService, ITaskService
         PutAsync($"{Endpoint}/{id}", request, ct);
 
     public Task UpdateTaskStatusAsync(Guid id, GrowIT.Shared.Enums.TaskStatus status, CancellationToken ct = default) =>
-        PatchAsync<UpdateTaskStatusRequest, object>($"{Endpoint}/{id}/status", new UpdateTaskStatusRequest { Status = status }, ct);
+        PatchAsync<UpdateTaskStatusRequest, TaskListDto>($"{Endpoint}/{id}/status", new UpdateTaskStatusRequest { Status = status }, ct);
 
     public Task DeleteTaskAsync(Guid id, CancellationToken ct = default) =>
         DeleteAsync($"{Endpoint}/{id}", ct);

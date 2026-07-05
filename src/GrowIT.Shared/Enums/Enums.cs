@@ -14,6 +14,7 @@ public enum LifePhase { Crisis, Stable, Thriving }
 public enum DocumentCategory { ID, Bill, Contract, Other }
 
 public enum TaskStatus { Pending, Completed, Skipped }
+public enum ActionItemType { ClientFollowUp, Documentation, Funding, BoardGovernance, Program, Administrative, Other }
 public enum ImpactOutcome { Improved, Maintained, Regressed, Unknown }
 
 public enum UserStatus { Active, Inactive, Pending }

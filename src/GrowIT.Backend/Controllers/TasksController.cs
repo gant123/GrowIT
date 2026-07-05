@@ -36,6 +36,7 @@ public class TasksController : ControllerBase
         var tasks = _context.Tasks
             .Include(t => t.Client)
             .Include(t => t.AssignedUser)
+            .Include(t => t.CreatedByUser)
             .AsQueryable();
 
         if (query.ClientId.HasValue)
@@ -80,14 +81,53 @@ public class TasksController : ControllerBase
                 AssignedToName = t.AssignedUser != null
                     ? t.AssignedUser.FirstName + " " + t.AssignedUser.LastName
                     : "Unassigned",
+                CreatedByUserId = t.CreatedByUserId,
+                CreatedByName = t.CreatedByUser != null
+                    ? t.CreatedByUser.FirstName + " " + t.CreatedByUser.LastName
+                    : null,
+                Type = t.Type,
                 DueDate = t.DueDate,
                 Status = t.Status,
                 Notes = t.Notes,
-                CreatedAt = t.CreatedAt
+                CreatedAt = t.CreatedAt,
+                UpdatedAt = t.UpdatedAt,
+                CompletedAt = t.CompletedAt
             })
             .ToListAsync();
 
         return Ok(result);
+    }
+
+    [HttpGet("assignees")]
+    [Authorize(Policy = "ServiceWriter")]
+    public async Task<ActionResult<List<TaskAssigneeDto>>> GetAssignees()
+    {
+        var tenantId = _tenantService.TenantId;
+        if (!tenantId.HasValue || tenantId == Guid.Empty)
+        {
+            return Unauthorized("No valid tenant context found.");
+        }
+
+        var users = await _context.Users
+            .AsNoTracking()
+            .Where(u => u.TenantId == tenantId.Value && u.IsActive)
+            .OrderBy(u => u.FirstName)
+            .ThenBy(u => u.LastName)
+            .Select(u => new TaskAssigneeDto
+            {
+                Id = u.Id,
+                FullName = (u.FirstName + " " + u.LastName).Trim(),
+                Email = u.Email ?? string.Empty,
+                IsActive = u.IsActive
+            })
+            .ToListAsync();
+
+        foreach (var user in users.Where(u => string.IsNullOrWhiteSpace(u.FullName)))
+        {
+            user.FullName = string.IsNullOrWhiteSpace(user.Email) ? "Team member" : user.Email;
+        }
+
+        return Ok(users);
     }
 
     [HttpPost]
@@ -106,15 +146,18 @@ public class TasksController : ControllerBase
             return BadRequest(validationError);
         }
 
+        var now = DateTime.UtcNow;
         var task = new AppTask
         {
             TenantId = tenantId.Value,
             ClientId = request.ClientId,
             AssignedTo = request.AssignedTo,
+            CreatedByUserId = _currentUserService.UserId,
+            Type = request.Type,
             DueDate = ToUtcDate(request.DueDate),
-            Notes = request.Notes,
+            Notes = request.Notes.Trim(),
             Status = GrowIT.Shared.Enums.TaskStatus.Pending,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = now
         };
 
         _context.Tasks.Add(task);
@@ -152,12 +195,14 @@ public class TasksController : ControllerBase
 
         task.ClientId = request.ClientId;
         task.AssignedTo = request.AssignedTo;
+        task.Type = request.Type;
         task.DueDate = ToUtcDate(request.DueDate);
-        task.Notes = request.Notes;
-        task.Status = request.Status;
+        task.Notes = request.Notes.Trim();
+        SetTaskStatus(task, request.Status);
+        task.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
-        return Ok();
+        return Ok(await FindTaskDtoAsync(task.Id));
     }
 
     [HttpPatch("{id:guid}/status")]
@@ -170,10 +215,11 @@ public class TasksController : ControllerBase
             return NotFound("Task not found.");
         }
 
-        task.Status = request.Status;
+        SetTaskStatus(task, request.Status);
+        task.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
 
-        return Ok();
+        return Ok(await FindTaskDtoAsync(task.Id));
     }
 
     [HttpDelete("{id:guid}")]
@@ -211,4 +257,41 @@ public class TasksController : ControllerBase
 
     private static DateTime ToUtcDate(DateTime value) =>
         DateTime.SpecifyKind(value.Date, DateTimeKind.Utc);
+
+    private static void SetTaskStatus(AppTask task, GrowIT.Shared.Enums.TaskStatus status)
+    {
+        task.Status = status;
+        task.CompletedAt = status == GrowIT.Shared.Enums.TaskStatus.Completed
+            ? task.CompletedAt ?? DateTime.UtcNow
+            : null;
+    }
+
+    private async Task<TaskListDto?> FindTaskDtoAsync(Guid id)
+    {
+        return await _context.Tasks
+            .AsNoTracking()
+            .Where(t => t.Id == id)
+            .Select(t => new TaskListDto
+            {
+                Id = t.Id,
+                ClientId = t.ClientId,
+                ClientName = t.Client != null ? t.Client.FirstName + " " + t.Client.LastName : "Unknown",
+                AssignedTo = t.AssignedTo,
+                AssignedToName = t.AssignedUser != null
+                    ? t.AssignedUser.FirstName + " " + t.AssignedUser.LastName
+                    : "Unassigned",
+                CreatedByUserId = t.CreatedByUserId,
+                CreatedByName = t.CreatedByUser != null
+                    ? t.CreatedByUser.FirstName + " " + t.CreatedByUser.LastName
+                    : null,
+                Type = t.Type,
+                DueDate = t.DueDate,
+                Status = t.Status,
+                Notes = t.Notes,
+                CreatedAt = t.CreatedAt,
+                UpdatedAt = t.UpdatedAt,
+                CompletedAt = t.CompletedAt
+            })
+            .FirstOrDefaultAsync();
+    }
 }

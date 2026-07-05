@@ -104,6 +104,7 @@ public sealed class AscScoreService : IAscScoreService
             .Select(t => new
             {
                 t.CreatedAt,
+                t.CompletedAt,
                 t.Status
             })
             .ToListAsync(cancellationToken);
@@ -210,8 +211,8 @@ public sealed class AscScoreService : IAscScoreService
                 [
                     (evidence.ActiveUsers >= 2, 0.35m, "More than one active team user is in the workspace.", "Add at least one more board, staff, or volunteer user."),
                     (evidence.ActiveUsers >= 3, 0.20m, "Multiple users can share responsibility.", "Invite enough team members to show role depth."),
-                    (evidence.Tasks >= 1, 0.20m, "Team follow-up work is being tracked.", "Create team tasks for follow-ups and document collection."),
-                    (evidence.CompletedTasks >= 2, 0.15m, "Completed tasks show operating follow-through.", "Complete tracked tasks as work is finished."),
+                    (evidence.Tasks >= 1, 0.20m, "Team follow-up work is being tracked.", "Create follow-ups for next steps and document collection."),
+                    (evidence.CompletedTasks >= 2, 0.15m, "Completed follow-ups show operating follow-through.", "Close follow-ups as work is finished."),
                     (evidence.Documents >= 3, 0.10m, "Documents support governance review.", "Upload board, policy, or authorization documents.")
                 ]),
             BuildPillar(
@@ -286,8 +287,8 @@ public sealed class AscScoreService : IAscScoreService
                 "bi bi-arrow-repeat",
                 0.9m,
                 [
-                    (evidence.Tasks >= 3, 0.20m, "Operational tasks are being tracked.", "Track recurring follow-ups and administrative work."),
-                    (evidence.CompletedTasks >= 2, 0.20m, "Completed tasks show follow-through.", "Close tasks when work is done."),
+                    (evidence.Tasks >= 3, 0.20m, "Operational follow-ups are being tracked.", "Track recurring follow-ups and administrative work."),
+                    (evidence.CompletedTasks >= 2, 0.20m, "Completed follow-ups show follow-through.", "Close follow-ups when work is done."),
                     (evidence.GrowthPlans >= 2, 0.20m, "Growth plans show repeatable service planning.", "Create more growth plans for active cases."),
                     (evidence.Investments >= 5, 0.15m, "Service records show repeat activity.", "Keep entering service records as work happens."),
                     (evidence.VerifiedActivityMonths >= 3, 0.15m, "Activity spans multiple months.", "Build a longer record of consistent use.")

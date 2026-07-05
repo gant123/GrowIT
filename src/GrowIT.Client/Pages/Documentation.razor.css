@@ -1,0 +1,224 @@
+.documentation-page {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.doc-hero .card-body {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(320px, 0.8fr);
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.doc-kicker {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 0.25rem 0.65rem;
+    border-radius: 999px;
+    background: rgba(34, 197, 94, 0.12);
+    color: var(--growit-green);
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+}
+
+.doc-hero h2,
+.doc-panel h3,
+.doc-card h3,
+.doc-steps h3 {
+    color: var(--growit-text-primary);
+}
+
+.doc-hero h2 {
+    font-size: 1.75rem;
+    line-height: 1.2;
+    margin-bottom: 0.75rem;
+}
+
+.doc-hero p,
+.doc-card p,
+.doc-steps p,
+.doc-panel p {
+    color: var(--growit-text-secondary);
+    margin-bottom: 0;
+}
+
+.doc-flow {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.doc-flow div {
+    min-height: 104px;
+    border: 1px solid var(--growit-border);
+    border-radius: 8px;
+    padding: 1rem;
+    background: var(--growit-surface);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.35rem;
+}
+
+.doc-flow strong {
+    font-size: 1.4rem;
+    color: var(--growit-green);
+}
+
+.doc-flow span {
+    color: var(--growit-text-primary);
+    font-weight: 700;
+}
+
+.doc-flow i {
+    color: var(--growit-text-muted);
+}
+
+.doc-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.doc-card-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.doc-card,
+.doc-panel,
+.doc-steps article {
+    border: 1px solid var(--growit-border);
+    border-radius: 8px;
+    background: var(--growit-card-bg);
+    padding: 1.15rem;
+}
+
+.doc-card i {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(20, 83, 45, 0.1);
+    color: var(--growit-green);
+    font-size: 1.1rem;
+    margin-bottom: 0.85rem;
+}
+
+.doc-card h3,
+.doc-steps h3,
+.doc-panel h3 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.doc-steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.doc-steps article {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.doc-steps span {
+    color: var(--growit-green);
+    font-weight: 700;
+    font-size: 0.8rem;
+}
+
+.doc-steps a,
+.doc-table a {
+    color: var(--growit-green);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.doc-table-wrap {
+    overflow: hidden;
+}
+
+.doc-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.doc-table th,
+.doc-table td {
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid var(--growit-border);
+    vertical-align: top;
+}
+
+.doc-table th {
+    text-align: left;
+    color: var(--growit-text-primary);
+    background: var(--growit-surface);
+}
+
+.doc-table td {
+    color: var(--growit-text-secondary);
+}
+
+.doc-table tr:last-child td {
+    border-bottom: 0;
+}
+
+.doc-split {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.doc-checklist ol {
+    margin: 0;
+    padding-left: 1.25rem;
+    color: var(--growit-text-secondary);
+}
+
+.doc-checklist li + li {
+    margin-top: 0.55rem;
+}
+
+@media (max-width: 1100px) {
+    .doc-hero .card-body,
+    .doc-card-grid,
+    .doc-steps {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .doc-flow {
+        grid-template-columns: 1fr;
+    }
+
+    .doc-flow i {
+        display: none;
+    }
+}
+
+@media (max-width: 700px) {
+    .doc-hero .card-body,
+    .doc-card-grid,
+    .doc-steps,
+    .doc-split {
+        grid-template-columns: 1fr;
+    }
+
+    .doc-table-wrap {
+        overflow-x: auto;
+    }
+
+    .doc-table {
+        min-width: 720px;
+    }
+}

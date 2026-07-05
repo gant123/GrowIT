@@ -9,11 +9,24 @@ public class TaskListDto
     public string ClientName { get; set; } = string.Empty;
     public Guid AssignedTo { get; set; }
     public string AssignedToName { get; set; } = string.Empty;
+    public Guid? CreatedByUserId { get; set; }
+    public string? CreatedByName { get; set; }
+    public GrowIT.Shared.Enums.ActionItemType Type { get; set; } = GrowIT.Shared.Enums.ActionItemType.ClientFollowUp;
     public DateTime DueDate { get; set; }
     public GrowIT.Shared.Enums.TaskStatus Status { get; set; }
     public string Notes { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
     public bool IsOverdue => Status == GrowIT.Shared.Enums.TaskStatus.Pending && DueDate.Date < DateTime.UtcNow.Date;
+}
+
+public class TaskAssigneeDto
+{
+    public Guid Id { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public bool IsActive { get; set; }
 }
 
 public class TaskQueryParams
@@ -41,10 +54,13 @@ public class CreateTaskRequest
     [Required]
     public Guid AssignedTo { get; set; }
 
+    public GrowIT.Shared.Enums.ActionItemType Type { get; set; } = GrowIT.Shared.Enums.ActionItemType.ClientFollowUp;
+
     [Required]
     public DateTime DueDate { get; set; } = DateTime.UtcNow.Date.AddDays(7);
 
     [Required]
+    [StringLength(1000, MinimumLength = 2)]
     public string Notes { get; set; } = string.Empty;
 }
 

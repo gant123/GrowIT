@@ -962,6 +962,30 @@
     margin: 0;
 }
 
+.hero-proof-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 24px 0 28px;
+}
+
+.hero-proof-strip span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid color-mix(in srgb, var(--growit-green) 24%, var(--growit-border));
+    background: color-mix(in srgb, var(--growit-bg-card) 92%, var(--growit-green) 8%);
+    color: var(--growit-text-primary);
+    border-radius: 999px;
+    padding: 9px 13px;
+    font-size: 0.91rem;
+    font-weight: 700;
+}
+
+.hero-proof-strip i {
+    color: var(--growit-green);
+}
+
 /* Footer */
 .landing-footer {
     background: var(--growit-bg-secondary);

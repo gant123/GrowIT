@@ -3,19 +3,18 @@
 @using GrowIT.Shared.Enums
 @inject ITaskService TaskService
 @inject IClientService ClientService
-@inject IAdminService AdminService
 @inject NavigationManager Nav
 
-<PageTitle>Tasks - grow.IT</PageTitle>
+<PageTitle>Follow-ups - grow.IT</PageTitle>
 
 <div class="dashboard fade-in mt-4">
-    <PageHeader Title="Tasks" Subtitle="Team follow-ups and case work.">
+    <PageHeader Title="Follow-ups" Subtitle="Action items that show who owns the next step and when it is due.">
         <Actions>
             <button class="btn-growit btn-secondary-growit" @onclick="LoadData" disabled="@_isLoading">
                 <i class="bi bi-arrow-clockwise me-1"></i>Refresh
             </button>
             <button class="btn-growit btn-primary-growit" @onclick="OpenCreate">
-                <i class="bi bi-plus-lg me-1"></i>New Task
+                <i class="bi bi-plus-lg me-1"></i>New Follow-up
             </button>
         </Actions>
     </PageHeader>
@@ -34,7 +33,7 @@
     else
     {
         <div class="grid-4 mb-4">
-            <KpiCard Label="Pending" Value="@PendingCount.ToString()" Icon="bi bi-list-check" Color="warning" TrendText="Open work" />
+            <KpiCard Label="Pending" Value="@PendingCount.ToString()" Icon="bi bi-list-check" Color="warning" TrendText="Open follow-ups" />
             <KpiCard Label="Overdue" Value="@OverdueCount.ToString()" Icon="bi bi-exclamation-triangle" Color="danger" TrendText="Past due" />
             <KpiCard Label="Completed" Value="@CompletedCount.ToString()" Icon="bi bi-check2-circle" Color="success" TrendText="Closed work" />
             <KpiCard Label="Skipped" Value="@SkippedCount.ToString()" Icon="bi bi-skip-forward" Color="info" TrendText="Not pursued" />
@@ -60,7 +59,7 @@
 
         <div class="card-growit">
             <div class="card-header">
-                <h3 class="section-title">Task Queue</h3>
+                <h3 class="section-title">Follow-up Queue</h3>
                 <span class="badge-growit badge-neutral">@_tasks.Count</span>
             </div>
             <div class="card-body p-0">
@@ -68,7 +67,7 @@
                 {
                     <div class="empty-state">
                         <i class="bi bi-check2-circle empty-state-icon text-success"></i>
-                        <div class="empty-state-title">No tasks found</div>
+                        <div class="empty-state-title">No follow-ups found</div>
                     </div>
                 }
                 else
@@ -78,7 +77,8 @@
                             <thead>
                                 <tr>
                                     <th>Client</th>
-                                    <th>Task</th>
+                                    <th>Follow-up</th>
+                                    <th>Type</th>
                                     <th>Assignee</th>
                                     <th>Due</th>
                                     <th>Status</th>
@@ -95,6 +95,7 @@
                                             </button>
                                         </td>
                                         <td>@task.Notes</td>
+                                        <td>@FormatActionItemType(task.Type)</td>
                                         <td>@task.AssignedToName</td>
                                         <td>
                                             <span class="@(task.IsOverdue ? "text-danger fw-bold" : "")">@task.DueDate.ToString("MMM dd, yyyy")</span>
@@ -133,7 +134,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header">
-                    <h5 class="modal-title">New Task</h5>
+                    <h5 class="modal-title">New Follow-up</h5>
                     <button type="button" class="btn-close" @onclick="CloseCreate"></button>
                 </div>
                 <div class="modal-body">
@@ -157,9 +158,18 @@
                             <label class="form-label">Assignee</label>
                             <InputSelect @bind-Value="_newTask.AssignedTo" class="form-select">
                                 <option value="@Guid.Empty">Select assignee</option>
-                                @foreach (var user in _users.Where(u => u.IsActive))
+                                @foreach (var user in _assignees.Where(u => u.IsActive))
                                 {
                                     <option value="@user.Id">@user.FullName</option>
+                                }
+                            </InputSelect>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Type</label>
+                            <InputSelect @bind-Value="_newTask.Type" class="form-select">
+                                @foreach (var type in Enum.GetValues<ActionItemType>())
+                                {
+                                    <option value="@type">@FormatActionItemType(type)</option>
                                 }
                             </InputSelect>
                         </div>
@@ -173,7 +183,7 @@
                         </div>
                         <div class="d-flex justify-content-end gap-2">
                             <button type="button" class="btn btn-outline-secondary" @onclick="CloseCreate">Cancel</button>
-                            <button type="submit" class="btn btn-primary" disabled="@_isSaving">Save Task</button>
+                            <button type="submit" class="btn btn-primary" disabled="@_isSaving">Save Follow-up</button>
                         </div>
                     </EditForm>
                 </div>
@@ -185,7 +195,7 @@
 @code {
     private List<TaskListDto> _tasks = [];
     private List<ClientDto> _clients = [];
-    private List<AdminUserListItemDto> _users = [];
+    private List<TaskAssigneeDto> _assignees = [];
     private bool _isLoading = true;
     private bool _isSaving;
     private bool _showCreate;
@@ -208,7 +218,7 @@
         try
         {
             _clients = await ClientService.GetAllClientsAsync();
-            _users = await AdminService.GetUsersAsync();
+            _assignees = await TaskService.GetAssigneesAsync();
             await LoadTasks();
         }
         catch (Exception ex)
@@ -246,7 +256,8 @@
         {
             DueDate = DateTime.UtcNow.Date.AddDays(7),
             ClientId = _clients.FirstOrDefault()?.Id ?? Guid.Empty,
-            AssignedTo = _users.FirstOrDefault(u => u.IsActive)?.Id ?? Guid.Empty
+            AssignedTo = _assignees.FirstOrDefault(u => u.IsActive)?.Id ?? Guid.Empty,
+            Type = ActionItemType.ClientFollowUp
         };
         _showCreate = true;
     }
@@ -298,5 +309,12 @@
         GrowIT.Shared.Enums.TaskStatus.Completed => "badge-success",
         GrowIT.Shared.Enums.TaskStatus.Skipped => "badge-neutral",
         _ => "badge-warning"
+    };
+
+    private static string FormatActionItemType(ActionItemType type) => type switch
+    {
+        ActionItemType.ClientFollowUp => "Client follow-up",
+        ActionItemType.BoardGovernance => "Board / governance",
+        _ => type.ToString()
     };
 }

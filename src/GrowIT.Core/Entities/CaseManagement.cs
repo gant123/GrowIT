@@ -62,9 +62,15 @@ public class AppTask : IMustHaveTenant // Named 'AppTask' to avoid conflict with
     public Guid AssignedTo { get; set; } // UserId
     public User? AssignedUser { get; set; }
 
+    public Guid? CreatedByUserId { get; set; }
+    public User? CreatedByUser { get; set; }
+
+    public GrowIT.Shared.Enums.ActionItemType Type { get; set; } = GrowIT.Shared.Enums.ActionItemType.ClientFollowUp;
     public DateTime DueDate { get; set; }
     public GrowIT.Shared.Enums.TaskStatus Status { get; set; }
     public string Notes { get; set; } = string.Empty;
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAt { get; set; }
+    public DateTime? CompletedAt { get; set; }
 }

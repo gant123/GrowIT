@@ -44,9 +44,9 @@
                     <span class="nav-text">Households</span>
                 </NavLink>
 
-                <NavLink href="/tasks" class="nav-item" title="Tasks" @onclick="HandleNavSelected">
+                <NavLink href="/tasks" class="nav-item" title="Follow-ups" @onclick="HandleNavSelected">
                     <span class="nav-icon"><i class="bi bi-list-check"></i></span>
-                    <span class="nav-text">Tasks</span>
+                    <span class="nav-text">Follow-ups</span>
                 </NavLink>
 
                 <NavLink href="/documents" class="nav-item" title="Documents" @onclick="HandleNavSelected">
@@ -119,6 +119,11 @@
                         <span class="nav-text">Billing</span>
                     </NavLink>
                 }
+
+                <NavLink href="/documentation" class="nav-item" title="Documentation" @onclick="HandleNavSelected">
+                    <span class="nav-icon"><i class="bi bi-journal-text"></i></span>
+                    <span class="nav-text">Documentation</span>
+                </NavLink>
 
                 @if (_canManageSiteContent)
                 {
@@ -505,7 +510,7 @@
         new("/clients", "People & Households", "Profiles for people and households served", "Main", "bi bi-people", "clients cases people directory"),
         new("/clients/create", "New Profile", "Add a person or household profile", "Main", "bi bi-person-plus", "new create client case"),
         new("/households", "Households", "Manage household groupings", "Main", "bi bi-house-door", "households family homes"),
-        new("/tasks", "Tasks", "Team follow-ups and case work", "Main", "bi bi-list-check", "tasks todo follow up reminders"),
+        new("/tasks", "Follow-ups", "Action items and case follow-ups", "Main", "bi bi-list-check", "tasks todo follow up reminders action items"),
         new("/documents", "Documents", "Client files and uploads", "Main", "bi bi-file-earmark-text", "documents files uploads attachments"),
         new("/funds", "Money Sources", "Grants, donations, budgets, and balances", "Impact", "bi bi-wallet2", "funds money balance"),
         new("/programs", "Programs", "Services your organization provides", "Impact", "bi bi-folder2-open", "programs categories"),
@@ -517,6 +522,7 @@
         new("/insights", "Insights", "Helpful patterns and alerts (beta)", "Intelligence", "bi bi-activity", "insights analytics"),
         new("/settings", "Settings", "Organization details and team access", "System", "bi bi-gear", "settings preferences"),
         new("/billing", "Billing", "Plans, invoices, and payments", "System", "bi bi-credit-card", "billing plans invoices payments subscription upgrade"),
+        new("/documentation", "Documentation", "Plain-language guide to using Grow.IT", "System", "bi bi-journal-text", "documentation help guide how to use growit"),
         new("/super-admin/content", "Site Content", "Manage public blog and contact submissions", "System", "bi bi-journal-richtext", "site content blog contact super admin"),
         new("/profile", "Profile", "Account profile and preferences", "System", "bi bi-person-gear", "profile account user"),
         new("/notifications", "Notifications", "Alerts and updates", "System", "bi bi-bell", "notifications alerts"),
