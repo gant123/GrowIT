@@ -46,22 +46,41 @@
                     </svg>
                     <span>@_errorMessage</span>
                 </div>
+            }
 
-                @if (_errorMessage.Contains("confirm your email", StringComparison.OrdinalIgnoreCase))
+            @if (_needsEmailConfirmation)
+            {
+                <div class="auth-alert warning">
+                    <i class="bi bi-envelope-exclamation"></i>
+                    <span>
+                        <strong>One more step — confirm your email.</strong><br />
+                        We sent a confirmation link to <strong>@ConfirmationEmailDisplay</strong>.
+                        Open the <em>newest</em> email from grow.IT, click <strong>Confirm email</strong>,
+                        then come back here and sign in. (Links expire after 24 hours —
+                        check your spam folder if you don't see the email.)
+                    </span>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(_resendStatusMessage))
                 {
-                    <div class="auth-inline-actions mt-3">
-                        <button type="button" class="btn btn-ghost" @onclick="ResendConfirmationAsync" disabled="@_isResendingConfirmation">
-                            @if (_isResendingConfirmation)
-                            {
-                                <span>Sending confirmation...</span>
-                            }
-                            else
-                            {
-                                <span>Resend confirmation email</span>
-                            }
-                        </button>
+                    <div class="auth-alert success">
+                        <i class="bi bi-check2-circle"></i>
+                        <span>@_resendStatusMessage</span>
                     </div>
                 }
+
+                <div class="auth-inline-actions mt-3">
+                    <button type="button" class="btn btn-ghost" @onclick="ResendConfirmationAsync" disabled="@_isResendingConfirmation">
+                        @if (_isResendingConfirmation)
+                        {
+                            <span>Sending a new link...</span>
+                        }
+                        else
+                        {
+                            <span>Didn't get it? Send a new confirmation email</span>
+                        }
+                    </button>
+                </div>
             }
 
             <div class="auth-form">
@@ -232,8 +251,13 @@
     private bool _showPassword = false;
     private bool _isLoading = false;
     private bool _isResendingConfirmation = false;
+    private bool _needsEmailConfirmation = false;
+    private string? _resendStatusMessage;
     private string? _errorMessage;
     private string? _lastNoticeKey;
+
+    private string ConfirmationEmailDisplay =>
+        string.IsNullOrWhiteSpace(_email) ? "your email address" : _email;
 
     [SupplyParameterFromQuery(Name = "reason")]
     public string? Reason { get; set; }
@@ -269,7 +293,9 @@
         }
         else if (string.Equals(Reason, "confirm-email-sent", StringComparison.OrdinalIgnoreCase))
         {
-            Notifications.Success("Check your email and confirm your account before signing in.");
+            // Persistent on-page guidance (not just a toast) so a new user landing here
+            // after registration knows exactly what to do next.
+            _needsEmailConfirmation = true;
         }
         else if (string.Equals(Reason, "email-confirmed", StringComparison.OrdinalIgnoreCase))
         {
@@ -298,6 +324,8 @@
     private async Task HandleLogin()
     {
         _errorMessage = null;
+        _needsEmailConfirmation = false;
+        _resendStatusMessage = null;
         _isLoading = true;
 
         try
@@ -311,13 +339,17 @@
             var request = new LoginRequest { Email = _email, Password = _password, RememberMe = _rememberMe };
             var result = await AuthService.Login(request);
 
-            if (result != null)
+            switch (result.Status)
             {
-                Navigation.NavigateTo(GetPostLoginTarget(), forceLoad: true, replace: true);
-            }
-            else
-            {
-                _errorMessage = "Invalid email or password. Please try again.";
+                case LoginStatus.Success:
+                    Navigation.NavigateTo(GetPostLoginTarget(), forceLoad: true, replace: true);
+                    break;
+                case LoginStatus.EmailNotConfirmed:
+                    _needsEmailConfirmation = true;
+                    break;
+                default:
+                    _errorMessage = result.Message ?? "We couldn't sign you in. Please try again.";
+                    break;
             }
         }
         catch (ApiException ex)
@@ -338,12 +370,13 @@
     {
         if (string.IsNullOrWhiteSpace(_email))
         {
-            _errorMessage = "Enter your email address first.";
+            _errorMessage = "Enter your email address in the form below first, then resend.";
             return;
         }
 
         _isResendingConfirmation = true;
         _errorMessage = null;
+        _resendStatusMessage = null;
 
         try
         {
@@ -352,7 +385,10 @@
                 Email = _email
             });
 
-            Notifications.Success(response?.Message ?? "If your account exists, a confirmation link will be sent.");
+            // Keep the outcome visible on the page (a toast disappears before a
+            // confused user reads it) and repeat the "use the newest email" rule.
+            _resendStatusMessage = response?.Message
+                ?? "If your account exists, a new confirmation link is on its way. Open the newest email from grow.IT.";
         }
         catch (ApiException ex)
         {

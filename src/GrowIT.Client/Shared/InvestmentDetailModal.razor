@@ -172,7 +172,7 @@
         _error = null;
         try
         {
-            await InvestmentService.ApproveInvestmentAsync(_detail.Id, "Current User");
+            await InvestmentService.ApproveInvestmentAsync(_detail.Id);
             await LoadAsync();
             await OnChanged.InvokeAsync();
         }

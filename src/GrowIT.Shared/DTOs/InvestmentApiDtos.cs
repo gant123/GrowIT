@@ -25,9 +25,3 @@ public class ReassignInvestmentRequest
     [MaxLength(1000)]
     public string ReassignReason { get; set; } = string.Empty;
 }
-
-public class ApproveInvestmentRequest
-{
-    [MaxLength(200)]
-    public string ApprovedBy { get; set; } = string.Empty;
-}

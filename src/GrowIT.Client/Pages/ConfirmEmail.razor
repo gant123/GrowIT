@@ -1,9 +1,11 @@
 @page "/confirm-email"
 @layout PublicLayout
 @using GrowIT.Client.Services
+@implements IDisposable
 @inject IAuthService AuthService
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject PersistentComponentState ApplicationState
 
 <PageTitle>Confirm Email - grow.IT</PageTitle>
 
@@ -39,8 +41,8 @@
                 {
                     <div class="auth-context-strip confirmation-help">
                         <div class="context-chip">
-                            <span class="label">Need help?</span>
-                            <span class="value">Links can expire or break when copied from email.</span>
+                            <span class="label">Good to know</span>
+                            <span class="value">Confirmation links expire 24 hours after they're sent — the newest email from grow.IT always has the freshest link.</span>
                         </div>
                     </div>
                 }
@@ -82,6 +84,8 @@
 </div>
 
 @code {
+    private const string ConfirmResultStateKey = "confirm-email-result";
+
     private string _currentTheme = "light";
     private bool _isLoading = true;
     private bool _confirmed;
@@ -90,6 +94,8 @@
     private string? _email;
     private string? _resendMessage;
     private string _message = "We could not process the confirmation link.";
+    private ConfirmEmailResultDto? _result;
+    private PersistingComponentStateSubscription _persistSubscription;
 
     [SupplyParameterFromQuery(Name = "userId")]
     public string? UserId { get; set; }
@@ -103,10 +109,21 @@
     protected override async Task OnInitializedAsync()
     {
         _email = Email;
+        _persistSubscription = ApplicationState.RegisterOnPersisting(PersistResultAsync);
 
         if (string.IsNullOrWhiteSpace(UserId) || string.IsNullOrWhiteSpace(Token))
         {
-            _message = "The confirmation link is incomplete.";
+            _message = "This confirmation link is incomplete. Open the link directly from the newest email we sent you, or request a fresh link below.";
+            _isLoading = false;
+            return;
+        }
+
+        // This page renders twice (prerender + interactive circuit). Reuse the prerender
+        // outcome instead of confirming a second time — otherwise a transient failure on
+        // the second call can show "failed" even though the email was already confirmed.
+        if (ApplicationState.TryTakeFromJson<ConfirmEmailResultDto>(ConfirmResultStateKey, out var restored) && restored is not null)
+        {
+            ApplyResult(restored);
             _isLoading = false;
             return;
         }
@@ -114,21 +131,46 @@
         try
         {
             var result = await AuthService.ConfirmEmail(UserId, Token);
-            _confirmed = result?.Succeeded == true;
-            _alreadyConfirmed = result?.AlreadyConfirmed == true;
-            _email = string.IsNullOrWhiteSpace(result?.Email) ? _email : result.Email;
-            _message = result?.Message ?? _message;
+            if (result is not null)
+            {
+                ApplyResult(result);
+            }
         }
         catch (ApiException ex)
         {
-            _confirmed = false;
-            _message = ex.Message;
+            ApplyResult(new ConfirmEmailResultDto
+            {
+                Succeeded = false,
+                Email = _email ?? string.Empty,
+                Message = ex.Message
+            });
         }
         finally
         {
             _isLoading = false;
         }
     }
+
+    private void ApplyResult(ConfirmEmailResultDto result)
+    {
+        _result = result;
+        _confirmed = result.Succeeded;
+        _alreadyConfirmed = result.AlreadyConfirmed;
+        _email = string.IsNullOrWhiteSpace(result.Email) ? _email : result.Email;
+        _message = string.IsNullOrWhiteSpace(result.Message) ? _message : result.Message;
+    }
+
+    private Task PersistResultAsync()
+    {
+        if (_result is not null)
+        {
+            ApplicationState.PersistAsJson(ConfirmResultStateKey, _result);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public void Dispose() => _persistSubscription.Dispose();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {

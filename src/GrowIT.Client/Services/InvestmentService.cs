@@ -13,7 +13,7 @@ public interface IInvestmentService
     Task<InvestmentDetailDto?> GetInvestmentAsync(Guid id);
     Task<Guid> CreateInvestmentAsync(CreateInvestmentRequest request);
     Task DeleteInvestmentAsync(Guid id);
-    Task ApproveInvestmentAsync(Guid id, string approvedBy);
+    Task ApproveInvestmentAsync(Guid id);
     Task DisburseInvestmentAsync(Guid id);
     Task ReassignInvestmentAsync(Guid id, ReassignInvestmentRequest request);
 }
@@ -47,9 +47,10 @@ public class InvestmentService : BaseApiService, IInvestmentService
         await DeleteAsync($"{BaseEndpoint}/{id}");
     }
 
-    public async Task ApproveInvestmentAsync(Guid id, string approvedBy)
+    public async Task ApproveInvestmentAsync(Guid id)
     {
-        await PostAsync($"{BaseEndpoint}/{id}/approve", new ApproveInvestmentRequest { ApprovedBy = approvedBy });
+        // Attribution is recorded server-side from the authenticated user (audit trail).
+        await PostAsync($"{BaseEndpoint}/{id}/approve", new { });
     }
 
     public async Task DisburseInvestmentAsync(Guid id)

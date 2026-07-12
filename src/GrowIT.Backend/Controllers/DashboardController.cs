@@ -78,8 +78,11 @@ public class DashboardController : ControllerBase
         // For now, returning what we have is consistent with previous implementation.
 
         // 7. FEED: Recent Activity (Merge Money & Milestones)
+        // "Planted" implies money left the organization, so match the KPI statuses
+        // rather than listing pending/draft requests as activity.
         var recentInvestments = await _context.Investments
             .Include(i => i.Client)
+            .Where(i => i.Status == InvestmentStatus.Disbursed || i.Status == InvestmentStatus.Completed)
             .OrderByDescending(i => i.CreatedAt)
             .Take(10)
             .ToListAsync();
@@ -226,16 +229,20 @@ public class DashboardController : ControllerBase
         }
 
         // 4. Program Performance (Top Milestones by Program/Category)
-        var topPrograms = await _context.Imprints
-            .GroupBy(i => i.Category)
+        // Group in SQL, but convert the enum key to its name in memory — enum ToString()
+        // is not reliably translatable by EF/Npgsql.
+        var topPrograms = (await _context.Imprints
+                .GroupBy(i => i.Category)
+                .Select(g => new { g.Key, Count = g.Count() })
+                .OrderByDescending(g => g.Count)
+                .Take(5)
+                .ToListAsync())
             .Select(g => new TopPerformerDto
             {
                 Name = g.Key.ToString(),
-                Count = g.Count()
+                Count = g.Count
             })
-            .OrderByDescending(p => p.Count)
-            .Take(5)
-            .ToListAsync();
+            .ToList();
 
         return Ok(new InsightsDto
         {

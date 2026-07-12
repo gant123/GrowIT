@@ -45,22 +45,37 @@ public class AuthEmailConfirmationTests
     }
 
     [Fact]
-    public async Task ResendConfirmation_ReturnsAlreadyConfirmedMessage_WithoutPretendingNewEmailWasSent()
+    public async Task ResendConfirmation_ReturnsIdenticalResponse_ForKnownAndUnknownEmails()
     {
-        using var factory = new GrowItApiFactory();
+        // Anti-enumeration invariant: the response must not reveal whether an account
+        // exists or what state it is in — known/confirmed, known/unconfirmed, and
+        // unknown emails all get the same answer.
+        using var factory = new GrowItApiFactory(new Dictionary<string, string?>
+        {
+            ["ASPNETCORE_ENVIRONMENT"] = "Development",
+            ["Email:DevFileFallbackEnabled"] = "true",
+            ["Email:DevFileFallbackDirectory"] = "/tmp/growit-test-emails"
+        });
         await CreateConfirmationUserAsync(factory, emailConfirmed: true);
 
         using var client = factory.CreateClient();
-        var response = await client.PostAsJsonAsync("/api/auth/resend-confirmation", new ResendConfirmationEmailRequest
+
+        var knownResponse = await client.PostAsJsonAsync("/api/auth/resend-confirmation", new ResendConfirmationEmailRequest
         {
             Email = "confirm@example.test"
         });
+        knownResponse.EnsureSuccessStatusCode();
+        var knownMessage = await knownResponse.Content.ReadFromJsonAsync<MessageResponse>();
 
-        response.EnsureSuccessStatusCode();
-        var message = await response.Content.ReadFromJsonAsync<MessageResponse>();
+        var unknownResponse = await client.PostAsJsonAsync("/api/auth/resend-confirmation", new ResendConfirmationEmailRequest
+        {
+            Email = "nobody-here@example.test"
+        });
+        unknownResponse.EnsureSuccessStatusCode();
+        var unknownMessage = await unknownResponse.Content.ReadFromJsonAsync<MessageResponse>();
 
-        Assert.Contains("already confirmed", message?.Message ?? string.Empty, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("confirmation link", message?.Message ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        Assert.False(string.IsNullOrWhiteSpace(knownMessage?.Message));
+        Assert.Equal(knownMessage!.Message, unknownMessage?.Message);
     }
 
     [Fact]
@@ -82,12 +97,15 @@ public class AuthEmailConfirmationTests
 
         var firstResponse = await client.PostAsJsonAsync("/api/auth/resend-confirmation", request);
         firstResponse.EnsureSuccessStatusCode();
+        var firstMessage = await firstResponse.Content.ReadFromJsonAsync<MessageResponse>();
 
         var secondResponse = await client.PostAsJsonAsync("/api/auth/resend-confirmation", request);
         secondResponse.EnsureSuccessStatusCode();
         var secondMessage = await secondResponse.Content.ReadFromJsonAsync<MessageResponse>();
 
-        Assert.Contains("already sent recently", secondMessage?.Message ?? string.Empty, StringComparison.OrdinalIgnoreCase);
+        // The cooldown must hold (only one email actually sent, asserted below via the DB),
+        // but the response may not reveal it — both calls get the same neutral answer.
+        Assert.Equal(firstMessage?.Message, secondMessage?.Message);
 
         using var scope = factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();

@@ -5,15 +5,33 @@ using Microsoft.JSInterop;
 
 namespace GrowIT.Client.Services;
 
+public enum LoginStatus
+{
+    Success,
+    InvalidCredentials,
+    EmailNotConfirmed,
+    LockedOut,
+    Failed
+}
+
+/// <summary>
+/// Structured sign-in outcome so pages can react to the account state
+/// (unconfirmed email, lockout, ...) instead of matching on message text.
+/// </summary>
+public sealed record LoginResult(LoginStatus Status, string? Message = null)
+{
+    public bool Succeeded => Status == LoginStatus.Success;
+}
+
 public interface IAuthService
 {
-    Task<AuthResponseDto?> Login(LoginRequest request);
+    Task<LoginResult> Login(LoginRequest request);
     Task<RegisterResponseDto?> Register(RegisterRequest request);
     Task Logout();
     Task<bool> ForgotPassword(ForgotPasswordRequest request);
     Task<bool> ResetPassword(ResetPasswordRequest request);
     Task<InviteValidationDto?> ValidateInvite(string token, string email);
-    Task<AuthResponseDto?> AcceptInvite(AcceptInviteRequest request);
+    Task<LoginResult> AcceptInvite(AcceptInviteRequest request);
     Task<ConfirmEmailResultDto?> ConfirmEmail(string userId, string token);
     Task<MessageResponse?> ResendConfirmationEmail(ResendConfirmationEmailRequest request);
 }
@@ -27,27 +45,31 @@ public class AuthService : BaseApiService, IAuthService
         _js = js;
     }
 
-    public async Task<AuthResponseDto?> Login(LoginRequest request)
+    public async Task<LoginResult> Login(LoginRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
         {
-            return null;
+            return new LoginResult(LoginStatus.InvalidCredentials, "Enter both your email and password.");
         }
 
         var result = await PostBrowserAuthAsync("bff/auth/login", request);
         if (result.Ok)
         {
-            return new AuthResponseDto();
+            return new LoginResult(LoginStatus.Success);
         }
 
-        if (result.Status == 401)
+        var message = string.IsNullOrWhiteSpace(result.Body) ? null : GetErrorMessage(result.Body);
+        return result.Status switch
         {
-            return null;
-        }
-
-        throw new ApiException(string.IsNullOrWhiteSpace(result.Body)
-            ? $"Login failed ({result.Status})."
-            : GetErrorMessage(result.Body), result.Status);
+            401 => new LoginResult(LoginStatus.InvalidCredentials,
+                "Invalid email or password. Please try again."),
+            423 => new LoginResult(LoginStatus.LockedOut,
+                message ?? "This account is temporarily locked. Wait about 15 minutes and try again, or reset your password."),
+            403 when HasErrorCode(result.Body, "email-not-confirmed") => new LoginResult(LoginStatus.EmailNotConfirmed,
+                message ?? "Your email address has not been confirmed yet."),
+            _ => new LoginResult(LoginStatus.Failed,
+                message ?? $"We couldn't sign you in ({result.Status}). Refresh the page and try again.")
+        };
     }
 
     public async Task<RegisterResponseDto?> Register(RegisterRequest request)
@@ -112,7 +134,7 @@ public class AuthService : BaseApiService, IAuthService
         return await response.Content.ReadFromJsonAsync<InviteValidationDto>(_jsonOptions);
     }
 
-    public async Task<AuthResponseDto?> AcceptInvite(AcceptInviteRequest request)
+    public async Task<LoginResult> AcceptInvite(AcceptInviteRequest request)
     {
         var response = await _http.PostAsJsonAsync("api/auth/accept-invite", request, _jsonOptions);
         if (!response.IsSuccessStatusCode)
@@ -158,6 +180,58 @@ public class AuthService : BaseApiService, IAuthService
     private Task<BrowserAuthResult> PostBrowserAuthAsync(string relativeUrl, object? payload) =>
         _js.InvokeAsync<BrowserAuthResult>("blazorInterop.authPostJson", relativeUrl, payload).AsTask();
 
+    private static string? ExtractErrorList(JsonElement root)
+    {
+        foreach (var propertyName in new[] { "Errors", "errors" })
+        {
+            if (root.TryGetProperty(propertyName, out var errors) && errors.ValueKind == JsonValueKind.Array)
+            {
+                var messages = errors.EnumerateArray()
+                    .Where(e => e.ValueKind == JsonValueKind.String)
+                    .Select(e => e.GetString())
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .ToList();
+                if (messages.Count > 0)
+                {
+                    return string.Join(" ", messages);
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private static string? CombineMessage(string? message, string? errorDetails)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            return errorDetails;
+        }
+
+        return string.IsNullOrWhiteSpace(errorDetails) ? message : $"{message} {errorDetails}";
+    }
+
+    private static bool HasErrorCode(string? body, string code)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return false;
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(body.Trim());
+            return doc.RootElement.ValueKind == JsonValueKind.Object
+                && doc.RootElement.TryGetProperty("code", out var value)
+                && value.ValueKind == JsonValueKind.String
+                && string.Equals(value.GetString(), code, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
     private sealed class BrowserAuthResult
     {
         public bool Ok { get; set; }
@@ -168,7 +242,7 @@ public class AuthService : BaseApiService, IAuthService
     private static string GetErrorMessage(string body)
     {
         var trimmed = body.Trim();
-        if (!trimmed.StartsWith('{') && !trimmed.StartsWith('['))
+        if (!trimmed.StartsWith('{') && !trimmed.StartsWith('[') && !trimmed.StartsWith('"'))
         {
             return trimmed;
         }
@@ -177,21 +251,51 @@ public class AuthService : BaseApiService, IAuthService
         {
             using var doc = JsonDocument.Parse(trimmed);
             var root = doc.RootElement;
+
+            // Bare-string responses (e.g. 423 lockout messages) serialize as a JSON string;
+            // unwrap so the UI doesn't show surrounding quote marks.
+            if (root.ValueKind == JsonValueKind.String)
+            {
+                return root.GetString() ?? trimmed;
+            }
+
+            if (root.ValueKind == JsonValueKind.Array)
+            {
+                var messages = root.EnumerateArray()
+                    .Where(e => e.ValueKind == JsonValueKind.String)
+                    .Select(e => e.GetString())
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .ToList();
+                if (messages.Count > 0)
+                {
+                    return string.Join(" ", messages);
+                }
+            }
+
             if (root.ValueKind == JsonValueKind.Object)
             {
+                // Validation responses carry the reasons in an "errors" array — surface
+                // them, otherwise the user just sees "Registration failed." with no clue why.
+                var errorDetails = ExtractErrorList(root);
+
                 if (root.TryGetProperty("Message", out var message) && message.ValueKind == JsonValueKind.String)
                 {
-                    return message.GetString() ?? trimmed;
+                    return CombineMessage(message.GetString(), errorDetails) ?? trimmed;
                 }
 
                 if (root.TryGetProperty("message", out var lowerMessage) && lowerMessage.ValueKind == JsonValueKind.String)
                 {
-                    return lowerMessage.GetString() ?? trimmed;
+                    return CombineMessage(lowerMessage.GetString(), errorDetails) ?? trimmed;
                 }
 
                 if (root.TryGetProperty("detail", out var detail) && detail.ValueKind == JsonValueKind.String)
                 {
-                    return detail.GetString() ?? trimmed;
+                    return CombineMessage(detail.GetString(), errorDetails) ?? trimmed;
+                }
+
+                if (!string.IsNullOrWhiteSpace(errorDetails))
+                {
+                    return errorDetails;
                 }
             }
         }

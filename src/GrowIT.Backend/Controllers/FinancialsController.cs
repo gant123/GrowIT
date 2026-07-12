@@ -152,7 +152,10 @@ public class FinancialsController : ControllerBase
         var validationResult = await validator.ValidateAsync(request);
 
         if (!validationResult.IsValid)
-            return BadRequest(validationResult.Errors.Select(e => e.ErrorMessage));
+            return BadRequest(new MessageResponse
+            {
+                Message = string.Join(" ", validationResult.Errors.Select(e => e.ErrorMessage))
+            });
 
         var fund = await _context.Funds.FirstOrDefaultAsync(f => f.Id == id);
         if (fund == null) return NotFound("Fund not found.");

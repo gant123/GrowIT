@@ -240,13 +240,14 @@
                 Password = _password
             });
 
-            if (result is not null)
+            if (result.Succeeded)
             {
                 Navigation.NavigateTo("/home", forceLoad: true);
             }
             else
             {
-                _errorMessage = "Unable to accept invite. Please contact your administrator.";
+                // The account was created; only the automatic sign-in failed.
+                Navigation.NavigateTo($"/login?email={Uri.EscapeDataString(_email)}", forceLoad: true);
             }
         }
         catch (Exception ex)

@@ -52,9 +52,11 @@ public class BffAuthController : ControllerBase
             return Forbid();
         }
 
+        // 400 (not 403): the browser-side helper retries once on 400 with a fresh
+        // antiforgery token, which recovers from a rotated cookie/token pair.
         if (!await IsValidAntiforgeryRequestAsync())
         {
-            return Forbid();
+            return BadRequest("The request could not be verified. Please try again.");
         }
 
         if (!ModelState.IsValid)
@@ -72,27 +74,44 @@ public class BffAuthController : ControllerBase
             return Unauthorized("Invalid email or password");
         }
 
+        // Lockout is enforced before password verification so a locked account cannot be
+        // brute-forced during the lockout window.
+        if (await _userManager.IsLockedOutAsync(user))
+        {
+            // Structured code lets the sign-in page react to the state instead of matching message text.
+            return StatusCode(StatusCodes.Status423Locked, new
+            {
+                code = "account-locked",
+                message = "This account is temporarily locked after repeated failed sign-in attempts. Wait about 15 minutes and try again, or reset your password."
+            });
+        }
+
+        // Verify the password BEFORE disclosing any other account state (deactivated,
+        // unconfirmed). A wrong password always gets the same generic 401, so this
+        // endpoint cannot be used to probe which emails have accounts.
+        if (!await _userManager.CheckPasswordAsync(user, request.Password))
+        {
+            await _userManager.AccessFailedAsync(user);
+            return Unauthorized("Invalid email or password");
+        }
+
+        await _userManager.ResetAccessFailedCountAsync(user);
+
         if (!user.IsActive)
         {
             return Unauthorized("This account has been deactivated. Contact your organization administrator.");
         }
 
-        var result = await _signInManager.PasswordSignInAsync(user, request.Password, request.RememberMe, lockoutOnFailure: true);
-        if (result.IsLockedOut)
+        if (!user.EmailConfirmed)
         {
-            return StatusCode(StatusCodes.Status423Locked, "This account is temporarily locked due to repeated failed sign-in attempts.");
+            return StatusCode(StatusCodes.Status403Forbidden, new
+            {
+                code = "email-not-confirmed",
+                message = "Your email address has not been confirmed yet."
+            });
         }
 
-        if (result.IsNotAllowed)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, "Confirm your email before signing in.");
-        }
-
-        if (!result.Succeeded)
-        {
-            return Unauthorized("Invalid email or password");
-        }
-
+        await _signInManager.SignInAsync(user, request.RememberMe);
         await RecordSignInEventAsync(user);
         return NoContent();
     }
@@ -107,7 +126,7 @@ public class BffAuthController : ControllerBase
 
         if (!await IsValidAntiforgeryRequestAsync())
         {
-            return Forbid();
+            return BadRequest("The request could not be verified. Please try again.");
         }
 
         await _signInManager.SignOutAsync();

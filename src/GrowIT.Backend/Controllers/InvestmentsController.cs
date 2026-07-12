@@ -174,9 +174,11 @@ public class InvestmentsController : ControllerBase
         });
     }
 
+    // Approval attribution (who/when) is recorded by the audit interceptor on the status
+    // update, so no request body is needed here.
     [HttpPost("{id}/approve")]
     [Authorize(Policy = "AdminOrManager")]
-    public async Task<IActionResult> ApproveInvestment(Guid id, [FromBody] ApproveInvestmentRequest request)
+    public async Task<IActionResult> ApproveInvestment(Guid id)
     {
         await using var transaction = await BeginTransactionIfSupportedAsync();
 

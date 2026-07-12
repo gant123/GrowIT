@@ -40,11 +40,18 @@ public class TokenService
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
+        // Keep bearer tokens short-lived: the web app mints a fresh token per request from
+        // the cookie session, so a long lifetime only extends how long a captured token
+        // (or a deactivated user's token) keeps working. Configurable for API consumers.
+        var lifetimeMinutes = int.TryParse(_config["Jwt:AccessTokenMinutes"], out var configuredMinutes)
+            ? Math.Clamp(configuredMinutes, 5, 24 * 60)
+            : 60;
+
         // 3. Build the Token
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
-            Expires = DateTime.UtcNow.AddDays(7), // Token lasts 1 week
+            Expires = DateTime.UtcNow.AddMinutes(lifetimeMinutes),
             SigningCredentials = creds,
             Issuer = jwtIssuer,
             Audience = jwtAudience

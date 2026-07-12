@@ -218,7 +218,7 @@
     _busyInvestmentId = id;
     try
     {
-        await InvestmentService.ApproveInvestmentAsync(id, "Current User");
+        await InvestmentService.ApproveInvestmentAsync(id);
         await ReloadInvestments();
     }
     catch (Exception ex)

@@ -72,12 +72,13 @@ public sealed class ReportManagementService : IReportManagementService
 
         if (query.DateFrom.HasValue)
         {
-            runs = runs.Where(r => r.GeneratedAt >= query.DateFrom.Value);
+            var from = NormalizeUtc(query.DateFrom.Value);
+            runs = runs.Where(r => r.GeneratedAt >= from);
         }
 
         if (query.DateTo.HasValue)
         {
-            var inclusiveEnd = query.DateTo.Value.Date.AddDays(1).AddTicks(-1);
+            var inclusiveEnd = NormalizeUtc(query.DateTo.Value.Date.AddDays(1).AddTicks(-1));
             runs = runs.Where(r => r.GeneratedAt <= inclusiveEnd);
         }
 
@@ -590,8 +591,8 @@ public sealed class ReportManagementService : IReportManagementService
     private async Task<ReportDataset> BuildDatasetAsync(ReportRun run, GenerateReportRequest request, CancellationToken cancellationToken)
     {
         var reportType = string.IsNullOrWhiteSpace(run.ReportType) ? "custom-report" : run.ReportType.Trim().ToLowerInvariant();
-        var dateFrom = request.DateFrom?.ToUniversalTime();
-        var dateTo = request.DateTo?.ToUniversalTime();
+        var dateFrom = request.DateFrom.HasValue ? NormalizeUtc(request.DateFrom.Value) : (DateTime?)null;
+        var dateTo = request.DateTo.HasValue ? NormalizeUtc(request.DateTo.Value) : (DateTime?)null;
 
         return reportType switch
         {

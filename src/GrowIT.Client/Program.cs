@@ -306,29 +306,10 @@ builder.Services.AddHttpClient("GrowITApi", (sp, client) =>
     })
     .AddHttpMessageHandler<ApiAuthorizationHandler>();
 
+// The named "GrowITApi" client already resolves its BaseAddress (and attaches auth)
+// in the AddHttpClient configuration above.
 builder.Services.AddScoped(sp =>
-{
-    var client = sp.GetRequiredService<IHttpClientFactory>().CreateClient("GrowITApi");
-    string? baseUri = null;
-
-    if (string.IsNullOrWhiteSpace(baseUri))
-    {
-        var httpContext = sp.GetService<IHttpContextAccessor>()?.HttpContext;
-        if (httpContext is not null)
-        {
-            baseUri = $"{httpContext.Request.Scheme}://{httpContext.Request.Host}{httpContext.Request.PathBase}/";
-        }
-        else
-        {
-            baseUri = builder.Configuration["InternalApiBaseUrl"]
-                ?? builder.Configuration["ClientUrl"]
-                ?? (builder.Environment.IsDevelopment() ? "http://localhost:5245/" : "http://localhost/");
-        }
-    }
-
-    client.BaseAddress = ResolveApiBaseAddress(builder.Configuration, builder.Environment, baseUri);
-    return client;
-});
+    sp.GetRequiredService<IHttpClientFactory>().CreateClient("GrowITApi"));
 
 builder.Services.AddSyncfusionBlazor();
 

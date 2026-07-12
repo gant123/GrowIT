@@ -50,18 +50,72 @@ public class AuthController : ControllerBase
         _logger = logger;
     }
 
+    // The neutral response returned whether or not the email was already registered, so
+    // this endpoint cannot be used to probe which addresses have accounts.
+    private const string RegisterNeutralMessage =
+        "You're almost done. Check your email for the next step before signing in.";
+
+    [EnableRateLimiting("auth-submit")]
     [HttpPost("register")]
     public async Task<IActionResult> Register(RegisterRequest request)
     {
-        // 0. Check if user already exists
+        // Validate the password BEFORE the existence check: policy errors must surface for
+        // registered and unregistered emails alike, or the 400/200 split becomes an
+        // account-enumeration oracle.
+        var passwordErrors = new List<string>();
+        var probeUser = new User { UserName = request.Email.Trim(), Email = request.Email.Trim() };
+        foreach (var validator in _userManager.PasswordValidators)
+        {
+            var validation = await validator.ValidateAsync(_userManager, probeUser, request.Password);
+            if (!validation.Succeeded)
+            {
+                passwordErrors.AddRange(validation.Errors.Select(e => e.Description));
+            }
+        }
+
+        if (passwordErrors.Count > 0)
+        {
+            return BadRequest(new
+            {
+                Message = "Registration failed.",
+                Errors = passwordErrors.Distinct().ToArray()
+            });
+        }
+
+        // 0. If the email is already registered, do NOT reveal that here. Return the same
+        // "check your email" response as a fresh registration and let the email tell the
+        // real owner what to do: unconfirmed accounts get a fresh confirmation link
+        // (the common "registered twice because I never confirmed" trap), confirmed
+        // accounts get a sign-in/reset reminder.
         var normalizedEmail = request.Email.Trim().ToUpperInvariant();
         var existingUser = await _userManager.Users
             .IgnoreQueryFilters()
-            .AnyAsync(u => u.NormalizedEmail == normalizedEmail);
-            
-        if (existingUser)
+            .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
+
+        if (existingUser is not null)
         {
-            return BadRequest(new MessageResponse { Message = "User with this email already exists." });
+            try
+            {
+                if (!existingUser.EmailConfirmed)
+                {
+                    await SendEmailConfirmationAsync(existingUser);
+                }
+                else
+                {
+                    await SendAccountReminderEmailAsync(existingUser);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send existing-account email during registration for {Email}.", request.Email);
+            }
+
+            return Ok(new RegisterResponseDto
+            {
+                Message = RegisterNeutralMessage,
+                RequiresEmailConfirmation = true,
+                Email = request.Email.Trim()
+            });
         }
 
         // 1. Create the Tenant (Organization)
@@ -139,17 +193,17 @@ public class AuthController : ControllerBase
             _logger.LogError(ex, "Failed to send confirmation email for {Email}.", newUser.Email);
             return Accepted(new RegisterResponseDto
             {
-                Message = "Organization created. We could not deliver the confirmation email yet. Use resend confirmation from sign in.",
-                TenantId = newTenant.Id,
+                Message = "We could not deliver the email yet. Use 'resend confirmation' from the sign-in page.",
                 RequiresEmailConfirmation = true,
                 Email = newUser.Email ?? string.Empty
             });
         }
 
+        // Deliberately identical to the existing-account response (no tenant id, same
+        // message) so the two cases cannot be told apart.
         return Ok(new RegisterResponseDto
         {
-            Message = "Organization created. Check your email to confirm your account before signing in.",
-            TenantId = newTenant.Id,
+            Message = RegisterNeutralMessage,
             RequiresEmailConfirmation = true,
             Email = newUser.Email ?? string.Empty
         });
@@ -166,32 +220,38 @@ public class AuthController : ControllerBase
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
             
-        if (user == null) 
+        if (user == null)
         {
             // Security Best Practice: Don't reveal if user exists
             return Unauthorized("Invalid email or password");
         }
 
-        // 2. Check Password
+        // Lockout is enforced before password verification so a locked account cannot be
+        // brute-forced during the lockout window.
+        if (await _userManager.IsLockedOutAsync(user))
+        {
+            return StatusCode(StatusCodes.Status423Locked, "This account is temporarily locked due to repeated failed sign-in attempts.");
+        }
+
+        // 2. Check the password BEFORE disclosing any other account state (deactivated,
+        // unconfirmed). A wrong password always gets the same generic 401, so this
+        // endpoint cannot be used to probe which emails have accounts.
+        if (!await _userManager.CheckPasswordAsync(user, request.Password))
+        {
+            await _userManager.AccessFailedAsync(user);
+            return Unauthorized("Invalid email or password");
+        }
+
+        await _userManager.ResetAccessFailedCountAsync(user);
+
         if (!user.IsActive)
         {
             return Unauthorized("This account has been deactivated. Contact your organization administrator.");
         }
 
-        var signInResult = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true);
-        if (signInResult.IsLockedOut)
-        {
-            return StatusCode(StatusCodes.Status423Locked, "This account is temporarily locked due to repeated failed sign-in attempts.");
-        }
-
-        if (signInResult.IsNotAllowed)
+        if (!user.EmailConfirmed)
         {
             return StatusCode(StatusCodes.Status403Forbidden, "Confirm your email before signing in.");
-        }
-
-        if (!signInResult.Succeeded)
-        {
-            return Unauthorized("Invalid email or password");
         }
 
         // 3. Generate Token
@@ -206,6 +266,7 @@ public class AuthController : ControllerBase
         });
     }
 
+    [EnableRateLimiting("auth-submit")]
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
     {
@@ -235,7 +296,7 @@ public class AuthController : ControllerBase
         var body = $@"
             <h1>Reset your password</h1>
             <p>You requested a password reset for GrowIT.</p>
-            <p>Please click the link below to reset your password. This link will expire in 2 hours.</p>
+            <p>Please click the link below to reset your password. This link will expire in 24 hours.</p>
             <p><a href='{resetLink}'>{resetLink}</a></p>
             <p>If you did not request this, please ignore this email.</p>";
 
@@ -289,11 +350,25 @@ public class AuthController : ControllerBase
         var result = await _userManager.ConfirmEmailAsync(user, normalizedToken);
         if (!result.Succeeded)
         {
+            _logger.LogWarning(
+                "Email confirmation failed for user {UserId} ({Email}): {ErrorCodes}",
+                user.Id,
+                user.Email,
+                string.Join(", ", result.Errors.Select(e => e.Code)));
+
+            // "InvalidToken" almost always means the link expired (24h) or an older email
+            // was used after a resend. Tell the user what to do instead of echoing
+            // Identity's raw "Invalid token." text.
+            var isTokenError = result.Errors.Any(e =>
+                string.Equals(e.Code, "InvalidToken", StringComparison.OrdinalIgnoreCase));
+
             return BadRequest(new ConfirmEmailResultDto
             {
                 Succeeded = false,
                 Email = user.Email ?? string.Empty,
-                Message = string.Join(" ", result.Errors.Select(e => e.Description))
+                Message = isTokenError
+                    ? "This confirmation link has expired. Request a fresh link below, then open the newest email we send you."
+                    : string.Join(" ", result.Errors.Select(e => e.Description))
             });
         }
 
@@ -306,6 +381,14 @@ public class AuthController : ControllerBase
         });
     }
 
+    // One neutral response for every case (unknown email, already confirmed, cooldown,
+    // sent) so this endpoint cannot be used to probe which addresses have accounts.
+    private const string ResendNeutralMessage =
+        "If an account exists for that email, a confirmation link is on its way. " +
+        "Open the newest email from grow.IT — links expire after 24 hours. " +
+        "If you requested one in the last few minutes, check your inbox and spam folder before trying again.";
+
+    [EnableRateLimiting("auth-submit")]
     [HttpPost("resend-confirmation")]
     public async Task<IActionResult> ResendConfirmation(ResendConfirmationEmailRequest request)
     {
@@ -320,29 +403,27 @@ public class AuthController : ControllerBase
             .FirstOrDefaultAsync(u => u.NormalizedEmail == normalizedEmail);
         if (user is null)
         {
-            return Ok(new MessageResponse { Message = "If your email is in our system, you will receive a confirmation link." });
-        }
-
-        if (user.EmailConfirmed)
-        {
-            return Ok(new MessageResponse { Message = "Your email is already confirmed. You can sign in." });
+            return Ok(new MessageResponse { Message = ResendNeutralMessage });
         }
 
         try
         {
-            var sendResult = await SendEmailConfirmationAsync(user);
-            if (!sendResult.Sent)
+            if (user.EmailConfirmed)
             {
-                return Ok(new MessageResponse { Message = sendResult.Message });
+                // Tell the owner by email — the API response must not reveal the state.
+                await SendAccountReminderEmailAsync(user);
+            }
+            else
+            {
+                await SendEmailConfirmationAsync(user);
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to resend confirmation email for {Email}.", user.Email);
-            return StatusCode(StatusCodes.Status500InternalServerError, new MessageResponse { Message = "We could not resend the confirmation email right now. Please try again." });
         }
 
-        return Ok(new MessageResponse { Message = "If your email is in our system, you will receive a confirmation link." });
+        return Ok(new MessageResponse { Message = ResendNeutralMessage });
     }
 
     [HttpGet("invites/validate")]
@@ -554,6 +635,32 @@ public class AuthController : ControllerBase
         }
     }
 
+    // Sent when someone registers (or asks to resend confirmation) with an email that
+    // already has a confirmed account. The API response stays neutral; this email tells
+    // the real owner what actually happened and where to go.
+    private async Task SendAccountReminderEmailAsync(User user)
+    {
+        var email = user.Email;
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return;
+        }
+
+        var clientUrl = (_config["ClientUrl"] ?? throw new InvalidOperationException("ClientUrl configuration is required.")).TrimEnd('/');
+        var signInLink = HttpUtility.HtmlEncode($"{clientUrl}/login?email={HttpUtility.UrlEncode(email)}");
+        var resetLink = HttpUtility.HtmlEncode($"{clientUrl}/forgot-password");
+
+        var body = $@"
+            <h1>You already have a grow.IT account</h1>
+            <p>Someone (hopefully you) just tried to sign up for grow.IT with this email address, but an account already exists.</p>
+            <p>If that was you, you don't need a new account:</p>
+            <p><a href='{signInLink}'>Sign in to grow.IT</a></p>
+            <p>Forgot your password? <a href='{resetLink}'>Reset it here</a>.</p>
+            <p>If this wasn't you, no action is needed — your account is unchanged and no new account was created.</p>";
+
+        await _emailService.SendEmailAsync(email, "You already have a grow.IT account", body);
+    }
+
     private async Task<ConfirmationEmailSendResult> SendEmailConfirmationAsync(User user)
     {
         var reservation = await TryReserveConfirmationEmailSendAsync(user);
@@ -598,6 +705,7 @@ public class AuthController : ControllerBase
             <td style='padding:0 28px 24px;'>
               <p style='margin:0 0 8px;color:#64748b;font-size:13px;line-height:1.5;'>If the button does not work, copy and paste this link into your browser:</p>
               <p style='margin:0;word-break:break-all;font-size:13px;line-height:1.5;'><a href='{safeConfirmationLink}' style='color:#0f5c2d;'>{safeConfirmationLink}</a></p>
+              <p style='margin:12px 0 0;color:#64748b;font-size:13px;line-height:1.5;'>This link is valid for 24 hours. If you requested more than one confirmation email, this newest link stays valid the longest.</p>
             </td>
           </tr>
           <tr>

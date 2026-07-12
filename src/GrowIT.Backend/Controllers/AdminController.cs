@@ -267,6 +267,18 @@ public class AdminController : ControllerBase
         var user = await GetAdminTargetUserQuery().FirstOrDefaultAsync(u => u.Id == id);
         if (user is null) return NotFound();
 
+        // Reactivation consumes a seat, so enforce the same plan limit as invites
+        // (SuperAdmin is exempt).
+        if (!user.IsActive && !User.IsSuperAdmin())
+        {
+            var usage = await _planLimits.GetUsageAsync();
+            if (usage.AtUserLimit)
+            {
+                return StatusCode(StatusCodes.Status402PaymentRequired,
+                    $"Your {usage.PlanName} plan allows {usage.UsersMax} users ({usage.UsersUsed} in use, including pending invites). Upgrade your plan to reactivate this user.");
+            }
+        }
+
         user.IsActive = true;
         user.DeactivatedAt = null;
         await _context.SaveChangesAsync();
@@ -468,9 +480,18 @@ public class AdminController : ControllerBase
             });
         }
 
+        // Preserve the invite's original validity window (each send sets
+        // ExpiresAt = SentAt + window, so the previous span recovers it) instead of
+        // silently resetting to a hardcoded 7 days.
+        var validityWindow = invite.ExpiresAt - (invite.SentAt ?? invite.CreatedAt);
+        if (validityWindow <= TimeSpan.Zero || validityWindow > TimeSpan.FromDays(30))
+        {
+            validityWindow = TimeSpan.FromDays(7);
+        }
+
         var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         invite.TokenHash = HashToken(token);
-        invite.ExpiresAt = DateTime.UtcNow.AddDays(7);
+        invite.ExpiresAt = DateTime.UtcNow.Add(validityWindow);
         invite.SentAt = DateTime.UtcNow;
         invite.InvitedByUserId = _currentUserService.UserId;
 
@@ -790,11 +811,6 @@ public class AdminController : ControllerBase
     {
         take = Math.Clamp(take, 1, 500);
 
-        var userLookup = await _context.Users
-            .IgnoreQueryFilters()
-            .Select(u => new { u.Id, Name = (u.FirstName + " " + u.LastName).Trim(), u.Email })
-            .ToDictionaryAsync(x => x.Id, x => string.IsNullOrWhiteSpace(x.Name) ? x.Email : x.Name);
-
         // Tenant admins see only their own organization's audit trail (global query filter).
         // SuperAdmin sees the platform-wide trail across all tenants.
         var query = User.IsSuperAdmin()
@@ -828,6 +844,16 @@ public class AdminController : ControllerBase
                 a.NewData
             })
             .ToListAsync();
+
+        // Resolve display names only for users actually referenced by the returned logs.
+        var logUserIds = rawLogs.Select(a => a.UserId).Where(id => id != Guid.Empty).Distinct().ToList();
+        var userLookup = logUserIds.Count == 0
+            ? new Dictionary<Guid, string?>()
+            : await _context.Users
+                .IgnoreQueryFilters()
+                .Where(u => logUserIds.Contains(u.Id))
+                .Select(u => new { u.Id, Name = (u.FirstName + " " + u.LastName).Trim(), u.Email })
+                .ToDictionaryAsync(x => x.Id, x => string.IsNullOrWhiteSpace(x.Name) ? x.Email : x.Name);
 
         var logs = rawLogs.Select(a => new AdminAuditLogItemDto
         {

@@ -76,10 +76,7 @@ public class InvestmentAndImprintFlowTests
         Assert.Single(fundsAfterCreate);
         Assert.Equal(1000m, fundsAfterCreate[0].AvailableAmount);
 
-        var approveResponse = await client.PostAsJsonAsync($"/api/investments/{investmentId}/approve", new ApproveInvestmentRequest
-        {
-            ApprovedBy = "Integration Test"
-        });
+        var approveResponse = await client.PostAsJsonAsync($"/api/investments/{investmentId}/approve", new { });
         approveResponse.EnsureSuccessStatusCode();
 
         var fundsAfterApproval = await (await client.GetAsync("/api/financials/funds"))
@@ -167,10 +164,10 @@ public class InvestmentAndImprintFlowTests
         });
 
         using var client = factory.CreateTenantClient(tenantId, role: "Admin");
-        var firstApproval = await client.PostAsJsonAsync($"/api/investments/{firstInvestmentId}/approve", new ApproveInvestmentRequest());
+        var firstApproval = await client.PostAsJsonAsync($"/api/investments/{firstInvestmentId}/approve", new { });
         firstApproval.EnsureSuccessStatusCode();
 
-        var secondApproval = await client.PostAsJsonAsync($"/api/investments/{secondInvestmentId}/approve", new ApproveInvestmentRequest());
+        var secondApproval = await client.PostAsJsonAsync($"/api/investments/{secondInvestmentId}/approve", new { });
         Assert.Equal(HttpStatusCode.BadRequest, secondApproval.StatusCode);
 
         var funds = await (await client.GetAsync("/api/financials/funds"))

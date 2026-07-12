@@ -88,8 +88,8 @@ public class GrowthPlansController : ControllerBase
             Title = request.Title.Trim(),
             Season = request.Season,
             Status = GrowthPlanStatus.Active,
-            StartDate = request.StartDate == default ? DateTime.UtcNow : request.StartDate,
-            TargetEndDate = request.TargetEndDate,
+            StartDate = request.StartDate == default ? DateTime.UtcNow : ToUtc(request.StartDate),
+            TargetEndDate = ToUtc(request.TargetEndDate),
             CompletedGoals = 0,
             TotalGoals = 0,
         };
@@ -119,7 +119,7 @@ public class GrowthPlansController : ControllerBase
         existing.Title = string.IsNullOrWhiteSpace(request.Title) ? existing.Title : request.Title.Trim();
         existing.Season = request.Season;
         existing.Status = request.Status;
-        existing.TargetEndDate = request.TargetEndDate;
+        existing.TargetEndDate = ToUtc(request.TargetEndDate);
         existing.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
@@ -140,6 +140,17 @@ public class GrowthPlansController : ControllerBase
 
         return NoContent();
     }
+
+    // Dates arrive from the browser date picker with Kind=Unspecified; Npgsql rejects
+    // anything but Kind=Utc for timestamptz columns.
+    private static DateTime ToUtc(DateTime value) => value.Kind switch
+    {
+        DateTimeKind.Utc => value,
+        DateTimeKind.Local => value.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+    };
+
+    private static DateTime? ToUtc(DateTime? value) => value.HasValue ? ToUtc(value.Value) : null;
 
     private static GrowthPlanListDto ToDto(GrowthPlan entity)
     {
