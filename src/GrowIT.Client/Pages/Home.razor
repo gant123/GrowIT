@@ -1,10 +1,12 @@
 @page "/home"
 @attribute [Authorize]
-@using System.Globalization
 @using GrowIT.Shared.DTOs
 @using GrowIT.Client.Services
+@using Syncfusion.Blazor.Charts
+@implements IAsyncDisposable
 @inject IDashboardService DashboardService
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 <PageTitle>grow.IT - Founder Dashboard</PageTitle>
 
@@ -108,52 +110,64 @@ else
                         </div>
                     </div>
 
-                    <div class="bar-chart" role="img" aria-label="Bar chart of service value saved by month">
-                        <div class="bar-chart-plot">
-                            @foreach (var step in _gridSteps)
-                            {
-                                <div class="bar-grid-line" style="bottom: @step.Percent.ToString("0.##", CultureInfo.InvariantCulture)%">
-                                    <span class="bar-grid-label">@FormatCompactMoney(step.Value)</span>
-                                </div>
-                            }
-                            <div class="bar-row">
-                                @for (var i = 0; i < _chartBars.Count; i++)
-                                {
-                                    var bar = _chartBars[i];
-                                    <div class="bar-col" @key="bar.Label">
-                                        <div class="bar-fill @(bar.Amount <= 0 ? "empty" : null) @(bar.IsBest ? "best" : null)"
-                                             style="height: @bar.HeightPercent.ToString("0.##", CultureInfo.InvariantCulture)%; animation-delay: @(i * 45)ms"
-                                             data-value="@bar.Amount.ToString("C0")"></div>
-                                    </div>
-                                }
-                            </div>
-                            @if (!string.IsNullOrEmpty(_trendLinePath))
-                            {
-                                <svg class="trend-overlay" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true" focusable="false">
-                                    <defs>
-                                        <linearGradient id="trend-area-gradient" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0" class="trend-area-stop-top" />
-                                            <stop offset="1" class="trend-area-stop-bottom" />
-                                        </linearGradient>
-                                    </defs>
-                                    <path class="trend-area" d="@_trendAreaPath" />
-                                    <path class="trend-line" d="@_trendLinePath" pathLength="1" />
-                                </svg>
-                                <div class="trend-markers" aria-hidden="true">
-                                    @foreach (var marker in _trendMarkers)
-                                    {
-                                        <span class="trend-marker"
-                                              style="left: @marker.X.ToString("0.##", CultureInfo.InvariantCulture)%; bottom: @marker.BottomPercent.ToString("0.##", CultureInfo.InvariantCulture)%"></span>
-                                    }
-                                </div>
-                            }
-                        </div>
-                        <div class="bar-labels">
-                            @foreach (var bar in _chartBars)
-                            {
-                                <span class="bar-label @(bar.Amount > 0 ? "has-data" : null)">@bar.Label</span>
-                            }
-                        </div>
+                    @* Syncfusion resolves colors into SVG attributes, where CSS variables
+                       do NOT work — every color below is a concrete hex from the active
+                       theme palette, refreshed live via the themeChanged listener. *@
+                    <div class="chart-container">
+                        <SfChart @key="_chartTheme" Height="380px" Width="100%" Background="transparent" Theme="@_chartTheme">
+                            <ChartArea>
+                                <ChartAreaBorder Width="0"></ChartAreaBorder>
+                            </ChartArea>
+
+                            <ChartPrimaryXAxis ValueType="Syncfusion.Blazor.Charts.ValueType.Category"
+                                               EdgeLabelPlacement="EdgeLabelPlacement.Shift"
+                                               LabelPlacement="LabelPlacement.OnTicks">
+                                <ChartAxisLabelStyle Color="@_palette.AxisLabel" Size="12px"></ChartAxisLabelStyle>
+                                <ChartAxisMajorGridLines Width="0"></ChartAxisMajorGridLines>
+                                <ChartAxisMajorTickLines Width="0"></ChartAxisMajorTickLines>
+                                <ChartAxisLineStyle Width="0"></ChartAxisLineStyle>
+                            </ChartPrimaryXAxis>
+
+                            <ChartPrimaryYAxis LabelFormat="${value}" EdgeLabelPlacement="EdgeLabelPlacement.Shift">
+                                <ChartAxisLineStyle Width="0"></ChartAxisLineStyle>
+                                <ChartAxisMajorTickLines Width="0"></ChartAxisMajorTickLines>
+                                <ChartAxisMajorGridLines Width="1" Color="@_palette.GridLine" DashArray="4,4"></ChartAxisMajorGridLines>
+                                <ChartAxisLabelStyle Color="@_palette.AxisLabel" Size="12px"></ChartAxisLabelStyle>
+                            </ChartPrimaryYAxis>
+
+                            <ChartTooltipSettings Enable="true" Shared="true" Header="Service value"></ChartTooltipSettings>
+
+                            <ChartSeriesCollection>
+                                <ChartSeries DataSource="@stats.MonthlyTrends"
+                                             XName="Month"
+                                             YName="Amount"
+                                             Type="ChartSeriesType.Column"
+                                             ColumnWidth="0.55"
+                                             Fill="url(#growit-column-gradient)">
+                                    <ChartCornerRadius TopLeft="6" TopRight="6"></ChartCornerRadius>
+                                </ChartSeries>
+                                <ChartSeries DataSource="@stats.MonthlyTrends"
+                                             XName="Month"
+                                             YName="Amount"
+                                             Type="ChartSeriesType.Spline"
+                                             Width="3"
+                                             Fill="@BrandGreen">
+                                    <ChartMarker Visible="true" Width="10" Height="10" Shape="ChartShape.Circle" Fill="@_palette.MarkerFill">
+                                        <ChartMarkerBorder Width="3" Color="@BrandGreen"></ChartMarkerBorder>
+                                    </ChartMarker>
+                                </ChartSeries>
+                            </ChartSeriesCollection>
+                        </SfChart>
+
+                        @* Brand green is identical in both themes, so the gradient can be static. *@
+                        <svg class="chart-gradient-defs" aria-hidden="true" focusable="false">
+                            <defs>
+                                <linearGradient id="growit-column-gradient" x1="0" x2="0" y1="0" y2="1">
+                                    <stop offset="0" stop-color="#27B062" stop-opacity="0.85" />
+                                    <stop offset="1" stop-color="#27B062" stop-opacity="0.12" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
                     </div>
                 }
                 else
@@ -238,26 +252,83 @@ else
 }
 
 @code {
+    private const string BrandGreen = "#27B062";
+
+    // Concrete hex palettes matching the --growit-* values in app.css: Syncfusion writes
+    // these into SVG attributes, so CSS variables cannot be used here.
+    private sealed record ChartPalette(string AxisLabel, string GridLine, string MarkerFill);
+    private static readonly ChartPalette LightPalette = new("#64748b", "#e2e8f0", "#ffffff");
+    private static readonly ChartPalette DarkPalette = new("#cbd5e1", "#1e293b", "#0f172a");
+
     private DashboardStatsDto? stats;
     private bool _isLoading = true;
     private string? _loadError;
-
-    private sealed record ChartBar(string Label, decimal Amount, double HeightPercent, bool IsBest);
-    private sealed record GridStep(decimal Value, double Percent);
-    private sealed record TrendMarker(double X, double BottomPercent);
-
-    private List<ChartBar> _chartBars = new();
-    private List<GridStep> _gridSteps = new();
-    private List<TrendMarker> _trendMarkers = new();
-    private string _trendLinePath = string.Empty;
-    private string _trendAreaPath = string.Empty;
     private bool _hasChartData;
     private string _bestMonthLabel = "-";
     private decimal _monthlyAverage;
 
+    private Syncfusion.Blazor.Theme _chartTheme = Syncfusion.Blazor.Theme.Bootstrap5;
+    private ChartPalette _palette = LightPalette;
+    private DotNetObjectReference<Home>? _selfRef;
+    private int _themeListenerId;
+
     protected override async Task OnInitializedAsync()
     {
         await Refresh();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            var theme = await JS.InvokeAsync<string>("blazorInterop.getTheme");
+            ApplyTheme(theme);
+
+            _selfRef = DotNetObjectReference.Create(this);
+            _themeListenerId = await JS.InvokeAsync<int>("blazorInterop.registerThemeListener", _selfRef, nameof(OnThemeChangedJs));
+
+            StateHasChanged();
+        }
+        catch (JSException)
+        {
+            // Prerender/interop not ready — the light palette default is a safe fallback.
+        }
+    }
+
+    [JSInvokable]
+    public Task OnThemeChangedJs(string theme)
+    {
+        ApplyTheme(theme);
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private void ApplyTheme(string? theme)
+    {
+        var isDark = string.Equals(theme, "dark", StringComparison.OrdinalIgnoreCase);
+        _chartTheme = isDark ? Syncfusion.Blazor.Theme.Bootstrap5Dark : Syncfusion.Blazor.Theme.Bootstrap5;
+        _palette = isDark ? DarkPalette : LightPalette;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (_themeListenerId != 0)
+            {
+                await JS.InvokeVoidAsync("blazorInterop.unregisterThemeListener", _themeListenerId);
+            }
+        }
+        catch (Exception ex) when (ex is JSDisconnectedException or ObjectDisposedException or InvalidOperationException)
+        {
+            // Circuit already gone — nothing to clean up on the client.
+        }
+
+        _selfRef?.Dispose();
     }
 
     private async Task Refresh()
@@ -267,7 +338,7 @@ else
         try
         {
             stats = await DashboardService.GetStatsAsync();
-            BuildChart();
+            BuildSummary();
         }
         catch (Exception ex)
         {
@@ -280,144 +351,23 @@ else
         }
     }
 
-    private void BuildChart()
+    private void BuildSummary()
     {
         var trends = stats?.MonthlyTrends ?? new List<MonthlyMetric>();
         _hasChartData = trends.Any(t => t.Amount > 0);
         if (!_hasChartData)
         {
-            _chartBars = new();
-            _gridSteps = new();
-            _trendMarkers = new();
-            _trendLinePath = string.Empty;
-            _trendAreaPath = string.Empty;
+            _bestMonthLabel = "-";
+            _monthlyAverage = 0m;
             return;
         }
 
-        // The backend keys months by invariant abbreviated names; fill the full year so
-        // the chart reads as a January-December timeline instead of a gap-free sample.
-        var byMonth = trends
-            .GroupBy(t => t.Month, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.Sum(t => t.Amount), StringComparer.OrdinalIgnoreCase);
+        var best = trends.MaxBy(t => t.Amount);
+        _bestMonthLabel = best is null ? "-" : $"{best.Month} ({best.Amount:C0})";
 
-        var max = trends.Max(t => t.Amount);
-        var scaleMax = NiceCeiling(max);
-        var bestAmount = trends.Max(t => t.Amount);
-
-        _chartBars = Enumerable.Range(1, 12)
-            .Select(m => CultureInfo.InvariantCulture.DateTimeFormat.GetAbbreviatedMonthName(m))
-            .Select(label =>
-            {
-                var amount = byMonth.TryGetValue(label, out var value) ? value : 0m;
-                var percent = scaleMax <= 0 ? 0 : (double)(amount / scaleMax) * 100.0;
-                return new ChartBar(label, amount, percent, amount > 0 && amount == bestAmount);
-            })
-            .ToList();
-
-        _gridSteps = new List<GridStep>
-        {
-            new(scaleMax, 100),
-            new(scaleMax * 0.75m, 75),
-            new(scaleMax * 0.5m, 50),
-            new(scaleMax * 0.25m, 25),
-            new(0m, 0)
-        };
-
-        BuildTrendOverlay();
-
-        var best = _chartBars.Where(b => b.Amount > 0).MaxBy(b => b.Amount);
-        _bestMonthLabel = best is null ? "-" : $"{best.Label} ({best.Amount:C0})";
-
-        var monthsWithData = _chartBars.Count(b => b.Amount > 0);
-        _monthlyAverage = monthsWithData == 0 ? 0m : _chartBars.Sum(b => b.Amount) / monthsWithData;
+        var monthsWithData = trends.Count(t => t.Amount > 0);
+        _monthlyAverage = monthsWithData == 0 ? 0m : trends.Sum(t => t.Amount) / monthsWithData;
     }
-
-    // Trend line over the elapsed part of the year: from January through the last month
-    // with data, including in-between zero months (honest dips), but never into future
-    // months that simply haven't happened yet.
-    private void BuildTrendOverlay()
-    {
-        _trendMarkers = new();
-        _trendLinePath = string.Empty;
-        _trendAreaPath = string.Empty;
-
-        var lastDataIndex = _chartBars.FindLastIndex(b => b.Amount > 0);
-        if (lastDataIndex < 0)
-        {
-            return;
-        }
-
-        const double slotWidth = 100.0 / 12.0;
-        var points = new List<(double X, double Y)>();
-        for (var i = 0; i <= lastDataIndex; i++)
-        {
-            var x = (i + 0.5) * slotWidth;
-            var y = 100.0 - _chartBars[i].HeightPercent;
-            points.Add((x, y));
-
-            if (_chartBars[i].Amount > 0)
-            {
-                _trendMarkers.Add(new TrendMarker(x, _chartBars[i].HeightPercent));
-            }
-        }
-
-        if (points.Count < 2)
-        {
-            return;
-        }
-
-        _trendLinePath = BuildSmoothPath(points);
-        _trendAreaPath =
-            $"{_trendLinePath} L {Svg(points[^1].X)} 100 L {Svg(points[0].X)} 100 Z";
-    }
-
-    // Quadratic midpoint smoothing: curves stay between neighboring points (no overshoot
-    // below the baseline), which matters when zero months sit between data months.
-    private static string BuildSmoothPath(IReadOnlyList<(double X, double Y)> points)
-    {
-        var path = new System.Text.StringBuilder($"M {Svg(points[0].X)} {Svg(points[0].Y)}");
-        if (points.Count == 2)
-        {
-            path.Append($" L {Svg(points[1].X)} {Svg(points[1].Y)}");
-            return path.ToString();
-        }
-
-        for (var i = 1; i < points.Count - 1; i++)
-        {
-            var midX = (points[i].X + points[i + 1].X) / 2;
-            var midY = (points[i].Y + points[i + 1].Y) / 2;
-            path.Append($" Q {Svg(points[i].X)} {Svg(points[i].Y)} {Svg(midX)} {Svg(midY)}");
-        }
-
-        path.Append($" L {Svg(points[^1].X)} {Svg(points[^1].Y)}");
-        return path.ToString();
-    }
-
-    private static string Svg(double value) => value.ToString("0.##", CultureInfo.InvariantCulture);
-
-    // Rounds up to a "nice" chart ceiling (1 / 2 / 2.5 / 5 x 10^n) so gridline labels land
-    // on friendly values.
-    private static decimal NiceCeiling(decimal value)
-    {
-        if (value <= 0)
-        {
-            return 100m;
-        }
-
-        var magnitude = (decimal)Math.Pow(10, Math.Floor(Math.Log10((double)value)));
-        var normalized = value / magnitude;
-        var nice = normalized <= 1m ? 1m
-            : normalized <= 2m ? 2m
-            : normalized <= 2.5m ? 2.5m
-            : normalized <= 5m ? 5m
-            : 10m;
-        return nice * magnitude;
-    }
-
-    private static string FormatCompactMoney(decimal value) =>
-        value >= 1_000_000m ? $"${value / 1_000_000m:0.#}M"
-        : value >= 1_000m ? $"${value / 1_000m:0.#}K"
-        : $"${value:0}";
 
     private void NavigateToClient(Guid clientId)
     {

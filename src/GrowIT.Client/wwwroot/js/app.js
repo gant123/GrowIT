@@ -939,16 +939,39 @@
         getTheme: function() {
             return themeManager.getTheme();
         },
-        
+
         setTheme: function(theme) {
             themeManager.setTheme(theme);
             return theme;
         },
-        
+
         toggleTheme: function() {
             return themeManager.toggle();
         },
-        
+
+        // Lets components (e.g. Syncfusion charts) react to theme toggles: the .NET
+        // callback receives 'light'/'dark' whenever themeManager raises 'themeChanged'.
+        _themeListeners: new Map(),
+        _themeListenerSeq: 0,
+        registerThemeListener: function (dotNetRef, methodName) {
+            const id = ++this._themeListenerSeq;
+            const handler = (event) => {
+                try {
+                    dotNetRef.invokeMethodAsync(methodName || 'OnThemeChangedJs', event.detail?.theme ?? themeManager.getTheme());
+                } catch (_) { /* circuit disposed */ }
+            };
+            this._themeListeners.set(id, handler);
+            window.addEventListener('themeChanged', handler);
+            return id;
+        },
+        unregisterThemeListener: function (id) {
+            const handler = this._themeListeners.get(id);
+            if (handler) {
+                window.removeEventListener('themeChanged', handler);
+                this._themeListeners.delete(id);
+            }
+        },
+
         getSidebarState: function() {
             return sidebarManager.isExpanded();
         },

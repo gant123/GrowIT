@@ -234,8 +234,10 @@
         {
             try
             {
-                var theme = await JS.InvokeAsync<string>("localStorage.getItem", "theme");
-                _isDarkMode = theme == "dark";
+                // Use the theme manager (localStorage key 'growit-theme'), not a raw
+                // localStorage read with the wrong key — that left charts stuck in light.
+                var theme = await JS.InvokeAsync<string>("blazorInterop.getTheme");
+                _isDarkMode = string.Equals(theme, "dark", StringComparison.OrdinalIgnoreCase);
                 _chartTheme = _isDarkMode ? Theme.Bootstrap5Dark : Theme.Bootstrap5;
                 StateHasChanged();
             }
