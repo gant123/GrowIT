@@ -1,20 +1,22 @@
 @page "/home"
 @attribute [Authorize]
+@using System.Globalization
 @using GrowIT.Shared.DTOs
 @using GrowIT.Client.Services
 @using Syncfusion.Blazor.Charts
 @implements IAsyncDisposable
 @inject IDashboardService DashboardService
+@inject IProfileService ProfileService
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 
-<PageTitle>grow.IT - Founder Dashboard</PageTitle>
+<PageTitle>Today - grow.IT</PageTitle>
 
 @if (_isLoading)
 {
     <div class="loading-state">
         <div class="spinner-growit"></div>
-        <p class="loading-state-text">Loading impact data...</p>
+        <p class="loading-state-text">Opening your field journal...</p>
     </div>
 }
 else if (!string.IsNullOrWhiteSpace(_loadError))
@@ -31,75 +33,23 @@ else if (stats == null)
 else
 {
     <div class="dashboard fade-in">
-        <PageHeader Title="Founder Dashboard" Subtitle="See what you have saved, what needs attention, and what Grow.IT can turn into reports or portfolio content.">
-            <Actions>
-                <button class="btn-growit btn-secondary-growit" @onclick="Refresh">
-                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh
-                </button>
-            </Actions>
-        </PageHeader>
-
-        <div class="card-growit dashboard-intro mb-4">
-            <div class="card-body dashboard-intro-body">
-                <div class="dashboard-intro-copy">
-                    <div class="dashboard-intro-kicker">What This Page Does</div>
-                    <h3 class="dashboard-intro-title">Your saved work becomes useful reports, funder language, and next steps.</h3>
-                    <p class="dashboard-intro-text">Add people, programs, money sources, services, and outcomes once. Grow.IT reuses that information across dashboards, reports, and your organization portfolio.</p>
-                </div>
-                <div class="dashboard-intro-badges">
-                    <span class="badge-growit badge-success">Save once</span>
-                    <span class="badge-growit badge-success">Reuse in reports</span>
-                    <span class="badge-growit badge-success">Build your portfolio</span>
-                </div>
+        <header class="today-head">
+            <div class="today-head-text">
+                <h1 class="today-greeting">@_greeting</h1>
+                <div class="today-season"><span class="dot"></span> @_seasonLine</div>
             </div>
-        </div>
+            <button class="btn-growit btn-secondary-growit" @onclick="Refresh" title="Refresh">
+                <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+            </button>
+        </header>
 
-        <div class="grid-4 mb-4">
-            <KpiCard Label="Service Value This Year"
-                     Value="@stats.TotalInvestedYtd.ToString("C0")"
-                     Icon="bi bi-graph-up-arrow"
-                     Color="success"
-                     TrendText="Saved from service records"
-                     TrendIcon="bi bi-arrow-up-right"
-                     TrendDirection="up" />
-
-            <KpiCard Label="People or Households Served"
-                     Value="@stats.HouseholdsServedYtd.ToString()"
-                     Icon="bi bi-house-door"
-                     Color="info"
-                     TrendText="Used in impact reports" />
-
-            <KpiCard Label="Open Service Records"
-                     Value="@stats.ActiveCases.ToString()"
-                     Icon="bi bi-person-lines-fill"
-                     Color="warning"
-                     TrendText="Records your team is using" />
-
-            <KpiCard Label="Money Available"
-                     Value="@stats.FundsAvailable.ToString("C0")"
-                     Icon="bi bi-wallet2"
-                     Color="primary"
-                     TrendText="Remaining money sources" />
-        </div>
-
-        <div class="card-growit mb-4">
-            <div class="card-header">
-                <h3 class="section-title">Monthly Service Value</h3>
-                <div class="chart-legend">
-                    <div class="legend-item impact">
-                        <span class="legend-dot"></span>
-                        <span>Service value saved by month</span>
-                    </div>
-                </div>
-            </div>
+        <div class="card-growit today-hero mb-4">
             <div class="card-body">
+                <div class="hero-label">Service value this year</div>
+                <div class="hero-money">@stats.TotalInvestedYtd.ToString("C0")</div>
                 @if (_hasChartData)
                 {
                     <div class="chart-summary">
-                        <div class="chart-summary-item">
-                            <span class="chart-summary-label">Total this year</span>
-                            <span class="chart-summary-value">@stats.TotalInvestedYtd.ToString("C0")</span>
-                        </div>
                         <div class="chart-summary-item">
                             <span class="chart-summary-label">Best month</span>
                             <span class="chart-summary-value">@_bestMonthLabel</span>
@@ -114,7 +64,7 @@ else
                        do NOT work — every color below is a concrete hex from the active
                        theme palette, refreshed live via the themeChanged listener. *@
                     <div class="chart-container">
-                        <SfChart @key="_chartTheme" Height="380px" Width="100%" Background="transparent" Theme="@_chartTheme">
+                        <SfChart @key="_chartTheme" Height="340px" Width="100%" Background="transparent" Theme="@_chartTheme">
                             <ChartArea>
                                 <ChartAreaBorder Width="0"></ChartAreaBorder>
                             </ChartArea>
@@ -174,18 +124,33 @@ else
                 {
                     <div class="chart-empty-state">
                         <i class="bi bi-bar-chart"></i>
-                        <p>No trend data available for this period.</p>
+                        <p>Nothing planted yet this year.</p>
                         <span>Disbursed service records will appear here month by month.</span>
                     </div>
                 }
             </div>
         </div>
 
+        <div class="today-stats mb-4">
+            <button type="button" class="today-stat" @onclick="@(() => Nav.NavigateTo("/clients"))">
+                <span class="today-stat-value">@stats.HouseholdsServedYtd</span>
+                <span class="today-stat-label">Households served</span>
+            </button>
+            <button type="button" class="today-stat" @onclick="@(() => Nav.NavigateTo("/clients"))">
+                <span class="today-stat-value">@stats.ActiveCases</span>
+                <span class="today-stat-label">Open records</span>
+            </button>
+            <button type="button" class="today-stat" @onclick="@(() => Nav.NavigateTo("/funds"))">
+                <span class="today-stat-value">@stats.FundsAvailable.ToString("C0")</span>
+                <span class="today-stat-label">Money available</span>
+            </button>
+        </div>
+
         <div class="grid-2">
             <div class="card-growit">
                 <div class="card-header">
-                    <h3 class="section-title">Next Steps</h3>
-                    <span class="badge-growit badge-warning">@stats.PendingFollowUps.Count Action Items</span>
+                    <h3 class="section-title">Needs you</h3>
+                    <span class="badge-growit badge-warning">@stats.PendingFollowUps.Count due</span>
                 </div>
                 <div class="card-body p-0">
                     <div class="tasks-list">
@@ -209,8 +174,8 @@ else
                         {
                             <div class="empty-state">
                                 <i class="bi bi-check2-circle empty-state-icon text-success"></i>
-                                <div class="empty-state-title">No follow-ups due today</div>
-                                <div class="empty-state-description">When a person, household, or program needs attention, the next step will show here.</div>
+                                <div class="empty-state-title">Nothing needs you right now</div>
+                                <div class="empty-state-description">When a person, household, or program needs attention, it shows here first.</div>
                             </div>
                         }
                     </div>
@@ -219,7 +184,7 @@ else
 
             <div class="card-growit">
                 <div class="card-header">
-                    <h3 class="section-title">Recent Updates</h3>
+                    <h3 class="section-title">Field notes</h3>
                 </div>
                 <div class="card-body p-0">
                     <div class="activity-list">
@@ -241,7 +206,7 @@ else
                         else
                         {
                             <div class="empty-state">
-                                <p class="empty-state-description">No recent activity yet. Start by adding a person, program, money source, service record, or outcome.</p>
+                                <p class="empty-state-description">No entries yet. Tap Log to plant your first seed — a person, a service record, or an outcome.</p>
                             </div>
                         }
                     </div>
@@ -257,8 +222,10 @@ else
     // Concrete hex palettes matching the --growit-* values in app.css: Syncfusion writes
     // these into SVG attributes, so CSS variables cannot be used here.
     private sealed record ChartPalette(string AxisLabel, string GridLine, string MarkerFill);
-    private static readonly ChartPalette LightPalette = new("#64748b", "#e2e8f0", "#ffffff");
-    private static readonly ChartPalette DarkPalette = new("#cbd5e1", "#1e293b", "#0f172a");
+    private static readonly ChartPalette LightPalette = new("#5c6e62", "#dce5d6", "#ffffff");
+    private static readonly ChartPalette DarkPalette = new("#9fb4a6", "#24352b", "#121d17");
+
+    [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
 
     private DashboardStatsDto? stats;
     private bool _isLoading = true;
@@ -266,6 +233,8 @@ else
     private bool _hasChartData;
     private string _bestMonthLabel = "-";
     private decimal _monthlyAverage;
+    private string _greeting = "Welcome back";
+    private string _seasonLine = "";
 
     private Syncfusion.Blazor.Theme _chartTheme = Syncfusion.Blazor.Theme.Bootstrap5;
     private ChartPalette _palette = LightPalette;
@@ -274,6 +243,8 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        await BuildGreetingAsync();
+        BuildSeasonLine();
         await Refresh();
     }
 
@@ -329,6 +300,55 @@ else
         }
 
         _selfRef?.Dispose();
+    }
+
+    private async Task BuildGreetingAsync()
+    {
+        var firstName = "";
+        try
+        {
+            var profile = await ProfileService.GetProfileAsync();
+            firstName = profile?.FirstName?.Trim() ?? "";
+        }
+        catch
+        {
+            // Profile lookup is cosmetic here; fall back to the identity name below.
+        }
+
+        if (string.IsNullOrWhiteSpace(firstName) && AuthState is not null)
+        {
+            var authState = await AuthState;
+            var identityName = authState.User.Identity?.Name ?? "";
+            // Identity name can be the email address — never greet someone with one.
+            if (!identityName.Contains('@'))
+            {
+                firstName = identityName.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+            }
+        }
+
+        var hour = DateTime.Now.Hour;
+        var timeOfDay = hour switch
+        {
+            >= 5 and < 12 => "Good morning",
+            >= 12 and < 17 => "Good afternoon",
+            _ => "Good evening"
+        };
+
+        _greeting = string.IsNullOrWhiteSpace(firstName) ? $"{timeOfDay}." : $"{timeOfDay}, {firstName}.";
+    }
+
+    private void BuildSeasonLine()
+    {
+        var now = DateTime.Now;
+        var season = now.Month switch
+        {
+            3 or 4 or 5 => "Planting Season",
+            6 or 7 or 8 => "Growing Season",
+            9 or 10 or 11 => "Harvest Season",
+            _ => "Planning Season"
+        };
+
+        _seasonLine = $"{now:MMMM d} · {season} · Week {ISOWeek.GetWeekOfYear(now)}";
     }
 
     private async Task Refresh()
@@ -394,7 +414,7 @@ else
     private static string GetActivityIconClass(string icon) => icon switch
     {
         var value when value.Contains("dollar", StringComparison.OrdinalIgnoreCase) || value.Contains("cash", StringComparison.OrdinalIgnoreCase) => "bi bi-cash-stack",
-        var value when value.Contains("flag", StringComparison.OrdinalIgnoreCase) => "bi bi-flag",
+        var value when value.Contains("flag", StringComparison.OrdinalIgnoreCase) => "bi bi-flower1",
         var value when value.Contains("house", StringComparison.OrdinalIgnoreCase) || value.Contains("home", StringComparison.OrdinalIgnoreCase) => "bi bi-house-door",
         var value when value.Contains("people", StringComparison.OrdinalIgnoreCase) || value.Contains("person", StringComparison.OrdinalIgnoreCase) => "bi bi-people",
         _ => "bi bi-activity"

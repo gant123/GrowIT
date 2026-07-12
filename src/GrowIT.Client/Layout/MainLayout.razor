@@ -30,14 +30,19 @@
             </button>
         </div>
         
+        @* Field Journal navigation: Today / People / Money / Impact mirror the mobile
+           tab bar; the long tail lives under Workspace. *@
         <nav class="sidebar-nav">
             <div class="nav-section">
-                <div class="nav-section-label">Main</div>
-                <NavLink href="/home" class="nav-item" Match="NavLinkMatch.All" title="Dashboard" @onclick="HandleNavSelected">
-                    <span class="nav-icon"><i class="bi bi-grid-1x2"></i></span>
-                    <span class="nav-text">Dashboard</span>
+                <div class="nav-section-label">Today</div>
+                <NavLink href="/home" class="nav-item" Match="NavLinkMatch.All" title="Today" @onclick="HandleNavSelected">
+                    <span class="nav-icon"><i class="bi bi-sun"></i></span>
+                    <span class="nav-text">Today</span>
                 </NavLink>
-                
+            </div>
+
+            <div class="nav-section">
+                <div class="nav-section-label">People</div>
                 <NavLink href="/clients" class="nav-item" title="People & Households" @onclick="HandleNavSelected">
                     <span class="nav-icon"><i class="bi bi-people"></i></span>
                     <span class="nav-text">People</span>
@@ -52,32 +57,30 @@
                     <span class="nav-icon"><i class="bi bi-list-check"></i></span>
                     <span class="nav-text">Follow-ups</span>
                 </NavLink>
-
-                <NavLink href="/documents" class="nav-item" title="Documents" @onclick="HandleNavSelected">
-                    <span class="nav-icon"><i class="bi bi-file-earmark-text"></i></span>
-                    <span class="nav-text">Documents</span>
-                </NavLink>
             </div>
-            
+
             <div class="nav-section">
-                <div class="nav-section-label">Impact</div>
-                <NavLink href="/funds" class="nav-item" title="Funds" @onclick="HandleNavSelected">
+                <div class="nav-section-label">Money</div>
+                <NavLink href="/investments" class="nav-item" title="Service Records" @onclick="HandleNavSelected">
+                    <span class="nav-icon"><i class="bi bi-cash-stack"></i></span>
+                    <span class="nav-text">Service Records</span>
+                </NavLink>
+
+                <NavLink href="/funds" class="nav-item" title="Money Sources" @onclick="HandleNavSelected">
                     <span class="nav-icon"><i class="bi bi-wallet2"></i></span>
-                    <span class="nav-text">Funds</span>
+                    <span class="nav-text">Money Sources</span>
                 </NavLink>
 
                 <NavLink href="/programs" class="nav-item" title="Programs" @onclick="HandleNavSelected">
                     <span class="nav-icon"><i class="bi bi-folder2-open"></i></span>
                     <span class="nav-text">Programs</span>
                 </NavLink>
+            </div>
 
-                <NavLink href="/investments" class="nav-item" title="Service Records" @onclick="HandleNavSelected">
-                    <span class="nav-icon"><i class="bi bi-cash-stack"></i></span>
-                    <span class="nav-text">Service Records</span>
-                </NavLink>
-                
+            <div class="nav-section">
+                <div class="nav-section-label">Impact</div>
                 <NavLink href="/imprints" class="nav-item" title="Outcomes" @onclick="HandleNavSelected">
-                    <span class="nav-icon"><i class="bi bi-check2-circle"></i></span>
+                    <span class="nav-icon"><i class="bi bi-flower1"></i></span>
                     <span class="nav-text">Outcomes</span>
                 </NavLink>
 
@@ -90,27 +93,29 @@
                     <span class="nav-icon"><i class="bi bi-patch-check"></i></span>
                     <span class="nav-text">ASC Score</span>
                 </NavLink>
-            </div>
-            
-            @if (_canAccessIntelligence)
-            {
-                <div class="nav-section">
-                    <div class="nav-section-label">Intelligence</div>
+
+                @if (_canAccessIntelligence)
+                {
                     <NavLink href="/reports" class="nav-item" title="Funding Readiness Reports" @onclick="HandleNavSelected">
                         <span class="nav-icon"><i class="bi bi-pie-chart"></i></span>
                         <span class="nav-text">Reports</span>
                     </NavLink>
-                    
+
                     <NavLink href="/insights" class="nav-item" title="Insights (Beta)" @onclick="HandleNavSelected">
                         <span class="nav-icon"><i class="bi bi-activity"></i></span>
                         <span class="nav-text">Insights</span>
                         <span class="nav-badge">Beta</span>
                     </NavLink>
-                </div>
-            }
-            
+                }
+            </div>
+
             <div class="nav-section">
-                <div class="nav-section-label">System</div>
+                <div class="nav-section-label">Workspace</div>
+                <NavLink href="/documents" class="nav-item" title="Documents" @onclick="HandleNavSelected">
+                    <span class="nav-icon"><i class="bi bi-file-earmark-text"></i></span>
+                    <span class="nav-text">Documents</span>
+                </NavLink>
+
                 @if (_canAccessAdminWorkspace)
                 {
                     <NavLink href="/settings" class="nav-item" title="Settings" @onclick="HandleNavSelected">
@@ -470,6 +475,61 @@
         </div>
     </main>
 
+    @* Mobile-first shell: bottom tab bar mirrors the sidebar's four groups; the raised
+       Log button opens the quick-capture sheet. Hidden above 768px via CSS. *@
+    <nav class="growit-tabbar" aria-label="Primary">
+        <NavLink href="/home" class="tabbar-item" Match="NavLinkMatch.All">
+            <i class="bi bi-sun"></i><span>Today</span>
+        </NavLink>
+        <NavLink href="/clients" class="tabbar-item">
+            <i class="bi bi-people"></i><span>People</span>
+        </NavLink>
+        <button type="button" class="tabbar-log" @onclick="OpenLogSheet" aria-label="Log something new">
+            <i class="bi bi-plus-lg"></i>
+        </button>
+        <NavLink href="/investments" class="tabbar-item">
+            <i class="bi bi-cash-stack"></i><span>Money</span>
+        </NavLink>
+        <NavLink href="/imprints" class="tabbar-item">
+            <i class="bi bi-flower1"></i><span>Impact</span>
+        </NavLink>
+    </nav>
+
+    @if (_logSheetOpen)
+    {
+        <div class="log-sheet-scrim" @onclick="CloseLogSheet"></div>
+        <div class="log-sheet" role="dialog" aria-label="Log something new">
+            <div class="log-sheet-grab"></div>
+            <h5 class="log-sheet-title">Log it</h5>
+            <p class="log-sheet-sub">Everything you save is reused in dashboards and reports.</p>
+            <div class="log-sheet-grid">
+                @if (_canDocumentServiceRecords)
+                {
+                    <button type="button" class="log-option primary" @onclick="LogServiceRecord">
+                        <i class="bi bi-cash-stack"></i>
+                        <span class="log-option-title">Service record</span>
+                        <span class="log-option-desc">Money or support given</span>
+                    </button>
+                }
+                <button type="button" class="log-option" @onclick="@(() => LogNavigate("/imprints"))">
+                    <i class="bi bi-flower1"></i>
+                    <span class="log-option-title">Outcome</span>
+                    <span class="log-option-desc">A harvest worth reporting</span>
+                </button>
+                <button type="button" class="log-option" @onclick="@(() => LogNavigate("/clients/create"))">
+                    <i class="bi bi-person-plus"></i>
+                    <span class="log-option-title">Person</span>
+                    <span class="log-option-desc">New case file</span>
+                </button>
+                <button type="button" class="log-option" @onclick="@(() => LogNavigate("/tasks"))">
+                    <i class="bi bi-alarm"></i>
+                    <span class="log-option-title">Follow-up</span>
+                    <span class="log-option-desc">Remind future you</span>
+                </button>
+            </div>
+        </div>
+    }
+
     <GrowIT.Client.Shared.PlantSeedModal @bind-Show="_plantSeedModalOpen" />
 </div>
 
@@ -497,6 +557,7 @@
     private bool _userMenuOpen = false;
     private bool _notificationsOpen = false;
     private bool _plantSeedModalOpen = false;
+    private bool _logSheetOpen = false;
     private List<Breadcrumb> _breadcrumbs = new();
     private bool _searchFocused = false;
     private int _highlightedSearchIndex = -1;
@@ -637,6 +698,7 @@
     {
         _userMenuOpen = false;
         _notificationsOpen = false;
+        _logSheetOpen = false;
         UpdateBreadcrumbs();
         StateHasChanged();
     }
@@ -772,6 +834,27 @@
         if (!_canDocumentServiceRecords)
             return;
         _plantSeedModalOpen = true;
+    }
+
+    private void OpenLogSheet()
+    {
+        _logSheetOpen = true;
+        _userMenuOpen = false;
+        _notificationsOpen = false;
+    }
+
+    private void CloseLogSheet() => _logSheetOpen = false;
+
+    private void LogServiceRecord()
+    {
+        _logSheetOpen = false;
+        OpenPlantSeedModal();
+    }
+
+    private void LogNavigate(string route)
+    {
+        _logSheetOpen = false;
+        Navigation.NavigateTo(route);
     }
 
     private void HandleSearchFocusIn(FocusEventArgs _)

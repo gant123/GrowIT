@@ -31,40 +31,40 @@
     --growit-primary: var(--brand-primary);
     --growit-primary-dark: var(--brand-primary-dark);
     
-    /* Semantic Colors - Enterprise Standard */
+    /* Semantic Colors — kept separate from the leaf accent (Field Journal) */
     --growit-success: #10b981;
-    --growit-warning: #f59e0b;
-    --growit-danger: #ef4444;
+    --growit-warning: #db8a1f;    /* harvest amber */
+    --growit-danger: #c04b37;     /* clay */
     --growit-info: #0ea5e9;
-    
-    /* Light Theme Surface Colors */
-    --growit-bg-primary: #f8fafc;    /* Very light slate */
+
+    /* Light Theme "Meadow" — warm sage-biased grounds */
+    --growit-bg-primary: #f4f7f1;    /* meadow paper */
     --growit-bg-secondary: #ffffff;
     --growit-bg-card: #ffffff;
-    --growit-bg-card-hover: #f1f5f9;
+    --growit-bg-card-hover: #ecf2e7;
     --growit-bg-input: #ffffff;
-    
-    --growit-text-primary: #0f172a;
-    --growit-text-secondary: #475569;
-    --growit-text-muted: #64748b;
-    --growit-text-dim: #94a3b8;
+
+    --growit-text-primary: #1c2a24;
+    --growit-text-secondary: #43554b;
+    --growit-text-muted: #5c6e62;
+    --growit-text-dim: #8ca092;
     --growit-text: var(--growit-text-primary);
-    
-    --growit-border: #e2e8f0;
-    --growit-border-light: #f1f5f9;
+
+    --growit-border: #dce5d6;
+    --growit-border-light: #ecf2e7;
     --growit-border-focus: var(--brand-accent);
-    
-    --growit-heading-color: #0f172a;
-    
-    /* Shadows - More subtle for Enterprise */
-    --growit-shadow-sm: 0 1px 2px 0 rgba(15, 23, 42, 0.05);
-    --growit-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.1), 0 1px 2px -1px rgba(15, 23, 42, 0.1);
-    --growit-shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.1), 0 2px 4px -2px rgba(15, 23, 42, 0.1);
-    --growit-shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.1), 0 4px 6px -4px rgba(15, 23, 42, 0.1);
-    --growit-shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
-    
-    /* Typography */
-    --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+
+    --growit-heading-color: #1c2a24;
+
+    /* Shadows — warm ink instead of blue-slate */
+    --growit-shadow-sm: 0 1px 2px 0 rgba(28, 42, 36, 0.05);
+    --growit-shadow: 0 1px 3px 0 rgba(28, 42, 36, 0.1), 0 1px 2px -1px rgba(28, 42, 36, 0.1);
+    --growit-shadow-md: 0 4px 6px -1px rgba(28, 42, 36, 0.1), 0 2px 4px -2px rgba(28, 42, 36, 0.1);
+    --growit-shadow-lg: 0 10px 15px -3px rgba(28, 42, 36, 0.1), 0 4px 6px -4px rgba(28, 42, 36, 0.1);
+    --growit-shadow-xl: 0 20px 25px -5px rgba(28, 42, 36, 0.1), 0 8px 10px -6px rgba(28, 42, 36, 0.1);
+
+    /* Typography — Fraunces carries display & hero numerals; Jakarta stays the UI voice */
+    --font-display: 'Fraunces', 'Iowan Old Style', Georgia, serif;
     --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
     
@@ -133,31 +133,37 @@
    DARK THEME
    ======================================== */
 [data-theme="dark"] {
-    --growit-bg-primary: #020617;    /* Deepest Slate */
-    --growit-bg-secondary: #0f172a;  /* Deep Slate */
-    --growit-bg-card: #0f172a;
-    --growit-bg-card-hover: #1e293b;
-    --growit-bg-input: #020617;
-    
-    --growit-text-primary: #f8fafc;
-    --growit-text-secondary: #e2e8f0; /* Increased contrast for dark mode */
-    --growit-text-muted: #cbd5e1;     /* Increased contrast for dark mode */
-    --growit-text-dim: #94a3b8;       /* Increased contrast for dark mode */
+    /* "Night Garden" — green-black grounds instead of generic slate */
+    --growit-bg-primary: #0b1310;
+    --growit-bg-secondary: #121d17;
+    --growit-bg-card: #121d17;
+    --growit-bg-card-hover: #1a2a21;
+    --growit-bg-input: #0b1310;
+
+    --growit-text-primary: #eaf2ec;
+    --growit-text-secondary: #c4d4c9;
+    --growit-text-muted: #9fb4a6;
+    --growit-text-dim: #7a8f81;
     --growit-text: var(--growit-text-primary);
-    
-    --growit-border: #1e293b;
-    --growit-border-light: #0f172a;
-    
-    --growit-heading-color: #f8fafc;
-    
+
+    --growit-border: #24352b;
+    --growit-border-light: #1a2a21;
+
+    --growit-heading-color: #eaf2ec;
+
+    /* Accent brightened for dark grounds; semantic hues follow */
+    --growit-green-light: #52d68d;
+    --growit-warning: #e09a3e;
+    --growit-danger: #e0664f;
+
     --growit-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
     --growit-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5), 0 1px 2px -1px rgba(0, 0, 0, 0.4);
     --growit-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.4);
     --growit-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
     --bg-secondary: color-mix(in srgb, var(--growit-bg-card) 88%, white 12%);
     --bg-tertiary: color-mix(in srgb, var(--growit-bg-card) 60%, black 40%);
-    --growit-wordmark-grow: #e2e8f0;
-    --growit-wordmark-it: #27B062;
+    --growit-wordmark-grow: #eaf2ec;
+    --growit-wordmark-it: #3dc97e;
 }
 
 /* ========================================
