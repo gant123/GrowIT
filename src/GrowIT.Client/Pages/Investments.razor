@@ -64,7 +64,27 @@
             <div class="alert alert-danger mb-3">@_actionError</div>
         }
 
-        <div class="card-growit">
+        @* Mobile: tappable rows opening the detail modal (approve/disburse live there). *@
+        <div class="card-growit money-list-mobile">
+            <div class="card-body p-0">
+                @foreach (var inv in FilteredInvestments)
+                {
+                    <button type="button" class="money-row" @onclick="() => OpenDetails(inv.Id)">
+                        <span class="money-row-text">
+                            <span class="money-row-name">@inv.PersonName</span>
+                            <span class="money-row-meta">@inv.Purpose</span>
+                            <span class="money-row-date">@inv.Date.ToString("MMM d, yyyy")</span>
+                        </span>
+                        <span class="money-row-side">
+                            <span class="money-row-amount">@inv.Amount.ToString("C0")</span>
+                            <span class="badge-growit @GetBadge(inv.Status)">@inv.Status</span>
+                        </span>
+                    </button>
+                }
+            </div>
+        </div>
+
+        <div class="card-growit money-grid-desktop">
             <div class="card-body p-0">
                 <SfGrid TValue="InvestmentListDto"
                         @ref="_investmentsGrid"

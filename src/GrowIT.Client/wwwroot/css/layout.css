@@ -318,7 +318,7 @@
 }
 
 [data-theme="dark"] .growit-topbar {
-    background: rgba(15, 23, 42, 0.8);
+    background: rgba(28, 42, 36, 0.8);
 }
 
 .topbar-left {
@@ -1252,7 +1252,7 @@
         min-width: min(88vw, 340px);
         max-width: calc(100vw - 24px);
         display: flex;
-        box-shadow: 0 20px 60px rgba(2, 6, 23, 0.28);
+        box-shadow: 0 20px 60px rgba(8, 14, 11, 0.28);
     }
     
     .growit-sidebar.mobile-expanded {
@@ -1373,7 +1373,7 @@
     display: none;
     position: fixed;
     inset: 0;
-    background: rgba(2, 6, 23, 0.56);
+    background: rgba(8, 14, 11, 0.56);
     z-index: 99;
     pointer-events: none;
     backdrop-filter: blur(2px);

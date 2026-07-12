@@ -146,7 +146,32 @@
                 </div>
             </div>
 
-            <div class="card-growit">
+            @* Mobile: thumb-friendly list rows (the data grid is unusable at 375px). *@
+            <div class="card-growit directory-list-mobile">
+                <div class="card-header">
+                    <h3 class="section-title">People & Households</h3>
+                    <span class="badge-growit badge-neutral">@FilteredClients.Count() shown</span>
+                </div>
+                <div class="card-body p-0">
+                    @foreach (var client in FilteredClients)
+                    {
+                        <button type="button" class="person-row" @onclick="() => NavigateToClient(client.Id)">
+                            <span class="avatar-growit avatar-md client-avatar">@GetInitials(client.Name)</span>
+                            <span class="person-row-text">
+                                <span class="person-row-name">@client.Name</span>
+                                <span class="person-row-meta">@GetDisplayEmail(client)</span>
+                            </span>
+                            <span class="person-row-side">
+                                <span class="badge-growit @GetPhaseBadgeClass(client.LifePhase)">@client.LifePhase</span>
+                                <span class="person-row-score">@client.StabilityScore/10</span>
+                            </span>
+                            <i class="bi bi-chevron-right person-row-chevron"></i>
+                        </button>
+                    }
+                </div>
+            </div>
+
+            <div class="card-growit directory-grid-desktop">
                 <div class="card-header">
                     <h3 class="section-title">Saved People & Households</h3>
                     <div class="directory-header-meta">
