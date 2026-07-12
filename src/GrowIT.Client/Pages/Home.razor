@@ -1,8 +1,8 @@
 @page "/home"
 @attribute [Authorize]
+@using System.Globalization
 @using GrowIT.Shared.DTOs
 @using GrowIT.Client.Services
-@using Syncfusion.Blazor.Charts 
 @inject IDashboardService DashboardService
 @inject NavigationManager Nav
 
@@ -37,52 +37,52 @@ else
             </Actions>
         </PageHeader>
 
-        <div class="card-growit mb-4" style="border-left: 4px solid var(--growit-green);">
-            <div class="card-body d-flex flex-column flex-lg-row align-items-start align-items-lg-center justify-content-between gap-3">
-                <div style="max-width: 800px;">
-                    <div class="text-uppercase fw-700 text-success mb-1" style="font-size: 0.72rem; letter-spacing: 0.12em;">What This Page Does</div>
-                    <h3 class="mb-2" style="font-size: 1.4rem; letter-spacing: -0.02em;">Your saved work becomes useful reports, funder language, and next steps.</h3>
-                    <p class="mb-0" style="font-size: 1rem; color: var(--growit-text-secondary); line-height: 1.5;">Add people, programs, money sources, services, and outcomes once. Grow.IT reuses that information across dashboards, reports, and your organization portfolio.</p>
+        <div class="card-growit dashboard-intro mb-4">
+            <div class="card-body dashboard-intro-body">
+                <div class="dashboard-intro-copy">
+                    <div class="dashboard-intro-kicker">What This Page Does</div>
+                    <h3 class="dashboard-intro-title">Your saved work becomes useful reports, funder language, and next steps.</h3>
+                    <p class="dashboard-intro-text">Add people, programs, money sources, services, and outcomes once. Grow.IT reuses that information across dashboards, reports, and your organization portfolio.</p>
                 </div>
-                <div class="d-flex flex-wrap gap-2">
-                    <span class="badge-growit badge-success" style="padding: 6px 14px;">Save once</span>
-                    <span class="badge-growit badge-success" style="padding: 6px 14px;">Reuse in reports</span>
-                    <span class="badge-growit badge-success" style="padding: 6px 14px;">Build your portfolio</span>
+                <div class="dashboard-intro-badges">
+                    <span class="badge-growit badge-success">Save once</span>
+                    <span class="badge-growit badge-success">Reuse in reports</span>
+                    <span class="badge-growit badge-success">Build your portfolio</span>
                 </div>
             </div>
         </div>
 
         <div class="grid-4 mb-4">
-            <KpiCard Label="Service Value This Year" 
-                     Value="@stats.TotalInvestedYtd.ToString("C0")" 
-                     Icon="bi bi-graph-up-arrow" 
-                     Color="success" 
-                     TrendText="Saved from service records" 
-                     TrendIcon="bi bi-arrow-up-right" 
+            <KpiCard Label="Service Value This Year"
+                     Value="@stats.TotalInvestedYtd.ToString("C0")"
+                     Icon="bi bi-graph-up-arrow"
+                     Color="success"
+                     TrendText="Saved from service records"
+                     TrendIcon="bi bi-arrow-up-right"
                      TrendDirection="up" />
-            
-            <KpiCard Label="People or Households Served" 
-                     Value="@stats.HouseholdsServedYtd.ToString()" 
-                     Icon="bi bi-house-door" 
-                     Color="info" 
+
+            <KpiCard Label="People or Households Served"
+                     Value="@stats.HouseholdsServedYtd.ToString()"
+                     Icon="bi bi-house-door"
+                     Color="info"
                      TrendText="Used in impact reports" />
 
-            <KpiCard Label="Open Service Records" 
-                     Value="@stats.ActiveCases.ToString()" 
-                     Icon="bi bi-person-lines-fill" 
-                     Color="warning" 
+            <KpiCard Label="Open Service Records"
+                     Value="@stats.ActiveCases.ToString()"
+                     Icon="bi bi-person-lines-fill"
+                     Color="warning"
                      TrendText="Records your team is using" />
-            
-            <KpiCard Label="Money Available" 
-                     Value="@stats.FundsAvailable.ToString("C0")" 
-                     Icon="bi bi-wallet2" 
-                     Color="primary" 
+
+            <KpiCard Label="Money Available"
+                     Value="@stats.FundsAvailable.ToString("C0")"
+                     Icon="bi bi-wallet2"
+                     Color="primary"
                      TrendText="Remaining money sources" />
         </div>
 
         <div class="card-growit mb-4">
             <div class="card-header">
-                    <h3 class="section-title">Monthly Service Value</h3>
+                <h3 class="section-title">Monthly Service Value</h3>
                 <div class="chart-legend">
                     <div class="legend-item impact">
                         <span class="legend-dot"></span>
@@ -91,67 +91,58 @@ else
                 </div>
             </div>
             <div class="card-body">
-                <div class="chart-container" style="padding-top: 10px;">
-                @if (stats?.MonthlyTrends != null && stats.MonthlyTrends.Any())
+                @if (_hasChartData)
                 {
-                    <SfChart Height="380px" Width="100%" Background="transparent">
-                        <ChartArea><ChartAreaBorder Width="0"></ChartAreaBorder></ChartArea>
-                        <ChartPrimaryXAxis ValueType="Syncfusion.Blazor.Charts.ValueType.Category" 
-                                           EdgeLabelPlacement="EdgeLabelPlacement.Shift"
-                                           LabelPlacement="LabelPlacement.OnTicks">
-                            <ChartAxisLabelStyle Color="var(--growit-text-muted)" FontStyle="600"></ChartAxisLabelStyle>
-                            <ChartAxisMajorGridLines Width="0"></ChartAxisMajorGridLines>
-                            <ChartAxisLineStyle Width="0"></ChartAxisLineStyle>
-                        </ChartPrimaryXAxis>
-                        
-                        <ChartPrimaryYAxis LabelFormat="${value}" EdgeLabelPlacement="EdgeLabelPlacement.Shift">
-                            <ChartAxisLineStyle Width="0"></ChartAxisLineStyle>
-                            <ChartAxisMajorTickLines Width="0"></ChartAxisMajorTickLines>
-                            <ChartAxisMajorGridLines Width="1" Color="var(--growit-border)" DashArray="5,5"></ChartAxisMajorGridLines>
-                            <ChartAxisLabelStyle Color="var(--growit-text-muted)"></ChartAxisLabelStyle>
-                        </ChartPrimaryYAxis>
-                        
-                        <ChartTooltipSettings Enable="true" Shared="true" Fill="var(--growit-text-primary)" Opacity="0.9" Header="Month">
-                            <ChartTooltipTextStyle Color="#ffffff"></ChartTooltipTextStyle>
-                        </ChartTooltipSettings>
-                        
-                        <ChartSeriesCollection>
-                            <ChartSeries DataSource="@stats.MonthlyTrends" 
-                                         XName="Month" 
-                                         YName="Amount" 
-                                         Type="ChartSeriesType.Column" 
-                                         Width="2"
-                                         Fill="url(#gradient-emerald)">
-                            </ChartSeries>
-                            <ChartSeries DataSource="@stats.MonthlyTrends" 
-                                         XName="Month" 
-                                         YName="Amount" 
-                                         Type="ChartSeriesType.Line" 
-                                         Width="3"
-                                         Fill="var(--growit-green)">
-                                <ChartMarker Visible="true" Width="10" Height="10" Shape="ChartShape.Circle" Fill="white">
-                                    <ChartMarkerBorder Width="3" Color="var(--growit-green)"></ChartMarkerBorder>
-                                </ChartMarker>
-                            </ChartSeries>
-                        </ChartSeriesCollection>
-                        
-                        <svg style="height: 0">
-                            <defs>
-                                <linearGradient id="gradient-emerald" x1="0" x2="0" y1="0" y2="1">
-                                    <stop offset="0" stop-color="var(--growit-green)" stop-opacity="0.8"/>
-                                    <stop offset="1" stop-color="var(--growit-green)" stop-opacity="0.1"/>
-                                </linearGradient>
-                            </defs>
-                        </svg>
-                    </SfChart>
+                    <div class="chart-summary">
+                        <div class="chart-summary-item">
+                            <span class="chart-summary-label">Total this year</span>
+                            <span class="chart-summary-value">@stats.TotalInvestedYtd.ToString("C0")</span>
+                        </div>
+                        <div class="chart-summary-item">
+                            <span class="chart-summary-label">Best month</span>
+                            <span class="chart-summary-value">@_bestMonthLabel</span>
+                        </div>
+                        <div class="chart-summary-item">
+                            <span class="chart-summary-label">Monthly average</span>
+                            <span class="chart-summary-value">@_monthlyAverage.ToString("C0")</span>
+                        </div>
+                    </div>
+
+                    <div class="bar-chart" role="img" aria-label="Bar chart of service value saved by month">
+                        <div class="bar-chart-plot">
+                            @foreach (var step in _gridSteps)
+                            {
+                                <div class="bar-grid-line" style="bottom: @step.Percent.ToString("0.##", CultureInfo.InvariantCulture)%">
+                                    <span class="bar-grid-label">@FormatCompactMoney(step.Value)</span>
+                                </div>
+                            }
+                            <div class="bar-row">
+                                @foreach (var bar in _chartBars)
+                                {
+                                    <div class="bar-col" @key="bar.Label">
+                                        <div class="bar-fill @(bar.Amount <= 0 ? "empty" : null)"
+                                             style="height: @bar.HeightPercent.ToString("0.##", CultureInfo.InvariantCulture)%"
+                                             data-value="@bar.Amount.ToString("C0")"></div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        <div class="bar-labels">
+                            @foreach (var bar in _chartBars)
+                            {
+                                <span class="bar-label @(bar.Amount > 0 ? "has-data" : null)">@bar.Label</span>
+                            }
+                        </div>
+                    </div>
                 }
                 else
                 {
-                    <div class="d-flex justify-content-center align-items-center" style="height: 350px;">
-                        <p class="text-muted">No trend data available for this period.</p>
+                    <div class="chart-empty-state">
+                        <i class="bi bi-bar-chart"></i>
+                        <p>No trend data available for this period.</p>
+                        <span>Disbursed service records will appear here month by month.</span>
                     </div>
                 }
-                </div>
             </div>
         </div>
 
@@ -159,7 +150,7 @@ else
             <div class="card-growit">
                 <div class="card-header">
                     <h3 class="section-title">Next Steps</h3>
-                    <span class="badge-growit badge-warning">@stats!.PendingFollowUps.Count Action Items</span>
+                    <span class="badge-growit badge-warning">@stats.PendingFollowUps.Count Action Items</span>
                 </div>
                 <div class="card-body p-0">
                     <div class="tasks-list">
@@ -169,12 +160,13 @@ else
                             {
                                 <div class="task-item cursor-pointer" @onclick="() => NavigateToClient(task.ClientId)">
                                     <div class="task-content">
-                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <div class="task-row">
                                             <span class="task-action fw-600">@task.ClientName</span>
-                                            <span class="badge-growit badge-neutral" style="color: var(--growit-text-secondary) !important;">Due @task.DueDate.ToString("MMM dd")</span>
+                                            <span class="task-due">Due @task.DueDate.ToString("MMM dd")</span>
                                         </div>
-                                        <div class="task-client text-muted" style="color: var(--growit-text-muted) !important;">@task.Note</div>
+                                        <div class="task-note">@task.Note</div>
                                     </div>
+                                    <i class="bi bi-chevron-right task-chevron"></i>
                                 </div>
                             }
                         }
@@ -206,7 +198,7 @@ else
                                     </div>
                                     <div class="activity-content">
                                         <div class="activity-text">@item.Description</div>
-                                        <div class="activity-meta" style="color: var(--growit-text-muted) !important;">@GetTimeAgo(item.Date)</div>
+                                        <div class="activity-meta">@GetTimeAgo(item.Date)</div>
                                     </div>
                                 </div>
                             }
@@ -214,7 +206,7 @@ else
                         else
                         {
                             <div class="empty-state">
-                                <p class="text-muted">No recent activity yet. Start by adding a person, program, money source, service record, or outcome.</p>
+                                <p class="empty-state-description">No recent activity yet. Start by adding a person, program, money source, service record, or outcome.</p>
                             </div>
                         }
                     </div>
@@ -229,6 +221,15 @@ else
     private bool _isLoading = true;
     private string? _loadError;
 
+    private sealed record ChartBar(string Label, decimal Amount, double HeightPercent);
+    private sealed record GridStep(decimal Value, double Percent);
+
+    private List<ChartBar> _chartBars = new();
+    private List<GridStep> _gridSteps = new();
+    private bool _hasChartData;
+    private string _bestMonthLabel = "-";
+    private decimal _monthlyAverage;
+
     protected override async Task OnInitializedAsync()
     {
         await Refresh();
@@ -238,21 +239,91 @@ else
     {
         _isLoading = true;
         _loadError = null;
-        try 
+        try
         {
             stats = await DashboardService.GetStatsAsync();
+            BuildChart();
         }
         catch (Exception ex)
         {
             stats = null;
             _loadError = ex.Message;
-            Console.WriteLine($"Error loading dashboard: {ex.Message}");
         }
         finally
         {
             _isLoading = false;
         }
     }
+
+    private void BuildChart()
+    {
+        var trends = stats?.MonthlyTrends ?? new List<MonthlyMetric>();
+        _hasChartData = trends.Any(t => t.Amount > 0);
+        if (!_hasChartData)
+        {
+            _chartBars = new();
+            _gridSteps = new();
+            return;
+        }
+
+        // The backend keys months by invariant abbreviated names; fill the full year so
+        // the chart reads as a January-December timeline instead of a gap-free sample.
+        var byMonth = trends
+            .GroupBy(t => t.Month, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Sum(t => t.Amount), StringComparer.OrdinalIgnoreCase);
+
+        var max = trends.Max(t => t.Amount);
+        var scaleMax = NiceCeiling(max);
+
+        _chartBars = Enumerable.Range(1, 12)
+            .Select(m => CultureInfo.InvariantCulture.DateTimeFormat.GetAbbreviatedMonthName(m))
+            .Select(label =>
+            {
+                var amount = byMonth.TryGetValue(label, out var value) ? value : 0m;
+                var percent = scaleMax <= 0 ? 0 : (double)(amount / scaleMax) * 100.0;
+                return new ChartBar(label, amount, percent);
+            })
+            .ToList();
+
+        _gridSteps = new List<GridStep>
+        {
+            new(scaleMax, 100),
+            new(scaleMax * 0.75m, 75),
+            new(scaleMax * 0.5m, 50),
+            new(scaleMax * 0.25m, 25),
+            new(0m, 0)
+        };
+
+        var best = _chartBars.Where(b => b.Amount > 0).MaxBy(b => b.Amount);
+        _bestMonthLabel = best is null ? "-" : $"{best.Label} ({best.Amount:C0})";
+
+        var monthsWithData = _chartBars.Count(b => b.Amount > 0);
+        _monthlyAverage = monthsWithData == 0 ? 0m : _chartBars.Sum(b => b.Amount) / monthsWithData;
+    }
+
+    // Rounds up to a "nice" chart ceiling (1 / 2 / 2.5 / 5 x 10^n) so gridline labels land
+    // on friendly values.
+    private static decimal NiceCeiling(decimal value)
+    {
+        if (value <= 0)
+        {
+            return 100m;
+        }
+
+        var magnitude = (decimal)Math.Pow(10, Math.Floor(Math.Log10((double)value)));
+        var normalized = value / magnitude;
+        var nice = normalized <= 1m ? 1m
+            : normalized <= 2m ? 2m
+            : normalized <= 2.5m ? 2.5m
+            : normalized <= 5m ? 5m
+            : 10m;
+        return nice * magnitude;
+    }
+
+    private static string FormatCompactMoney(decimal value) =>
+        value >= 1_000_000m ? $"${value / 1_000_000m:0.#}M"
+        : value >= 1_000m ? $"${value / 1_000m:0.#}K"
+        : $"${value:0}";
 
     private void NavigateToClient(Guid clientId)
     {

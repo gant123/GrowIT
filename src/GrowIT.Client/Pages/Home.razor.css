@@ -1,6 +1,8 @@
 /* ========================================
-   GROWIT DASHBOARD - ENTERPRISE HOME
-   Light professional theme with emerald accents
+   GROWIT DASHBOARD - FOUNDER HOME
+   Theme-aware: every color flows through the
+   --growit-* variables so light and dark mode
+   both render correctly with no overrides.
    ======================================== */
 
 .dashboard {
@@ -8,7 +10,64 @@
     margin: 0 auto;
 }
 
-/* Legend Styling */
+/* Intro banner */
+.dashboard-intro {
+    border-left: 4px solid var(--growit-green);
+}
+
+.dashboard-intro-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.dashboard-intro-copy {
+    max-width: 800px;
+}
+
+.dashboard-intro-kicker {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--growit-green);
+    margin-bottom: 4px;
+}
+
+.dashboard-intro-title {
+    font-size: 1.4rem;
+    letter-spacing: -0.02em;
+    color: var(--growit-heading-color);
+    margin-bottom: 8px;
+}
+
+.dashboard-intro-text {
+    font-size: 1rem;
+    line-height: 1.5;
+    color: var(--growit-text-secondary);
+    margin-bottom: 0;
+}
+
+.dashboard-intro-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.dashboard-intro-badges .badge-growit {
+    padding: 6px 14px;
+}
+
+@media (min-width: 992px) {
+    .dashboard-intro-body {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
+/* Legend styling */
 .chart-legend {
     margin-left: auto;
     display: flex;
@@ -34,11 +93,183 @@
     box-shadow: 0 0 12px var(--growit-green-glow);
 }
 
-.chart-container {
-    padding: 10px 0;
+/* Chart summary chips */
+.chart-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
 }
 
-/* Activity Items */
+.chart-summary-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 10px 16px;
+    border: 1px solid var(--growit-border);
+    border-radius: var(--radius-md);
+    background: var(--growit-bg-card-hover);
+    min-width: 150px;
+}
+
+.chart-summary-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--growit-text-muted);
+}
+
+.chart-summary-value {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--growit-text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ========================================
+   Bar chart (no chart library needed)
+   ======================================== */
+.bar-chart {
+    padding: 12px 4px 0 56px;
+}
+
+.bar-chart-plot {
+    position: relative;
+    height: 280px;
+}
+
+.bar-grid-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1px dashed var(--growit-border);
+    pointer-events: none;
+}
+
+.bar-grid-label {
+    position: absolute;
+    left: -52px;
+    top: 0;
+    transform: translateY(-50%);
+    width: 44px;
+    text-align: right;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--growit-text-dim);
+    font-variant-numeric: tabular-nums;
+}
+
+.bar-row {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    padding: 0 6px;
+}
+
+.bar-col {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    height: 100%;
+    min-width: 0;
+}
+
+.bar-fill {
+    position: relative;
+    width: min(100%, 44px);
+    min-height: 3px;
+    border-radius: 6px 6px 0 0;
+    background: linear-gradient(180deg, var(--growit-green-light) 0%, var(--growit-green) 100%);
+    transition: filter var(--transition-fast), transform var(--transition-fast);
+}
+
+.bar-fill.empty {
+    background: var(--growit-border);
+    border-radius: 3px;
+}
+
+.bar-col:hover .bar-fill:not(.empty) {
+    filter: brightness(1.08);
+}
+
+/* Value chip shown on hover, readable in both themes */
+.bar-fill:not(.empty)::after {
+    content: attr(data-value);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--growit-text-primary);
+    color: var(--growit-bg-card);
+    font-size: 0.75rem;
+    font-weight: 700;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-fast), transform var(--transition-fast);
+    z-index: 2;
+}
+
+.bar-col:hover .bar-fill:not(.empty)::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.bar-labels {
+    display: flex;
+    gap: 6px;
+    padding: 10px 6px 4px;
+}
+
+.bar-label {
+    flex: 1;
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--growit-text-dim);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.bar-label.has-data {
+    color: var(--growit-text-muted);
+}
+
+.chart-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 300px;
+    color: var(--growit-text-muted);
+    text-align: center;
+}
+
+.chart-empty-state i {
+    font-size: 2rem;
+    color: var(--growit-text-dim);
+}
+
+.chart-empty-state p {
+    font-weight: 600;
+    color: var(--growit-text-secondary);
+    margin: 0;
+}
+
+.chart-empty-state span {
+    font-size: 0.85rem;
+    color: var(--growit-text-dim);
+}
+
+/* Activity items */
 .activity-list {
     display: flex;
     flex-direction: column;
@@ -72,15 +303,16 @@
     flex-shrink: 0;
 }
 
-.activity-icon.investment { background: rgba(16, 185, 129, 0.1); color: var(--growit-green); }
-.activity-icon.client { background: rgba(111, 186, 44, 0.1); color: var(--growit-green); }
-.activity-icon.fund { background: rgba(245, 158, 11, 0.1); color: var(--growit-warning); }
+.activity-icon.investment { background: var(--growit-green-glow); color: var(--growit-green); }
+.activity-icon.client { background: var(--growit-green-glow); color: var(--growit-green); }
+.activity-icon.fund { background: color-mix(in srgb, var(--growit-warning) 12%, transparent); color: var(--growit-warning); }
 
 .activity-content {
     flex: 1;
     display: flex;
     flex-direction: column;
     gap: 2px;
+    min-width: 0;
 }
 
 .activity-text {
@@ -94,7 +326,7 @@
     color: var(--growit-text-muted);
 }
 
-/* Task Items */
+/* Task items */
 .tasks-list {
     display: flex;
     flex-direction: column;
@@ -103,7 +335,7 @@
 .task-item {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
     padding: 16px 20px;
     border-bottom: 1px solid var(--growit-border);
     transition: background-color var(--transition-fast);
@@ -121,6 +353,15 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+    min-width: 0;
+}
+
+.task-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 4px;
 }
 
 .task-action {
@@ -128,9 +369,56 @@
     color: var(--growit-text-primary);
 }
 
-/* Responsive Overrides */
+.task-due {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--growit-text-secondary);
+    padding: 2px 10px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--growit-border);
+    background: var(--growit-bg-card-hover);
+    white-space: nowrap;
+}
+
+.task-note {
+    font-size: 0.8125rem;
+    color: var(--growit-text-muted);
+}
+
+.task-chevron {
+    color: var(--growit-text-dim);
+    font-size: 0.85rem;
+    transition: transform var(--transition-fast), color var(--transition-fast);
+}
+
+.task-item:hover .task-chevron {
+    color: var(--growit-green);
+    transform: translateX(2px);
+}
+
+/* Responsive overrides */
 @media (max-width: 768px) {
     .chart-legend {
         display: none;
+    }
+
+    .bar-chart {
+        padding-left: 44px;
+    }
+
+    .bar-grid-label {
+        left: -42px;
+        width: 36px;
+        font-size: 0.65rem;
+    }
+
+    /* On narrow screens 12 month labels collide; show every other one */
+    .bar-label:nth-child(even) {
+        visibility: hidden;
+    }
+
+    .chart-summary-item {
+        min-width: calc(50% - 6px);
+        flex: 1;
     }
 }

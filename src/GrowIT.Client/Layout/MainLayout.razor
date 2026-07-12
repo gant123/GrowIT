@@ -10,7 +10,11 @@
 @inject IAdminService AdminService
 @inject BreadcrumbState BreadcrumbLabels
 
-<div class="growit-app" data-theme="@_currentTheme">
+@* Theme is owned by the data-theme attribute on <html> (set by growITTheme in app.js,
+   persisted in localStorage). Do NOT stamp data-theme here as well: this div starts as
+   "light" until JS interop runs, and a second attribute scope overrides the whole app
+   with the wrong theme whenever the two drift. *@
+<div class="growit-app">
     <!-- Sidebar Overlay for Mobile -->
     <div class="sidebar-overlay" @onclick="CloseMobileSidebar"></div>
     

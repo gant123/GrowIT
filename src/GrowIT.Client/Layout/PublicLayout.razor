@@ -3,7 +3,8 @@
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 
-<div class="public-layout @(_mobileMenuOpen ? "mobile-menu-open" : string.Empty)" data-theme="@_currentTheme">
+@* Theme is owned by data-theme on <html> (growITTheme in app.js) — see MainLayout. *@
+<div class="public-layout @(_mobileMenuOpen ? "mobile-menu-open" : string.Empty)">
     <HeadContent>
         <PageTitle>@CurrentSeo.Title</PageTitle>
         <meta name="description" content="@CurrentSeo.Description" />
