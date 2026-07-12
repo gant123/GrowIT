@@ -170,6 +170,7 @@
 }
 
 .bar-col {
+    position: relative;
     flex: 1;
     display: flex;
     justify-content: center;
@@ -178,22 +179,131 @@
     min-width: 0;
 }
 
+.bar-col:hover {
+    z-index: 4;
+}
+
 .bar-fill {
     position: relative;
     width: min(100%, 44px);
     min-height: 3px;
     border-radius: 6px 6px 0 0;
-    background: linear-gradient(180deg, var(--growit-green-light) 0%, var(--growit-green) 100%);
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--growit-green-light) 55%, transparent) 0%,
+        color-mix(in srgb, var(--growit-green) 80%, transparent) 100%);
     transition: filter var(--transition-fast), transform var(--transition-fast);
+    transform-origin: bottom;
+    animation: bar-rise 600ms cubic-bezier(0.22, 0.9, 0.35, 1) backwards;
+}
+
+.bar-fill.best {
+    background: linear-gradient(180deg, var(--growit-green-light) 0%, var(--growit-green) 100%);
+    box-shadow: 0 0 18px var(--growit-green-glow);
 }
 
 .bar-fill.empty {
     background: var(--growit-border);
     border-radius: 3px;
+    animation: none;
 }
 
 .bar-col:hover .bar-fill:not(.empty) {
-    filter: brightness(1.08);
+    filter: brightness(1.1);
+    box-shadow: 0 0 16px var(--growit-green-glow);
+}
+
+@keyframes bar-rise {
+    from { transform: scaleY(0); }
+    to { transform: scaleY(1); }
+}
+
+/* ========================================
+   Trend line + area overlay (SVG)
+   ======================================== */
+.trend-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.trend-line {
+    fill: none;
+    stroke: var(--growit-green);
+    stroke-width: 2.5px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: trend-draw 900ms ease-out 350ms forwards;
+    filter: drop-shadow(0 2px 6px var(--growit-green-glow));
+}
+
+.trend-area {
+    fill: url(#trend-area-gradient);
+    stroke: none;
+    opacity: 0;
+    animation: trend-fade 700ms ease-out 650ms forwards;
+}
+
+.trend-area-stop-top {
+    stop-color: var(--growit-green);
+    stop-opacity: 0.22;
+}
+
+.trend-area-stop-bottom {
+    stop-color: var(--growit-green);
+    stop-opacity: 0;
+}
+
+.trend-markers {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.trend-marker {
+    position: absolute;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--growit-bg-card);
+    border: 2.5px solid var(--growit-green);
+    box-shadow: 0 1px 4px var(--growit-green-glow);
+    transform: translate(-50%, 50%);
+    opacity: 0;
+    animation: trend-fade 400ms ease-out 900ms forwards;
+}
+
+@keyframes trend-draw {
+    to { stroke-dashoffset: 0; }
+}
+
+@keyframes trend-fade {
+    to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bar-fill,
+    .trend-line,
+    .trend-area,
+    .trend-marker {
+        animation: none;
+    }
+
+    .trend-line {
+        stroke-dashoffset: 0;
+    }
+
+    .trend-area,
+    .trend-marker {
+        opacity: 1;
+    }
 }
 
 /* Value chip shown on hover, readable in both themes */
@@ -213,7 +323,7 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity var(--transition-fast), transform var(--transition-fast);
-    z-index: 2;
+    z-index: 5;
 }
 
 .bar-col:hover .bar-fill:not(.empty)::after {
