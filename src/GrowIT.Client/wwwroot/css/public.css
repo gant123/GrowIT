@@ -4770,3 +4770,20 @@
 [data-theme="dark"] .hero-season-chip .chip-kicker {
     color: var(--growit-green-light);
 }
+
+/* Keep the season pill to one clean line on phones: the season is the
+   almanac signal; the descriptor is desktop garnish. */
+@media (max-width: 640px) {
+    .hero-season-chip .chip-desc {
+        display: none;
+    }
+}
+
+/* Auth marketing side-panel is desktop-only (the enterprise variant re-enables
+   display:flex later in the cascade, so re-assert the mobile hide last). */
+@media (max-width: 900px) {
+    .auth-side,
+    .auth-side-enterprise {
+        display: none;
+    }
+}
