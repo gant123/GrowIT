@@ -5,6 +5,22 @@
 @inject AuthenticationStateProvider AuthStateProvider
 
 @code {
+    private static string SeasonChipText
+    {
+        get
+        {
+            var now = DateTime.Now;
+            var season = now.Month switch
+            {
+                3 or 4 or 5 => "Planting Season",
+                6 or 7 or 8 => "Growing Season",
+                9 or 10 or 11 => "Harvest Season",
+                _ => "Planning Season"
+            };
+            return $"{now:MMMM} · {season}";
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -21,11 +37,10 @@
     <!-- Hero Section -->
     <section class="hero">
         <div class="hero-content">
-            <div class="hero-badge">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                </svg>
-                Founder Survivability & Funding Readiness
+            <div class="hero-season-chip">
+                <span class="dot"></span>
+                <span class="chip-kicker">@SeasonChipText</span>
+                <span>Founder survivability &amp; funding readiness</span>
             </div>
             <h1 class="hero-title">
                 Turn the work you already do into <span class="highlight">proof funders can understand.</span>

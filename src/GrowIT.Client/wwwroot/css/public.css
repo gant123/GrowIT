@@ -4709,3 +4709,64 @@
         transform: none !important;
     }
 }
+
+/* ============================================================
+   FIELD JOURNAL — public site identity
+   Fraunces display across the marketing pages; almanac season
+   chip in the landing hero. Grounds/tints come from tokens.
+   ============================================================ */
+
+.landing-page .hero-title,
+.landing-page .section-title,
+.landing-page .cta-content h2,
+.contact-hero h1,
+.blog-hero h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+}
+
+.landing-page .hero-title {
+    letter-spacing: -0.025em;
+}
+
+.landing-page .hero-title .highlight {
+    color: var(--growit-green-dark);
+}
+
+[data-theme="dark"] .landing-page .hero-title .highlight {
+    color: var(--growit-green-light);
+}
+
+/* Season chip replaces the generic shield badge */
+.hero-season-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 6px 14px;
+    border: 1px solid var(--growit-border);
+    border-radius: 999px;
+    background: var(--growit-bg-card);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--growit-text-muted);
+}
+
+.hero-season-chip .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--growit-green);
+    box-shadow: 0 0 10px var(--growit-green-glow);
+    flex-shrink: 0;
+}
+
+.hero-season-chip .chip-kicker {
+    color: var(--growit-green-dark);
+    font-weight: 700;
+}
+
+[data-theme="dark"] .hero-season-chip .chip-kicker {
+    color: var(--growit-green-light);
+}
