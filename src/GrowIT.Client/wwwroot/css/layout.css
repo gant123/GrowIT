@@ -1619,3 +1619,34 @@
     justify-content: flex-end;
   }
 }
+
+/* Contained page-error state rendered by the MainLayout ErrorBoundary when a page or a
+   globally-mounted component throws. Keeps the app shell intact and offers recovery. */
+.content-error-state {
+    max-width: 32rem;
+    margin: 4rem auto;
+    padding: 2rem;
+    text-align: center;
+    border: 1px solid var(--growit-border, #e2e8f0);
+    border-radius: 12px;
+    background: var(--growit-bg-secondary, #ffffff);
+}
+.content-error-state .bi {
+    font-size: 2.5rem;
+    color: #dc3545;
+}
+.content-error-state h1 {
+    margin: 0.75rem 0 0.5rem;
+    font-size: 1.4rem;
+    color: var(--growit-text-primary, #10203c);
+}
+.content-error-state p {
+    margin: 0 0 1.25rem;
+    color: var(--growit-text-secondary, #64748b);
+}
+.content-error-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}

@@ -215,9 +215,19 @@
 
     protected override async Task OnInitializedAsync()
     {
-        var access = await RoleAccessService.GetAccessAsync();
-        _canDocumentServiceRecords = access.CanDocumentServiceRecords;
-        _canApproveServiceInvestments = access.CanApproveServiceInvestments;
+        try
+        {
+            var access = await RoleAccessService.GetAccessAsync();
+            _canDocumentServiceRecords = access.CanDocumentServiceRecords;
+            _canApproveServiceInvestments = access.CanApproveServiceInvestments;
+        }
+        catch
+        {
+            // Fail closed on permissions if the access lookup errors; still load the page.
+            _canDocumentServiceRecords = false;
+            _canApproveServiceInvestments = false;
+        }
+
         await ReloadInvestments();
     }
 
@@ -225,8 +235,16 @@
     {
         try
         {
+            _actionError = null;
             var result = await InvestmentService.GetInvestmentsAsync(new InvestmentQueryParams());
             _investments = result.Items;
+        }
+        catch (Exception ex)
+        {
+            // Without this catch an initial-load failure escapes OnInitializedAsync and, with no
+            // ErrorBoundary, crashes the page. Show an inline error and an empty list instead.
+            _investments = new();
+            _actionError = ex is ApiException ? ex.Message : "We couldn't load service records. Please refresh and try again.";
         }
         finally { _isLoading = false; }
     }
