@@ -751,7 +751,21 @@
                 _recentReports = _recentReports
                     .OrderByDescending(r => r.GeneratedAt)
                     .ToList();
-                _pageMessage = $"Generated report: {created.Name}";
+
+                // Reflect the ACTUAL run status — don't show a green "Generated" banner for a run
+                // that came back Failed or is still Queued.
+                if (string.Equals(created.Status, "Failed", StringComparison.OrdinalIgnoreCase))
+                {
+                    _pageError = $"Report generation failed for \"{created.Name}\". Please try again.";
+                }
+                else if (string.Equals(created.Status, "Queued", StringComparison.OrdinalIgnoreCase))
+                {
+                    _pageMessage = $"Report \"{created.Name}\" is queued — it will appear below when ready.";
+                }
+                else
+                {
+                    _pageMessage = $"Generated report: {created.Name}";
+                }
             }
         }
         catch (Exception ex)

@@ -725,18 +725,14 @@ public class BillingController : ControllerBase
 
     private string? BuildStripeSetupMessage()
     {
-        var missing = new List<string>();
-        if (string.IsNullOrWhiteSpace(GetStripeSecretKey()))
-        {
-            missing.Add("Stripe__SecretKey");
-        }
+        // User-facing: never leak config variable names to testers. When Stripe isn't wired up,
+        // the workspace simply stays on the free plan and paid upgrades are unavailable.
+        var stripeReady = !string.IsNullOrWhiteSpace(GetStripeSecretKey())
+            && !string.IsNullOrWhiteSpace(_configuration["Stripe:WebhookSecret"]);
 
-        if (string.IsNullOrWhiteSpace(_configuration["Stripe:WebhookSecret"]))
-        {
-            missing.Add("Stripe__WebhookSecret");
-        }
-
-        return missing.Count == 0 ? null : $"Missing billing configuration: {string.Join(", ", missing)}.";
+        return stripeReady
+            ? null
+            : "Online upgrades aren't available yet — your workspace is on the free plan. Contact us if you need a higher tier during the beta.";
     }
 
     private string? GetStripeSecretKey() => _configuration["Stripe:SecretKey"];
