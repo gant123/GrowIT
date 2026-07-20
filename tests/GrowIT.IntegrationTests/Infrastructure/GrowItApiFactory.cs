@@ -15,9 +15,11 @@ public sealed class GrowItApiFactory : WebApplicationFactory<Program>
 {
     private readonly string _dbName = $"growit-tests-{Guid.NewGuid():N}";
     private readonly Dictionary<string, string?> _configOverrides;
+    private readonly string _environment;
 
-    public GrowItApiFactory(IDictionary<string, string?>? configOverrides = null)
+    public GrowItApiFactory(IDictionary<string, string?>? configOverrides = null, string environment = "Development")
     {
+        _environment = environment;
         _configOverrides = configOverrides is null
             ? new Dictionary<string, string?>()
             : new Dictionary<string, string?>(configOverrides);
@@ -32,7 +34,7 @@ public sealed class GrowItApiFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Development");
+        builder.UseEnvironment(_environment);
         builder.ConfigureAppConfiguration((_, configBuilder) =>
         {
             // Pin Stripe to "not configured" by default so billing tests are deterministic

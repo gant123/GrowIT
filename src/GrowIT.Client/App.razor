@@ -1,7 +1,12 @@
 @using static Microsoft.AspNetCore.Components.Web.RenderMode
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
 @{
     // Build-derived cache-busting token — advances automatically on every deploy.
     var AssetVersion = GrowIT.Client.BuildInfo.AssetVersion;
+    // Per-request CSP nonce so the inline theme-init script below is allowed to run without
+    // 'unsafe-inline' in script-src (see ApplySecurityHeaders in Program.cs). Null in Development,
+    // where the CSP isn't enforced; the empty attribute is inert without a matching header.
+    var cspNonce = CspNonce.Current(HttpContextAccessor.HttpContext);
 }
 
 <!DOCTYPE html>
@@ -42,7 +47,7 @@
     <link rel="stylesheet" href="css/syncfusion-overrides.css?v=@AssetVersion" />
     <link rel="stylesheet" href="GrowIT.Client.styles.css?v=@AssetVersion" />
 
-    <script>
+    <script nonce="@cspNonce">
         (function () {
             try {
                 var theme = localStorage.getItem('growit-theme');
