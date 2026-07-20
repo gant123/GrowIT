@@ -261,7 +261,9 @@ public class AuthController : ControllerBase
             
         if (user == null)
         {
-            // Security Best Practice: Don't reveal if user exists
+            // Security Best Practice: Don't reveal if user exists. Equalize timing with the
+            // found-user path (which runs PBKDF2) so response time is not an enumeration oracle.
+            EqualizePasswordTiming(request.Password);
             return Unauthorized("Invalid email or password");
         }
 
@@ -645,6 +647,17 @@ public class AuthController : ControllerBase
     {
         var bytes = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token));
         return Convert.ToHexString(bytes);
+    }
+
+    // Cached dummy hash (from the app's real hasher, so the verify runs the same PBKDF2 work)
+    // used to spend the same CPU on unknown emails as on real ones during login.
+    private static string? _timingDummyHash;
+
+    private void EqualizePasswordTiming(string? providedPassword)
+    {
+        var hasher = _userManager.PasswordHasher;
+        var dummy = _timingDummyHash ??= hasher.HashPassword(new User(), "timing-equalization-not-a-real-password");
+        hasher.VerifyHashedPassword(new User(), dummy, providedPassword ?? string.Empty);
     }
 
     // Fixed-window, per-normalized-email throttle backed by IMemoryCache. Used where the

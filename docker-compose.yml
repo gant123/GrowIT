@@ -30,7 +30,9 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB:-GrowIT};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
-      Database__AutoMigrate: ${DATABASE_AUTOMIGRATE:-false}
+      # Default on so a fresh deploy applies EF migrations and bootstraps roles/SuperAdmin on
+      # first boot. Set DATABASE_AUTOMIGRATE=false where migrations are applied out-of-band.
+      Database__AutoMigrate: ${DATABASE_AUTOMIGRATE:-true}
       # No placeholder default: refuse to start unless a real secret is supplied. The app also
       # rejects placeholder/short keys at boot in Production (ValidateJwtSigningKey).
       Jwt__Key: ${JWT_KEY:?JWT_KEY must be set to a long random secret (>= 32 chars)}
