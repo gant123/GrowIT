@@ -369,6 +369,10 @@ app.UseForwardedHeaders();
 var enforceContentSecurityPolicy = !app.Environment.IsDevelopment();
 app.Use(async (context, next) =>
 {
+    // Generate a per-request CSP nonce up front (before the response starts and before App.razor
+    // renders) so the response header and the inline bootstrap <script> emit the same value.
+    context.Items[CspNonce.ItemsKey] = CspNonce.Create();
+
     context.Response.OnStarting(() =>
     {
         ApplySecurityHeaders(context, enforceContentSecurityPolicy);
@@ -740,6 +744,18 @@ static void ApplySecurityHeaders(HttpContext context, bool enforceContentSecurit
     if (enforceContentSecurityPolicy &&
         !context.Request.Path.StartsWithSegments("/swagger", StringComparison.OrdinalIgnoreCase))
     {
+        // A per-request nonce (shared with App.razor) allows our single trusted inline <script>
+        // to run without 'unsafe-inline'. All other JS is loaded from 'self' (external files) and
+        // Blazor Server interactivity runs over the SignalR circuit (connect-src ws:/wss:), so no
+        // other inline executable script exists. Adding a nonce also makes browsers ignore any
+        // 'unsafe-inline' in script-src, so the tightening can't be silently undone.
+        // Note: style-src intentionally keeps 'unsafe-inline' — MudBlazor, Syncfusion, Bootstrap
+        // and Blazor's reconnection UI inject inline styles at runtime that cannot be nonced.
+        var nonce = CspNonce.Current(context);
+        var scriptSrc = string.IsNullOrEmpty(nonce)
+            ? "script-src 'self'; "
+            : $"script-src 'self' 'nonce-{nonce}'; ";
+
         headers["Content-Security-Policy"] =
             "default-src 'self'; " +
             "base-uri 'self'; " +
@@ -748,7 +764,7 @@ static void ApplySecurityHeaders(HttpContext context, bool enforceContentSecurit
             "img-src 'self' data: https:; " +
             "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " +
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " +
-            "script-src 'self' 'unsafe-inline'; " +
+            scriptSrc +
             "connect-src 'self' ws: wss:;";
     }
 }
