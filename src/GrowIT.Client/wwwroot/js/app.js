@@ -610,18 +610,29 @@
         
         renderResults: function(container, data) {
             if (!container) return;
-            
+
+            // Escape all interpolated values (title/subtitle/url) before building innerHTML, and
+            // restrict the href to relative or http(s) URLs, so search result data can never inject
+            // markup or a javascript:/data: URL.
+            const esc = (s) => String(s == null ? '' : s)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            const safeUrl = (u) => {
+                const s = String(u == null ? '' : u).trim();
+                return (/^\/(?!\/)/.test(s) || /^https?:\/\//i.test(s)) ? s : '#';
+            };
+
             if (!data || data.length === 0) {
                 container.innerHTML = '<div class="search-empty">No results found</div>';
             } else {
                 container.innerHTML = data.map(item => `
-                    <a href="${item.url}" class="search-result-item">
-                        <span class="search-result-title">${item.title}</span>
-                        <span class="search-result-subtitle">${item.subtitle || ''}</span>
+                    <a href="${esc(safeUrl(item.url))}" class="search-result-item">
+                        <span class="search-result-title">${esc(item.title)}</span>
+                        <span class="search-result-subtitle">${esc(item.subtitle || '')}</span>
                     </a>
                 `).join('');
             }
-            
+
             container.classList.add('open');
         }
     };

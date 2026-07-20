@@ -1,11 +1,18 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace GrowIT.Shared.DTOs;
 
 public class CreateBetaFeedbackRequest
 {
+    [StringLength(40)]
     public string Category { get; set; } = "Other";
+    [StringLength(20)]
     public string Severity { get; set; } = "Medium";
+    [Required, StringLength(200)]
     public string Title { get; set; } = string.Empty;
+    [Required, StringLength(5000)]
     public string Message { get; set; } = string.Empty;
+    [StringLength(2048)]
     public string? PageUrl { get; set; }
 }
 
