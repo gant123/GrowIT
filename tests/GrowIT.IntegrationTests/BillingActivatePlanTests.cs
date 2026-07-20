@@ -35,13 +35,39 @@ public class BillingActivatePlanTests
         Assert.Equal(500, usage.ClientsMax);
     }
 
-    // The demo path: a PAID plan activates directly when Stripe is not configured,
-    // and the tenant's limits follow.
+    // Fail closed: a PAID plan is NOT granted for free just because Stripe is unconfigured. A
+    // missing secret key must not silently become "free everything" (previously it did — a tenant
+    // Owner could self-activate Enterprise for $0). Direct paid activation requires an explicit
+    // opt-in (below); without it, the paid plan is rejected.
     [Fact]
-    public async Task ActivatePlan_ActivatesPaidPlanDirectly_WhenStripeNotConfigured()
+    public async Task ActivatePlan_RejectsPaidPlan_WhenStripeNotConfigured_AndOptInDisabled()
     {
         var tenantId = Guid.NewGuid();
         using var factory = new GrowItApiFactory();
+        var planId = Guid.Empty;
+        await factory.SeedAsync(db =>
+        {
+            var pro = new SubscriptionPlan { Name = "Pro", MaxUsers = 10, MaxClients = 500, PriceMonthly = 49, PriceYearly = 490 };
+            db.SubscriptionPlans.Add(pro);
+            planId = pro.Id;
+            return Task.CompletedTask;
+        });
+        using var client = factory.CreateTenantClient(tenantId, role: "Admin");
+
+        var response = await client.PostAsJsonAsync("/api/billing/activate-plan", new { planId });
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    // The demo/testing affordance: direct paid activation is allowed ONLY when explicitly opted in
+    // via Billing:AllowDirectPaidActivation (and, in the app, only outside Production).
+    [Fact]
+    public async Task ActivatePlan_ActivatesPaidPlan_WhenDirectActivationOptInEnabled()
+    {
+        var tenantId = Guid.NewGuid();
+        using var factory = new GrowItApiFactory(new Dictionary<string, string?>
+        {
+            ["Billing:AllowDirectPaidActivation"] = "true"
+        });
         var planId = Guid.Empty;
         await factory.SeedAsync(db =>
         {

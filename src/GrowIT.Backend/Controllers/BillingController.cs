@@ -24,6 +24,7 @@ public class BillingController : ControllerBase
     private readonly ICurrentTenantService _tenantService;
     private readonly ICurrentUserService _currentUserService;
     private readonly IConfiguration _configuration;
+    private readonly IWebHostEnvironment _environment;
     private readonly GrowIT.Backend.Services.IPlanLimitService _planLimits;
 
     public BillingController(
@@ -31,12 +32,14 @@ public class BillingController : ControllerBase
         ICurrentTenantService tenantService,
         ICurrentUserService currentUserService,
         IConfiguration configuration,
+        IWebHostEnvironment environment,
         GrowIT.Backend.Services.IPlanLimitService planLimits)
     {
         _context = context;
         _tenantService = tenantService;
         _currentUserService = currentUserService;
         _configuration = configuration;
+        _environment = environment;
         _planLimits = planLimits;
     }
 
@@ -256,14 +259,20 @@ public class BillingController : ControllerBase
             return NotFound("Plan not found.");
         }
 
-        // Gate on the same condition the checkout path uses (a secret key is present, so
-        // Stripe can charge) rather than full webhook configuration — otherwise a
-        // key-but-no-webhook setup would let an admin activate a paid plan for free.
-        var stripePaymentsEnabled = !string.IsNullOrWhiteSpace(GetStripeSecretKey());
+        // Fail CLOSED for paid plans. Previously the guard only rejected paid activation when a
+        // Stripe secret key was present, so a deployment with NO key (demo, or a prod that has not
+        // set Stripe__SecretKey) silently let any tenant Owner self-activate Enterprise for free.
+        // Free plans are always allowed. Direct paid activation without payment is a demo/testing
+        // affordance only: it requires an explicit opt-in AND is never honored in Production.
         var isFree = plan.PriceMonthly <= 0 && plan.PriceYearly <= 0;
-        if (!isFree && stripePaymentsEnabled)
+        if (!isFree)
         {
-            return BadRequest("This plan requires payment. Use the checkout flow to subscribe.");
+            var allowDirectPaidActivation = !_environment.IsProduction()
+                && _configuration.GetValue("Billing:AllowDirectPaidActivation", false);
+            if (!allowDirectPaidActivation)
+            {
+                return BadRequest("This plan requires payment. Use the checkout flow to subscribe.");
+            }
         }
 
         await ActivatePlanAsync(plan, tenantId.Value);
