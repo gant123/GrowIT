@@ -19,8 +19,17 @@ public static class CspNonce
     /// <summary>Key under which the request's nonce is stored on <see cref="HttpContext.Items"/>.</summary>
     public const string ItemsKey = "CspNonce";
 
-    /// <summary>Generates a cryptographically-random, base64-encoded nonce (128 bits of entropy).</summary>
-    public static string Create() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(16));
+    /// <summary>
+    /// Generates a cryptographically-random nonce (128 bits of entropy), URL-safe base64 with no
+    /// padding. Avoiding '+', '/' and '=' matters: the HTML attribute encoder rewrites '+' to
+    /// '&amp;#x2B;', so a standard-base64 nonce would render differently in the &lt;script nonce&gt;
+    /// attribute than in the CSP header, and the two would no longer match.
+    /// </summary>
+    public static string Create() =>
+        Convert.ToBase64String(RandomNumberGenerator.GetBytes(16))
+            .Replace('+', '-')
+            .Replace('/', '_')
+            .TrimEnd('=');
 
     /// <summary>
     /// Returns the nonce generated for the current request, or <c>null</c> if none was set

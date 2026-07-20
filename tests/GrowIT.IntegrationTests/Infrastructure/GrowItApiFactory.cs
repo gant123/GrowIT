@@ -25,11 +25,15 @@ public sealed class GrowItApiFactory : WebApplicationFactory<Program>
             : new Dictionary<string, string?>(configOverrides);
 
         Environment.SetEnvironmentVariable("ConnectionStrings__DefaultConnection", "Host=localhost;Port=5432;Database=growit-tests;Username=test;Password=test");
-        Environment.SetEnvironmentVariable("Jwt__Key", "integration-test-signing-key-please-change-in-real-env");
+        Environment.SetEnvironmentVariable("Jwt__Key", "integration-test-signing-key-fixed-nonplaceholder-secret-value");
         Environment.SetEnvironmentVariable("Jwt__Issuer", "growit-local");
         Environment.SetEnvironmentVariable("Jwt__Audience", "growit-internal");
         Environment.SetEnvironmentVariable("ClientUrl", "https://localhost");
         Environment.SetEnvironmentVariable("Reports__Scheduler__Enabled", "false");
+        // Boot-time validation (Program.cs, before builder.Build()) only sees env vars, not the
+        // in-memory config the factory adds later — so Production-environment tests (CSP) need this
+        // as an env var to skip the prod email-provider requirement. Tests don't send email.
+        Environment.SetEnvironmentVariable("Email__RequireProviderInProduction", "false");
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -43,13 +47,16 @@ public sealed class GrowItApiFactory : WebApplicationFactory<Program>
             var settings = new Dictionary<string, string?>
             {
                 ["ConnectionStrings:DefaultConnection"] = "Host=localhost;Port=5432;Database=growit-tests;Username=test;Password=test",
-                ["Jwt:Key"] = "integration-test-signing-key-please-change-in-real-env",
+                ["Jwt:Key"] = "integration-test-signing-key-fixed-nonplaceholder-secret-value",
                 ["Jwt:Issuer"] = "growit-local",
                 ["Jwt:Audience"] = "growit-internal",
                 ["ClientUrl"] = "https://localhost",
                 ["Reports:Scheduler:Enabled"] = "false",
                 ["Stripe:SecretKey"] = "",
-                ["Stripe:WebhookSecret"] = ""
+                ["Stripe:WebhookSecret"] = "",
+                // Tests that boot in the Production environment (e.g. CSP header tests) don't send
+                // email, so opt out of the prod email-provider requirement rather than configure Resend.
+                ["Email:RequireProviderInProduction"] = "false"
             };
 
             foreach (var kvp in _configOverrides)

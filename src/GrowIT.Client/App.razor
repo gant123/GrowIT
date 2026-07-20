@@ -6,7 +6,10 @@
     // Per-request CSP nonce so the inline theme-init script below is allowed to run without
     // 'unsafe-inline' in script-src (see ApplySecurityHeaders in Program.cs). Null in Development,
     // where the CSP isn't enforced; the empty attribute is inert without a matching header.
-    var cspNonce = CspNonce.Current(HttpContextAccessor.HttpContext);
+    // Read from the cascading HttpContext (reliable in static SSR) and fall back to the accessor.
+    // IHttpContextAccessor.HttpContext is intermittently null during SSR, which previously left the
+    // inline <script> with an empty nonce while the header carried a real one — blocking the script.
+    var cspNonce = CspNonce.Current(RequestHttpContext ?? HttpContextAccessor.HttpContext);
 }
 
 <!DOCTYPE html>
@@ -132,3 +135,10 @@
     <script src="_framework/blazor.web.js"></script>
 </body>
 </html>
+
+@code {
+    // Blazor supplies the current request's HttpContext as a cascading value to statically-rendered
+    // root components — reliable, unlike IHttpContextAccessor during SSR. Used for the CSP nonce above.
+    [CascadingParameter]
+    private Microsoft.AspNetCore.Http.HttpContext? RequestHttpContext { get; set; }
+}
