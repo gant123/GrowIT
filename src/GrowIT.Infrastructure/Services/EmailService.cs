@@ -1,4 +1,5 @@
 using GrowIT.Core.Interfaces;
+using GrowIT.Core.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Net;
@@ -50,7 +51,7 @@ public class EmailService : IEmailService
                 var filePath = await WriteDevelopmentEmailFileAsync(to, subject, body);
                 _logger.LogWarning(
                     "Resend API key is not configured. Email written to development fallback at {FilePath}. To={To} Subject={Subject}",
-                    filePath, to, subject);
+                    filePath, LogSanitizer.MaskEmail(to), subject);
                 return new EmailSendResult
                 {
                     Succeeded = true,
@@ -61,7 +62,7 @@ public class EmailService : IEmailService
             }
 
             var message = "Resend API key is not configured. Email was not sent.";
-            _logger.LogWarning("{Message} To={To} Subject={Subject}", message, to, subject);
+            _logger.LogWarning("{Message} To={To} Subject={Subject}", message, LogSanitizer.MaskEmail(to), subject);
             if (throwOnFailure)
                 throw new InvalidOperationException(message);
 
@@ -77,7 +78,7 @@ public class EmailService : IEmailService
         if (string.IsNullOrWhiteSpace(from))
         {
             var message = "Email:FromEmail is required for Resend delivery.";
-            _logger.LogWarning("{Message} To={To} Subject={Subject}", message, to, subject);
+            _logger.LogWarning("{Message} To={To} Subject={Subject}", message, LogSanitizer.MaskEmail(to), subject);
             if (throwOnFailure)
                 throw new InvalidOperationException(message);
 
@@ -109,7 +110,7 @@ public class EmailService : IEmailService
             if (!response.IsSuccessStatusCode)
             {
                 var message = $"Resend email send failed with HTTP {(int)response.StatusCode} ({response.ReasonPhrase}).";
-                _logger.LogError("{Message} Response={ResponseBody} To={To} Subject={Subject}", message, responseBody, to, subject);
+                _logger.LogError("{Message} Response={ResponseBody} To={To} Subject={Subject}", message, responseBody, LogSanitizer.MaskEmail(to), subject);
                 if (throwOnFailure)
                     throw new InvalidOperationException($"{message} {ExtractResendError(responseBody)}".Trim());
 
@@ -123,7 +124,7 @@ public class EmailService : IEmailService
             }
 
             var resendId = ExtractResendId(responseBody);
-            _logger.LogInformation("Email sent to {To} successfully via Resend. ResendId={ResendId}", to, resendId);
+            _logger.LogInformation("Email sent to {To} successfully via Resend. ResendId={ResendId}", LogSanitizer.MaskEmail(to), resendId);
             return new EmailSendResult
             {
                 Succeeded = true,
@@ -140,7 +141,7 @@ public class EmailService : IEmailService
                 var filePath = await WriteDevelopmentEmailFileAsync(to, subject, body);
                 _logger.LogWarning(ex,
                     "Resend send failed in Development. Email written to file fallback at {FilePath}. To={To} Subject={Subject}",
-                    filePath, to, subject);
+                    filePath, LogSanitizer.MaskEmail(to), subject);
                 return new EmailSendResult
                 {
                     Succeeded = true,
@@ -150,7 +151,7 @@ public class EmailService : IEmailService
                 };
             }
 
-            _logger.LogError(ex, "Failed to send email to {To}.", to);
+            _logger.LogError(ex, "Failed to send email to {To}.", LogSanitizer.MaskEmail(to));
             if (throwOnFailure)
                 throw;
 

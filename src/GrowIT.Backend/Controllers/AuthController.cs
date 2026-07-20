@@ -2,6 +2,7 @@ using GrowIT.Shared.DTOs;
 using GrowIT.Backend.Services;
 using GrowIT.Core.Entities;
 using GrowIT.Core.Interfaces;
+using GrowIT.Core.Logging;
 using GrowIT.Shared.Enums;
 using GrowIT.Infrastructure.Data;
 using Microsoft.AspNetCore.Http;
@@ -107,7 +108,7 @@ public class AuthController : ControllerBase
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send existing-account email during registration for {Email}.", request.Email);
+                _logger.LogError(ex, "Failed to send existing-account email during registration for user {UserId}.", existingUser.Id);
             }
 
             return Ok(new RegisterResponseDto
@@ -180,7 +181,9 @@ public class AuthController : ControllerBase
         catch (Exception ex)
         {
             await transaction.RollbackAsync();
-            _logger.LogError(ex, "Registration failed for {Email}.", request.Email);
+            // The user was rolled back, so there is no persisted userId to correlate on;
+            // fall back to a masked email rather than a dangling id.
+            _logger.LogError(ex, "Registration failed for {Email}.", LogSanitizer.MaskEmail(request.Email));
             return StatusCode(StatusCodes.Status500InternalServerError, new MessageResponse { Message = "Registration failed. Please try again." });
         }
 
@@ -190,7 +193,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send confirmation email for {Email}.", newUser.Email);
+            _logger.LogError(ex, "Failed to send confirmation email for user {UserId}.", newUser.Id);
             return Accepted(new RegisterResponseDto
             {
                 Message = "We could not deliver the email yet. Use 'resend confirmation' from the sign-in page.",
@@ -307,7 +310,7 @@ public class AuthController : ControllerBase
         catch (Exception ex)
         {
             await ReleasePasswordResetEmailReservationAsync(user);
-            _logger.LogError(ex, "Failed to send password reset email for {Email}.", user.Email ?? request.Email.Trim());
+            _logger.LogError(ex, "Failed to send password reset email for user {UserId}.", user.Id);
         }
 
         return Ok(new MessageResponse { Message = "If your email is in our system, you will receive a reset link." });
@@ -351,9 +354,8 @@ public class AuthController : ControllerBase
         if (!result.Succeeded)
         {
             _logger.LogWarning(
-                "Email confirmation failed for user {UserId} ({Email}): {ErrorCodes}",
+                "Email confirmation failed for user {UserId}: {ErrorCodes}",
                 user.Id,
-                user.Email,
                 string.Join(", ", result.Errors.Select(e => e.Code)));
 
             // "InvalidToken" almost always means the link expired (24h) or an older email
@@ -420,7 +422,7 @@ public class AuthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to resend confirmation email for {Email}.", user.Email);
+            _logger.LogError(ex, "Failed to resend confirmation email for user {UserId}.", user.Id);
         }
 
         return Ok(new MessageResponse { Message = ResendNeutralMessage });
