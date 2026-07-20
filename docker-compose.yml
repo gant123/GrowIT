@@ -31,7 +31,9 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB:-GrowIT};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
       Database__AutoMigrate: ${DATABASE_AUTOMIGRATE:-false}
-      Jwt__Key: ${JWT_KEY:-ChangeMe-Set-A-Long-Random-Key-Before-Beta}
+      # No placeholder default: refuse to start unless a real secret is supplied. The app also
+      # rejects placeholder/short keys at boot in Production (ValidateJwtSigningKey).
+      Jwt__Key: ${JWT_KEY:?JWT_KEY must be set to a long random secret (>= 32 chars)}
       SuperAdmin__Email: ${SUPER_ADMIN_EMAIL:-}
       SyncfusionLicense: ${SYNCFUSION_LICENSE:-}
       ClientUrl: ${CLIENT_URL:-https://beta.growit.now}

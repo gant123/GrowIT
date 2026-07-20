@@ -177,11 +177,30 @@ public class AuthController : ControllerBase
             if (!createResult.Succeeded)
             {
                 await transaction.RollbackAsync();
-                return BadRequest(new
+
+                // A duplicate here means the address was registered between the neutral pre-check
+                // and now (or collides only by normalized username). Return the SAME neutral
+                // response as the pre-check so this never becomes a 200/400 enumeration oracle.
+                // Any other failure gets a generic message — never the raw Identity descriptions,
+                // which spell out "Email 'x@y.com' is already taken." and leak existence.
+                var isDuplicate = createResult.Errors.Any(e =>
+                    string.Equals(e.Code, "DuplicateUserName", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(e.Code, "DuplicateEmail", StringComparison.OrdinalIgnoreCase));
+                if (isDuplicate)
                 {
-                    Message = "Registration failed.",
-                    Errors = createResult.Errors.Select(e => e.Description).ToArray()
-                });
+                    return Ok(new RegisterResponseDto
+                    {
+                        Message = RegisterNeutralMessage,
+                        RequiresEmailConfirmation = true,
+                        Email = request.Email.Trim()
+                    });
+                }
+
+                _logger.LogError(
+                    "Registration CreateAsync failed for {Email}: {ErrorCodes}",
+                    request.Email,
+                    string.Join(", ", createResult.Errors.Select(e => e.Code)));
+                return BadRequest(new MessageResponse { Message = "Registration failed. Please try again." });
             }
 
             await EnsureRoleAsync("Admin");
@@ -189,11 +208,11 @@ public class AuthController : ControllerBase
             if (!addToRoleResult.Succeeded)
             {
                 await transaction.RollbackAsync();
-                return BadRequest(new
-                {
-                    Message = "Registration failed.",
-                    Errors = addToRoleResult.Errors.Select(e => e.Description).ToArray()
-                });
+                _logger.LogError(
+                    "Registration AddToRoleAsync failed for {Email}: {ErrorCodes}",
+                    request.Email,
+                    string.Join(", ", addToRoleResult.Errors.Select(e => e.Code)));
+                return BadRequest(new MessageResponse { Message = "Registration failed. Please try again." });
             }
             await transaction.CommitAsync();
         }
@@ -502,6 +521,13 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Token) || string.IsNullOrWhiteSpace(request.Email))
             return BadRequest("Invite token and email are required.");
 
+        // Reached over loopback: throttle per email so invite acceptance is not unbounded.
+        if (!TryConsumeEmailRateLimit("accept-invite", request.Email, 10, TimeSpan.FromMinutes(15), out var inviteRetryAfter))
+        {
+            Response.Headers.RetryAfter = inviteRetryAfter.ToString();
+            return StatusCode(StatusCodes.Status429TooManyRequests, "Too many attempts. Please wait a few minutes and try again.");
+        }
+
         if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 12)
             return BadRequest("Password must be at least 12 characters.");
 
@@ -587,6 +613,14 @@ public class AuthController : ControllerBase
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
     {
+        // Reached over loopback, so throttle per email rather than IP (the token is strong, but
+        // the endpoint should not be unbounded).
+        if (!TryConsumeEmailRateLimit("reset-password", request.Email, 10, TimeSpan.FromMinutes(15), out var resetRetryAfter))
+        {
+            Response.Headers.RetryAfter = resetRetryAfter.ToString();
+            return StatusCode(StatusCodes.Status429TooManyRequests, new MessageResponse { Message = "Too many attempts. Please wait a few minutes and try again." });
+        }
+
         var normalizedEmail = request.Email.Trim().ToUpperInvariant();
         var user = await _userManager.Users
             .IgnoreQueryFilters()
@@ -692,6 +726,15 @@ public class AuthController : ControllerBase
     {
         var email = user.Email;
         if (string.IsNullOrWhiteSpace(email))
+        {
+            return;
+        }
+
+        // Unlike the confirmation and password-reset emails (which have DB send cooldowns), this
+        // reminder is sent to an already-confirmed address whenever someone re-registers or asks
+        // to resend against it. Without a cooldown it is a targeted email-bombing primitive, so
+        // cap it per email. Skipping silently keeps the API response neutral.
+        if (!TryConsumeEmailRateLimit("reminder", email, 1, TimeSpan.FromMinutes(10), out _))
         {
             return;
         }

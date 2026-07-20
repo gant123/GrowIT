@@ -100,28 +100,11 @@ public class TokenService
             return null;
         }
 
-        var tenantIdRaw = principal.FindFirst("tenantId")?.Value;
-        var email = principal.FindFirst(ClaimTypes.Email)?.Value ?? principal.FindFirst(ClaimTypes.Name)?.Value;
-        var roles = principal.Claims
-            .Where(c => c.Type == ClaimTypes.Role || c.Type == "role")
-            .Select(c => c.Value)
-            .Where(v => !string.IsNullOrWhiteSpace(v))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        if (Guid.TryParse(tenantIdRaw, out var tenantId) &&
-            !string.IsNullOrWhiteSpace(email) &&
-            roles.Count > 0)
-        {
-            var principalUser = new User
-            {
-                Id = userId,
-                Email = email
-            };
-
-            return CreateToken(principalUser, tenantId, roles);
-        }
-
+        // Always resolve the user from the database and re-check IsActive + current roles
+        // before minting. This token is projected per /api request from the browser's cookie
+        // principal, whose claims can be stale: a claims-only shortcut would let a deactivated
+        // or role-demoted user keep full API access until their cookie expired. The extra
+        // primary-key lookup is the price of enforcing revocation on every request.
         var user = await _userManager.Users
             .IgnoreQueryFilters()
             .FirstOrDefaultAsync(u => u.Id == userId);

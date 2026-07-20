@@ -86,7 +86,10 @@ public class BillingController : ControllerBase
     }
 
     [HttpPost("plans")]
-    [Authorize(Policy = "AdminOnly")]
+    // SubscriptionPlans is a global, non-tenant-scoped catalog shared by every tenant, so
+    // mutating it is a platform-wide action. AdminOnly would let any tenant Admin/Owner rewrite
+    // everyone's plan limits and pricing — restrict to SuperAdmin.
+    [Authorize(Policy = "SuperAdminOnly")]
     public async Task<ActionResult<SubscriptionPlanDto>> CreatePlan(CreateSubscriptionPlanRequest request)
     {
         var plan = new SubscriptionPlan
@@ -106,7 +109,8 @@ public class BillingController : ControllerBase
     }
 
     [HttpPut("plans/{id:guid}")]
-    [Authorize(Policy = "AdminOnly")]
+    // Global catalog mutation — SuperAdmin only (see CreatePlan).
+    [Authorize(Policy = "SuperAdminOnly")]
     public async Task<IActionResult> UpdatePlan(Guid id, UpdateSubscriptionPlanRequest request)
     {
         var plan = await _context.SubscriptionPlans.FirstOrDefaultAsync(p => p.Id == id);

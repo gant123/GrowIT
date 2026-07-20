@@ -44,6 +44,7 @@ var defaultConnectionString = GetRequiredConnectionString(builder.Configuration,
 var jwtKey = GetRequiredConfigurationValue(builder.Configuration, "Jwt:Key");
 var jwtIssuer = GetRequiredConfigurationValue(builder.Configuration, "Jwt:Issuer");
 var jwtAudience = GetRequiredConfigurationValue(builder.Configuration, "Jwt:Audience");
+ValidateJwtSigningKey(jwtKey, builder.Environment);
 ValidateEmailDeliveryConfiguration(builder.Configuration, builder.Environment);
 
 var syncfusionKey = builder.Configuration["SyncfusionLicense"];
@@ -177,6 +178,11 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 {
     options.ValidationInterval = TimeSpan.FromMinutes(5);
 });
+// AddIdentityCore (unlike AddIdentity/AddIdentityCookies) does NOT register the security-stamp
+// validator, so the ValidationInterval above was dead configuration and the OnValidatePrincipal
+// hook below had nothing to resolve. Register it so password reset / deactivation / role change
+// (all of which rotate the security stamp) actually revoke live cookie sessions.
+builder.Services.AddScoped<ISecurityStampValidator, SecurityStampValidator<User>>();
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = CompositeAuthScheme;
@@ -217,6 +223,9 @@ builder.Services.AddAuthentication(options =>
         options.AccessDeniedPath = "/access-denied";
         options.Events = new CookieAuthenticationEvents
         {
+            // Enforce the configured security-stamp ValidationInterval: revalidate the
+            // principal against the stored stamp so revoked sessions are rejected.
+            OnValidatePrincipal = SecurityStampValidator.ValidatePrincipalAsync,
             OnRedirectToLogin = context =>
             {
                 if (IsApiOrBffRequest(context.Request))
@@ -659,6 +668,29 @@ static string GetRequiredConfigurationValue(IConfiguration configuration, string
     }
 
     return value;
+}
+
+// Refuse to boot in Production with the committed placeholder JWT key (or an obviously weak
+// one). GetRequiredConfigurationValue only checks non-empty, so 'ChangeMe-...' passed validation
+// and the app would sign tokens with a secret anyone can read from the repo — enabling forgery.
+static void ValidateJwtSigningKey(string jwtKey, IWebHostEnvironment environment)
+{
+    if (!environment.IsProduction())
+    {
+        return;
+    }
+
+    var looksPlaceholder =
+        jwtKey.Contains("ChangeMe", StringComparison.OrdinalIgnoreCase)
+        || jwtKey.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase)
+        || jwtKey.Contains("YOUR_", StringComparison.OrdinalIgnoreCase)
+        || jwtKey.Contains("please-change", StringComparison.OrdinalIgnoreCase);
+
+    if (looksPlaceholder || jwtKey.Length < 32)
+    {
+        throw new InvalidOperationException(
+            "Jwt:Key must be a long, random, non-placeholder secret in Production. Set Jwt__Key (>= 32 chars) to a value generated for this deployment.");
+    }
 }
 
 // Fail loud instead of silent. In Production, EmailService has no fallback (the dev file
