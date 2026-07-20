@@ -384,7 +384,11 @@ public class AdminController : ControllerBase
             return BadRequest("Email is required.");
 
         var normalizedEmail = request.Email.Trim().ToLowerInvariant();
-        var emailExists = await _context.Users.IgnoreQueryFilters().AnyAsync(u => u.Email != null && u.Email.ToLower() == normalizedEmail);
+        // Scope this friendly duplicate check to the caller's OWN tenant (no IgnoreQueryFilters).
+        // Checking across all tenants turned the distinct 400 into a platform-wide account-existence
+        // oracle for any tenant Admin/Owner. Global email uniqueness is still enforced when the
+        // invite is accepted (AcceptInvite rejects an email already registered anywhere).
+        var emailExists = await _context.Users.AnyAsync(u => u.Email != null && u.Email.ToLower() == normalizedEmail);
         if (emailExists)
             return BadRequest("A user with this email already exists.");
 
@@ -911,9 +915,14 @@ public class AdminController : ControllerBase
                 .Distinct()
                 .ToListAsync();
 
+            // The IP-only disjunct must not surface a DIFFERENT tenant's user attempt just because
+            // it shares an egress IP (office/NAT/VPN/wifi) with this tenant. Require that a matched
+            // row's own UserId, when present, belongs to the caller's tenant; still surface
+            // anonymous (null-UserId) attempts seen on the tenant's own IPs.
             source = source.Where(a =>
                 (a.UserId.HasValue && tenantUserIds.Contains(a.UserId.Value)) ||
-                (a.ClientIp != null && tenantIps.Contains(a.ClientIp)));
+                (a.ClientIp != null && tenantIps.Contains(a.ClientIp) &&
+                    (!a.UserId.HasValue || tenantUserIds.Contains(a.UserId.Value))));
         }
 
         var attempts = await source
