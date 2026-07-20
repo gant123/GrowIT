@@ -34,10 +34,15 @@
     }
     else if (_overview is not null)
     {
-        @if (!_overview.StripeConfigured)
+        @if (!string.IsNullOrWhiteSpace(_successMessage))
         {
-            <div class="alert alert-warning">
-                @_overview.SetupMessage
+            <div class="alert alert-success">@_successMessage</div>
+        }
+
+        @if (!_overview.StripeConfigured && !string.IsNullOrWhiteSpace(_overview.SetupMessage))
+        {
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>@_overview.SetupMessage
             </div>
         }
 
@@ -98,9 +103,20 @@
                         <div class="d-flex flex-wrap gap-2">
                             @if (plan.PriceMonthly <= 0 && plan.PriceYearly <= 0)
                             {
-                                <button class="btn-growit btn-secondary-growit btn-sm" @onclick="() => StartCheckout(plan.Id, BillingInterval.Monthly)">
-                                    Activate
-                                </button>
+                                @if (_overview.CurrentSubscription?.PlanId == plan.Id)
+                                {
+                                    <button class="btn-growit btn-secondary-growit btn-sm" disabled>Current plan</button>
+                                }
+                                else
+                                {
+                                    <button class="btn-growit btn-secondary-growit btn-sm" @onclick="() => ActivatePlan(plan.Id)" disabled="@_isRedirecting">
+                                        Activate
+                                    </button>
+                                }
+                            }
+                            else if (!_overview.StripeConfigured)
+                            {
+                                <span class="small text-muted"><i class="bi bi-lock me-1"></i>Online upgrades open soon — contact us to switch tiers during the beta.</span>
                             }
                             else
                             {
@@ -226,6 +242,7 @@
     private bool _isLoading = true;
     private bool _isRedirecting;
     private string? _error;
+    private string? _successMessage;
 
     private string PaidInvoiceSummary =>
         _overview is null ? string.Empty : $"{_overview.Invoices.Count(i => i.Status == InvoiceStatus.Paid)} paid";
@@ -247,6 +264,29 @@
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    // Free / no-cost plans activate directly (no Stripe). Using the checkout path here would hit
+    // the "Stripe not configured" guard and surface a raw config error to the tester.
+    private async Task ActivatePlan(Guid planId)
+    {
+        _isRedirecting = true;
+        _error = null;
+        _successMessage = null;
+        try
+        {
+            var result = await BillingService.ActivatePlanAsync(planId);
+            _successMessage = result?.Message ?? "Plan activated.";
+            await LoadBilling();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isRedirecting = false;
         }
     }
 

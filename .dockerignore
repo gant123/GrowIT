@@ -1,12 +1,18 @@
 .git
 .gitignore
 **/obj
+**/bin
 **/.vs
 **/.vscode
 **/.DS_Store
 **/node_modules
 tests/**/TestResults
 src/GrowIT.API/dev-emails
+**/dev-emails
+# Never let local secrets into the build context / image
+.env
+.env.*
+!.env.docker.example
 *.user
 *.suo
 

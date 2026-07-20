@@ -161,9 +161,10 @@
                 <div class="builder-field">
                     <label>Year</label>
                     <select @bind="_customFiscalYear">
-                        <option value="FY24-25">FY24-25</option>
-                        <option value="FY23-24">FY23-24</option>
-                        <option value="FY22-23">FY22-23</option>
+                        @foreach (var fy in _fiscalYearOptions)
+                        {
+                            <option value="@fy">@fy</option>
+                        }
                     </select>
                 </div>
                 
@@ -669,7 +670,23 @@
 @code {
     // Custom report builder
     private string _customReportType = "investments";
-    private string _customFiscalYear = "FY24-25";
+    // Fiscal years are generated relative to today (assumed July start, matching the FYxx-yy
+    // labels) so the dropdown never shows stale years. Newest first; default to the current FY.
+    private static readonly List<string> _fiscalYearOptions = BuildFiscalYearOptions();
+    private string _customFiscalYear = _fiscalYearOptions[0];
+
+    private static List<string> BuildFiscalYearOptions()
+    {
+        var now = DateTime.UtcNow;
+        var startYear = now.Month >= 7 ? now.Year : now.Year - 1;
+        var list = new List<string>();
+        for (var i = 0; i < 3; i++)
+        {
+            var y = startYear - i;
+            list.Add($"FY{y % 100:00}-{(y + 1) % 100:00}");
+        }
+        return list;
+    }
     private DateTime? _customDateFrom;
     private DateTime? _customDateTo;
     private string _customGroupBy = "none";
@@ -751,7 +768,21 @@
                 _recentReports = _recentReports
                     .OrderByDescending(r => r.GeneratedAt)
                     .ToList();
-                _pageMessage = $"Generated report: {created.Name}";
+
+                // Reflect the ACTUAL run status — don't show a green "Generated" banner for a run
+                // that came back Failed or is still Queued.
+                if (string.Equals(created.Status, "Failed", StringComparison.OrdinalIgnoreCase))
+                {
+                    _pageError = $"Report generation failed for \"{created.Name}\". Please try again.";
+                }
+                else if (string.Equals(created.Status, "Queued", StringComparison.OrdinalIgnoreCase))
+                {
+                    _pageMessage = $"Report \"{created.Name}\" is queued — it will appear below when ready.";
+                }
+                else
+                {
+                    _pageMessage = $"Generated report: {created.Name}";
+                }
             }
         }
         catch (Exception ex)
