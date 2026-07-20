@@ -128,7 +128,7 @@ public class ProfileController : ControllerBase
 
     [HttpPost("photo")]
     [RequestSizeLimit(MaxPhotoBytes)]
-    public async Task<ActionResult<UserProfileDto>> UploadPhoto([FromForm] IFormFile? file)
+    public async Task<ActionResult<UserProfileDto>> UploadPhoto(IFormFile? file)
     {
         var userId = _currentUserService.UserId;
         if (!userId.HasValue || userId == Guid.Empty)
