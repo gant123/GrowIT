@@ -19,7 +19,7 @@
     <PackageReference Include="Syncfusion.Blazor.Charts" Version="33.2.4" />
     <PackageReference Include="Syncfusion.Blazor.Grid" Version="33.2.4" />
     <PackageReference Include="Syncfusion.Blazor.Themes" Version="33.2.4" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
   </ItemGroup>
 
