@@ -64,6 +64,8 @@
             <div class="alert alert-danger mb-3">@_actionError</div>
         }
 
+        @if (FilteredInvestments.Any())
+        {
         @* Mobile: tappable rows opening the detail modal (approve/disburse live there). *@
         <div class="card-growit money-list-mobile">
             <div class="card-body p-0">
@@ -161,6 +163,24 @@
                 </SfGrid>
             </div>
         </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                @if (_investments.Any())
+                {
+                    <p class="empty-state-description">No service records match your search or filter.</p>
+                }
+                else
+                {
+                    <p class="empty-state-description">No service records yet. Document the support you delivered — who received it, which program, and the dollar value — to start building funder-ready proof.</p>
+                    @if (_canDocumentServiceRecords)
+                    {
+                        <button class="btn-growit btn-primary-growit mt-2" @onclick="OpenNewInvestment">Document a service record</button>
+                    }
+                }
+            </div>
+        }
     }
 </div>
 
