@@ -4,6 +4,7 @@
 @inject IGrowthPlanService GrowthPlanService
 @inject IClientService ClientService
 @inject IRoleAccessService RoleAccessService
+@inject IJSRuntime JS
 
 <PageTitle>Growth Plans - grow.IT</PageTitle>
 
@@ -501,6 +502,7 @@
     private async Task DeletePlanAsync(Guid id)
     {
         if (!_canDocumentServiceRecords) return;
+        if (!await JS.InvokeAsync<bool>("confirm", "Delete this growth plan? This can't be undone.")) return;
         try
         {
             await GrowthPlanService.DeleteGrowthPlanAsync(id);

@@ -58,6 +58,7 @@
         <div class="panel-body">
             <EditForm Model="_createRequest" OnValidSubmit="CreateHouseholdAsync">
                 <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger small mb-2" />
                 <div class="row g-3 align-items-end">
                     <div class="col-lg-5 col-md-6">
                         <label class="form-label">Household Name</label>

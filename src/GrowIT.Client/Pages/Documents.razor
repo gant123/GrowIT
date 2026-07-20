@@ -3,6 +3,7 @@
 @using GrowIT.Shared.Enums
 @inject IDocumentService DocumentService
 @inject IClientService ClientService
+@inject IJSRuntime JS
 
 <PageTitle>Documents - grow.IT</PageTitle>
 
@@ -219,8 +220,17 @@
 
     private async Task DeleteDocument(Guid id)
     {
-        await DocumentService.DeleteDocumentAsync(id);
-        _documents = await DocumentService.GetDocumentsAsync();
+        if (!await JS.InvokeAsync<bool>("confirm", "Delete this document? This can't be undone.")) return;
+        _error = null;
+        try
+        {
+            await DocumentService.DeleteDocumentAsync(id);
+            _documents = await DocumentService.GetDocumentsAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
     }
 
     private static string DisplayUrl(string value)

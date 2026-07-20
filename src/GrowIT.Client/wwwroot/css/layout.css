@@ -1374,7 +1374,8 @@
     position: fixed;
     inset: 0;
     background: rgba(8, 14, 11, 0.56);
-    z-index: 99;
+    /* Above the mobile bottom tab bar (1040) so the drawer scrim covers it. */
+    z-index: 1050;
     pointer-events: none;
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
@@ -1390,7 +1391,8 @@
     display: flex;
     width: min(88vw, 340px);
     min-width: min(88vw, 340px);
-    z-index: 101;
+    /* Above the scrim (1050) and the bottom tab bar (1040). */
+    z-index: 1060;
 }
 
 .breadcrumbs {

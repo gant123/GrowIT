@@ -928,7 +928,8 @@ button {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    /* Above the mobile bottom tab bar (1040) so dialogs (ConfirmDialog, etc.) are not covered. */
+    z-index: 1100;
     padding: 24px;
     animation: fadeIn var(--transition-fast);
 }
