@@ -44,6 +44,8 @@ var defaultConnectionString = GetRequiredConnectionString(builder.Configuration,
 var jwtKey = GetRequiredConfigurationValue(builder.Configuration, "Jwt:Key");
 var jwtIssuer = GetRequiredConfigurationValue(builder.Configuration, "Jwt:Issuer");
 var jwtAudience = GetRequiredConfigurationValue(builder.Configuration, "Jwt:Audience");
+ValidateJwtSigningKey(jwtKey, builder.Environment);
+ValidateEmailDeliveryConfiguration(builder.Configuration, builder.Environment);
 
 var syncfusionKey = builder.Configuration["SyncfusionLicense"];
 if (!string.IsNullOrWhiteSpace(syncfusionKey))
@@ -97,6 +99,11 @@ builder.Services.AddDbContext<ApplicationDbContext>((sp, options) =>
 builder.Services.AddControllers()
     .AddApplicationPart(typeof(AuthController).Assembly);
 builder.Services.AddHealthChecks();
+// Backs the per-email throttle on server-proxied auth endpoints. The IP-based
+// "auth-submit" limiter is useless for /api/auth/* because those are called in-process
+// over loopback (every request's RemoteIpAddress is ::1), so it collapses to one global
+// bucket. Per-email throttling survives the loopback hop.
+builder.Services.AddMemoryCache();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -171,6 +178,11 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 {
     options.ValidationInterval = TimeSpan.FromMinutes(5);
 });
+// AddIdentityCore (unlike AddIdentity/AddIdentityCookies) does NOT register the security-stamp
+// validator, so the ValidationInterval above was dead configuration and the OnValidatePrincipal
+// hook below had nothing to resolve. Register it so password reset / deactivation / role change
+// (all of which rotate the security stamp) actually revoke live cookie sessions.
+builder.Services.AddScoped<ISecurityStampValidator, SecurityStampValidator<User>>();
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = CompositeAuthScheme;
@@ -211,6 +223,9 @@ builder.Services.AddAuthentication(options =>
         options.AccessDeniedPath = "/access-denied";
         options.Events = new CookieAuthenticationEvents
         {
+            // Enforce the configured security-stamp ValidationInterval: revalidate the
+            // principal against the stored stamp so revoked sessions are rejected.
+            OnValidatePrincipal = SecurityStampValidator.ValidatePrincipalAsync,
             OnRedirectToLogin = context =>
             {
                 if (IsApiOrBffRequest(context.Request))
@@ -653,6 +668,66 @@ static string GetRequiredConfigurationValue(IConfiguration configuration, string
     }
 
     return value;
+}
+
+// Refuse to boot in Production with the committed placeholder JWT key (or an obviously weak
+// one). GetRequiredConfigurationValue only checks non-empty, so 'ChangeMe-...' passed validation
+// and the app would sign tokens with a secret anyone can read from the repo — enabling forgery.
+static void ValidateJwtSigningKey(string jwtKey, IWebHostEnvironment environment)
+{
+    if (!environment.IsProduction())
+    {
+        return;
+    }
+
+    var looksPlaceholder =
+        jwtKey.Contains("ChangeMe", StringComparison.OrdinalIgnoreCase)
+        || jwtKey.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase)
+        || jwtKey.Contains("YOUR_", StringComparison.OrdinalIgnoreCase)
+        || jwtKey.Contains("please-change", StringComparison.OrdinalIgnoreCase);
+
+    if (looksPlaceholder || jwtKey.Length < 32)
+    {
+        throw new InvalidOperationException(
+            "Jwt:Key must be a long, random, non-placeholder secret in Production. Set Jwt__Key (>= 32 chars) to a value generated for this deployment.");
+    }
+}
+
+// Fail loud instead of silent. In Production, EmailService has no fallback (the dev file
+// fallback is gated to Development), so an unconfigured Resend key means every confirmation
+// and password-reset email is silently dropped — registration "succeeds" but the account can
+// never be confirmed. Refuse to boot so the misconfiguration is caught at deploy time, not by
+// a stuck user. Set Email:RequireProviderInProduction=false to intentionally run without email.
+static void ValidateEmailDeliveryConfiguration(IConfiguration configuration, IWebHostEnvironment environment)
+{
+    if (!environment.IsProduction())
+    {
+        return;
+    }
+
+    if (!configuration.GetValue("Email:RequireProviderInProduction", true))
+    {
+        return;
+    }
+
+    var apiKey = configuration["Email:ResendApiKey"]?.Trim();
+    if (string.IsNullOrWhiteSpace(apiKey))
+    {
+        apiKey = configuration["Resend:ApiKey"]?.Trim();
+    }
+
+    static bool IsPlaceholder(string value) =>
+        value.Contains("YOUR_", StringComparison.OrdinalIgnoreCase)
+        || value.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase)
+        || value.Contains("CHANGEME", StringComparison.OrdinalIgnoreCase)
+        || value.Contains('<');
+
+    if (string.IsNullOrWhiteSpace(apiKey) || IsPlaceholder(apiKey))
+    {
+        throw new InvalidOperationException(
+            "Email delivery is not configured for Production. Set Email__ResendApiKey (and Email__FromEmail to a Resend-verified sender) so account-confirmation and password-reset emails are actually sent. " +
+            "To run without email on purpose, set Email__RequireProviderInProduction=false.");
+    }
 }
 
 static Uri ResolveApiBaseAddress(IConfiguration config, IWebHostEnvironment env, string baseUri)

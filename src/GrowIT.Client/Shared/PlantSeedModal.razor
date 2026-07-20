@@ -25,6 +25,14 @@
                 </div>
 
                 <div class="modal-body p-4">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger d-flex align-items-center mb-3 border-0" role="alert" style="background-color: rgba(220, 53, 69, 0.1); color: #dc3545;">
+                            <span class="oi oi-warning me-2 fs-5"></span>
+                            <div class="small fw-bold">@errorMessage</div>
+                        </div>
+                    }
+
                     @if (isLoading)
                     {
                         <div class="text-center py-5">
@@ -121,6 +129,7 @@
     private List<ProgramDto> programs = new();
     private List<FamilyMemberDto> members = new();
     private bool isLoading = true;
+    private string errorMessage = ""; // Holds any API error so the modal shows it inline instead of faulting the circuit.
 
     private string ThemeInputStyle => "background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border: 1px solid var(--growit-border);";
 
@@ -129,17 +138,24 @@
         if (Show && !clients.Any())
         {
             isLoading = true;
-            try 
+            errorMessage = "";
+            try
             {
                 var fundsTask = FinancialService.GetFundsAsync();
                 var programsTask = FinancialService.GetProgramsAsync();
                 var clientsTask = ClientService.GetAllClientsAsync();
-                
+
                 await Task.WhenAll(clientsTask, fundsTask, programsTask);
-                
+
                 clients = await clientsTask;
                 funds = await fundsTask;
                 programs = await programsTask;
+            }
+            catch (Exception ex)
+            {
+                // Surface the failure in-modal instead of letting it escape the lifecycle
+                // handler and tear down the circuit (this modal is mounted app-wide).
+                errorMessage = ex is ApiException ? ex.Message : "We couldn't load the saved people, programs, and money sources. Please try again.";
             }
             finally { isLoading = false; }
         }
@@ -152,10 +168,18 @@
         {
             request.ClientId = clientId;
             request.FamilyMemberId = null; // Clear individual if family changes
-            
-            // Fetch client detail to get household members
-            var detail = await ClientService.GetClientDetailAsync(clientId);
-            members = detail?.HouseholdMembers ?? new();
+
+            try
+            {
+                // Fetch client detail to get household members
+                var detail = await ClientService.GetClientDetailAsync(clientId);
+                members = detail?.HouseholdMembers ?? new();
+            }
+            catch (Exception ex)
+            {
+                members.Clear();
+                errorMessage = ex is ApiException ? ex.Message : "We couldn't load that person's household. Please try again.";
+            }
         }
         else
         {
@@ -167,11 +191,23 @@
 
     private async Task HandleValidSubmit()
     {
-        var investmentId = await InvestmentService.CreateInvestmentAsync(request);
-        if (investmentId != Guid.Empty)
+        errorMessage = "";
+        try
         {
-            await Close();
-            await OnSeedPlanted.InvokeAsync();
+            var investmentId = await InvestmentService.CreateInvestmentAsync(request);
+            if (investmentId != Guid.Empty)
+            {
+                await Close();
+                await OnSeedPlanted.InvokeAsync();
+            }
+            else
+            {
+                errorMessage = "We couldn't save the service record. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex is ApiException ? ex.Message : "We couldn't save the service record. Please try again.";
         }
     }
 
@@ -180,6 +216,7 @@
         Show = false;
         request = new();
         members.Clear();
+        errorMessage = "";
         await ShowChanged.InvokeAsync(false);
     }
 }

@@ -197,19 +197,49 @@ public class InvestmentsController : ControllerBase
             return BadRequest("Investment fund was not found.");
         }
 
-        var balanceUpdated = await TryDecreaseFundBalanceAsync(investment.FundId, investment.Amount);
-        if (!balanceUpdated)
+        // Atomically claim the approval so two concurrent requests cannot both debit the fund.
+        // On a relational store the conditional UPDATE flips Pending/Draft -> Approved in one
+        // statement; only the caller that actually changes the row (claimed == 1) may debit the
+        // fund. The in-memory provider (tests) keeps the simple tracked-entity path.
+        if (_context.Database.IsRelational())
         {
-            var available = await _context.Funds
-                .Where(f => f.Id == investment.FundId)
-                .Select(f => f.AvailableAmount)
-                .FirstOrDefaultAsync();
-            return BadRequest($"Insufficient funds. Available: ${available}");
+            var claimed = await _context.Investments
+                .Where(i => i.Id == id && (i.Status == InvestmentStatus.Pending || i.Status == InvestmentStatus.Draft))
+                .ExecuteUpdateAsync(setters => setters.SetProperty(i => i.Status, InvestmentStatus.Approved));
+
+            if (claimed == 0)
+            {
+                // Another request already approved it between our read and here.
+                if (transaction != null) await transaction.RollbackAsync();
+                return BadRequest("Only pending or draft investments can be approved.");
+            }
+
+            if (!await TryDecreaseFundBalanceAsync(investment.FundId, investment.Amount))
+            {
+                // Undo the status claim (and any partial work) by rolling the transaction back.
+                if (transaction != null) await transaction.RollbackAsync();
+                var available = await _context.Funds
+                    .Where(f => f.Id == investment.FundId)
+                    .Select(f => f.AvailableAmount)
+                    .FirstOrDefaultAsync();
+                return BadRequest($"Insufficient funds. Available: ${available}");
+            }
+        }
+        else
+        {
+            if (!await TryDecreaseFundBalanceAsync(investment.FundId, investment.Amount))
+            {
+                var available = await _context.Funds
+                    .Where(f => f.Id == investment.FundId)
+                    .Select(f => f.AvailableAmount)
+                    .FirstOrDefaultAsync();
+                return BadRequest($"Insufficient funds. Available: ${available}");
+            }
+
+            investment.Status = InvestmentStatus.Approved;
+            await _context.SaveChangesAsync();
         }
 
-        investment.Status = InvestmentStatus.Approved;
-        
-        await _context.SaveChangesAsync();
         if (transaction != null)
         {
             await transaction.CommitAsync();

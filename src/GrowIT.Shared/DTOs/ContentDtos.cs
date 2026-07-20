@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace GrowIT.Shared.DTOs;
 
 public class PublicBlogPostDto
@@ -29,32 +31,49 @@ public class AdminBlogPostDto
 
 public class CreateBlogPostRequest
 {
+    [Required, StringLength(200)]
     public string Title { get; set; } = string.Empty;
+    [StringLength(200)]
     public string? Slug { get; set; }
+    [StringLength(500)]
     public string Excerpt { get; set; } = string.Empty;
+    [StringLength(50000)]
     public string Content { get; set; } = string.Empty;
+    [StringLength(80)]
     public string Category { get; set; } = "General";
+    [StringLength(120)]
     public string AuthorName { get; set; } = "GrowIT Team";
     public bool PublishNow { get; set; }
 }
 
 public class UpdateBlogPostRequest
 {
+    [Required, StringLength(200)]
     public string Title { get; set; } = string.Empty;
+    [StringLength(200)]
     public string? Slug { get; set; }
+    [StringLength(500)]
     public string Excerpt { get; set; } = string.Empty;
+    [StringLength(50000)]
     public string Content { get; set; } = string.Empty;
+    [StringLength(80)]
     public string Category { get; set; } = "General";
+    [StringLength(120)]
     public string AuthorName { get; set; } = "GrowIT Team";
     public bool IsPublished { get; set; }
 }
 
 public class CreateContactSubmissionRequest
 {
+    [Required, StringLength(120)]
     public string FullName { get; set; } = string.Empty;
+    [Required, EmailAddress, StringLength(160)]
     public string Email { get; set; } = string.Empty;
+    [StringLength(160)]
     public string? Organization { get; set; }
+    [StringLength(180)]
     public string? Subject { get; set; }
+    [Required, StringLength(3000)]
     public string Message { get; set; } = string.Empty;
 }
 

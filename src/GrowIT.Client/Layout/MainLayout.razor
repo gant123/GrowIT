@@ -471,7 +471,25 @@
         
         <!-- Page Content -->
         <div class="growit-content">
-            @Body
+            @* An unhandled exception in any page or globally-mounted component (e.g. a modal API
+               call) would otherwise tear down the whole Blazor circuit and blank the app. Contain
+               it to this region and offer recovery; the boundary is reset on navigation below. *@
+            <ErrorBoundary @ref="_contentErrorBoundary">
+                <ChildContent>
+                    @Body
+                </ChildContent>
+                <ErrorContent>
+                    <div class="content-error-state">
+                        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                        <h1>Something went wrong on this page</h1>
+                        <p>We hit an unexpected error. Your session is still active — try again, or head back to Today.</p>
+                        <div class="content-error-actions">
+                            <button class="btn btn-primary" @onclick="ReloadCurrentPage">Try again</button>
+                            <a class="btn btn-ghost" href="/home">Back to Today</a>
+                        </div>
+                    </div>
+                </ErrorContent>
+            </ErrorBoundary>
         </div>
     </main>
 
@@ -615,6 +633,8 @@
     private bool _showSearchSuggestions =>
         _searchFocused && (_searchQuery.Length > 0 || SearchSuggestions.Count > 0);
 
+    private Microsoft.AspNetCore.Components.Web.ErrorBoundary? _contentErrorBoundary;
+
     protected override Task OnInitializedAsync()
     {
         Navigation.LocationChanged += OnLocationChanged;
@@ -699,8 +719,16 @@
         _userMenuOpen = false;
         _notificationsOpen = false;
         _logSheetOpen = false;
+        // Clear any error state from the previous page so navigating away recovers the UI.
+        _contentErrorBoundary?.Recover();
         UpdateBreadcrumbs();
         StateHasChanged();
+    }
+
+    private void ReloadCurrentPage()
+    {
+        _contentErrorBoundary?.Recover();
+        Navigation.NavigateTo(Navigation.Uri, forceLoad: true);
     }
 
     private void UpdateBreadcrumbs()

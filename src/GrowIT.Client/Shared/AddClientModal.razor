@@ -14,6 +14,14 @@
                     <button type="button" class="btn-close btn-close-white" @onclick="Close"></button>
                 </div>
                 <div class="modal-body p-4">
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger d-flex align-items-center mb-3 border-0" role="alert" style="background-color: rgba(220, 53, 69, 0.1); color: #dc3545;">
+                            <span class="oi oi-warning me-2 fs-5"></span>
+                            <div class="small fw-bold">@errorMessage</div>
+                        </div>
+                    }
+
                     <EditForm Model="@request" OnValidSubmit="HandleSubmit">
                         <DataAnnotationsValidator />
                         
@@ -130,6 +138,7 @@
     [Parameter] public EventCallback OnClientAdded { get; set; }
 
     private CreateClientRequest request = new();
+    private string errorMessage = ""; // Surface API failures inline instead of faulting the circuit.
     private string ThemeInputStyle => "background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border: 1px solid var(--growit-border);";
 
 protected override void OnParametersSet()
@@ -137,22 +146,37 @@ protected override void OnParametersSet()
         // Check for FirstName instead of Name
         if (Show && string.IsNullOrEmpty(request.FirstName))
         {
-            request = new CreateClientRequest 
-            { 
-                HouseholdCount = 1, 
-                StabilityScore = 5, 
-                LifePhase = LifePhase.Crisis 
+            errorMessage = "";
+            request = new CreateClientRequest
+            {
+                HouseholdCount = 1,
+                StabilityScore = 5,
+                LifePhase = LifePhase.Crisis
             };
         }
     }
     private async Task HandleSubmit()
     {
-        var clientId = await ClientService.CreateClientAsync(request);
-        if (clientId != Guid.Empty)
+        errorMessage = "";
+        try
         {
-            request = new CreateClientRequest(); 
-            await OnClientAdded.InvokeAsync();
-            await Close();
+            var clientId = await ClientService.CreateClientAsync(request);
+            if (clientId != Guid.Empty)
+            {
+                request = new CreateClientRequest();
+                await OnClientAdded.InvokeAsync();
+                await Close();
+            }
+            else
+            {
+                errorMessage = "We couldn't save this person. Please check the details and try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            // Without this, an API failure escapes the EditForm submit handler and, with no
+            // ErrorBoundary above the page, tears down the whole circuit.
+            errorMessage = ex is ApiException ? ex.Message : "We couldn't save this person. Please try again.";
         }
     }
 

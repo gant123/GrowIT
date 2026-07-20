@@ -54,9 +54,20 @@ public class LocalFileStorageService : IFileStorageService
 
             var webRoot = EnsureWebRoot();
             var localPath = Path.Combine(webRoot, relativePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
-            if (File.Exists(localPath))
+
+            // Defense-in-depth: the URL is normally server-generated, but never delete outside the
+            // managed profile-photos root even if a stored/tampered path contains traversal ('..').
+            var fullPath = Path.GetFullPath(localPath);
+            var photosRoot = Path.GetFullPath(Path.Combine(webRoot, "uploads", "profile-photos")) + Path.DirectorySeparatorChar;
+            if (!fullPath.StartsWith(photosRoot, StringComparison.OrdinalIgnoreCase))
             {
-                File.Delete(localPath);
+                _logger.LogWarning("Refusing to delete profile photo outside the managed root: {PhotoUrl}", existingPhotoUrl);
+                return Task.CompletedTask;
+            }
+
+            if (File.Exists(fullPath))
+            {
+                File.Delete(fullPath);
             }
         }
         catch (Exception ex)

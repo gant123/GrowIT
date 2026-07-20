@@ -10,6 +10,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using System.Security.Cryptography;
 using System.Web;
 
@@ -22,20 +23,25 @@ public class AuthController : ControllerBase
     private const string InviteAuditLink = "/settings?tab=invites";
     private static readonly TimeSpan ConfirmationEmailCooldown = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan PasswordResetEmailCooldown = TimeSpan.FromMinutes(10);
+    // Per-email throttle for server-proxied register. See RegistrationRateLimitWindow use below.
+    private static readonly TimeSpan RegistrationRateLimitWindow = TimeSpan.FromMinutes(15);
+    private const int RegistrationRateLimitCount = 8;
     private readonly ApplicationDbContext _context;
     private readonly TokenService _tokenService;
     private readonly IEmailService _emailService;
     private readonly IConfiguration _config;
+    private readonly IMemoryCache _cache;
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
     private readonly RoleManager<IdentityRole<Guid>> _roleManager;
     private readonly ILogger<AuthController> _logger;
 
     public AuthController(
-        ApplicationDbContext context, 
-        TokenService tokenService, 
+        ApplicationDbContext context,
+        TokenService tokenService,
         IEmailService emailService,
         IConfiguration config,
+        IMemoryCache cache,
         UserManager<User> userManager,
         SignInManager<User> signInManager,
         RoleManager<IdentityRole<Guid>> roleManager,
@@ -45,6 +51,7 @@ public class AuthController : ControllerBase
         _tokenService = tokenService;
         _emailService = emailService;
         _config = config;
+        _cache = cache;
         _userManager = userManager;
         _signInManager = signInManager;
         _roleManager = roleManager;
@@ -56,10 +63,23 @@ public class AuthController : ControllerBase
     private const string RegisterNeutralMessage =
         "You're almost done. Check your email for the next step before signing in.";
 
-    [EnableRateLimiting("auth-submit")]
     [HttpPost("register")]
     public async Task<IActionResult> Register(RegisterRequest request)
     {
+        // This endpoint is reached in-process over loopback (the Blazor host calls it via
+        // its server-side HttpClient), so the IP-based "auth-submit" limiter would collapse
+        // to a single global bucket shared by every user. Throttle per normalized email
+        // instead. The key is independent of whether the account exists, so it cannot be
+        // used to probe which addresses are registered.
+        if (!TryConsumeEmailRateLimit("register", request.Email, RegistrationRateLimitCount, RegistrationRateLimitWindow, out var retryAfterSeconds))
+        {
+            Response.Headers.RetryAfter = retryAfterSeconds.ToString();
+            return StatusCode(StatusCodes.Status429TooManyRequests, new MessageResponse
+            {
+                Message = "Too many registration attempts for this email. Please wait a few minutes and try again."
+            });
+        }
+
         // Validate the password BEFORE the existence check: policy errors must surface for
         // registered and unregistered emails alike, or the 400/200 split becomes an
         // account-enumeration oracle.
@@ -158,11 +178,30 @@ public class AuthController : ControllerBase
             if (!createResult.Succeeded)
             {
                 await transaction.RollbackAsync();
-                return BadRequest(new
+
+                // A duplicate here means the address was registered between the neutral pre-check
+                // and now (or collides only by normalized username). Return the SAME neutral
+                // response as the pre-check so this never becomes a 200/400 enumeration oracle.
+                // Any other failure gets a generic message — never the raw Identity descriptions,
+                // which spell out "Email 'x@y.com' is already taken." and leak existence.
+                var isDuplicate = createResult.Errors.Any(e =>
+                    string.Equals(e.Code, "DuplicateUserName", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(e.Code, "DuplicateEmail", StringComparison.OrdinalIgnoreCase));
+                if (isDuplicate)
                 {
-                    Message = "Registration failed.",
-                    Errors = createResult.Errors.Select(e => e.Description).ToArray()
-                });
+                    return Ok(new RegisterResponseDto
+                    {
+                        Message = RegisterNeutralMessage,
+                        RequiresEmailConfirmation = true,
+                        Email = request.Email.Trim()
+                    });
+                }
+
+                _logger.LogError(
+                    "Registration CreateAsync failed for {Email}: {ErrorCodes}",
+                    request.Email,
+                    string.Join(", ", createResult.Errors.Select(e => e.Code)));
+                return BadRequest(new MessageResponse { Message = "Registration failed. Please try again." });
             }
 
             await EnsureRoleAsync("Admin");
@@ -170,11 +209,11 @@ public class AuthController : ControllerBase
             if (!addToRoleResult.Succeeded)
             {
                 await transaction.RollbackAsync();
-                return BadRequest(new
-                {
-                    Message = "Registration failed.",
-                    Errors = addToRoleResult.Errors.Select(e => e.Description).ToArray()
-                });
+                _logger.LogError(
+                    "Registration AddToRoleAsync failed for {Email}: {ErrorCodes}",
+                    request.Email,
+                    string.Join(", ", addToRoleResult.Errors.Select(e => e.Code)));
+                return BadRequest(new MessageResponse { Message = "Registration failed. Please try again." });
             }
             await transaction.CommitAsync();
         }
@@ -225,7 +264,9 @@ public class AuthController : ControllerBase
             
         if (user == null)
         {
-            // Security Best Practice: Don't reveal if user exists
+            // Security Best Practice: Don't reveal if user exists. Equalize timing with the
+            // found-user path (which runs PBKDF2) so response time is not an enumeration oracle.
+            EqualizePasswordTiming(request.Password);
             return Unauthorized("Invalid email or password");
         }
 
@@ -269,7 +310,8 @@ public class AuthController : ControllerBase
         });
     }
 
-    [EnableRateLimiting("auth-submit")]
+    // No IP limiter: reached over loopback (see Register). Abuse is bounded by the
+    // per-email 10-minute send cooldown enforced in TryReservePasswordResetEmailSendAsync.
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword(ForgotPasswordRequest request)
     {
@@ -390,7 +432,8 @@ public class AuthController : ControllerBase
         "Open the newest email from grow.IT — links expire after 24 hours. " +
         "If you requested one in the last few minutes, check your inbox and spam folder before trying again.";
 
-    [EnableRateLimiting("auth-submit")]
+    // No IP limiter: reached over loopback (see Register). Abuse is bounded by the
+    // per-email 10-minute send cooldown enforced in TryReserveConfirmationEmailSendAsync.
     [HttpPost("resend-confirmation")]
     public async Task<IActionResult> ResendConfirmation(ResendConfirmationEmailRequest request)
     {
@@ -482,6 +525,13 @@ public class AuthController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Token) || string.IsNullOrWhiteSpace(request.Email))
             return BadRequest("Invite token and email are required.");
 
+        // Reached over loopback: throttle per email so invite acceptance is not unbounded.
+        if (!TryConsumeEmailRateLimit("accept-invite", request.Email, 10, TimeSpan.FromMinutes(15), out var inviteRetryAfter))
+        {
+            Response.Headers.RetryAfter = inviteRetryAfter.ToString();
+            return StatusCode(StatusCodes.Status429TooManyRequests, "Too many attempts. Please wait a few minutes and try again.");
+        }
+
         if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 12)
             return BadRequest("Password must be at least 12 characters.");
 
@@ -567,6 +617,14 @@ public class AuthController : ControllerBase
     [HttpPost("reset-password")]
     public async Task<IActionResult> ResetPassword(ResetPasswordRequest request)
     {
+        // Reached over loopback, so throttle per email rather than IP (the token is strong, but
+        // the endpoint should not be unbounded).
+        if (!TryConsumeEmailRateLimit("reset-password", request.Email, 10, TimeSpan.FromMinutes(15), out var resetRetryAfter))
+        {
+            Response.Headers.RetryAfter = resetRetryAfter.ToString();
+            return StatusCode(StatusCodes.Status429TooManyRequests, new MessageResponse { Message = "Too many attempts. Please wait a few minutes and try again." });
+        }
+
         var normalizedEmail = request.Email.Trim().ToUpperInvariant();
         var user = await _userManager.Users
             .IgnoreQueryFilters()
@@ -591,6 +649,45 @@ public class AuthController : ControllerBase
     {
         var bytes = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token));
         return Convert.ToHexString(bytes);
+    }
+
+    // Cached dummy hash (from the app's real hasher, so the verify runs the same PBKDF2 work)
+    // used to spend the same CPU on unknown emails as on real ones during login.
+    private static string? _timingDummyHash;
+
+    private void EqualizePasswordTiming(string? providedPassword)
+    {
+        var hasher = _userManager.PasswordHasher;
+        var dummy = _timingDummyHash ??= hasher.HashPassword(new User(), "timing-equalization-not-a-real-password");
+        hasher.VerifyHashedPassword(new User(), dummy, providedPassword ?? string.Empty);
+    }
+
+    // Fixed-window, per-normalized-email throttle backed by IMemoryCache. Used where the
+    // IP-based limiter is meaningless because the endpoint is called in-process over
+    // loopback. Returns false once the window's allowance is exceeded.
+    private bool TryConsumeEmailRateLimit(string scope, string? email, int limit, TimeSpan window, out int retryAfterSeconds)
+    {
+        var normalized = (email ?? string.Empty).Trim().ToUpperInvariant();
+        var key = $"ratelimit:{scope}:{normalized}";
+        var counter = _cache.GetOrCreate(key, entry =>
+        {
+            entry.AbsoluteExpirationRelativeToNow = window;
+            return new RateLimitCounter { WindowStart = DateTime.UtcNow };
+        })!;
+
+        lock (counter)
+        {
+            counter.Count++;
+            var remaining = window - (DateTime.UtcNow - counter.WindowStart);
+            retryAfterSeconds = Math.Max(1, (int)Math.Ceiling(remaining.TotalSeconds));
+            return counter.Count <= limit;
+        }
+    }
+
+    private sealed class RateLimitCounter
+    {
+        public DateTime WindowStart { get; init; }
+        public int Count { get; set; }
     }
 
     private async Task AddInviteAcceptedNotificationsAsync(OrganizationInvite invite, User acceptedUser)
@@ -644,6 +741,15 @@ public class AuthController : ControllerBase
     {
         var email = user.Email;
         if (string.IsNullOrWhiteSpace(email))
+        {
+            return;
+        }
+
+        // Unlike the confirmation and password-reset emails (which have DB send cooldowns), this
+        // reminder is sent to an already-confirmed address whenever someone re-registers or asks
+        // to resend against it. Without a cooldown it is a targeted email-bombing primitive, so
+        // cap it per email. Skipping silently keeps the API response neutral.
+        if (!TryConsumeEmailRateLimit("reminder", email, 1, TimeSpan.FromMinutes(10), out _))
         {
             return;
         }

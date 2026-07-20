@@ -71,6 +71,9 @@ public class BffAuthController : ControllerBase
 
         if (user is null)
         {
+            // Equalize timing with the found-user path (which runs PBKDF2 via CheckPasswordAsync)
+            // so response time can't distinguish registered from unregistered emails.
+            EqualizePasswordTiming(request.Password);
             return Unauthorized("Invalid email or password");
         }
 
@@ -190,6 +193,17 @@ public class BffAuthController : ControllerBase
         {
             // Sign-in should not fail if telemetry persistence fails.
         }
+    }
+
+    // Cached dummy hash (produced by the app's real hasher, so its format matches and the verify
+    // does the same PBKDF2 work) used to spend the same CPU on unknown emails as on real ones.
+    private static string? _timingDummyHash;
+
+    private void EqualizePasswordTiming(string? providedPassword)
+    {
+        var hasher = _userManager.PasswordHasher;
+        var dummy = _timingDummyHash ??= hasher.HashPassword(new User(), "timing-equalization-not-a-real-password");
+        hasher.VerifyHashedPassword(new User(), dummy, providedPassword ?? string.Empty);
     }
 
     private bool IsSameOriginRequest()
