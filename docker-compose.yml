@@ -29,7 +29,9 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=${POSTGRES_DB:-GrowIT};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
+      # Point at a managed DB (e.g. Supabase) via DATABASE_CONNECTION_STRING in .env; otherwise
+      # falls back to the local `db` Postgres container. Keep the secret out of git — set it in .env.
+      ConnectionStrings__DefaultConnection: ${DATABASE_CONNECTION_STRING:-Host=db;Port=5432;Database=GrowIT;Username=postgres;Password=postgres}
       # Default on so a fresh deploy applies EF migrations and bootstraps roles/SuperAdmin on
       # first boot. Set DATABASE_AUTOMIGRATE=false where migrations are applied out-of-band.
       Database__AutoMigrate: ${DATABASE_AUTOMIGRATE:-true}
