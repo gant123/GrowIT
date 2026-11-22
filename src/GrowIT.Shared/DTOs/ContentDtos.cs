@@ -65,15 +65,19 @@ public class UpdateBlogPostRequest
 
 public class CreateContactSubmissionRequest
 {
-    [Required, StringLength(120)]
+    [Required(ErrorMessage = "Please enter your name.")]
+    [StringLength(120, ErrorMessage = "Your name can be up to 120 characters.")]
     public string FullName { get; set; } = string.Empty;
-    [Required, EmailAddress, StringLength(160)]
+    [Required(ErrorMessage = "Please enter your email address.")]
+    [EmailAddress(ErrorMessage = "Please enter a valid email address.")]
+    [StringLength(160, ErrorMessage = "Your email can be up to 160 characters.")]
     public string Email { get; set; } = string.Empty;
-    [StringLength(160)]
+    [StringLength(160, ErrorMessage = "Organization can be up to 160 characters.")]
     public string? Organization { get; set; }
-    [StringLength(180)]
+    [StringLength(180, ErrorMessage = "Subject can be up to 180 characters.")]
     public string? Subject { get; set; }
-    [Required, StringLength(3000)]
+    [Required(ErrorMessage = "Please enter a message.")]
+    [StringLength(3000, ErrorMessage = "Your message can be up to 3,000 characters.")]
     public string Message { get; set; } = string.Empty;
 }
 

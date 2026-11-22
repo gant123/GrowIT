@@ -165,7 +165,9 @@ public class DashboardController : ControllerBase
         });
     }
 
+    // Same audience as Reports (the nav already hides Insights from other roles).
     [HttpGet("insights")]
+    [Authorize(Policy = "AdminOrManager")]
     public async Task<ActionResult<InsightsDto>> GetInsights()
     {
         var now = DateTime.UtcNow;

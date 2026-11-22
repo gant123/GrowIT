@@ -3,6 +3,7 @@
 @using GrowIT.Client.Services
 @using Syncfusion.Blazor.Charts
 @inject IInsightsService InsightsService
+@inject IRoleAccessService RoleAccessService
 @inject IJSRuntime JS
 
 <PageTitle>Insights - grow.IT</PageTitle>
@@ -15,6 +16,10 @@
         <div class="d-flex justify-content-center align-items-center" style="height: 400px;">
             <div class="spinner-growit"></div>
         </div>
+    }
+    else if (!_hasAccess)
+    {
+        <div class="alert alert-warning" role="alert">Insights are available to Admin, Manager, or Owner roles.</div>
     }
     else if (_insights == null)
     {
@@ -218,11 +223,23 @@
     private bool _isDarkMode = false;
     private Theme _chartTheme = Theme.Bootstrap5;
 
+    private bool _hasAccess = true;
+
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            _insights = await InsightsService.GetInsightsAsync();
+            // Same audience as Reports and the Insights menu item.
+            var access = await RoleAccessService.GetAccessAsync();
+            _hasAccess = access.CanAccessReports;
+            if (_hasAccess)
+            {
+                _insights = await InsightsService.GetInsightsAsync();
+            }
+        }
+        catch
+        {
+            _insights = null;
         }
         finally
         {

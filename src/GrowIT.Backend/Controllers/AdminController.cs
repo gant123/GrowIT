@@ -194,13 +194,13 @@ public class AdminController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Role))
             return BadRequest("Role is required.");
 
-        var newRole = request.Role.Trim();
+        var newRole = CanonicalRole(request.Role);
         if (newRole.Length > 64)
             return BadRequest("Role must be 64 characters or less.");
 
         // Block privilege escalation: only a SuperAdmin may grant elevated roles (SuperAdmin/Owner).
         if (!CanAssignRole(newRole))
-            return BadRequest("That role cannot be assigned.");
+            return BadRequest($"That role cannot be assigned. Choose one of: {string.Join(", ", StandardAssignableRoles)}.");
 
         var user = await GetAdminTargetUserQuery().FirstOrDefaultAsync(u => u.Id == id);
         if (user is null) return NotFound();
@@ -398,9 +398,9 @@ public class AdminController : ControllerBase
             return BadRequest("A pending invite already exists for this email.");
 
         // Block privilege escalation through invites: elevated roles require SuperAdmin.
-        var inviteRole = string.IsNullOrWhiteSpace(request.Role) ? "Member" : request.Role.Trim();
+        var inviteRole = string.IsNullOrWhiteSpace(request.Role) ? "Member" : CanonicalRole(request.Role);
         if (!CanAssignRole(inviteRole))
-            return BadRequest("That role cannot be assigned to an invite.");
+            return BadRequest($"That role cannot be assigned to an invite. Choose one of: {string.Join(", ", StandardAssignableRoles)}.");
 
         // Enforce the tenant's plan user/seat limit (SuperAdmin is exempt).
         if (!User.IsSuperAdmin())
@@ -1156,6 +1156,16 @@ public class AdminController : ControllerBase
 
     // A standard role is always assignable by a tenant admin; an elevated role
     // (SuperAdmin/Owner) may only be assigned by a SuperAdmin. Unknown roles are rejected.
+    // Store known roles with their canonical spelling ("case manager" -> "Case Manager") so they
+    // display consistently in grids, emails and the accept-invite page.
+    private static string CanonicalRole(string role)
+    {
+        var trimmed = role.Trim();
+        return StandardAssignableRoles.FirstOrDefault(r => string.Equals(r, trimmed, StringComparison.OrdinalIgnoreCase))
+            ?? ElevatedRoles.FirstOrDefault(r => string.Equals(r, trimmed, StringComparison.OrdinalIgnoreCase))
+            ?? trimmed;
+    }
+
     private bool CanAssignRole(string role)
     {
         var normalized = role.Trim();

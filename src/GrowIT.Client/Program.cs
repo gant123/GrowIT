@@ -18,6 +18,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -186,6 +187,17 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 // not exist yet during cookie authentication) and signs out only the app cookie on rejection;
 // the stock validator rejected every session after the interval and then threw (HTTP 500).
 builder.Services.AddScoped<ISecurityStampValidator, GrowITSecurityStampValidator>();
+
+// Data-protection keys encrypt the auth cookie and the confirm-email / reset-password tokens.
+// Inside a container the default key ring lives in the container filesystem, so every redeploy
+// logged everyone out and broke outstanding email links. Persist it to a mounted directory.
+var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
+var dataProtection = builder.Services.AddDataProtection().SetApplicationName("GrowIT");
+if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+{
+    dataProtection.PersistKeysToFileSystem(Directory.CreateDirectory(dataProtectionKeysPath));
+}
+
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = CompositeAuthScheme;

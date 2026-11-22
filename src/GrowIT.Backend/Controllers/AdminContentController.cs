@@ -252,5 +252,5 @@ public class AdminContentController : ControllerBase
         string.IsNullOrWhiteSpace(category) ? "General" : category.Trim();
 
     private static string NormalizeAuthor(string? author) =>
-        string.IsNullOrWhiteSpace(author) ? "GrowIT Team" : author.Trim();
+        string.IsNullOrWhiteSpace(author) ? "grow.IT Team" : author.Trim();
 }

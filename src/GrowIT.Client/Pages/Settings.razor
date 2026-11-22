@@ -22,11 +22,13 @@
         </div>
     }
 
+    @if (_hasSettingsAccess)
+    {
     <section class="settings-overview-shell">
         <div class="settings-overview-hero">
             <div class="settings-overview-copy">
                 <span class="settings-overview-kicker">Organization Basics</span>
-                <h2>Saved information Grow.IT can reuse</h2>
+                <h2>Saved information grow.IT can reuse</h2>
                 <p>
                     Your organization profile helps reports, documents, and portfolio content use the same name, contact details, and service focus.
                 </p>
@@ -50,6 +52,7 @@
             </div>
         </div>
     </section>
+    }
 
     @if (!_hasSettingsAccess)
     {
@@ -119,31 +122,13 @@
                 }
                 else
                 {
-                    <div class="settings-stage-header">
-                        <div>
-                            <span class="settings-stage-kicker">@GetActiveTabEyebrow()</span>
-                            <h2>@GetActiveTabTitle()</h2>
-                            <p>@GetActiveTabDescription()</p>
-                        </div>
-                        <div class="settings-stage-meta">
-                            <span class="settings-stage-chip">
-                                <i class="bi bi-building"></i>
-                                @_organization?.Name
-                            </span>
-                            <span class="settings-stage-chip">
-                                <i class="bi bi-stars"></i>
-                                Workspace
-                            </span>
-                        </div>
-                    </div>
-
                     @if (ActiveTab == "organization")
                     {
                         <section class="settings-panel">
                 <div class="settings-panel-header">
                     <div>
                         <h2>Organization Profile</h2>
-                        <p>Save the core details Grow.IT should reuse in reports, documents, and portfolio content.</p>
+                        <p>Save the core details grow.IT should reuse in reports, documents, and portfolio content.</p>
                     </div>
                 </div>
                 <div class="settings-panel-body">
@@ -165,11 +150,31 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label class="form-label">What type of organization is this?</label>
-                                    <InputText class="form-control" @bind-Value="_organizationEdit.OrganizationType" />
+                                    <InputSelect class="form-select" @bind-Value="_organizationEdit.OrganizationType">
+                                        <option value="">Select type...</option>
+                                        @foreach (var (value, label) in OrganizationTypeOptions)
+                                        {
+                                            <option value="@value">@label</option>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(_organizationEdit.OrganizationType) && OrganizationTypeOptions.All(o => o.Value != _organizationEdit.OrganizationType))
+                                        {
+                                            <option value="@_organizationEdit.OrganizationType">@_organizationEdit.OrganizationType</option>
+                                        }
+                                    </InputSelect>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Organization size</label>
-                                    <InputText class="form-control" @bind-Value="_organizationEdit.OrganizationSize" />
+                                    <label class="form-label">How many people do you serve each year?</label>
+                                    <InputSelect class="form-select" @bind-Value="_organizationEdit.OrganizationSize">
+                                        <option value="">Select range...</option>
+                                        @foreach (var (value, label) in PeopleServedOptions)
+                                        {
+                                            <option value="@value">@label</option>
+                                        }
+                                        @if (!string.IsNullOrWhiteSpace(_organizationEdit.OrganizationSize) && PeopleServedOptions.All(o => o.Value != _organizationEdit.OrganizationSize))
+                                        {
+                                            <option value="@_organizationEdit.OrganizationSize">@_organizationEdit.OrganizationSize</option>
+                                        }
+                                    </InputSelect>
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label">Address</label>
@@ -229,7 +234,7 @@
                 <div class="settings-panel-header">
                     <div>
                         <h2>Users & Roles</h2>
-                        <p>Choose who can view, add, edit, approve, or manage information in Grow.IT. Invite new team members from the Invites tab.</p>
+                        <p>Choose who can view, add, edit, approve, or manage information in grow.IT. Invite new team members from the Invites tab.</p>
                     </div>
                 </div>
                 <div class="settings-panel-body">
@@ -818,10 +823,10 @@
                             </div>
                             <div class="audit-log-actions">
                                 <select class="form-select form-select-sm" @bind="_auditTableFilter" @bind:after="UpdateFilteredAuditLogs">
-                                    <option value="">All tables</option>
+                                    <option value="">All areas</option>
                                     @foreach (var tableName in _auditTableOptions)
                                     {
-                                        <option value="@tableName">@tableName</option>
+                                        <option value="@tableName">@FriendlyAuditArea(tableName)</option>
                                     }
                                 </select>
                                 <select class="form-select form-select-sm" @bind="_auditActionFilter" @bind:after="UpdateFilteredAuditLogs">
@@ -888,14 +893,21 @@
                                         <span class="badge @badgeClass fw-semibold px-2 py-1">@log.ActionType</span>
                                     </Template>
                                 </GridColumn>
-                                <GridColumn Field=@nameof(AdminAuditLogItemDto.TableName) HeaderText="Table" Width="130"></GridColumn>
-                                <GridColumn Field=@nameof(AdminAuditLogItemDto.UserName) HeaderText="User" Width="160"></GridColumn>
-                                <GridColumn HeaderText="Summary" Width="300" ClipMode="ClipMode.EllipsisWithTooltip">
+                                <GridColumn Field=@nameof(AdminAuditLogItemDto.TableName) HeaderText="Area" Width="150">
                                     <Template>
                                         @{
                                             var log = (context as AdminAuditLogItemDto)!;
                                         }
-                                        <span class="small">@(string.IsNullOrWhiteSpace(log.Summary) ? $"{log.ActionType} on {log.TableName}" : log.Summary)</span>
+                                        <span class="small">@FriendlyAuditArea(log.TableName)</span>
+                                    </Template>
+                                </GridColumn>
+                                <GridColumn Field=@nameof(AdminAuditLogItemDto.UserName) HeaderText="User" Width="160"></GridColumn>
+                                <GridColumn HeaderText="Summary" MinWidth="260">
+                                    <Template>
+                                        @{
+                                            var log = (context as AdminAuditLogItemDto)!;
+                                        }
+                                        <span class="small audit-summary-text" title="@log.Summary">@(string.IsNullOrWhiteSpace(log.Summary) ? $"{log.ActionType} in {FriendlyAuditArea(log.TableName)}" : log.Summary)</span>
                                     </Template>
                                 </GridColumn>
                                 <GridColumn HeaderText="Record" Width="180">
@@ -928,6 +940,59 @@
 
     private string? _appliedRequestedTab;
     private static readonly string[] KnownTabs = ["organization", "users", "invites", "security"];
+
+    // Same choices as the signup form, so the saved value shows as a readable label.
+    private static readonly (string Value, string Label)[] OrganizationTypeOptions =
+    [
+        ("501c3", "501(c)(3) Nonprofit"),
+        ("church", "Church/Religious Organization"),
+        ("government", "Government Agency"),
+        ("school", "Educational Institution"),
+        ("other", "Other")
+    ];
+
+    private static readonly (string Value, string Label)[] PeopleServedOptions =
+    [
+        ("1-50", "1-50"),
+        ("51-200", "51-200"),
+        ("201-500", "201-500"),
+        ("501-1000", "501-1,000"),
+        ("1000+", "1,000+")
+    ];
+
+    // Audit rows record the database table; show the name people see in the app instead.
+    private static readonly Dictionary<string, string> AuditAreaNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["Clients"] = "People",
+        ["FamilyMembers"] = "Household members",
+        ["Households"] = "Households",
+        ["Investments"] = "Service records",
+        ["Imprints"] = "Outcomes",
+        ["Funds"] = "Money sources",
+        ["Programs"] = "Programs",
+        ["Tasks"] = "Follow-ups",
+        ["GrowthPlans"] = "Growth plans",
+        ["Documents"] = "Documents",
+        ["Tenants"] = "Organization",
+        ["OrganizationInvites"] = "Invites",
+        ["AspNetUsers"] = "Users",
+        ["Users"] = "Users",
+        ["ReportSchedules"] = "Report schedules",
+        ["ReportRuns"] = "Reports",
+        ["BillingEvents"] = "Billing",
+        ["Subscriptions"] = "Billing",
+        ["Notifications"] = "Notifications",
+        ["BlogPosts"] = "Blog posts"
+    };
+
+    private static string FriendlyAuditArea(string? tableName)
+    {
+        if (string.IsNullOrWhiteSpace(tableName)) return "—";
+        if (AuditAreaNames.TryGetValue(tableName, out var name)) return name;
+        // Fall back to splitting PascalCase: "ReportRunDownloadEvents" -> "Report run download events".
+        var spaced = System.Text.RegularExpressions.Regex.Replace(tableName, "(?<=[a-z])(?=[A-Z])", " ").ToLowerInvariant();
+        return char.ToUpperInvariant(spaced[0]) + spaced[1..];
+    }
 
     protected override void OnParametersSet()
     {
@@ -1261,20 +1326,12 @@
         _ => "Settings"
     };
 
-    private string GetActiveTabEyebrow() => ActiveTab switch
-    {
-        "organization" => "Saved Organization Details",
-        "users" => "Team Access",
-        "invites" => "Team Invitations",
-        "security" => "Security and Activity",
-        _ => "Settings"
-    };
 
     private string GetActiveTabDescription() => ActiveTab switch
     {
-        "organization" => "The organization details Grow.IT can reuse in reports, documents, and portfolio content.",
+        "organization" => "The organization details grow.IT can reuse in reports, documents, and portfolio content.",
         "users" => "Who can view, add, edit, approve, or manage information.",
-        "invites" => "Invite people to help manage your organization in Grow.IT.",
+        "invites" => "Invite people to help manage your organization in grow.IT.",
         "security" => "Review system health, security activity, and important account checks.",
         _ => "Manage organization settings."
     };

@@ -62,13 +62,17 @@ services:
       Reports__Scheduler__MaxSchedulesPerCycle: ${REPORT_SCHEDULER_MAX_PER_CYCLE:-20}
       Reports__Scheduler__DefaultReportType: ${REPORT_SCHEDULER_DEFAULT_TYPE:-impact-summary}
       Reports__Scheduler__DefaultFormat: ${REPORT_SCHEDULER_DEFAULT_FORMAT:-pdf}
+      # Keep the cookie/token key ring across redeploys (otherwise every deploy signs everyone out).
+      DataProtection__KeysPath: /app/keys
     ports:
       - "${CLIENT_PORT:-5180}:8080"
     volumes:
       - growit-web-uploads:/app/wwwroot/uploads
       - growit-web-dev-emails:/app/dev-emails
+      - growit-dataprotection-keys:/app/keys
 
 volumes:
   growit-postgres-data:
   growit-web-uploads:
   growit-web-dev-emails:
+  growit-dataprotection-keys:

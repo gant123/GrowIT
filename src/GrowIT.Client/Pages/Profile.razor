@@ -110,7 +110,7 @@
                             <div class="col-12">
                                 <label class="form-label">Email</label>
                                 <input class="form-control" value="@_profile.Email" readonly />
-                                <div class="form-text">Email changes are currently handled by an administrator.</div>
+                                <div class="form-text">Your sign-in email can't be changed here yet. If it needs to change, send us a note from the <a href="/contact">Contact page</a>.</div>
                             </div>
                         </div>
                         <div class="d-flex justify-content-end mt-3">
@@ -150,6 +150,10 @@
                             <label class="form-label">New password</label>
                             <InputText type="password" class="form-control" @bind-Value="_changePassword.NewPassword" />
                             <div class="form-text">At least 12 characters, with an uppercase letter, a lowercase letter, and a number.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="confirmNewPassword">Confirm new password</label>
+                            <input id="confirmNewPassword" type="password" class="form-control" autocomplete="new-password" @bind="_confirmNewPassword" />
                         </div>
                         <button class="btn btn-outline-primary" type="submit" disabled="@_isChangingPassword">
                             @if (_isChangingPassword)
@@ -238,6 +242,21 @@
     private string? _preferencesError;
     private string? _photoSuccess;
     private string? _photoError;
+    private string _confirmNewPassword = string.Empty;
+
+    // Each action starts with a clean slate so an old success/error banner from a previous action
+    // doesn't sit next to the result of the new one.
+    private void ClearMessages()
+    {
+        _pageError = null;
+        _profileSuccess = null;
+        _passwordSuccess = null;
+        _passwordError = null;
+        _preferencesSuccess = null;
+        _preferencesError = null;
+        _photoSuccess = null;
+        _photoError = null;
+    }
 
     private UserProfileDto? _profile;
     private UpdateUserProfileRequest _profileEdit = new();
@@ -298,10 +317,7 @@
         if (_profile is null) return;
 
         _isSavingProfile = true;
-        _profileSuccess = null;
-        _pageError = null;
-        _photoSuccess = null;
-        _photoError = null;
+        ClearMessages();
         try
         {
             _profile = await ProfileService.UpdateProfileAsync(_profileEdit);
@@ -319,11 +335,15 @@
 
     private async Task ChangePasswordAsync()
     {
-        _passwordSuccess = null;
-        _passwordError = null;
+        ClearMessages();
         if (string.IsNullOrWhiteSpace(_changePassword.CurrentPassword) || string.IsNullOrWhiteSpace(_changePassword.NewPassword))
         {
             _passwordError = "Current and new password are required.";
+            return;
+        }
+        if (!string.Equals(_changePassword.NewPassword, _confirmNewPassword, StringComparison.Ordinal))
+        {
+            _passwordError = "The new password and its confirmation don't match.";
             return;
         }
 
@@ -332,6 +352,7 @@
         {
             await ProfileService.ChangePasswordAsync(_changePassword);
             _changePassword = new ChangePasswordRequest();
+            _confirmNewPassword = string.Empty;
             _passwordSuccess = "Password updated successfully.";
             try
             {
@@ -353,8 +374,7 @@
     {
         if (_profile is null) return;
 
-        _preferencesSuccess = null;
-        _preferencesError = null;
+        ClearMessages();
         _isSavingNotificationPreferences = true;
         try
         {
@@ -379,8 +399,7 @@
     private async Task UploadProfilePhotoAsync(InputFileChangeEventArgs e)
     {
         var file = e.File;
-        _photoSuccess = null;
-        _photoError = null;
+        ClearMessages();
         if (file is null)
         {
             _photoError = "No file selected.";
@@ -418,8 +437,7 @@
         if (_profile is null || string.IsNullOrWhiteSpace(_profile.PhotoUrl))
             return;
 
-        _photoSuccess = null;
-        _photoError = null;
+        ClearMessages();
         _isRemovingPhoto = true;
         try
         {

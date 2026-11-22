@@ -191,6 +191,9 @@ public class InviteValidationDto
     public string OrganizationName { get; set; } = string.Empty;
     public string Role { get; set; } = string.Empty;
     public DateTime? ExpiresAt { get; set; }
+    // Names the inviter typed, so the invitee doesn't have to re-enter them.
+    public string FirstName { get; set; } = string.Empty;
+    public string LastName { get; set; } = string.Empty;
 }
 
 public class AcceptInviteRequest
