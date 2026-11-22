@@ -1,23 +1,37 @@
 @page "/documents"
+@using System.ComponentModel.DataAnnotations
 @using GrowIT.Shared.DTOs
 @using GrowIT.Shared.Enums
+@implements IDisposable
 @inject IDocumentService DocumentService
 @inject IClientService ClientService
+@inject IRoleAccessService RoleAccessService
 @inject IJSRuntime JS
 
 <PageTitle>Documents - grow.IT</PageTitle>
 
-<div class="dashboard fade-in mt-4">
-    <PageHeader Title="Documents" Subtitle="Files you've saved for the people and households you serve.">
+<div class="dashboard fade-in mt-4 documents-page">
+    <PageHeader Title="Documents" Subtitle="Organization records and files for the people you serve. Files are stored privately; only your team can download them.">
         <Actions>
             <button class="btn-growit btn-secondary-growit" @onclick="LoadData" disabled="@_isLoading">
                 <i class="bi bi-arrow-clockwise me-1"></i>Refresh
             </button>
-            <button class="btn-growit btn-primary-growit" @onclick="OpenCreate">
-                <i class="bi bi-plus-lg me-1"></i>New Document
-            </button>
+            @if (_canUpload)
+            {
+                <button class="btn-growit btn-primary-growit" @onclick="OpenUpload">
+                    <i class="bi bi-upload me-1"></i>Upload Document
+                </button>
+            }
         </Actions>
     </PageHeader>
+
+    @if (!string.IsNullOrWhiteSpace(_pageMessage))
+    {
+        <div class="alert alert-success d-flex justify-content-between align-items-center" role="status">
+            <span>@_pageMessage</span>
+            <button type="button" class="btn-close" aria-label="Dismiss" @onclick="() => _pageMessage = null"></button>
+        </div>
+    }
 
     @if (_isLoading)
     {
@@ -28,28 +42,64 @@
     }
     else if (!string.IsNullOrWhiteSpace(_error))
     {
-        <div class="alert alert-danger">@_error</div>
+        <div class="alert alert-danger" role="alert">@_error</div>
     }
     else
     {
         <div class="grid-4 mb-4">
-            <KpiCard Label="Documents" Value="@_documents.Count.ToString()" Icon="bi bi-file-earmark-text" Color="primary" TrendText="Recorded files" />
-            <KpiCard Label="Clients" Value="@_documents.Select(d => d.ClientId).Distinct().Count().ToString()" Icon="bi bi-people" Color="info" TrendText="With documents" />
-            <KpiCard Label="ID Files" Value="@_documents.Count(d => d.Category == DocumentCategory.ID).ToString()" Icon="bi bi-person-badge" Color="success" TrendText="Identity records" />
-            <KpiCard Label="Contracts" Value="@_documents.Count(d => d.Category == DocumentCategory.Contract).ToString()" Icon="bi bi-journal-check" Color="warning" TrendText="Agreement records" />
+            <KpiCard Label="Uploaded files" Value="@UploadedCount.ToString()" Icon="bi bi-file-earmark-check" Color="primary" TrendText="Stored in grow.IT" />
+            <KpiCard Label="Organization" Value="@_documents.Count(d => d.ClientId is null && d.IsUploaded).ToString()" Icon="bi bi-buildings" Color="info" TrendText="IRS letter, bylaws, budgets" />
+            <KpiCard Label="People" Value="@_documents.Where(d => d.ClientId.HasValue && d.IsUploaded).Select(d => d.ClientId).Distinct().Count().ToString()" Icon="bi bi-people" Color="success" TrendText="With uploaded files" />
+            @if (LinkCount > 0)
+            {
+                <KpiCard Label="Saved links" Value="@LinkCount.ToString()" Icon="bi bi-link-45deg" Color="warning" TrendText="Upload the file to count it" />
+            }
+            else
+            {
+                <KpiCard Label="Categories" Value="@_documents.Where(d => d.IsUploaded).Select(d => d.Category).Distinct().Count().ToString()" Icon="bi bi-tags" Color="warning" TrendText="Kinds of records" />
+            }
         </div>
 
         <div class="card-growit">
-            <div class="card-header">
-                <h3 class="section-title">Document Register</h3>
-                <span class="badge-growit badge-neutral">@_documents.Count</span>
+            <div class="card-header documents-toolbar">
+                <div class="documents-scope" role="group" aria-label="Show documents for">
+                    @foreach (var scope in Enum.GetValues<DocumentScope>())
+                    {
+                        <button type="button"
+                                class="btn-growit btn-sm @(_scope == scope ? "btn-primary-growit" : "btn-ghost-growit")"
+                                aria-pressed="@(_scope == scope ? "true" : "false")"
+                                @onclick="() => _scope = scope">
+                            @ScopeLabel(scope) <span class="documents-scope-count">@CountFor(scope)</span>
+                        </button>
+                    }
+                </div>
+                <div class="documents-search">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input type="search" class="form-control form-control-sm" placeholder="Filter by name or person"
+                           aria-label="Filter documents"
+                           @bind="_filter" @bind:event="oninput" />
+                </div>
             </div>
             <div class="card-body p-0">
-                @if (!_documents.Any())
+                @if (!VisibleDocuments.Any())
                 {
                     <div class="empty-state">
                         <i class="bi bi-file-earmark empty-state-icon"></i>
-                        <div class="empty-state-title">No documents found</div>
+                        @if (_documents.Count == 0)
+                        {
+                            <div class="empty-state-title">No documents yet</div>
+                            <p class="text-muted mb-3">Upload your IRS determination letter, bylaws, or a person's ID or lease. Files up to @DocumentUploadRules.MaxFileSizeLabel.</p>
+                            @if (_canUpload)
+                            {
+                                <button class="btn-growit btn-primary-growit" @onclick="OpenUpload">
+                                    <i class="bi bi-upload me-1"></i>Upload the first document
+                                </button>
+                            }
+                        }
+                        else
+                        {
+                            <div class="empty-state-title">No documents match this view</div>
+                        }
                     </div>
                 }
                 else
@@ -58,27 +108,87 @@
                         <table class="table mb-0 align-middle">
                             <thead>
                                 <tr>
-                                    <th>Client</th>
+                                    <th>Document</th>
+                                    <th>Belongs to</th>
                                     <th>Category</th>
-                                    <th>Type</th>
-                                    <th>Location</th>
+                                    <th>File</th>
+                                    <th>Added</th>
                                     <th class="text-end">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var document in _documents)
+                                @foreach (var document in VisibleDocuments)
                                 {
                                     <tr>
-                                        <td>@document.ClientName</td>
-                                        <td><span class="badge-growit badge-neutral">@document.Category</span></td>
-                                        <td>@document.FileType</td>
-                                        <td>
-                                            <a href="@document.FileUrl" target="_blank" rel="noopener noreferrer">@DisplayUrl(document.FileUrl)</a>
+                                        <td class="documents-name-cell">
+                                            <div class="documents-name" title="@document.Title">@document.Title</div>
+                                            @if (document.IsUploaded)
+                                            {
+                                                @if (!string.IsNullOrWhiteSpace(document.OriginalFileName) && document.OriginalFileName != document.Title)
+                                                {
+                                                    <div class="documents-meta" title="@document.OriginalFileName">@document.OriginalFileName</div>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <div class="documents-meta">
+                                                    <span class="badge-growit badge-warning">Saved link</span>
+                                                    <span>Not counted in the ASC Score. Upload the file to replace it.</span>
+                                                </div>
+                                            }
                                         </td>
-                                        <td class="text-end">
-                                            <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteDocument(document.Id)">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
+                                        <td>
+                                            @if (document.ClientId is Guid clientId)
+                                            {
+                                                <a href="@($"/clients/{clientId}")">@(string.IsNullOrWhiteSpace(document.ClientName) ? "Person" : document.ClientName)</a>
+                                            }
+                                            else
+                                            {
+                                                <span><i class="bi bi-buildings me-1" aria-hidden="true"></i>Organization</span>
+                                            }
+                                        </td>
+                                        <td><span class="badge-growit badge-neutral">@CategoryShortLabel(document.Category)</span></td>
+                                        <td class="text-nowrap">
+                                            @document.FileType
+                                            @if (document.SizeBytes.HasValue)
+                                            {
+                                                <span class="documents-meta d-block">@DocumentUploadRules.FormatSize(document.SizeBytes)</span>
+                                            }
+                                        </td>
+                                        <td class="text-nowrap">@(document.UploadedAt?.ToLocalTime().ToString("MMM d, yyyy") ?? "-")</td>
+                                        <td class="text-end text-nowrap">
+                                            @if (document.IsUploaded)
+                                            {
+                                                <button class="btn-growit btn-secondary-growit btn-sm" @onclick="() => DownloadAsync(document)"
+                                                        disabled="@(_downloadingId == document.Id)" aria-label="@($"Download {document.Title}")">
+                                                    @if (_downloadingId == document.Id)
+                                                    {
+                                                        <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <i class="bi bi-download me-1" aria-hidden="true"></i>
+                                                    }
+                                                    Download
+                                                </button>
+                                            }
+                                            else if (SafeLink(document.LinkUrl) is string link)
+                                            {
+                                                <a class="btn-growit btn-secondary-growit btn-sm" href="@link" target="_blank" rel="noopener noreferrer">
+                                                    <i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>Open link
+                                                </a>
+                                            }
+                                            else
+                                            {
+                                                <span class="documents-meta">Not a web address</span>
+                                            }
+                                            @if (_canUpload)
+                                            {
+                                                <button class="btn-growit btn-ghost-growit btn-sm ms-1" @onclick="() => AskDelete(document)"
+                                                        aria-label="@($"Delete {document.Title}")" title="Delete">
+                                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                                </button>
+                                            }
                                         </td>
                                     </tr>
                                 }
@@ -91,58 +201,81 @@
     }
 </div>
 
-@if (_showCreate)
+@if (_showUpload)
 {
-    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.65); z-index: 1200;" tabindex="-1">
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.65); z-index: 1200;" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="upload-document-title">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header">
-                    <h5 class="modal-title">New Document</h5>
-                    <button type="button" class="btn-close" @onclick="CloseCreate"></button>
+                    <h5 class="modal-title" id="upload-document-title">Upload Document</h5>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseUpload" disabled="@_isSaving"></button>
                 </div>
                 <div class="modal-body">
                     @if (!string.IsNullOrWhiteSpace(_modalError))
                     {
-                        <div class="alert alert-danger">@_modalError</div>
+                        <div class="alert alert-danger" role="alert">@_modalError</div>
                     }
-                    <EditForm Model="@_newDocument" OnValidSubmit="CreateDocument">
+                    <EditForm EditContext="@_uploadContext" OnValidSubmit="UploadAsync">
                         <DataAnnotationsValidator />
                         <ValidationSummary class="text-danger small mb-2" />
+
                         <div class="mb-3">
-                            <label class="form-label">Person or household <span class="text-danger" aria-hidden="true">*</span></label>
-                            <InputSelect @bind-Value="_newDocument.ClientId" class="form-select">
-                                <option value="@Guid.Empty">Select a person or household</option>
-                                @foreach (var client in _clients)
+                            <label class="form-label" for="document-file">File <span class="text-danger" aria-hidden="true">*</span></label>
+                            <InputFile id="document-file" class="form-control" accept="@DocumentUploadRules.AcceptAttribute" OnChange="OnFileSelected" disabled="@_isSaving" />
+                            <div class="form-text">@DocumentUploadRules.AllowedTypesLabel, up to @DocumentUploadRules.MaxFileSizeLabel.</div>
+                            @if (!string.IsNullOrWhiteSpace(_fileError))
+                            {
+                                <div class="text-danger small mt-1" role="alert">@_fileError</div>
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="document-owner">Belongs to <span class="text-danger" aria-hidden="true">*</span></label>
+                            <InputSelect id="document-owner" @bind-Value="_upload.BelongsTo" class="form-select" disabled="@_isSaving">
+                                <option value="">Choose the organization or a person</option>
+                                <option value="@OrganizationOwner">Organization (IRS letter, bylaws, budget)</option>
+                                @if (_clients.Count > 0)
                                 {
-                                    <option value="@client.Id">@client.Name</option>
+                                    <optgroup label="People">
+                                        @foreach (var client in _clients)
+                                        {
+                                            <option value="@client.Id.ToString()">@client.Name</option>
+                                        }
+                                    </optgroup>
                                 }
                             </InputSelect>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Link to the file <span class="text-danger" aria-hidden="true">*</span></label>
-                            <InputText @bind-Value="_newDocument.FileUrl" class="form-control" placeholder="https://drive.google.com/..." />
-                            @* Be upfront that this records a link: there is no file upload here yet, and
-                               arbitrary text used to be saved as a "document" that opened nothing. *@
-                            <div class="form-text">Paste the web address where the file is stored (for example Google Drive or Dropbox). Uploading a file directly isn't available yet.</div>
-                        </div>
+
                         <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label">File type <span class="text-danger" aria-hidden="true">*</span></label>
-                                <InputText @bind-Value="_newDocument.FileType" class="form-control" placeholder="PDF" />
+                            <div class="col-md-7">
+                                <label class="form-label" for="document-title">Name <span class="text-muted small">(optional)</span></label>
+                                <InputText id="document-title" @bind-Value="_upload.Title" class="form-control" placeholder="e.g. IRS determination letter" disabled="@_isSaving" />
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label">Category</label>
-                                <InputSelect @bind-Value="_newDocument.Category" class="form-select">
-                                    @foreach (var category in Enum.GetValues<DocumentCategory>())
+                            <div class="col-md-5">
+                                <label class="form-label" for="document-category">Category</label>
+                                <InputSelect id="document-category" @bind-Value="_upload.Category" class="form-select" disabled="@_isSaving">
+                                    @foreach (var category in CategoryOrder)
                                     {
-                                        <option value="@category">@category</option>
+                                        <option value="@category">@CategoryLabel(category)</option>
                                     }
                                 </InputSelect>
                             </div>
                         </div>
+
                         <div class="d-flex justify-content-end gap-2">
-                            <button type="button" class="btn btn-outline-secondary" @onclick="CloseCreate">Cancel</button>
-                            <button type="submit" class="btn btn-primary" disabled="@_isSaving">Save Document</button>
+                            <button type="button" class="btn-growit btn-secondary-growit" @onclick="CloseUpload" disabled="@_isSaving">Cancel</button>
+                            <button type="submit" class="btn-growit btn-primary-growit" disabled="@_isSaving">
+                                @if (_isSaving)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                                    <span>Uploading...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-upload me-1" aria-hidden="true"></i>
+                                    <span>Upload</span>
+                                }
+                            </button>
                         </div>
                     </EditForm>
                 </div>
@@ -151,17 +284,112 @@
     </div>
 }
 
+@if (_pendingDelete is not null)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.65); z-index: 1210;" tabindex="-1" role="alertdialog" aria-modal="true" aria-labelledby="delete-document-title">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="delete-document-title">Delete document?</h5>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-2"><strong class="documents-break">@_pendingDelete.Title</strong></p>
+                    <p class="mb-0 text-muted small">
+                        @(_pendingDelete.IsUploaded
+                            ? "The file will be permanently removed from grow.IT. This can't be undone."
+                            : "The saved link will be removed. This can't be undone.")
+                    </p>
+                    @if (!string.IsNullOrWhiteSpace(_deleteError))
+                    {
+                        <div class="alert alert-danger mt-3 mb-0" role="alert">@_deleteError</div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-growit btn-secondary-growit" @onclick="CancelDelete" disabled="@_isDeleting">Cancel</button>
+                    <button type="button" class="btn-growit btn-danger-growit" @onclick="ConfirmDeleteAsync" disabled="@_isDeleting">
+                        @if (_isDeleting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>
+                        }
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 @code {
+    private const string OrganizationOwner = "organization";
+
+    private static readonly DocumentCategory[] CategoryOrder =
+    [
+        DocumentCategory.ID,
+        DocumentCategory.Bill,
+        DocumentCategory.Contract,
+        DocumentCategory.Legal,
+        DocumentCategory.Governance,
+        DocumentCategory.Financial,
+        DocumentCategory.Other
+    ];
+
+    private readonly CancellationTokenSource _cts = new();
     private List<DocumentDto> _documents = [];
     private List<ClientDto> _clients = [];
     private bool _isLoading = true;
-    private bool _isSaving;
-    private bool _showCreate;
+    private bool _canUpload;
     private string? _error;
-    private string? _modalError;
-    private CreateDocumentRequest _newDocument = new();
+    private string? _pageMessage;
+    private DocumentScope _scope = DocumentScope.All;
+    private string _filter = string.Empty;
+    private Guid? _downloadingId;
 
-    protected override async Task OnInitializedAsync() => await LoadData();
+    // Upload modal
+    private bool _showUpload;
+    private bool _isSaving;
+    private string? _modalError;
+    private string? _fileError;
+    private UploadForm _upload = new();
+    private EditContext _uploadContext = new(new UploadForm());
+    private IBrowserFile? _selectedFile;
+
+    // Delete confirmation
+    private DocumentDto? _pendingDelete;
+    private bool _isDeleting;
+    private string? _deleteError;
+
+    private sealed class UploadForm
+    {
+        // Set when a valid file is picked; drives the "choose a file" validation message.
+        [Required(ErrorMessage = "Choose a file to upload.")]
+        public string? FileName { get; set; }
+
+        [Required(ErrorMessage = "Choose whether this belongs to the organization or a person.")]
+        public string BelongsTo { get; set; } = string.Empty;
+
+        [MaxLength(200, ErrorMessage = "Keep the name under 200 characters.")]
+        public string? Title { get; set; }
+
+        public DocumentCategory Category { get; set; } = DocumentCategory.Other;
+    }
+
+    private int UploadedCount => _documents.Count(d => d.IsUploaded);
+    private int LinkCount => _documents.Count(d => !d.IsUploaded);
+
+    private IEnumerable<DocumentDto> VisibleDocuments =>
+        _documents
+            .Where(d => MatchesScope(d, _scope))
+            .Where(d => string.IsNullOrWhiteSpace(_filter) ||
+                        d.Title.Contains(_filter.Trim(), StringComparison.OrdinalIgnoreCase) ||
+                        (d.OriginalFileName?.Contains(_filter.Trim(), StringComparison.OrdinalIgnoreCase) ?? false) ||
+                        (d.ClientName?.Contains(_filter.Trim(), StringComparison.OrdinalIgnoreCase) ?? false));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var access = await RoleAccessService.GetAccessAsync();
+        _canUpload = access.CanDocumentServiceRecords;
+        await LoadData();
+    }
 
     private async Task LoadData()
     {
@@ -170,7 +398,10 @@
         try
         {
             _clients = await ClientService.GetAllClientsAsync();
-            _documents = await DocumentService.GetDocumentsAsync();
+            _documents = await DocumentService.GetDocumentsAsync(new DocumentQueryParams { PageSize = 100 }, _cts.Token);
+        }
+        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+        {
         }
         catch (Exception ex)
         {
@@ -182,35 +413,91 @@
         }
     }
 
-    private void OpenCreate()
+    private void OpenUpload()
     {
         _modalError = null;
-        _newDocument = new CreateDocumentRequest
-        {
-            ClientId = _clients.FirstOrDefault()?.Id ?? Guid.Empty,
-            FileType = "PDF",
-            Category = DocumentCategory.Other
-        };
-        _showCreate = true;
+        _fileError = null;
+        _selectedFile = null;
+        _upload = new UploadForm();
+        _uploadContext = new EditContext(_upload);
+        _showUpload = true;
     }
 
-    private void CloseCreate() => _showCreate = false;
-
-    private async Task CreateDocument()
+    private void CloseUpload()
     {
+        if (_isSaving) return;
+        _showUpload = false;
+        _selectedFile = null;
+    }
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _fileError = null;
         _modalError = null;
-        if (_newDocument.ClientId == Guid.Empty)
+        _selectedFile = null;
+        _upload.FileName = null;
+
+        var file = e.File;
+        var extension = Path.GetExtension(file.Name);
+        if (!DocumentUploadRules.IsAllowedExtension(extension))
         {
-            _modalError = "Choose the person or household this document belongs to.";
+            _fileError = $"That file type isn't supported. Choose a {DocumentUploadRules.AllowedTypesLabel} file.";
+        }
+        else if (file.Size == 0)
+        {
+            _fileError = "That file is empty. Choose another file.";
+        }
+        else if (file.Size > DocumentUploadRules.MaxFileBytes)
+        {
+            _fileError = $"That file is {DocumentUploadRules.FormatSize(file.Size)}. Files can be up to {DocumentUploadRules.MaxFileSizeLabel}.";
+        }
+        else
+        {
+            _selectedFile = file;
+            _upload.FileName = file.Name;
+        }
+
+        _uploadContext.NotifyFieldChanged(FieldIdentifier.Create(() => _upload.FileName));
+    }
+
+    private async Task UploadAsync()
+    {
+        if (_selectedFile is null)
+        {
             return;
         }
 
+        Guid? clientId = null;
+        if (!string.Equals(_upload.BelongsTo, OrganizationOwner, StringComparison.Ordinal))
+        {
+            if (!Guid.TryParse(_upload.BelongsTo, out var parsed))
+            {
+                _modalError = "Choose whether this belongs to the organization or a person.";
+                return;
+            }
+
+            clientId = parsed;
+        }
+
+        _modalError = null;
         _isSaving = true;
         try
         {
-            await DocumentService.CreateDocumentAsync(_newDocument);
-            _showCreate = false;
-            _documents = await DocumentService.GetDocumentsAsync();
+            await DocumentService.UploadDocumentAsync(_selectedFile, new UploadDocumentRequest
+            {
+                ClientId = clientId,
+                Category = _upload.Category,
+                Title = string.IsNullOrWhiteSpace(_upload.Title) ? null : _upload.Title.Trim()
+            }, _cts.Token);
+
+            var name = string.IsNullOrWhiteSpace(_upload.Title) ? _selectedFile.Name : _upload.Title.Trim();
+            _showUpload = false;
+            _selectedFile = null;
+            _pageMessage = $"Uploaded \"{name}\".";
+            _documents = await DocumentService.GetDocumentsAsync(new DocumentQueryParams { PageSize = 100 }, _cts.Token);
+        }
+        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+        {
         }
         catch (Exception ex)
         {
@@ -222,28 +509,123 @@
         }
     }
 
-    private async Task DeleteDocument(Guid id)
+    private async Task DownloadAsync(DocumentDto document)
     {
-        if (!await JS.InvokeAsync<bool>("confirm", "Delete this document? This can't be undone.")) return;
         _error = null;
+        _downloadingId = document.Id;
         try
         {
-            await DocumentService.DeleteDocumentAsync(id);
-            _documents = await DocumentService.GetDocumentsAsync();
+            var file = await DocumentService.DownloadDocumentAsync(document.Id, _cts.Token);
+            using var stream = new MemoryStream(file.Content);
+            using var streamRef = new DotNetStreamReference(stream);
+            await JS.InvokeVoidAsync("blazorInterop.downloadFileFromStream", file.FileName, file.ContentType, streamRef);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
         {
-            _error = ex.Message;
+        }
+        catch (ApiException)
+        {
+            // The API client already showed the reason (e.g. the stored file is missing).
+        }
+        catch (Exception)
+        {
+            await JS.InvokeVoidAsync("blazorInterop.showToast", "The download could not be started. Please try again.", "danger");
+        }
+        finally
+        {
+            _downloadingId = null;
         }
     }
 
-    private static string DisplayUrl(string value)
+    private void AskDelete(DocumentDto document)
     {
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return "No URL";
-        }
+        _deleteError = null;
+        _pendingDelete = document;
+    }
 
-        return value.Length <= 48 ? value : value[..48] + "...";
+    private void CancelDelete()
+    {
+        if (_isDeleting) return;
+        _pendingDelete = null;
+        _deleteError = null;
+    }
+
+    private async Task ConfirmDeleteAsync()
+    {
+        if (_pendingDelete is null) return;
+
+        _isDeleting = true;
+        _deleteError = null;
+        try
+        {
+            var title = _pendingDelete.Title;
+            await DocumentService.DeleteDocumentAsync(_pendingDelete.Id, _cts.Token);
+            _pendingDelete = null;
+            _pageMessage = $"Deleted \"{title}\".";
+            _documents = await DocumentService.GetDocumentsAsync(new DocumentQueryParams { PageSize = 100 }, _cts.Token);
+        }
+        catch (OperationCanceledException) when (_cts.IsCancellationRequested)
+        {
+        }
+        catch (Exception ex)
+        {
+            _deleteError = ex.Message;
+        }
+        finally
+        {
+            _isDeleting = false;
+        }
+    }
+
+    private static bool MatchesScope(DocumentDto document, DocumentScope scope) => scope switch
+    {
+        DocumentScope.Organization => document.ClientId is null,
+        DocumentScope.People => document.ClientId.HasValue,
+        _ => true
+    };
+
+    private int CountFor(DocumentScope scope) => _documents.Count(d => MatchesScope(d, scope));
+
+    private static string ScopeLabel(DocumentScope scope) => scope switch
+    {
+        DocumentScope.Organization => "Organization",
+        DocumentScope.People => "People",
+        _ => "All"
+    };
+
+    private static string CategoryLabel(DocumentCategory category) => category switch
+    {
+        DocumentCategory.ID => "ID or identity",
+        DocumentCategory.Bill => "Bill or receipt",
+        DocumentCategory.Contract => "Contract or lease",
+        DocumentCategory.Legal => "Legal (IRS letter, incorporation)",
+        DocumentCategory.Governance => "Governance (bylaws, board)",
+        DocumentCategory.Financial => "Financial (budget, audit, 990)",
+        _ => "Other"
+    };
+
+    private static string CategoryShortLabel(DocumentCategory category) => category switch
+    {
+        DocumentCategory.ID => "ID",
+        DocumentCategory.Bill => "Bill",
+        DocumentCategory.Contract => "Contract / lease",
+        DocumentCategory.Legal => "Legal",
+        DocumentCategory.Governance => "Governance",
+        DocumentCategory.Financial => "Financial",
+        _ => "Other"
+    };
+
+    // Legacy rows hold whatever was typed. Only real http(s) addresses become links, so a stored
+    // "javascript:" value can never be clicked.
+    private static string? SafeLink(string? value) =>
+        Uri.TryCreate(value?.Trim(), UriKind.Absolute, out var uri) &&
+        (uri.Scheme == Uri.UriSchemeHttps || uri.Scheme == Uri.UriSchemeHttp)
+            ? uri.AbsoluteUri
+            : null;
+
+    public void Dispose()
+    {
+        _cts.Cancel();
+        _cts.Dispose();
     }
 }

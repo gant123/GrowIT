@@ -9,6 +9,7 @@
 @inject IRoleAccessService RoleAccessService
 @inject IAdminService AdminService
 @inject BreadcrumbState BreadcrumbLabels
+@inject ISearchService SearchService
 
 @* Theme is owned by the data-theme attribute on <html> (set by growITTheme in app.js,
    persisted in localStorage). Do NOT stamp data-theme here as well: this div starts as
@@ -215,7 +216,7 @@
                         <i class="bi bi-search search-icon"></i>
                         <input type="text" placeholder="Search anything (⌘K)" 
                                @ref="_searchInput"
-                               @bind="_searchQuery" @bind:event="oninput" 
+                               @bind="_searchQuery" @bind:event="oninput" @bind:after="OnSearchQueryChangedAsync"
                                @onkeyup="HandleSearchKeyUp" />
                         <div class="search-shortcut">⌘K</div>
                     </div>
@@ -244,7 +245,7 @@
                             {
                                 <div class="search-empty-state">
                                     <i class="bi bi-search"></i>
-                                    <span>No quick navigation matches</span>
+                                    <span>@SearchEmptyMessage</span>
                                 </div>
                             }
                         </div>
@@ -640,8 +641,95 @@
             .Where(item => MatchesQuickSearch(item, _searchQuery) && CanAccessRoute(item.Route))
             .OrderBy(item => item.Category)
             .ThenBy(item => item.Label)
-            .Take(8)
+            .Take(_recordSearchResults.Count > 0 ? 5 : 8)
+            .Concat(_recordSearchResults)
             .ToList();
+
+    // ---- Record search (people, household members, programs, money sources) ----
+    // Page shortcuts above only match page names; these come from GET /api/search (tenant-scoped,
+    // min 2 characters) and are debounced so typing doesn't fire a request per keystroke.
+    private const int RecordSearchMinLength = 2;
+    private const int RecordSearchDebounceMs = 250;
+    private List<QuickNavItem> _recordSearchResults = [];
+    private CancellationTokenSource? _recordSearchCts;
+    private bool _recordSearchPending;
+
+    private string SearchEmptyMessage =>
+        _recordSearchPending ? "Searching people, programs, and money sources..."
+        : _searchQuery.Trim().Length < RecordSearchMinLength ? "Keep typing to search people, programs, and money sources"
+        : $"No pages, people, programs, or money sources match \"{_searchQuery.Trim()}\"";
+
+    private async Task OnSearchQueryChangedAsync()
+    {
+        CancelRecordSearch();
+
+        var query = _searchQuery.Trim();
+        if (query.Length < RecordSearchMinLength)
+        {
+            _recordSearchResults = [];
+            _recordSearchPending = false;
+            return;
+        }
+
+        // Keep only earlier results that still match while the new request is in flight.
+        _recordSearchResults = _recordSearchResults
+            .Where(item => item.Label.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var cts = new CancellationTokenSource();
+        _recordSearchCts = cts;
+        _recordSearchPending = true;
+        try
+        {
+            await Task.Delay(RecordSearchDebounceMs, cts.Token);
+            var results = await SearchService.SearchAsync(query, cts.Token);
+            if (cts.IsCancellationRequested)
+            {
+                return;
+            }
+
+            _recordSearchResults = results
+                .Where(result => !string.IsNullOrWhiteSpace(result.Url))
+                .Select(ToQuickNavItem)
+                .ToList();
+            _recordSearchPending = false;
+
+            var count = SearchSuggestions.Count;
+            if (count == 0)
+            {
+                _highlightedSearchIndex = -1;
+            }
+            else if (_highlightedSearchIndex < 0 || _highlightedSearchIndex >= count)
+            {
+                _highlightedSearchIndex = 0;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Superseded by a newer keystroke (or the layout was disposed).
+        }
+    }
+
+    private void CancelRecordSearch()
+    {
+        if (_recordSearchCts is null)
+        {
+            return;
+        }
+
+        _recordSearchCts.Cancel();
+        _recordSearchCts.Dispose();
+        _recordSearchCts = null;
+    }
+
+    private static QuickNavItem ToQuickNavItem(SearchResultDto result) => result.Type switch
+    {
+        SearchResultTypes.Person => new(result.Url, result.Title, result.Subtitle, "Person", "bi bi-person", string.Empty),
+        SearchResultTypes.HouseholdMember => new(result.Url, result.Title, result.Subtitle, "Household", "bi bi-people", string.Empty),
+        SearchResultTypes.Program => new(result.Url, result.Title, result.Subtitle, "Program", "bi bi-folder2-open", string.Empty),
+        SearchResultTypes.MoneySource => new(result.Url, result.Title, result.Subtitle, "Money Source", "bi bi-wallet2", string.Empty),
+        _ => new(result.Url, result.Title, result.Subtitle, "Record", "bi bi-search", string.Empty)
+    };
 
     private bool _showSearchSuggestions =>
         _searchFocused && (_searchQuery.Length > 0 || SearchSuggestions.Count > 0);
@@ -936,6 +1024,9 @@
         _searchQuery = string.Empty;
         _searchFocused = false;
         _highlightedSearchIndex = -1;
+        CancelRecordSearch();
+        _recordSearchResults = [];
+        _recordSearchPending = false;
         Navigation.NavigateTo(item.Route);
     }
 
@@ -1262,5 +1353,6 @@
     {
         Navigation.LocationChanged -= OnLocationChanged;
         BreadcrumbLabels.Changed -= OnBreadcrumbChanged;
+        CancelRecordSearch();
     }
 }

@@ -44,11 +44,27 @@ public class Document : IMustHaveTenant
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid TenantId { get; set; }
-    public Guid ClientId { get; set; }
-    
+
+    // Null = an organization-level document (IRS letter, bylaws, budget); otherwise the person
+    // (head of household) the document belongs to.
+    public Guid? ClientId { get; set; }
+
+    // Legacy link-style rows only: a web address typed by the user. Empty for uploaded files.
     public string FileUrl { get; set; } = string.Empty;
-    public string FileType { get; set; } = string.Empty; // "PDF"
+    public string FileType { get; set; } = string.Empty; // Short label, e.g. "PDF"
     public DocumentCategory Category { get; set; }
+
+    // Optional friendly name ("IRS determination letter"); the UI falls back to the file name.
+    public string? Title { get; set; }
+
+    // Uploaded-file metadata. StoragePath is a server-generated key relative to the private
+    // document store (never the user's file name, never a public URL). Null for legacy links.
+    public string? StoragePath { get; set; }
+    public string? OriginalFileName { get; set; }
+    public string? ContentType { get; set; }
+    public long? SizeBytes { get; set; }
+    public DateTime? UploadedAt { get; set; }
+    public Guid? UploadedByUserId { get; set; }
 }
 
 public class AppTask : IMustHaveTenant // Named 'AppTask' to avoid conflict with System.Threading.Tasks.Task

@@ -43,6 +43,7 @@ public sealed class AscScoreService : IAscScoreService
         var isScored = ShouldScore(evidence);
         var score = isScored ? Math.Round(cappedScore, 1, MidpointRounding.AwayFromZero) : (decimal?)null;
         var tier = ResolveTier(score);
+        var missingProfileFields = GetMissingProfileFields(tenant);
 
         return new AscScoreDto
         {
@@ -55,8 +56,9 @@ public sealed class AscScoreService : IAscScoreService
             CalculatedAtUtc = DateTime.UtcNow,
             Evidence = evidence,
             Pillars = pillars,
-            MissingItems = BuildMissingItems(evidence, pillars),
-            NextSteps = BuildNextSteps(score, evidence, pillars),
+            MissingItems = BuildMissingItems(evidence, pillars, missingProfileFields),
+            NextSteps = BuildNextSteps(score, evidence, pillars, missingProfileFields),
+            ScoreRequirements = isScored ? [] : BuildScoreRequirements(evidence, missingProfileFields),
             Tiers = BuildTiers()
         };
     }
@@ -151,10 +153,18 @@ public sealed class AscScoreService : IAscScoreService
             })
             .ToListAsync(cancellationToken);
 
+        // Only files actually stored in grow.IT count as evidence. Legacy rows that hold a typed
+        // web address (or any text) cannot be verified, so they are reported separately.
         var documentStats = await _context.Documents
             .AsNoTracking()
-            .Select(d => d.Category)
+            .Select(d => new
+            {
+                d.Category,
+                IsUploaded = d.StoragePath != null,
+                IsOrganizationDocument = d.ClientId == null
+            })
             .ToListAsync(cancellationToken);
+        var uploadedDocuments = documentStats.Where(d => d.IsUploaded).ToList();
 
         return new AscScoreEvidenceDto
         {
@@ -173,8 +183,10 @@ public sealed class AscScoreService : IAscScoreService
             InvestmentsLinkedToPeople = investments.Count(i => i.FamilyMemberId.HasValue),
             Outcomes = imprints.Count,
             PositiveOrMaintainedOutcomes = imprints.Count(i => i.Outcome is ImpactOutcome.Improved or ImpactOutcome.Maintained),
-            Documents = documentStats.Count,
-            DocumentCategories = documentStats.Distinct().Count(),
+            Documents = uploadedDocuments.Count,
+            OrganizationDocuments = uploadedDocuments.Count(d => d.IsOrganizationDocument),
+            DocumentCategories = uploadedDocuments.Select(d => d.Category).Distinct().Count(),
+            LinkOnlyDocuments = documentStats.Count - uploadedDocuments.Count,
             GrowthPlans = growthPlans.Count,
             Tasks = tasks.Count,
             CompletedTasks = tasks.Count(t => t.Status == GrowIT.Shared.Enums.TaskStatus.Completed),
@@ -199,7 +211,7 @@ public sealed class AscScoreService : IAscScoreService
                 [
                     (evidence.HasOrganizationProfile, 0.35m, "Organization profile has core contact and type details.", "Complete organization name, type, contact email, and address."),
                     (!string.IsNullOrWhiteSpace(tenant.OrganizationSize), 0.15m, "Organization size is saved.", "Add your organization size."),
-                    (evidence.Documents >= 1, 0.25m, "At least one document is uploaded.", "Upload key legal or operating documents."),
+                    (evidence.OrganizationDocuments >= 1, 0.25m, "An organization document (such as an IRS letter or bylaws) is uploaded.", "Upload an organization document such as your IRS determination letter or bylaws."),
                     (evidence.ReportsGenerated >= 1, 0.20m, "At least one report has been generated.", "Generate a basic readiness or impact report."),
                     (evidence.ReportSchedules >= 1, 0.15m, "At least one recurring report is scheduled.", "Schedule a recurring report when reporting is consistent.")
                 ]),
@@ -221,7 +233,7 @@ public sealed class AscScoreService : IAscScoreService
                 "bi bi-folder2-open",
                 1.0m,
                 [
-                    (evidence.Documents >= 1, 0.25m, "Documents are being stored in Grow.IT.", "Upload the first key document."),
+                    (evidence.Documents >= 1, 0.25m, "Documents are being stored in grow.IT.", "Upload the first key document."),
                     (evidence.Documents >= 3, 0.25m, "Several documents are available.", "Upload at least three core documents."),
                     (evidence.Documents >= 8, 0.25m, "The document hub has depth.", "Keep adding legal, program, budget, and reporting records."),
                     (evidence.DocumentCategories >= 2, 0.15m, "Documents cover more than one category.", "Organize documents across multiple categories."),
@@ -250,7 +262,7 @@ public sealed class AscScoreService : IAscScoreService
                     (evidence.Programs >= 1, 0.25m, "At least one program is defined.", "Add your first program or service."),
                     (evidence.Programs >= 3, 0.20m, "Several programs or services are defined.", "Add each major service as its own program."),
                     (evidence.ProgramsWithUnitCosts >= evidence.Programs && evidence.Programs > 0, 0.25m, "Programs include expected unit costs.", "Add a default cost to every program."),
-                    (evidence.ProgramsWithCapacity >= 1, 0.20m, "At least one program includes capacity.", "Add program capacity so Grow.IT can show scale limits."),
+                    (evidence.ProgramsWithCapacity >= 1, 0.20m, "At least one program includes capacity.", "Add program capacity so grow.IT can show scale limits."),
                     (evidence.Investments >= 3, 0.20m, "Service records are tied to programs.", "Use program-linked service records."),
                     (evidence.GrowthPlans >= 1, 0.20m, "Growth plans connect services to next steps.", "Create growth plans for the people or households served.")
                 ]),
@@ -299,7 +311,7 @@ public sealed class AscScoreService : IAscScoreService
                 "bi bi-clock-history",
                 0.9m,
                 [
-                    (evidence.VerifiedActivityMonths >= 2, 0.20m, "At least two months of activity are visible.", "Keep using Grow.IT across the first two months."),
+                    (evidence.VerifiedActivityMonths >= 2, 0.20m, "At least two months of activity are visible.", "Keep using grow.IT across the first two months."),
                     (evidence.VerifiedActivityMonths >= 6, 0.20m, "At least six months of activity are visible.", "Build a six-month operating record."),
                     (evidence.VerifiedActivityMonths >= 12, 0.20m, "At least one year of activity is visible.", "Build a twelve-month operating record."),
                     (evidence.Documents >= 3, 0.15m, "Documents support verification.", "Upload enough records to support the score."),
@@ -406,7 +418,7 @@ public sealed class AscScoreService : IAscScoreService
 
     private static List<AscScoreTierDto> BuildTiers() =>
     [
-        new() { Name = "Unscored", Range = "Not enough information", Description = "Grow.IT needs more saved data before calculating ASC.", Color = "#64748b", Icon = "bi bi-dash-circle" },
+        new() { Name = "Unscored", Range = "Not enough information", Description = "grow.IT needs more saved data before calculating ASC.", Color = "#64748b", Icon = "bi bi-dash-circle" },
         new() { Name = "Organizing Stability", Range = "0.0 - 1.9", Description = "The organization is building its foundation.", Color = "#dc2626", Icon = "bi bi-flower1" },
         new() { Name = "Foundation Stage", Range = "2.0 - 4.9", Description = "Basic structure, systems, and documentation are being built.", Color = "#f97316", Icon = "bi bi-bricks" },
         new() { Name = "Funding Readiness", Range = "5.0 - 7.4", Description = "Programs, evidence, and early impact are strong enough for grants and donors.", Color = "#16a34a", Icon = "bi bi-bar-chart-line" },
@@ -414,13 +426,59 @@ public sealed class AscScoreService : IAscScoreService
         new() { Name = "Capital Ready", Range = "9.0 - 10.0", Description = "Verified stability, governance, and financial depth support major capital opportunities.", Color = "#6d28d9", Icon = "bi bi-bank" }
     ];
 
-    private static List<string> BuildMissingItems(AscScoreEvidenceDto evidence, IReadOnlyList<AscScorePillarDto> pillars)
+    private static List<string> GetMissingProfileFields(GrowIT.Core.Entities.Tenant tenant)
+    {
+        var missing = new List<string>();
+        if (string.IsNullOrWhiteSpace(tenant.Name)) missing.Add("name");
+        if (string.IsNullOrWhiteSpace(tenant.OrganizationType)) missing.Add("organization type");
+        if (string.IsNullOrWhiteSpace(tenant.ContactEmail)) missing.Add("contact email");
+        if (string.IsNullOrWhiteSpace(tenant.Address)) missing.Add("address");
+        return missing;
+    }
+
+    private static string DescribeProfileGap(IReadOnlyList<string> missingProfileFields) =>
+        missingProfileFields.Count == 0
+            ? "Complete the organization profile in Settings."
+            : $"Complete the organization profile in Settings: add the {JoinWords(missingProfileFields)}.";
+
+    private static string JoinWords(IReadOnlyList<string> words) => words.Count switch
+    {
+        0 => string.Empty,
+        1 => words[0],
+        2 => $"{words[0]} and {words[1]}",
+        _ => string.Join(", ", words.Take(words.Count - 1)) + ", and " + words[^1]
+    };
+
+    /// <summary>
+    /// The exact data still needed before a score can be calculated (mirrors <see cref="ShouldScore"/>).
+    /// </summary>
+    private static List<string> BuildScoreRequirements(AscScoreEvidenceDto evidence, IReadOnlyList<string> missingProfileFields)
+    {
+        var requirements = new List<string>();
+
+        if (!evidence.HasOrganizationProfile)
+        {
+            requirements.Add(DescribeProfileGap(missingProfileFields));
+        }
+
+        if (evidence.Programs == 0 && evidence.Funds == 0 && evidence.Clients == 0 && evidence.Documents == 0)
+        {
+            requirements.Add("Add at least one person, program, money source, or uploaded document.");
+        }
+
+        return requirements;
+    }
+
+    private static List<string> BuildMissingItems(
+        AscScoreEvidenceDto evidence,
+        IReadOnlyList<AscScorePillarDto> pillars,
+        IReadOnlyList<string> missingProfileFields)
     {
         var blockers = new List<string>();
 
         if (!evidence.HasOrganizationProfile)
         {
-            blockers.Add("Complete the organization profile with name, type, contact email, and address.");
+            blockers.Add(DescribeProfileGap(missingProfileFields));
         }
 
         if (evidence.Programs == 0)
@@ -440,7 +498,9 @@ public sealed class AscScoreService : IAscScoreService
 
         if (evidence.Documents < 3)
         {
-            blockers.Add("Upload more documents so the score is supported by records.");
+            blockers.Add(evidence.LinkOnlyDocuments > 0
+                ? "Upload more documents so the score is supported by records. Saved links don't count; upload the files instead."
+                : "Upload more documents so the score is supported by records.");
         }
 
         if (evidence.ReportsGenerated == 0)
@@ -456,17 +516,64 @@ public sealed class AscScoreService : IAscScoreService
         return blockers.Distinct().Take(8).ToList();
     }
 
-    private static List<string> BuildNextSteps(decimal? score, AscScoreEvidenceDto evidence, IReadOnlyList<AscScorePillarDto> pillars)
+    /// <summary>
+    /// Foundation pieces that are still missing, based on saved data only. Steps for things the
+    /// organization already has (e.g. "add the first program" once a program exists) never appear.
+    /// </summary>
+    private static List<string> BuildFoundationGaps(AscScoreEvidenceDto evidence, IReadOnlyList<string> missingProfileFields)
     {
+        var gaps = new List<string>();
+
+        if (!evidence.HasOrganizationProfile)
+        {
+            gaps.Add(DescribeProfileGap(missingProfileFields));
+        }
+
+        if (evidence.Programs == 0)
+        {
+            gaps.Add("Add your first program or service.");
+        }
+
+        if (evidence.Funds == 0)
+        {
+            gaps.Add("Add your first money source.");
+        }
+
+        if (evidence.Clients == 0)
+        {
+            gaps.Add("Add the people or households you serve.");
+        }
+
+        if (evidence.OrganizationDocuments == 0)
+        {
+            gaps.Add("Upload an organization document such as your IRS determination letter or bylaws.");
+        }
+
+        if (evidence.Outcomes == 0)
+        {
+            gaps.Add("Record the first outcome or milestone.");
+        }
+
+        return gaps;
+    }
+
+    private static List<string> BuildNextSteps(
+        decimal? score,
+        AscScoreEvidenceDto evidence,
+        IReadOnlyList<AscScorePillarDto> pillars,
+        IReadOnlyList<string> missingProfileFields)
+    {
+        var foundationGaps = BuildFoundationGaps(evidence, missingProfileFields);
+
         if (!score.HasValue)
         {
-            return
-            [
-                "Complete the organization profile.",
-                "Add the first program or service.",
-                "Add the first money source.",
-                "Add people, outcomes, or documents so Grow.IT has enough data to score."
-            ];
+            var unscoredSteps = foundationGaps.Take(5).ToList();
+            if (unscoredSteps.Count == 0)
+            {
+                unscoredSteps.Add("Keep adding service records, outcomes, and documents so grow.IT has enough data to score.");
+            }
+
+            return unscoredSteps;
         }
 
         var weakest = pillars
@@ -477,7 +584,14 @@ public sealed class AscScoreService : IAscScoreService
 
         if (score < 5.0m)
         {
-            weakest.Insert(0, "Build the foundation: programs, funds, documents, and a few outcomes.");
+            if (foundationGaps.Count > 0)
+            {
+                weakest.InsertRange(0, foundationGaps.Take(2));
+            }
+            else
+            {
+                weakest.Insert(0, "Deepen the foundation: log service records, record outcomes, and upload key documents.");
+            }
         }
         else if (score < 7.5m)
         {
@@ -494,7 +608,7 @@ public sealed class AscScoreService : IAscScoreService
 
         if (evidence.VerifiedActivityMonths < 2)
         {
-            weakest.Add("Use Grow.IT consistently across the first two months before treating the score as mature.");
+            weakest.Add("Use grow.IT consistently across the first two months before treating the score as mature.");
         }
 
         return weakest.Distinct().Take(5).ToList();

@@ -181,6 +181,16 @@ public class ApplicationDbContext : IdentityDbContext<User, IdentityRole<Guid>, 
             entity.Property(t => t.Type).HasDefaultValue(GrowIT.Shared.Enums.ActionItemType.ClientFollowUp);
         });
 
+        // Documents: organization-level rows have no ClientId; uploaded files carry metadata.
+        builder.Entity<Document>(entity =>
+        {
+            entity.Property(d => d.Title).HasMaxLength(200);
+            entity.Property(d => d.StoragePath).HasMaxLength(300);
+            entity.Property(d => d.OriginalFileName).HasMaxLength(255);
+            entity.Property(d => d.ContentType).HasMaxLength(100);
+            entity.HasIndex(d => new { d.TenantId, d.ClientId });
+        });
+
         // D. Public content indexes
         // -------------------------------------------------------------
         builder.Entity<BlogPost>()

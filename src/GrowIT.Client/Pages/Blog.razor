@@ -23,25 +23,36 @@
         }
         else if (_articles.Count == 0)
         {
-            <div class="blog-loading">No blog posts are published yet.</div>
+            @* The Blog nav link is hidden until something is published; anyone arriving here
+               directly gets a useful next step instead of a dead-end "nothing here" line. *@
+            <div class="blog-empty">
+                <h2>Our first articles are on the way</h2>
+                <p>In the meantime, these show how grow.IT works in practice:</p>
+                <div class="blog-empty-links">
+                    <a href="/docs">How it works</a>
+                    <a href="/templates">Report examples</a>
+                    <a href="/webinars">Webinars</a>
+                </div>
+            </div>
         }
         else
         {
             <div class="blog-grid">
                 @foreach (var article in _articles)
                 {
-                    <article class="blog-card">
+                    <article class="blog-card blog-card-linked">
                         <div class="blog-meta">
                             <span class="category">@article.Category</span>
                             <span class="dot">•</span>
                             <span class="read-time">@EstimateReadTime(article) min read</span>
                         </div>
-                        <h2>@article.Title</h2>
+                        <h2><a class="blog-card-link" href="@ArticleHref(article)">@article.Title</a></h2>
                         <p>@article.Excerpt</p>
                         <div class="blog-footer">
                             <span class="author">@article.AuthorName</span>
                             <span class="date">@article.PublishedAt.ToLocalTime().ToString("MMMM yyyy")</span>
                         </div>
+                        <span class="blog-read-more" aria-hidden="true">Read article <i class="bi bi-arrow-right"></i></span>
                     </article>
                 }
             </div>
@@ -81,6 +92,9 @@
             _isLoading = false;
         }
     }
+
+    private static string ArticleHref(PublicBlogPostDto post) =>
+        "/blog/" + Uri.EscapeDataString(post.Slug.Trim().Trim('/'));
 
     private static int EstimateReadTime(PublicBlogPostDto post)
     {

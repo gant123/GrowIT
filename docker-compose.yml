@@ -64,15 +64,20 @@ services:
       Reports__Scheduler__DefaultFormat: ${REPORT_SCHEDULER_DEFAULT_FORMAT:-pdf}
       # Keep the cookie/token key ring across redeploys (otherwise every deploy signs everyone out).
       DataProtection__KeysPath: /app/keys
+      # Uploaded documents (IDs, leases, IRS letters). Private: served only through the
+      # authenticated download endpoint, never from wwwroot.
+      Storage__DocumentsPath: /app/App_Data/documents
     ports:
       - "${CLIENT_PORT:-5180}:8080"
     volumes:
       - growit-web-uploads:/app/wwwroot/uploads
       - growit-web-dev-emails:/app/dev-emails
       - growit-dataprotection-keys:/app/keys
+      - growit-documents:/app/App_Data/documents
 
 volumes:
   growit-postgres-data:
   growit-web-uploads:
   growit-web-dev-emails:
   growit-dataprotection-keys:
+  growit-documents:

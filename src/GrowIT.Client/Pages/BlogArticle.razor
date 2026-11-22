@@ -1,0 +1,274 @@
+@page "/blog/{Slug}"
+@layout PublicLayout
+@using GrowIT.Shared.DTOs
+@inject IContentService ContentService
+@inject NavigationManager Navigation
+
+<PageTitle>@(_article is null ? "Blog - grow.IT" : $"{_article.Title} - grow.IT")</PageTitle>
+
+<div class="blog-page blog-article-page">
+    <a class="blog-article-back" href="/blog"><i class="bi bi-arrow-left" aria-hidden="true"></i> All articles</a>
+
+    @if (_isLoading)
+    {
+        <div class="blog-loading">Loading article...</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(_error))
+    {
+        <div class="blog-loading error">@_error</div>
+    }
+    else if (_article is null)
+    {
+        <section class="blog-article-missing">
+            <h1>We couldn't find that article.</h1>
+            <p>It may have been moved or unpublished.</p>
+            <a href="/blog" class="btn btn-primary">See all articles</a>
+        </section>
+    }
+    else
+    {
+        <article class="blog-article">
+            <header class="blog-article-header">
+                <div class="blog-meta">
+                    <span class="category">@_article.Category</span>
+                    <span class="dot">•</span>
+                    <span class="read-time">@_readMinutes min read</span>
+                </div>
+                <h1>@_article.Title</h1>
+                @if (!string.IsNullOrWhiteSpace(_article.Excerpt))
+                {
+                    <p class="blog-article-excerpt">@_article.Excerpt</p>
+                }
+                <div class="blog-article-byline">
+                    <span>@_article.AuthorName</span>
+                    <span aria-hidden="true">·</span>
+                    <time datetime="@_article.PublishedAt.ToString("yyyy-MM-dd")">@_article.PublishedAt.ToLocalTime().ToString("MMMM d, yyyy")</time>
+                </div>
+            </header>
+
+            @* Article text is stored as plain text with light markdown-style conventions
+               (blank line = paragraph, "#"/"##" headings, "-" or "1." lists, **bold**). It is
+               rendered through Razor elements only, so every character is HTML-encoded and no
+               stored markup or script can reach the page. *@
+            <div class="blog-article-body">
+                @foreach (var block in _blocks)
+                {
+                    switch (block.Kind)
+                    {
+                        case BlockKind.Heading2:
+                            <h2>@RenderInline(block.Lines[0])</h2>
+                            break;
+                        case BlockKind.Heading3:
+                            <h3>@RenderInline(block.Lines[0])</h3>
+                            break;
+                        case BlockKind.BulletList:
+                            <ul>
+                                @foreach (var item in block.Lines)
+                                {
+                                    <li>@RenderInline(item)</li>
+                                }
+                            </ul>
+                            break;
+                        case BlockKind.NumberedList:
+                            <ol>
+                                @foreach (var item in block.Lines)
+                                {
+                                    <li>@RenderInline(item)</li>
+                                }
+                            </ol>
+                            break;
+                        case BlockKind.Quote:
+                            <blockquote>
+                                @for (var i = 0; i < block.Lines.Count; i++)
+                                {
+                                    @if (i > 0)
+                                    {
+                                        <br />
+                                    }
+                                    @RenderInline(block.Lines[i])
+                                }
+                            </blockquote>
+                            break;
+                        default:
+                            <p>
+                                @for (var i = 0; i < block.Lines.Count; i++)
+                                {
+                                    @if (i > 0)
+                                    {
+                                        <br />
+                                    }
+                                    @RenderInline(block.Lines[i])
+                                }
+                            </p>
+                            break;
+                    }
+                }
+            </div>
+        </article>
+
+        <section class="blog-cta">
+            <div class="blog-cta-card">
+                <h2>Need help building this in your organization?</h2>
+                <p>We can walk your team through implementation strategy and reporting design.</p>
+                <div class="blog-cta-actions">
+                    <a href="/contact" class="btn btn-primary">Contact Our Team</a>
+                    <a href="/register" class="btn btn-outline">Start Free Trial</a>
+                </div>
+            </div>
+        </section>
+    }
+</div>
+
+@code {
+    [Parameter] public string Slug { get; set; } = string.Empty;
+
+    private enum BlockKind { Paragraph, Heading2, Heading3, BulletList, NumberedList, Quote }
+
+    private sealed record Block(BlockKind Kind, List<string> Lines);
+
+    private PublicBlogPostDto? _article;
+    private List<Block> _blocks = [];
+    private int _readMinutes = 2;
+    private bool _isLoading = true;
+    private string? _error;
+    private string? _loadedSlug;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.Equals(_loadedSlug, Slug, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _loadedSlug = Slug;
+        _isLoading = true;
+        _error = null;
+        _article = null;
+        _blocks = [];
+
+        try
+        {
+            _article = await ContentService.GetPublishedBlogPostAsync(Slug);
+            if (_article is not null)
+            {
+                _blocks = ParseBlocks(_article.Content);
+                var words = $"{_article.Excerpt} {_article.Content}"
+                    .Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length;
+                _readMinutes = Math.Max(2, (int)Math.Ceiling(words / 220d));
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+
+        if (_article is null && _error is null)
+        {
+            // Unknown or unpublished slug: render the branded 404 page with a real 404 status.
+            Navigation.NotFound();
+        }
+    }
+
+    private static List<Block> ParseBlocks(string? content)
+    {
+        var blocks = new List<Block>();
+        if (string.IsNullOrWhiteSpace(content))
+        {
+            return blocks;
+        }
+
+        Block? current = null;
+        foreach (var rawLine in content.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n'))
+        {
+            var line = rawLine.TrimEnd();
+            var trimmed = line.TrimStart();
+
+            if (trimmed.Length == 0)
+            {
+                current = null;
+                continue;
+            }
+
+            if (trimmed.StartsWith("### ") || trimmed.StartsWith("## ") || trimmed.StartsWith("# "))
+            {
+                var level = trimmed.TakeWhile(c => c == '#').Count();
+                var text = trimmed[level..].Trim();
+                blocks.Add(new Block(level >= 3 ? BlockKind.Heading3 : BlockKind.Heading2, [text]));
+                current = null;
+                continue;
+            }
+
+            if (trimmed.StartsWith("- ") || trimmed.StartsWith("* ") || trimmed.StartsWith("• "))
+            {
+                current = Append(blocks, current, BlockKind.BulletList, trimmed[2..].Trim());
+                continue;
+            }
+
+            var numberEnd = trimmed.TakeWhile(char.IsDigit).Count();
+            if (numberEnd > 0 && numberEnd < 4 && trimmed.Length > numberEnd + 1 &&
+                (trimmed[numberEnd] == '.' || trimmed[numberEnd] == ')') && trimmed[numberEnd + 1] == ' ')
+            {
+                current = Append(blocks, current, BlockKind.NumberedList, trimmed[(numberEnd + 2)..].Trim());
+                continue;
+            }
+
+            if (trimmed.StartsWith("> ") || trimmed == ">")
+            {
+                current = Append(blocks, current, BlockKind.Quote, trimmed.TrimStart('>').Trim());
+                continue;
+            }
+
+            current = Append(blocks, current, BlockKind.Paragraph, trimmed);
+        }
+
+        return blocks;
+    }
+
+    private static Block Append(List<Block> blocks, Block? current, BlockKind kind, string text)
+    {
+        if (current is not null && current.Kind == kind)
+        {
+            current.Lines.Add(text);
+            return current;
+        }
+
+        var block = new Block(kind, [text]);
+        blocks.Add(block);
+        return block;
+    }
+
+    // Only **bold** is supported inline. Text segments are emitted as text nodes (encoded).
+    private static RenderFragment RenderInline(string text) => builder =>
+    {
+        var parts = text.Split("**");
+        if (parts.Length % 2 == 0)
+        {
+            // Unbalanced markers: show the text exactly as written.
+            builder.AddContent(0, text);
+            return;
+        }
+
+        for (var i = 0; i < parts.Length; i++)
+        {
+            if (parts[i].Length == 0)
+            {
+                continue;
+            }
+
+            if (i % 2 == 1)
+            {
+                builder.OpenElement(1, "strong");
+                builder.AddContent(2, parts[i]);
+                builder.CloseElement();
+            }
+            else
+            {
+                builder.AddContent(3, parts[i]);
+            }
+        }
+    };
+}

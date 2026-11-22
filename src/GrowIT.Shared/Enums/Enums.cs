@@ -11,7 +11,9 @@ public enum HouseholdRole { Head, Spouse, Dependent, Other }
 public enum MaritalStatus { Single, Married, Other }
 public enum EmploymentStatus { Employed, Unemployed, Other }
 public enum LifePhase { Crisis, Stable, Thriving }
-public enum DocumentCategory { ID, Bill, Contract, Other }
+// Stored as integers: only ever append new values (Legal/Governance/Financial cover organization
+// documents such as an IRS determination letter, bylaws, or a budget).
+public enum DocumentCategory { ID, Bill, Contract, Other, Legal, Governance, Financial }
 
 public enum TaskStatus { Pending, Completed, Skipped }
 public enum ActionItemType { ClientFollowUp, Documentation, Funding, BoardGovernance, Program, Administrative, Other }

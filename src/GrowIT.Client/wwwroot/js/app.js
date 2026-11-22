@@ -1124,3 +1124,29 @@
     };
 
 })();
+
+// ========================================
+// DOCUMENT DOWNLOADS (Documents page)
+// Receives a file streamed from .NET (DotNetStreamReference) and saves it through a temporary
+// blob: URL. Unlike downloadFile (base64 data: URL), this handles multi-MB files and keeps the
+// bytes out of the DOM. The content is never rendered in the page.
+// ========================================
+(function () {
+    'use strict';
+
+    window.blazorInterop = window.blazorInterop || {};
+
+    window.blazorInterop.downloadFileFromStream = async function (fileName, contentType, streamRef) {
+        const buffer = await streamRef.arrayBuffer();
+        const blob = new Blob([buffer], { type: contentType || 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName || 'document';
+        link.rel = 'noopener';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+})();
