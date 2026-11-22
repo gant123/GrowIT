@@ -868,7 +868,7 @@
                             <GridFilterSettings Type="FilterType.Excel"></GridFilterSettings>
                             <GridEvents TValue="AdminAuditLogItemDto" OnToolbarClick="OnAuditLogsGridToolbarClick"></GridEvents>
                             <GridColumns>
-                                <GridColumn HeaderText="When" Width="160">
+                                <GridColumn HeaderText="When" Width="120">
                                     <Template>
                                         @{
                                             var log = (context as AdminAuditLogItemDto)!;
@@ -879,7 +879,7 @@
                                         </div>
                                     </Template>
                                 </GridColumn>
-                                <GridColumn Field=@nameof(AdminAuditLogItemDto.ActionType) HeaderText="Action" Width="120">
+                                <GridColumn Field=@nameof(AdminAuditLogItemDto.ActionType) HeaderText="Action" Width="100">
                                     <Template>
                                         @{
                                             var log = (context as AdminAuditLogItemDto)!;
@@ -893,7 +893,7 @@
                                         <span class="badge @badgeClass fw-semibold px-2 py-1">@log.ActionType</span>
                                     </Template>
                                 </GridColumn>
-                                <GridColumn Field=@nameof(AdminAuditLogItemDto.TableName) HeaderText="Area" Width="150">
+                                <GridColumn Field=@nameof(AdminAuditLogItemDto.TableName) HeaderText="Area" Width="140">
                                     <Template>
                                         @{
                                             var log = (context as AdminAuditLogItemDto)!;
@@ -901,8 +901,8 @@
                                         <span class="small">@FriendlyAuditArea(log.TableName)</span>
                                     </Template>
                                 </GridColumn>
-                                <GridColumn Field=@nameof(AdminAuditLogItemDto.UserName) HeaderText="User" Width="160"></GridColumn>
-                                <GridColumn HeaderText="Summary" MinWidth="260">
+                                <GridColumn Field=@nameof(AdminAuditLogItemDto.UserName) HeaderText="User" Width="130" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                                <GridColumn HeaderText="Summary" MinWidth="200" ClipMode="ClipMode.EllipsisWithTooltip">
                                     <Template>
                                         @{
                                             var log = (context as AdminAuditLogItemDto)!;
@@ -910,7 +910,7 @@
                                         <span class="small audit-summary-text" title="@log.Summary">@(string.IsNullOrWhiteSpace(log.Summary) ? $"{log.ActionType} in {FriendlyAuditArea(log.TableName)}" : log.Summary)</span>
                                     </Template>
                                 </GridColumn>
-                                <GridColumn HeaderText="Record" Width="180">
+                                <GridColumn HeaderText="Record ID" Width="180" Visible="false">
                                     <Template>
                                         @{
                                             var log = (context as AdminAuditLogItemDto)!;
@@ -979,6 +979,7 @@
         ["Users"] = "Users",
         ["ReportSchedules"] = "Report schedules",
         ["ReportRuns"] = "Reports",
+        ["ReportRunDownloadEvents"] = "Report downloads",
         ["BillingEvents"] = "Billing",
         ["Subscriptions"] = "Billing",
         ["Notifications"] = "Notifications",

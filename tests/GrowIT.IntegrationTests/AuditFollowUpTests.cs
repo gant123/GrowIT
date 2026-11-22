@@ -135,6 +135,41 @@ public class AuditFollowUpTests
     }
 
     [Fact]
+    public async Task ValidateInvite_ReturnsNamesTheInviterTyped()
+    {
+        var tenantId = Guid.NewGuid();
+        const string token = "synthetic-invite-token-for-tests";
+        var tokenHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token)));
+        using var factory = new GrowItApiFactory();
+        await factory.SeedAsync(db =>
+        {
+            db.Tenants.Add(new Tenant { Id = tenantId, Name = "Hope Works" });
+            db.OrganizationInvites.Add(new OrganizationInvite
+            {
+                TenantId = tenantId,
+                Email = "casey@example.com",
+                FirstName = "Casey",
+                LastName = "Rivera",
+                Role = "Case Manager",
+                TokenHash = tokenHash,
+                CreatedAt = DateTime.UtcNow,
+                ExpiresAt = DateTime.UtcNow.AddDays(7),
+            });
+            return Task.CompletedTask;
+        });
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync($"/api/auth/invites/validate?token={token}&email=casey%40example.com");
+
+        response.EnsureSuccessStatusCode();
+        var invite = await response.Content.ReadFromJsonAsync<InviteValidationDto>();
+        Assert.NotNull(invite);
+        Assert.True(invite!.IsValid);
+        Assert.Equal("Casey", invite.FirstName);
+        Assert.Equal("Rivera", invite.LastName);
+    }
+
+    [Fact]
     public async Task GenerateReport_UsesReadableNameInRequesterTimeZone()
     {
         var tenantId = Guid.NewGuid();

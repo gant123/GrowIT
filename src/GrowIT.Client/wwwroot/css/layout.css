@@ -1673,3 +1673,108 @@
     justify-content: center;
     flex-wrap: wrap;
 }
+
+/* ==========================================================================
+   App toasts (window.toastManager in js/app.js)
+   The toast markup existed but nothing styled it, so toasts were dropped at the
+   bottom of the page with page-sized SVG icons. Bootstrap's `.toast` supplies
+   `display: none` until `.show`; everything else is here.
+   ========================================================================== */
+body > .toast-container {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    width: min(380px, calc(100vw - 2rem));
+    max-width: none;
+    pointer-events: none;
+}
+
+body > .toast-container .toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    width: 100%;
+    max-width: none;
+    padding: 0.75rem 0.85rem;
+    background: var(--growit-bg-card);
+    color: var(--growit-text-primary);
+    border: 1px solid var(--growit-border);
+    border-left: 4px solid var(--growit-info);
+    border-radius: 10px;
+    box-shadow: var(--growit-shadow-lg);
+    font-size: 0.9rem;
+    line-height: 1.4;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+body > .toast-container .toast.show {
+    opacity: 1;
+    transform: none;
+}
+
+body > .toast-container .toast.hiding {
+    display: flex;
+    opacity: 0;
+    transform: translateY(8px);
+}
+
+body > .toast-container .toast-success { border-left-color: var(--growit-success); }
+body > .toast-container .toast-danger { border-left-color: var(--growit-danger); }
+body > .toast-container .toast-warning { border-left-color: var(--growit-warning); }
+
+body > .toast-container .toast-icon {
+    flex: 0 0 auto;
+    display: inline-flex;
+    color: var(--growit-info);
+    margin-top: 1px;
+}
+
+body > .toast-container .toast-success .toast-icon { color: var(--growit-success); }
+body > .toast-container .toast-danger .toast-icon { color: var(--growit-danger); }
+body > .toast-container .toast-warning .toast-icon { color: var(--growit-warning); }
+
+body > .toast-container .toast-icon svg,
+body > .toast-container .toast-close svg {
+    width: 18px;
+    height: 18px;
+}
+
+body > .toast-container .toast-message {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+body > .toast-container .toast-close {
+    flex: 0 0 auto;
+    display: inline-flex;
+    padding: 2px;
+    border: 0;
+    background: none;
+    color: var(--growit-text-muted);
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+body > .toast-container .toast-close:hover,
+body > .toast-container .toast-close:focus-visible {
+    color: var(--growit-text-primary);
+}
+
+/* Keep toasts above the mobile bottom tab bar. */
+@media (max-width: 768px) {
+    body > .toast-container {
+        right: 1rem;
+        left: 1rem;
+        bottom: 5.5rem;
+        width: auto;
+    }
+}

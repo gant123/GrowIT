@@ -198,8 +198,19 @@
 .member-table-wrap {
     border: 1px solid var(--growit-border);
     border-radius: 12px;
-    overflow: hidden;
+    /* Scroll inside the card rather than widening the page on narrow screens. */
+    overflow-x: auto;
+    overflow-y: hidden;
     background: var(--growit-bg-card);
+}
+
+/* On phones the email column is what pushes the table past the screen; the
+   person's profile (linked from the name) still shows it. */
+@media (max-width: 576px) {
+    .member-table th:nth-child(3),
+    .member-table td:nth-child(3) {
+        display: none;
+    }
 }
 
 .member-table {
