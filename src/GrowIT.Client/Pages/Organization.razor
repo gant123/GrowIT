@@ -4,10 +4,10 @@
 @inject IOrganizationReadinessService ReadinessService
 @inject NavigationManager Navigation
 
-<PageTitle>ASC Score - Grow.IT</PageTitle>
+<PageTitle>ASC Score - grow.IT</PageTitle>
 
 <div class="asc-page">
-    <PageHeader Title="ASC Score" Subtitle="Accountability, Stability & Capacity shows how ready your organization looks based on saved Grow.IT data." />
+    <PageHeader Title="ASC Score" Subtitle="Accountability, Stability & Capacity shows how ready your organization looks based on saved grow.IT data." />
 
     @if (_isLoading)
     {
@@ -23,7 +23,7 @@
             <div>
                 <h2>ASC could not be loaded.</h2>
                 <p>@_error</p>
-                <button class="btn btn-primary" @onclick="LoadScoreAsync">
+                <button class="btn-growit btn-primary-growit" @onclick="LoadScoreAsync">
                     <i class="bi bi-arrow-clockwise"></i>
                     <span>Retry</span>
                 </button>
@@ -60,6 +60,19 @@
                         <span class="asc-status-pill @GetStatusClass(_score.ScoreStatus)">@_score.ScoreStatus</span>
                         <h3>@_score.TierName</h3>
                         <p>@_score.TierDescription</p>
+                        @if (!_score.IsScored && _score.ScoreRequirements.Count > 0)
+                        {
+                            @* Say exactly what is still needed instead of a bare "Unscored". *@
+                            <div class="asc-requirements">
+                                <strong>To calculate a score, grow.IT still needs:</strong>
+                                <ul>
+                                    @foreach (var requirement in _score.ScoreRequirements)
+                                    {
+                                        <li>@requirement</li>
+                                    }
+                                </ul>
+                            </div>
+                        }
                     </div>
                 </div>
 
@@ -104,8 +117,12 @@
                 <strong>@_score.Evidence.Funds</strong>
             </div>
             <div class="asc-evidence-item">
-                <span>Funds available</span>
-                <strong>@FormatMoney(_score.Evidence.FundsAvailable)</strong>
+                <span>Uploaded documents</span>
+                <strong>@_score.Evidence.Documents</strong>
+                @if (_score.Evidence.LinkOnlyDocuments > 0)
+                {
+                    <small class="asc-evidence-note">@_score.Evidence.LinkOnlyDocuments saved @(_score.Evidence.LinkOnlyDocuments == 1 ? "link" : "links") not counted</small>
+                }
             </div>
             <div class="asc-evidence-item">
                 <span>Outcomes</span>
@@ -159,15 +176,28 @@
                 </ul>
 
                 <div class="asc-quick-actions">
-                    <button class="btn btn-outline-primary" @onclick="@(() => Navigation.NavigateTo("/settings"))">
-                        <i class="bi bi-buildings"></i>
-                        <span>Organization</span>
-                    </button>
-                    <button class="btn btn-outline-primary" @onclick="@(() => Navigation.NavigateTo("/programs"))">
-                        <i class="bi bi-folder2-open"></i>
-                        <span>Programs</span>
-                    </button>
-                    <button class="btn btn-outline-primary" @onclick="@(() => Navigation.NavigateTo("/documents"))">
+                    @if (!_score.Evidence.HasOrganizationProfile)
+                    {
+                        <button class="btn-growit btn-secondary-growit" @onclick="@(() => Navigation.NavigateTo("/settings?tab=organization"))">
+                            <i class="bi bi-buildings"></i>
+                            <span>Organization profile</span>
+                        </button>
+                    }
+                    @if (_score.Evidence.Programs == 0)
+                    {
+                        <button class="btn-growit btn-secondary-growit" @onclick="@(() => Navigation.NavigateTo("/programs"))">
+                            <i class="bi bi-folder2-open"></i>
+                            <span>Programs</span>
+                        </button>
+                    }
+                    @if (_score.Evidence.Funds == 0)
+                    {
+                        <button class="btn-growit btn-secondary-growit" @onclick="@(() => Navigation.NavigateTo("/funds"))">
+                            <i class="bi bi-wallet2"></i>
+                            <span>Money Sources</span>
+                        </button>
+                    }
+                    <button class="btn-growit btn-secondary-growit" @onclick="@(() => Navigation.NavigateTo("/documents"))">
                         <i class="bi bi-file-earmark-text"></i>
                         <span>Documents</span>
                     </button>
@@ -299,9 +329,6 @@
             _isLoading = false;
         }
     }
-
-    private static string FormatMoney(decimal value) =>
-        value.ToString("C0", System.Globalization.CultureInfo.CurrentCulture);
 
     private static decimal GetPillarPercent(AscScorePillarDto pillar) =>
         pillar.MaxScore <= 0 ? 0 : Math.Clamp(pillar.Score / pillar.MaxScore * 100m, 0m, 100m);

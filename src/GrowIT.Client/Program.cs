@@ -310,6 +310,7 @@ builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IOrganizationReadinessService, OrganizationReadinessService>();
+builder.Services.AddScoped<ISearchService, SearchService>();
 
 builder.Services.AddHttpClient("GrowITApi", (sp, client) =>
     {

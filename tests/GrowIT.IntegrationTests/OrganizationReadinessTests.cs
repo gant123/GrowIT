@@ -155,8 +155,8 @@ public class OrganizationReadinessTests
                 NewDocument(tenantId, clientId, DocumentCategory.ID),
                 NewDocument(tenantId, clientId, DocumentCategory.Bill),
                 NewDocument(tenantId, clientId, DocumentCategory.Contract),
-                NewDocument(tenantId, clientId, DocumentCategory.Other),
-                NewDocument(tenantId, clientId, DocumentCategory.Other));
+                NewDocument(tenantId, null, DocumentCategory.Legal),
+                NewDocument(tenantId, null, DocumentCategory.Governance));
             db.Investments.AddRange(
                 NewInvestment(tenantId, clientId, fundId, programId, InvestmentStatus.Completed, DateTime.UtcNow.AddMonths(-12), memberId),
                 NewInvestment(tenantId, clientId, fundId, programId, InvestmentStatus.Disbursed, DateTime.UtcNow.AddMonths(-9), memberId),
@@ -273,13 +273,18 @@ public class OrganizationReadinessTests
         DateOccurred = DateTime.SpecifyKind(dateOccurred, DateTimeKind.Utc)
     };
 
-    private static Document NewDocument(Guid tenantId, Guid clientId, DocumentCategory category) => new()
+    // Only uploaded files count toward ASC, so readiness fixtures model real uploads.
+    private static Document NewDocument(Guid tenantId, Guid? clientId, DocumentCategory category) => new()
     {
         TenantId = tenantId,
         ClientId = clientId,
-        FileUrl = "/uploads/test.pdf",
         FileType = "PDF",
-        Category = category
+        Category = category,
+        StoragePath = $"{tenantId:N}/{Guid.NewGuid():N}.pdf",
+        OriginalFileName = "record.pdf",
+        ContentType = "application/pdf",
+        SizeBytes = 1024,
+        UploadedAt = DateTime.UtcNow
     };
 
     private static GrowthPlan NewGrowthPlan(Guid tenantId, Guid clientId, DateTime createdAt) => new()

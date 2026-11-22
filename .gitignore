@@ -485,3 +485,7 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Private uploaded documents (Storage:DocumentsPath default: <content root>/App_Data/documents).
+# Never commit them; in Docker mount a volume there instead.
+App_Data/

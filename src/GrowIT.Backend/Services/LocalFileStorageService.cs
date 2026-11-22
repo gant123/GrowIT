@@ -5,13 +5,151 @@ namespace GrowIT.Backend.Services;
 public class LocalFileStorageService : IFileStorageService
 {
     private const string ProfilePhotoPrefix = "/uploads/profile-photos/";
+
+    /// <summary>
+    /// Configuration key for the private document store. Relative values resolve against the
+    /// content root. Must NOT be inside wwwroot: documents are only served by the API.
+    /// </summary>
+    public const string DocumentsPathConfigKey = "Storage:DocumentsPath";
+    public const string DefaultDocumentsPath = "App_Data/documents";
+
     private readonly IWebHostEnvironment _environment;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<LocalFileStorageService> _logger;
 
-    public LocalFileStorageService(IWebHostEnvironment environment, ILogger<LocalFileStorageService> logger)
+    public LocalFileStorageService(
+        IWebHostEnvironment environment,
+        IConfiguration configuration,
+        ILogger<LocalFileStorageService> logger)
     {
         _environment = environment;
+        _configuration = configuration;
         _logger = logger;
+    }
+
+    public async Task<StoredFileResult> SaveDocumentAsync(
+        Guid tenantId,
+        Stream content,
+        string extension,
+        CancellationToken cancellationToken = default)
+    {
+        if (tenantId == Guid.Empty)
+            throw new ArgumentException("A tenant is required to store a document.", nameof(tenantId));
+
+        var safeExtension = (extension.StartsWith('.') ? extension : "." + extension).ToLowerInvariant();
+        if (safeExtension.Length > 6 || safeExtension.Skip(1).Any(c => !char.IsAsciiLetterOrDigit(c)))
+            throw new ArgumentException("Unsupported file extension.", nameof(extension));
+
+        var root = GetDocumentsRoot();
+        var tenantFolder = Path.Combine(root, tenantId.ToString("N"));
+        Directory.CreateDirectory(tenantFolder);
+
+        // Generated name only: the user's file name never touches the file system.
+        var fileName = $"{Guid.NewGuid():N}{safeExtension}";
+        var filePath = Path.Combine(tenantFolder, fileName);
+
+        if (content.CanSeek)
+            content.Position = 0;
+
+        try
+        {
+            await using var fileStream = new FileStream(filePath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true);
+            await content.CopyToAsync(fileStream, cancellationToken);
+        }
+        catch
+        {
+            TryDeleteFile(filePath);
+            throw;
+        }
+
+        return new StoredFileResult($"{tenantId:N}/{fileName}");
+    }
+
+    public Task<Stream?> OpenDocumentAsync(Guid tenantId, string storagePath, CancellationToken cancellationToken = default)
+    {
+        _ = cancellationToken;
+        var fullPath = ResolveDocumentPath(tenantId, storagePath);
+        if (fullPath is null || !File.Exists(fullPath))
+            return Task.FromResult<Stream?>(null);
+
+        Stream stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true);
+        return Task.FromResult<Stream?>(stream);
+    }
+
+    public Task DeleteDocumentAsync(Guid tenantId, string storagePath, CancellationToken cancellationToken = default)
+    {
+        _ = cancellationToken;
+        var fullPath = ResolveDocumentPath(tenantId, storagePath);
+        if (fullPath is null)
+        {
+            _logger.LogWarning("Refusing to delete a document outside the tenant's document folder.");
+            return Task.CompletedTask;
+        }
+
+        TryDeleteFile(fullPath);
+        return Task.CompletedTask;
+    }
+
+    private string GetDocumentsRoot()
+    {
+        var configured = _configuration[DocumentsPathConfigKey];
+        var root = string.IsNullOrWhiteSpace(configured) ? DefaultDocumentsPath : configured.Trim();
+        if (!Path.IsPathRooted(root))
+        {
+            root = Path.Combine(_environment.ContentRootPath, root);
+        }
+
+        root = Path.GetFullPath(root);
+
+        // Never let documents land somewhere the static-file middleware would serve them.
+        var webRoot = string.IsNullOrWhiteSpace(_environment.WebRootPath)
+            ? Path.Combine(_environment.ContentRootPath, "wwwroot")
+            : _environment.WebRootPath;
+        var webRootFull = Path.TrimEndingDirectorySeparator(Path.GetFullPath(webRoot)) + Path.DirectorySeparatorChar;
+        if ((Path.TrimEndingDirectorySeparator(root) + Path.DirectorySeparatorChar).StartsWith(webRootFull, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"{DocumentsPathConfigKey} must point outside the public web root (wwwroot); documents are private.");
+        }
+
+        Directory.CreateDirectory(root);
+        return root;
+    }
+
+    /// <summary>
+    /// Maps a stored key to a file path, but only inside this tenant's folder. Returns null for
+    /// anything else (another tenant's key, traversal attempts, absolute paths).
+    /// </summary>
+    private string? ResolveDocumentPath(Guid tenantId, string? storagePath)
+    {
+        if (tenantId == Guid.Empty || string.IsNullOrWhiteSpace(storagePath))
+            return null;
+
+        var normalized = storagePath.Trim().Replace('\\', '/');
+        var tenantPrefix = tenantId.ToString("N") + "/";
+        if (!normalized.StartsWith(tenantPrefix, StringComparison.Ordinal) || normalized.Contains(".."))
+            return null;
+
+        var root = GetDocumentsRoot();
+        var tenantRoot = Path.GetFullPath(Path.Combine(root, tenantId.ToString("N"))) + Path.DirectorySeparatorChar;
+        var fullPath = Path.GetFullPath(Path.Combine(root, normalized.Replace('/', Path.DirectorySeparatorChar)));
+
+        return fullPath.StartsWith(tenantRoot, StringComparison.Ordinal) ? fullPath : null;
+    }
+
+    private void TryDeleteFile(string fullPath)
+    {
+        try
+        {
+            if (File.Exists(fullPath))
+            {
+                File.Delete(fullPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to delete stored document file.");
+        }
     }
 
     public async Task<StoredFileResult> SaveProfilePhotoAsync(

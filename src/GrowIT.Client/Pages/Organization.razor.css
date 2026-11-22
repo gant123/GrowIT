@@ -659,3 +659,41 @@
         color: var(--growit-text-secondary);
     }
 }
+
+/* ----------------------------------------
+   Unscored requirements and document evidence note
+   ---------------------------------------- */
+.asc-requirements {
+    margin-top: .75rem;
+    padding: .75rem .9rem;
+    border-left: 3px solid #f97316;
+    background: #fff7ed;
+    color: #10203c;
+    font-size: .9rem;
+}
+
+.asc-requirements ul {
+    margin: .35rem 0 0;
+    padding-left: 1.1rem;
+}
+
+.asc-requirements li + li {
+    margin-top: .2rem;
+}
+
+.asc-evidence-note {
+    display: block;
+    margin-top: .25rem;
+    color: #b45309;
+    font-size: .75rem;
+    font-weight: 600;
+}
+
+[data-theme="dark"] .asc-requirements {
+    background: color-mix(in srgb, #f97316 12%, var(--growit-bg-card));
+    color: var(--growit-text-primary);
+}
+
+[data-theme="dark"] .asc-evidence-note {
+    color: #fbbf24;
+}
