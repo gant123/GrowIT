@@ -11,11 +11,19 @@
     // Enterprise Light/Dark Theme System
     // ========================================
 
-    // The browser's IANA time zone (e.g. "America/Chicago") so server-made files such as
-    // report names and PDF timestamps can use the same local time the app shows.
+    // Small facts about the viewer's machine for the Blazor side:
+    // zone() - IANA time zone (e.g. "America/Chicago") so report names and PDF timestamps match
+    //          the local time the app shows;
+    // isMac() - whether to label the search shortcut ⌘K (Mac) or Ctrl K (everyone else).
     window.growitTime = {
         zone: function () {
             try { return Intl.DateTimeFormat().resolvedOptions().timeZone || null; } catch (e) { return null; }
+        },
+        isMac: function () {
+            try {
+                const platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || '';
+                return /mac|iphone|ipad|ipod/i.test(platform);
+            } catch (e) { return false; }
         }
     };
 
