@@ -1,0 +1,87 @@
+@* In-app confirmation used instead of the browser's native confirm() box. It stacks above the
+   page modals (the service record details modal sits at z-index 1200). *@
+
+@if (Show)
+{
+    <div class="modal fade show d-block confirm-action-backdrop" tabindex="-1" role="dialog"
+         aria-modal="true" aria-labelledby="@_titleId" @onkeydown="OnKeyDown">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content confirm-action-shell">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="@_titleId">@Title</h5>
+                    <button type="button" class="btn-close" aria-label="Close" disabled="@Busy" @onclick="CancelAsync"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(Message))
+                    {
+                        <p class="confirm-action-message">@Message</p>
+                    }
+                    @ChildContent
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-growit btn-secondary-growit btn-sm" disabled="@Busy" @onclick="CancelAsync">@CancelText</button>
+                    <button type="button" @ref="_confirmButton"
+                            class="btn-growit btn-sm @(Danger ? "btn-danger-growit" : "btn-primary-growit")"
+                            disabled="@Busy" @onclick="ConfirmAsync">
+                        @if (Busy)
+                        {
+                            <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                        }
+                        <span>@ConfirmText</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Show { get; set; }
+    [Parameter] public string Title { get; set; } = "Are you sure?";
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string ConfirmText { get; set; } = "Confirm";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public bool Danger { get; set; }
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private readonly string _titleId = $"confirm-title-{Guid.NewGuid():N}";
+    private ElementReference _confirmButton;
+    private bool _wasShown;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Move focus into the dialog when it opens so Enter/Escape and screen readers land here.
+        if (Show && !_wasShown)
+        {
+            _wasShown = true;
+            try { await _confirmButton.FocusAsync(); } catch { /* element not ready; ignore */ }
+        }
+        else if (!Show)
+        {
+            _wasShown = false;
+        }
+    }
+
+    private async Task ConfirmAsync()
+    {
+        if (Busy) return;
+        await OnConfirm.InvokeAsync();
+    }
+
+    private async Task CancelAsync()
+    {
+        if (Busy) return;
+        await OnCancel.InvokeAsync();
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await CancelAsync();
+        }
+    }
+}

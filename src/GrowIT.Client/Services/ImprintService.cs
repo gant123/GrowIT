@@ -8,6 +8,8 @@ public interface IImprintService
     Task<ImprintResponseDto?> GetImprintByIdAsync(Guid id);
     Task<List<ImprintResponseDto>> GetImprintsForMemberAsync(Guid memberId);
     Task<ImprintResponseDto?> CreateImprintAsync(CreateImprintRequest request);
+    Task<ImprintResponseDto?> UpdateImprintAsync(Guid id, UpdateImprintRequest request);
+    Task DeleteImprintAsync(Guid id);
 }
 
 public class ImprintService : BaseApiService, IImprintService
@@ -36,5 +38,15 @@ public class ImprintService : BaseApiService, IImprintService
     public async Task<ImprintResponseDto?> CreateImprintAsync(CreateImprintRequest request)
     {
         return await PostAsync<CreateImprintRequest, ImprintResponseDto>(BaseEndpoint, request);
+    }
+
+    public async Task<ImprintResponseDto?> UpdateImprintAsync(Guid id, UpdateImprintRequest request)
+    {
+        return await PutAsync<UpdateImprintRequest, ImprintResponseDto>($"{BaseEndpoint}/{id}", request);
+    }
+
+    public async Task DeleteImprintAsync(Guid id)
+    {
+        await DeleteAsync($"{BaseEndpoint}/{id}");
     }
 }

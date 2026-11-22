@@ -323,6 +323,7 @@
 .plan-card-actions {
     padding: 0 1rem 1rem;
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
     gap: .5rem;
 }
@@ -421,7 +422,8 @@
         justify-content: stretch;
     }
 
-    .plan-card-actions .btn {
+    .plan-card-actions .btn,
+    .plan-card-actions .btn-growit {
         flex: 1 1 auto;
     }
 }
