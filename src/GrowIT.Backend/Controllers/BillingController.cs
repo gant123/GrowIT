@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GrowIT.Backend.Services;
 using GrowIT.Core.Entities;
 using GrowIT.Core.Interfaces;
 using GrowIT.Infrastructure.Data;
@@ -69,13 +70,17 @@ public class BillingController : ControllerBase
             })
             .FirstOrDefaultAsync();
 
+        // Plans and the current plan are needed by the upgrade prompt for any signed-in role;
+        // invoices, payments and billing events are admin-only (the Billing page is too).
+        var canSeeBillingHistory = User.IsTenantAdmin();
+
         return Ok(new BillingOverviewDto
         {
             Plans = await BuildPlanDtosAsync(),
             CurrentSubscription = subscription,
-            Invoices = await BuildInvoiceDtosAsync(),
-            Payments = await BuildPaymentDtosAsync(),
-            Events = await BuildBillingEventDtosAsync(),
+            Invoices = canSeeBillingHistory ? await BuildInvoiceDtosAsync() : new(),
+            Payments = canSeeBillingHistory ? await BuildPaymentDtosAsync() : new(),
+            Events = canSeeBillingHistory ? await BuildBillingEventDtosAsync() : new(),
             StripeConfigured = IsStripeConfigured(),
             SetupMessage = BuildStripeSetupMessage()
         });
@@ -156,12 +161,15 @@ public class BillingController : ControllerBase
     }
 
     [HttpGet("invoices")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<List<InvoiceDto>>> GetInvoices() => Ok(await BuildInvoiceDtosAsync());
 
     [HttpGet("payments")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<List<PaymentDto>>> GetPayments() => Ok(await BuildPaymentDtosAsync());
 
     [HttpGet("events")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<List<BillingEventDto>>> GetEvents() => Ok(await BuildBillingEventDtosAsync());
 
     [HttpPost("checkout-session")]

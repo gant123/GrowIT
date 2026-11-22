@@ -22,6 +22,6 @@ EXPOSE 8080
 
 COPY --from=build /app/publish ./
 
-RUN mkdir -p /app/wwwroot/uploads /app/dev-emails
+RUN mkdir -p /app/wwwroot/uploads /app/dev-emails /app/keys /app/App_Data/documents
 
 ENTRYPOINT ["dotnet", "GrowIT.Client.dll"]

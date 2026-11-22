@@ -1,0 +1,69 @@
+/* Whole card opens the article; the title link is stretched over the card. */
+.blog-card-linked {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.blog-card-link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.blog-card-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 16px;
+}
+
+.blog-card-link:hover,
+.blog-card-link:focus-visible {
+    color: var(--growit-green);
+    text-decoration: underline;
+}
+
+.blog-card-link:focus-visible {
+    outline: none;
+}
+
+.blog-card-linked:focus-within {
+    outline: 2px solid var(--growit-green);
+    outline-offset: 2px;
+}
+
+.blog-read-more {
+    margin-top: .75rem;
+    color: var(--growit-green);
+    font-size: .85rem;
+    font-weight: 700;
+}
+
+.blog-empty {
+    border: 1px solid color-mix(in srgb, var(--growit-border) 70%, transparent);
+    border-radius: 16px;
+    padding: clamp(18px, 3vw, 28px);
+    background: color-mix(in srgb, var(--growit-bg-card) 96%, white 4%);
+}
+
+.blog-empty h2 {
+    margin: 0 0 .5rem;
+    font-size: 1.2rem;
+    color: var(--growit-text-primary);
+}
+
+.blog-empty p {
+    margin: 0 0 .9rem;
+    color: var(--growit-text-secondary);
+}
+
+.blog-empty-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem 1.25rem;
+}
+
+.blog-empty-links a {
+    color: var(--growit-green);
+    font-weight: 700;
+}

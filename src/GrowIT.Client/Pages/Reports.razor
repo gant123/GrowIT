@@ -47,7 +47,7 @@
             <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
                 <div>
                     <h2 class="section-title mb-2">How reports work</h2>
-                    <p class="mb-0 text-muted">Grow.IT uses the people, programs, money sources, service records, and outcomes you already saved. You should not have to rebuild the same report by hand.</p>
+                    <p class="mb-0 text-muted">grow.IT uses the people, programs, money sources, service records, and outcomes you already saved. You should not have to rebuild the same report by hand.</p>
                 </div>
                 <div class="d-flex flex-wrap gap-2 align-items-start">
                     <span class="badge-growit badge-success">1. Select</span>
@@ -150,17 +150,21 @@
             <div class="builder-row">
                 <div class="builder-field">
                     <label>What information do you want?</label>
+                    @* Values must be report types the API accepts (ReportContract). The previous
+                       "imprints" / "people" / "growth-plans" values were rejected by validation,
+                       so three of these four choices always failed. *@
                     <select @bind="_customReportType">
                         <option value="investments">Service records and costs</option>
-                        <option value="imprints">Outcomes and proof</option>
-                        <option value="people">People and households</option>
-                        <option value="growth-plans">Growth Plans</option>
+                        <option value="outcomes-by-category">Outcomes and proof</option>
+                        <option value="demographic-breakdown">People and households</option>
+                        <option value="season-progression">Growth Plans</option>
                     </select>
                 </div>
                 
                 <div class="builder-field">
                     <label>Year</label>
-                    <select @bind="_customFiscalYear">
+                    <select @bind="_customFiscalYear" disabled="@(!CustomReportUsesDates)">
+                        <option value="">All dates</option>
                         @foreach (var fy in _fiscalYearOptions)
                         {
                             <option value="@fy">@fy</option>
@@ -171,9 +175,9 @@
                 <div class="builder-field">
                     <label>Date range</label>
                     <div class="date-range-inputs">
-                        <input type="date" @bind="_customDateFrom" />
+                        <input type="date" aria-label="From date" @bind="_customDateFrom" disabled="@(!CustomReportUsesDates)" />
                         <span>to</span>
-                        <input type="date" @bind="_customDateTo" />
+                        <input type="date" aria-label="To date" @bind="_customDateTo" disabled="@(!CustomReportUsesDates)" />
                     </div>
                 </div>
             </div>
@@ -181,13 +185,17 @@
             <div class="builder-row">
                 <div class="builder-field">
                     <label>Organize by</label>
-                    <select @bind="_customGroupBy">
+                    <select @bind="_customGroupBy" disabled="@(!CustomReportSupportsGrouping)">
                         <option value="none">Do not group</option>
-                        <option value="category">Category</option>
+                        <option value="category">Program</option>
                         <option value="season">Progress stage</option>
                         <option value="funding-source">Money source</option>
                         <option value="month">Month</option>
                     </select>
+                    @if (!CustomReportUsesDates)
+                    {
+                        <small class="builder-hint">This report always covers everything saved, so year and date range don't apply.</small>
+                    }
                 </div>
                 
                 <div class="builder-field">
@@ -219,24 +227,24 @@
         <div class="card-growit mb-3">
             <div class="card-body">
                 <div class="row g-3">
-                    <div class="col-lg-3 col-md-6">
+                    <div class="col-xl-3 col-md-6">
                         <label class="form-label">Search</label>
                         <input class="form-control" placeholder="Search reports..." @bind="_recentSearch" />
                     </div>
-                    <div class="col-lg-2 col-md-6">
+                    <div class="col-xl-3 col-md-6">
                         <label class="form-label">Type</label>
                         <select class="form-select" @bind="_recentReportTypeFilter">
                             <option value="">All</option>
                             <option value="impact-summary">Impact Summary</option>
                             <option value="investment-detail">Service Cost Detail</option>
-                            <option value="outcomes-by-category">Outcomes by Category</option>
+                            <option value="outcomes-by-category">Outcomes by Type</option>
                             <option value="funding-utilization">Money Source Use</option>
-                            <option value="season-progression">Season Progression</option>
-                            <option value="demographic-breakdown">Demographic Breakdown</option>
+                            <option value="season-progression">Progress Over Time</option>
+                            <option value="demographic-breakdown">People Served Breakdown</option>
                             <option value="investments">Custom Service Records</option>
                         </select>
                     </div>
-                    <div class="col-lg-2 col-md-4">
+                    <div class="col-xl-3 col-md-6">
                         <label class="form-label">Format</label>
                         <select class="form-select" @bind="_recentFormatFilter">
                             <option value="">All</option>
@@ -245,7 +253,7 @@
                             <option value="csv">CSV</option>
                         </select>
                     </div>
-                    <div class="col-lg-2 col-md-4">
+                    <div class="col-xl-3 col-md-6">
                         <label class="form-label">Status</label>
                         <select class="form-select" @bind="_recentStatusFilter">
                             <option value="">All</option>
@@ -254,15 +262,15 @@
                             <option value="Queued">Queued</option>
                         </select>
                     </div>
-                    <div class="col-lg-1 col-md-4">
+                    <div class="col-xl-3 col-md-6">
                         <label class="form-label">From</label>
                         <input class="form-control" type="date" @bind="_recentDateFromFilter" />
                     </div>
-                    <div class="col-lg-1 col-md-4">
+                    <div class="col-xl-3 col-md-6">
                         <label class="form-label">To</label>
                         <input class="form-control" type="date" @bind="_recentDateToFilter" />
                     </div>
-                    <div class="col-lg-1 col-md-8 d-flex align-items-end justify-content-end gap-2">
+                    <div class="col-xl-6 col-12 d-flex align-items-end justify-content-end gap-2">
                         <button class="btn btn-outline-secondary" @onclick="ClearRecentFilters" disabled="@_isLoadingRecent">Clear</button>
                         <button class="btn btn-primary" @onclick="ApplyRecentFiltersAsync" disabled="@_isLoadingRecent">
                             <i class="bi bi-funnel me-1"></i>Apply
@@ -289,13 +297,13 @@
                             AllowExcelExport="true"
                             ShowColumnChooser="true"
                             Toolbar="@GridToolbarItems"
-                            Height="360">
+                            Height="auto">
                         <GridPageSettings PageSize="6"></GridPageSettings>
                         <GridFilterSettings Type="FilterType.Menu"></GridFilterSettings>
                         <GridTextWrapSettings WrapMode="WrapMode.Content"></GridTextWrapSettings>
                         <GridEvents TValue="RecentReport" OnToolbarClick="OnRecentReportsToolbarClick"></GridEvents>
                         <GridColumns>
-                            <GridColumn HeaderText="Report" Field=@nameof(RecentReport.Name) Width="280" ClipMode="ClipMode.EllipsisWithTooltip">
+                            <GridColumn HeaderText="Report" Field=@nameof(RecentReport.Name) ClipMode="ClipMode.EllipsisWithTooltip">
                                 <Template>
                                     @{
                                         var report = (context as RecentReport)!;
@@ -393,7 +401,7 @@
     <!-- Scheduled Reports -->
     <div class="report-section">
         <h2 class="section-title">Automatic Reports</h2>
-        <p class="section-desc">Set up reports Grow.IT should prepare on a schedule, so your team does not have to remember to run them manually.</p>
+        <p class="section-desc">Set up reports grow.IT should prepare on a schedule, so your team does not have to remember to run them manually.</p>
         
         <div class="scheduled-reports">
             <div class="card-growit mb-3">
@@ -411,10 +419,10 @@
                             <select class="form-select" @bind="_scheduleForm.ReportType">
                                 <option value="impact-summary">Impact Summary</option>
                                 <option value="investment-detail">Service Cost Detail</option>
-                                <option value="outcomes-by-category">Outcomes by Category</option>
+                                <option value="outcomes-by-category">Outcomes by Type</option>
                                 <option value="funding-utilization">Money Source Use</option>
-                                <option value="season-progression">Season Progression</option>
-                                <option value="demographic-breakdown">Demographic Breakdown</option>
+                                <option value="season-progression">Progress Over Time</option>
+                                <option value="demographic-breakdown">People Served Breakdown</option>
                             </select>
                         </div>
                         <div class="col-lg-2 col-md-4">
@@ -472,7 +480,7 @@
                                 AllowExcelExport="true"
                                 ShowColumnChooser="true"
                                 Toolbar="@GridToolbarItems"
-                                Height="340">
+                                Height="auto">
                             <GridPageSettings PageSize="6"></GridPageSettings>
                             <GridFilterSettings Type="FilterType.Menu"></GridFilterSettings>
                             <GridTextWrapSettings WrapMode="WrapMode.Content"></GridTextWrapSettings>
@@ -501,7 +509,7 @@
                                         @{
                                             var scheduled = (context as ScheduledReport)!;
                                         }
-                                        <span>@scheduled.NextRun.ToLocalTime().ToString("MMM d, yyyy")</span>
+                                        <span>@scheduled.NextRun.ToUniversalTime().ToString("MMM d, yyyy")</span>
                                     </Template>
                                 </GridColumn>
                                 <GridColumn HeaderText="Actions" Width="140" AllowFiltering="false" AllowSorting="false" TextAlign="TextAlign.Center">
@@ -691,6 +699,37 @@
     private DateTime? _customDateTo;
     private string _customGroupBy = "none";
     private string _customFormat = "pdf";
+
+    // Only these report types filter by date / can be organized; the others are whole-workspace
+    // snapshots, so their controls are disabled instead of silently ignored.
+    private bool CustomReportUsesDates => _customReportType is "investments" or "outcomes-by-category";
+    private bool CustomReportSupportsGrouping => _customReportType == "investments";
+
+    // Lets the server name the report and stamp the PDF in the viewer's local time.
+    private async Task<string?> GetBrowserTimeZoneAsync()
+    {
+        try
+        {
+            return await JS.InvokeAsync<string?>("growitTime.zone");
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    // "FY26-27" => July 1, 2026 through June 30, 2027 (same July start the labels assume).
+    private static (DateTime From, DateTime To)? FiscalYearRange(string? label)
+    {
+        if (string.IsNullOrWhiteSpace(label) || label.Length < 4 ||
+            !int.TryParse(label.AsSpan(2, 2), out var twoDigitYear))
+        {
+            return null;
+        }
+
+        var startYear = 2000 + twoDigitYear;
+        return (new DateTime(startYear, 7, 1), new DateTime(startYear + 1, 6, 30));
+    }
     private static readonly List<object> GridToolbarItems =
     [
         "Search",
@@ -758,6 +797,7 @@
             var payload = new GenerateReportRequest
             {
                 ReportType = reportType,
+                TimeZone = await GetBrowserTimeZoneAsync(),
                 Format = _customFormat
             };
 
@@ -811,14 +851,26 @@
         _isGenerating = true;
         try
         {
+            // The year only used to be printed on the report; it never limited the data. Apply it
+            // as the date range unless explicit dates were chosen (those win).
+            var dateFrom = CustomReportUsesDates ? _customDateFrom : null;
+            var dateTo = CustomReportUsesDates ? _customDateTo : null;
+            var fiscalYear = CustomReportUsesDates && !string.IsNullOrWhiteSpace(_customFiscalYear) ? _customFiscalYear : null;
+            if (dateFrom is null && dateTo is null && FiscalYearRange(fiscalYear) is { } range)
+            {
+                dateFrom = range.From;
+                dateTo = range.To;
+            }
+
             var payload = new GenerateReportRequest
             {
                 ReportType = _customReportType,
                 Format = _customFormat,
-                FiscalYear = _customFiscalYear,
-                DateFrom = _customDateFrom,
-                DateTo = _customDateTo,
-                GroupBy = _customGroupBy
+                FiscalYear = fiscalYear,
+                DateFrom = dateFrom,
+                DateTo = dateTo,
+                GroupBy = CustomReportSupportsGrouping && _customGroupBy != "none" ? _customGroupBy : null,
+                TimeZone = await GetBrowserTimeZoneAsync()
             };
 
             var created = await ReportService.GenerateReportAsync(payload);
@@ -978,7 +1030,7 @@
             ReportType = string.IsNullOrWhiteSpace(existing.ReportType) ? "impact-summary" : existing.ReportType,
             Format = string.IsNullOrWhiteSpace(existing.Format) ? "pdf" : existing.Format,
             Frequency = string.IsNullOrWhiteSpace(existing.Frequency) ? "Weekly" : existing.Frequency,
-            NextRunDate = existing.NextRun.ToLocalTime().Date
+            NextRunDate = existing.NextRun.ToUniversalTime().Date
         };
     }
 
@@ -1149,6 +1201,19 @@
     private static string PrettyReportType(string? value)
     {
         if (string.IsNullOrWhiteSpace(value)) return "Impact Summary";
+
+        // Same names as the Quick Reports cards, so one report is not called three things.
+        switch (value.Trim().ToLowerInvariant())
+        {
+            case "impact-summary": return "Impact Summary";
+            case "investment-detail": return "Service Cost Detail";
+            case "investments": return "Custom Service Records";
+            case "outcomes-by-category": return "Outcomes by Type";
+            case "funding-utilization": return "Money Source Use";
+            case "season-progression": return "Progress Over Time";
+            case "demographic-breakdown": return "People Served Breakdown";
+        }
+
         var text = value.Replace("-", " ", StringComparison.Ordinal).Trim();
         return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(text);
     }

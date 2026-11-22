@@ -1,0 +1,142 @@
+@* In-app confirmation for actions that change or remove data, used instead of the browser's
+   native confirm() (which can't be styled, reads "localhost says", and is easy to dismiss by
+   accident). It stacks above the page modals (the service record details modal sits at z-index
+   1200). Message and/or ChildContent explain what will happen; ErrorMessage shows a refusal from
+   the server (e.g. "still has service records") inside the same dialog.
+   Close it either with @bind-Show (ShowChanged) or by handling OnCancel. *@
+@implements IDisposable
+
+@if (Show)
+{
+    <div class="modal fade show d-block confirm-action-backdrop" tabindex="-1" role="dialog"
+         aria-modal="true" aria-labelledby="@_titleId" aria-describedby="@_bodyId" @onkeydown="OnKeyDown">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content confirm-action-shell">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="@_titleId">
+                        <i class="bi @(Danger ? "bi-exclamation-triangle text-danger" : "bi-question-circle") me-2" aria-hidden="true"></i>@Title
+                    </h5>
+                    <button type="button" class="btn-close" aria-label="Close" title="Close" disabled="@IsWorking" @onclick="CancelAsync"></button>
+                </div>
+                <div class="modal-body" id="@_bodyId">
+                    @if (!string.IsNullOrWhiteSpace(Message))
+                    {
+                        <p class="confirm-action-message">@Message</p>
+                    }
+                    @ChildContent
+                    @if (!string.IsNullOrWhiteSpace(ErrorMessage))
+                    {
+                        <div class="alert alert-warning d-flex gap-2 align-items-start mt-3 mb-0" role="alert">
+                            <i class="bi bi-info-circle mt-1" aria-hidden="true"></i>
+                            <div>@ErrorMessage</div>
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-growit btn-secondary-growit btn-sm" @ref="_cancelButton" disabled="@IsWorking" @onclick="CancelAsync">@CancelText</button>
+                    @if (!HideConfirm)
+                    {
+                        <button type="button"
+                                class="btn-growit btn-sm @(Danger ? "btn-danger-growit" : "btn-primary-growit")"
+                                disabled="@(IsWorking || ConfirmDisabled)" @onclick="ConfirmAsync">
+                            @if (IsWorking)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            }
+                            <span>@ConfirmText</span>
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Show { get; set; }
+    [Parameter] public EventCallback<bool> ShowChanged { get; set; }
+    [Parameter] public string Title { get; set; } = "Are you sure?";
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string ConfirmText { get; set; } = "Confirm";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    // Most uses are deletes; pass Danger="false" for non-destructive confirmations.
+    [Parameter] public bool Danger { get; set; } = true;
+    [Parameter] public bool Busy { get; set; }
+    [Parameter] public bool IsBusy { get; set; }
+    [Parameter] public bool ConfirmDisabled { get; set; }
+    [Parameter] public bool HideConfirm { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public EventCallback OnConfirm { get; set; }
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private bool IsWorking => Busy || IsBusy;
+
+    private readonly string _titleId = $"confirm-title-{Guid.NewGuid():N}";
+    private readonly string _bodyId = $"confirm-body-{Guid.NewGuid():N}";
+    private ElementReference _cancelButton;
+    private bool _wasShown;
+    private bool _focusPending;
+    private bool _disposed;
+
+    protected override void OnParametersSet()
+    {
+        // Put keyboard focus in the dialog when it opens (on the safe choice).
+        if (Show && !_wasShown)
+        {
+            _focusPending = true;
+        }
+
+        _wasShown = Show;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focusPending || !Show || _disposed)
+        {
+            return;
+        }
+
+        _focusPending = false;
+        try
+        {
+            await _cancelButton.FocusAsync();
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or InvalidOperationException or TaskCanceledException)
+        {
+            // Focus is a convenience; never fail the dialog over it.
+        }
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await CancelAsync();
+        }
+    }
+
+    private async Task ConfirmAsync()
+    {
+        if (IsWorking || ConfirmDisabled)
+        {
+            return;
+        }
+
+        await OnConfirm.InvokeAsync();
+    }
+
+    private async Task CancelAsync()
+    {
+        if (IsWorking)
+        {
+            return;
+        }
+
+        _wasShown = false;
+        await OnCancel.InvokeAsync();
+        await ShowChanged.InvokeAsync(false);
+    }
+
+    public void Dispose() => _disposed = true;
+}

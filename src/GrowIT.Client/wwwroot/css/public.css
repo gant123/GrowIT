@@ -1395,7 +1395,24 @@
 }
 
 .input-wrapper input {
+    width: 100%;
     padding-left: calc(12px + 20px + 12px);
+}
+
+/* No leading icon (e.g. the sign-up password field): don't reserve icon space. */
+.input-wrapper:not(:has(.input-icon, .input-icon-bi)) input {
+    padding-left: 16px;
+}
+
+/* Keep typed text clear of the show/hide button. */
+.input-wrapper:has(.password-toggle) input {
+    padding-right: 48px;
+}
+
+.password-hint {
+    margin: 2px 0 0;
+    font-size: 0.8125rem;
+    color: var(--growit-text-muted);
 }
 
 .password-toggle {
@@ -1845,6 +1862,13 @@
 
 .auth-side-content {
     color: white;
+}
+
+/* Headings take the global dark heading color unless told otherwise, which made them
+   unreadable on the dark/green side panels. */
+.auth-side h2,
+.auth-side h3 {
+    color: #fff;
 }
 
 .auth-side blockquote {
@@ -4786,4 +4810,46 @@
     .auth-side-enterprise {
         display: none;
     }
+}
+
+/* ==========================================================================
+   NIGHT GARDEN: public site in the dark
+   White labels on the brand green measured under 3:1, and the sign-in / sign-up side panels
+   were a full-height saturated green slab next to the dark form. Same action colour as the
+   app (lifted green, near-black text), and the side panels become a deep garden surface.
+   ========================================================================== */
+html[data-theme="dark"] .public-layout .btn-primary {
+    background: var(--brand-primary);
+    border-color: var(--brand-primary);
+    color: var(--brand-on-primary);
+}
+
+html[data-theme="dark"] .public-layout .btn-primary:hover:not(:disabled) {
+    background: var(--brand-primary-light);
+    border-color: var(--brand-primary-light);
+}
+
+html[data-theme="dark"] .public-layout .btn-outline-primary {
+    color: var(--brand-primary);
+    border-color: var(--brand-primary);
+}
+
+html[data-theme="dark"] .public-layout .btn-outline-primary:hover:not(:disabled) {
+    background: var(--brand-primary);
+    color: var(--brand-on-primary);
+}
+
+html[data-theme="dark"] :is(.login-side, .register-side) {
+    background:
+        radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--brand-primary) 24%, transparent), transparent 58%),
+        color-mix(in srgb, var(--growit-bg-card) 90%, var(--brand-primary) 10%);
+    border-left: 1px solid var(--growit-border);
+}
+
+html[data-theme="dark"] .auth-side-enterprise::before {
+    background: radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--brand-primary) 12%, transparent), transparent 50%);
+}
+
+html[data-theme="dark"] .auth-side-content {
+    color: var(--growit-text-primary);
 }

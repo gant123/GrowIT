@@ -10,13 +10,19 @@ public class AscScoreDto
     public string ScoreStatus { get; set; } = "Unscored";
     public string TierName { get; set; } = "Unscored";
     public string TierRange { get; set; } = "Not enough information";
-    public string TierDescription { get; set; } = "Add the basic organization, program, financial, and impact information Grow.IT needs before it calculates a score.";
-    public string Disclosure { get; set; } = "The ASC score is not a credit score, loan approval, or accounting certification. It is a Grow.IT readiness gauge based on saved organization data.";
+    public string TierDescription { get; set; } = "Add the basic organization, program, financial, and impact information grow.IT needs before it calculates a score.";
+    public string Disclosure { get; set; } = "The ASC score is not a credit score, loan approval, or accounting certification. It is a grow.IT readiness gauge based on saved organization data.";
     public DateTime CalculatedAtUtc { get; set; } = DateTime.UtcNow;
     public AscScoreEvidenceDto Evidence { get; set; } = new();
     public List<AscScorePillarDto> Pillars { get; set; } = new();
     public List<string> MissingItems { get; set; } = new();
     public List<string> NextSteps { get; set; } = new();
+
+    /// <summary>
+    /// When unscored: exactly what saved data is still needed before a score can be calculated.
+    /// Empty once the organization is scored.
+    /// </summary>
+    public List<string> ScoreRequirements { get; set; } = new();
     public List<AscScoreTierDto> Tiers { get; set; } = new();
 }
 
@@ -49,8 +55,15 @@ public class AscScoreEvidenceDto
     public int InvestmentsLinkedToPeople { get; set; }
     public int Outcomes { get; set; }
     public int PositiveOrMaintainedOutcomes { get; set; }
+    /// <summary>Files uploaded to grow.IT (people and organization). Saved links are not counted.</summary>
     public int Documents { get; set; }
+
+    /// <summary>Uploaded organization-level documents (IRS letter, bylaws, budget).</summary>
+    public int OrganizationDocuments { get; set; }
     public int DocumentCategories { get; set; }
+
+    /// <summary>Legacy rows that only hold a typed web address; shown but never counted.</summary>
+    public int LinkOnlyDocuments { get; set; }
     public int GrowthPlans { get; set; }
     public int Tasks { get; set; }
     public int CompletedTasks { get; set; }

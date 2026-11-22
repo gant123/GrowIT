@@ -8,11 +8,11 @@
 <PageTitle>Money Sources - grow.IT</PageTitle>
 
 <div class="funds-page">
-    <PageHeader Title="Money Sources" Subtitle="Save grants, donations, budgets, or other money your organization can use. Grow.IT connects this information to service records and reports.">
+    <PageHeader Title="Money Sources" Subtitle="Save grants, donations, budgets, or other money your organization can use. grow.IT connects this information to service records and reports.">
         <Actions>
             @if (_canManageFinancials)
             {
-                <button class="btn btn-primary" @onclick="CreateNew">
+                <button class="btn-growit btn-primary-growit" @onclick="CreateNew">
                     <i class="bi bi-plus-lg"></i>
                     <span>Add Money Source</span>
                 </button>
@@ -31,7 +31,7 @@
     {
         <div class="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
             <div>@errorMessage</div>
-            <button class="btn btn-sm btn-outline-light" @onclick="ReloadFunds">Retry</button>
+            <button class="btn-growit btn-secondary-growit btn-sm" @onclick="ReloadFunds">Retry</button>
         </div>
     }
 
@@ -57,11 +57,14 @@
                 <div class="funds-kpi-value">@TotalDeployed.ToString("C0")</div>
             </div>
         </div>
+        @* This card used to read "Still Available: 1" - a count of sources under a label that
+           sounds like money. It now says what is counted: sources 70%+ used (the same rule as
+           the "Watch Closely" / "Almost Used Up" pills on the cards below). *@
         <div class="funds-kpi-card">
-            <div class="funds-kpi-icon coverage"><i class="bi bi-shield-check"></i></div>
+            <div class="funds-kpi-icon coverage"><i class="bi bi-exclamation-triangle"></i></div>
             <div>
-                <div class="funds-kpi-label">Still Available</div>
-                <div class="funds-kpi-value">@HealthyFundCount</div>
+                <div class="funds-kpi-label">Sources Running Low</div>
+                <div class="funds-kpi-value">@RunningLowCount <span class="funds-kpi-unit">of @(funds?.Count ?? 0)</span></div>
             </div>
         </div>
     </div>
@@ -93,7 +96,7 @@
                 <p>Add a grant, donation pool, budget, or other funding source before recording services that use money.</p>
                 @if (_canManageFinancials)
                 {
-                    <button class="btn btn-outline-primary" @onclick="CreateNew">
+                    <button class="btn-growit btn-secondary-growit" @onclick="CreateNew">
                         <i class="bi bi-plus-lg"></i>
                         <span>Add First Money Source</span>
                     </button>
@@ -112,13 +115,13 @@
                         <div class="fund-card-header">
                             <div>
                                 <h3>@fund.Name</h3>
-                                <div class="fund-card-subtitle">@GetStatusLabel(percent)</div>
                             </div>
                             <div class="fund-card-actions">
                                 <span class="fund-status-pill @GetStatusClass(percent)">@GetStatusLabel(percent)</span>
                                 @if (_canManageFinancials)
                                 {
-                                    <button class="btn btn-sm btn-outline-secondary" @onclick="() => EditFund(fund)" title="Edit Fund">
+                                    <button class="btn-icon-only" @onclick="() => EditFund(fund)"
+                                            title="Edit money source" aria-label="@($"Edit {fund.Name}")">
                                         <i class="bi bi-pencil"></i>
                                     </button>
                                 }
@@ -138,10 +141,6 @@
                                 <div class="money-block">
                                     <span class="label">Original Amount</span>
                                     <strong>@fund.TotalAmount.ToString("C0")</strong>
-                                </div>
-                                <div class="money-block">
-                                    <span class="label">Percent Used</span>
-                                    <strong>@percent%</strong>
                                 </div>
                             </div>
 
@@ -179,7 +178,7 @@
     private decimal TotalAvailable => funds?.Sum(f => f.AvailableAmount) ?? 0m;
     private decimal TotalBudget => funds?.Sum(f => f.TotalAmount) ?? 0m;
     private decimal TotalDeployed => TotalBudget - TotalAvailable;
-    private int HealthyFundCount => funds?.Count(f => GetPercent(f) < 80) ?? 0;
+    private int RunningLowCount => funds?.Count(f => GetPercent(f) >= 70) ?? 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -198,7 +197,7 @@
         {
             Logger.LogError(ex, "Failed to load funds from api/financials/funds");
             funds = [];
-            errorMessage = "Couldn't load funds. Please try again.";
+            errorMessage = "Couldn't load money sources. Please try again.";
         }
     }
 

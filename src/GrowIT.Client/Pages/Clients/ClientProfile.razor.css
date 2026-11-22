@@ -196,3 +196,38 @@
         min-width: 40px;
     }
 }
+
+/* Delete sits with the other header actions but reads as destructive without shouting. */
+.client-delete-btn {
+    color: var(--growit-danger);
+}
+
+.client-delete-btn:hover:not(:disabled) {
+    color: var(--growit-danger);
+    border-color: color-mix(in srgb, var(--growit-danger) 45%, var(--growit-border));
+    background: color-mix(in srgb, var(--growit-danger) 8%, var(--growit-bg-card));
+}
+
+.profile-household-link {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+    text-underline-offset: 3px;
+}
+
+.profile-household-link:hover {
+    color: var(--brand-primary);
+}
+
+.household-explainer {
+    margin: 0;
+    padding: .75rem 1rem;
+    font-size: .8rem;
+    color: var(--growit-text-muted);
+    border-bottom: 1px solid var(--growit-border);
+}
+
+.household-explainer a {
+    color: var(--brand-primary);
+    font-weight: 600;
+}

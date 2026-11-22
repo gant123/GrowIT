@@ -18,7 +18,7 @@
         <div class="contact-grid">
             <article class="contact-card">
                 <h2>Demo & platform questions</h2>
-                <p>See how Grow.IT handles organization data, service records, ASC readiness, reports, and portfolio building.</p>
+                <p>See how grow.IT handles organization data, service records, ASC readiness, reports, and portfolio building.</p>
                 <a href="https://www.moemedia.cloud/" target="_blank" rel="noopener noreferrer" class="contact-link">Visit Moe Media</a>
             </article>
 
@@ -39,7 +39,7 @@
     <section class="contact-form-section">
         <div class="contact-form-card">
             <h2>Send A Message</h2>
-            <p>Share where your organization is today and what you need Grow.IT to help explain, track, or report.</p>
+            <p>Share where your organization is today and what you need grow.IT to help explain, track, or report.</p>
             @if (_isDemoRequest)
             {
                 <div class="alert alert-info mb-3">
@@ -100,7 +100,7 @@
     <section class="contact-cta">
         <div class="contact-cta-card">
             <h2>Built for founders carrying service delivery and sustainability at the same time.</h2>
-            <p>If the work is real but the proof is scattered, Grow.IT is designed to help organize it.</p>
+            <p>If the work is real but the proof is scattered, grow.IT is designed to help organize it.</p>
             <div class="contact-cta-actions">
                 <a href="https://www.moemedia.cloud/" target="_blank" rel="noopener noreferrer" class="btn btn-primary">Moe Media Website</a>
                 <a href="/blog" class="btn btn-outline">Read The Blog</a>
@@ -204,23 +204,24 @@
 
     private sealed class ContactFormModel
     {
-        [Required]
-        [StringLength(120)]
+        // Plain-language messages; the defaults read "The FullName field is required."
+        [Required(ErrorMessage = "Please enter your name.")]
+        [StringLength(120, ErrorMessage = "Your name can be up to 120 characters.")]
         public string FullName { get; set; } = string.Empty;
 
-        [Required]
-        [EmailAddress]
-        [StringLength(160)]
+        [Required(ErrorMessage = "Please enter your email address.")]
+        [EmailAddress(ErrorMessage = "Please enter a valid email address.")]
+        [StringLength(160, ErrorMessage = "Your email can be up to 160 characters.")]
         public string Email { get; set; } = string.Empty;
 
-        [StringLength(160)]
+        [StringLength(160, ErrorMessage = "Organization can be up to 160 characters.")]
         public string? Organization { get; set; }
 
-        [StringLength(180)]
+        [StringLength(180, ErrorMessage = "Subject can be up to 180 characters.")]
         public string? Subject { get; set; }
 
-        [Required]
-        [StringLength(3000, MinimumLength = 10)]
+        [Required(ErrorMessage = "Please enter a message.")]
+        [StringLength(3000, MinimumLength = 10, ErrorMessage = "Please write at least a sentence (10 characters or more).")]
         public string Message { get; set; } = string.Empty;
 
         public void Reset()

@@ -21,22 +21,35 @@ public class ClientsController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly ICurrentTenantService _tenantService;
     private readonly IPlanLimitService _planLimits;
+    private readonly ICurrentUserService _currentUser;
+    private readonly ILogger<ClientsController> _logger;
 
     public ClientsController(
         ApplicationDbContext context,
         ICurrentTenantService tenantService,
-        IPlanLimitService planLimits)
+        IPlanLimitService planLimits,
+        ICurrentUserService currentUser,
+        ILogger<ClientsController> logger)
     {
         _context = context;
         _tenantService = tenantService;
         _planLimits = planLimits;
+        _currentUser = currentUser;
+        _logger = logger;
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<ClientDetailDto>> GetClientDetail(Guid id)
     {
         var client = await _context.Clients.FirstOrDefaultAsync(c => c.Id == id);
-        if (client == null) return NotFound("Client not found.");
+        if (client == null) return NotFound("Person not found.");
+
+        var householdName = client.HouseholdId.HasValue
+            ? await _context.Households
+                .Where(h => h.Id == client.HouseholdId.Value)
+                .Select(h => h.Name)
+                .FirstOrDefaultAsync()
+            : null;
 
         // 1. Fetch Investments ($)
         var investments = await _context.Investments
@@ -63,7 +76,7 @@ public class ClientsController : ControllerBase
             Id = inv.Id,
             Date = inv.CreatedAt,
             Type = "Investment",
-            Title = $"Investment: {inv.Fund?.Name ?? "General Fund"}",
+            Title = $"Service record: {inv.Fund?.Name ?? "no money source"}",
             Description = inv.Reason,
             Amount = inv.Amount,
             Icon = "oi-dollar",
@@ -107,6 +120,7 @@ public class ClientsController : ControllerBase
             EmploymentStatus = client.EmploymentStatus,
             NextFollowupDate = client.NextFollowupDate,
             HouseholdId = client.HouseholdId,
+            HouseholdName = householdName,
             HouseholdRole = client.HouseholdRole,
             TotalInvestment = investments.Sum(x => x.Amount),
             LastInvestmentDate = investments.OrderByDescending(i => i.CreatedAt).FirstOrDefault()?.CreatedAt,
@@ -152,12 +166,13 @@ public class ClientsController : ControllerBase
             }
         }
 
+        Household? household = null;
         if (request.HouseholdId.HasValue)
         {
-            var householdExists = await _context.Households
-                .AnyAsync(h => h.Id == request.HouseholdId.Value && h.TenantId == tenantId.Value);
+            household = await _context.Households
+                .FirstOrDefaultAsync(h => h.Id == request.HouseholdId.Value && h.TenantId == tenantId.Value);
 
-            if (!householdExists)
+            if (household == null)
             {
                 return BadRequest("Selected household was not found.");
             }
@@ -178,13 +193,26 @@ public class ClientsController : ControllerBase
             HouseholdCount = request.HouseholdCount,
             StabilityScore = request.StabilityScore,
             LifePhase = request.LifePhase,
-            HouseholdId = request.HouseholdId,
             HouseholdRole = request.HouseholdRole,
             NextFollowupDate = ToUtcDate(request.NextFollowupDate),
             TenantId = tenantId.Value
         };
 
         _context.Clients.Add(newClient);
+        if (household != null)
+        {
+            await HouseholdMembership.AssignAsync(_context, newClient, household, request.HouseholdRole);
+        }
+
+        // A next follow-up date shows up in Follow-ups straight away (same save, so a person is
+        // never created without the follow-up their date promises).
+        await PersonFollowUps.SyncAsync(
+            _context,
+            newClient,
+            previousDate: null,
+            previousDefaultNotes: string.Empty,
+            _currentUser.UserId);
+
         await _context.SaveChangesAsync();
 
         return Ok(new EntityCreatedResponse
@@ -235,18 +263,22 @@ public class ClientsController : ControllerBase
         }
 
         var client = await _context.Clients.FirstOrDefaultAsync(c => c.Id == id);
-        if (client == null) return NotFound("Client not found.");
+        if (client == null) return NotFound("Person not found.");
 
+        Household? household = null;
         if (request.HouseholdId.HasValue)
         {
-            var householdExists = await _context.Households
-                .AnyAsync(h => h.Id == request.HouseholdId.Value && h.TenantId == tenantId.Value);
+            household = await _context.Households
+                .FirstOrDefaultAsync(h => h.Id == request.HouseholdId.Value && h.TenantId == tenantId.Value);
 
-            if (!householdExists)
+            if (household == null)
             {
                 return BadRequest("Selected household was not found.");
             }
         }
+
+        var previousFollowupDate = client.NextFollowupDate;
+        var previousDefaultNotes = PersonFollowUps.DefaultNotes(client.FirstName, client.LastName);
 
         client.FirstName = request.FirstName.Trim();
         client.LastName = request.LastName.Trim();
@@ -254,27 +286,158 @@ public class ClientsController : ControllerBase
         client.Phone = request.Phone?.Trim() ?? string.Empty;
         client.Address = request.Address.Trim();
         client.DateOfBirth = ToUtcDate(request.DateOfBirth);
-        client.SSNLast4 = NormalizeSsnLast4(request.SSNLast4);
+        // The stored digits are never returned to the browser, so an edit form cannot echo them
+        // back. A blank value on update therefore means "unchanged", not "erase".
+        if (!string.IsNullOrWhiteSpace(request.SSNLast4))
+        {
+            client.SSNLast4 = NormalizeSsnLast4(request.SSNLast4);
+        }
         client.PhotoUrl = string.IsNullOrWhiteSpace(request.PhotoUrl) ? null : request.PhotoUrl.Trim();
         client.MaritalStatus = request.MaritalStatus;
         client.EmploymentStatus = request.EmploymentStatus;
         client.HouseholdCount = request.HouseholdCount;
         client.StabilityScore = request.StabilityScore;
         client.LifePhase = request.LifePhase;
-        client.HouseholdId = request.HouseholdId;
-        client.HouseholdRole = request.HouseholdRole;
         client.NextFollowupDate = ToUtcDate(request.NextFollowupDate);
 
+        // Keep the household's head in agreement with this person's household and role.
+        if (household != null)
+        {
+            if (client.HouseholdId != household.Id || client.HouseholdRole != request.HouseholdRole)
+            {
+                await HouseholdMembership.AssignAsync(_context, client, household, request.HouseholdRole);
+            }
+        }
+        else
+        {
+            if (client.HouseholdId.HasValue)
+            {
+                await HouseholdMembership.UnlinkAsync(_context, client);
+            }
+
+            client.HouseholdRole = request.HouseholdRole;
+        }
+
         await _context.SaveChangesAsync();
+
+        // Move, add or cancel the follow-up that comes from the next follow-up date. Saved
+        // separately so a double-submitted edit (both requests replacing the same follow-up)
+        // cannot fail the profile save itself; the deterministic follow-up id means the
+        // loser of that race has nothing left to do.
+        try
+        {
+            await PersonFollowUps.SyncAsync(
+                _context,
+                client,
+                previousFollowupDate,
+                previousDefaultNotes,
+                _currentUser.UserId);
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            _logger.LogWarning(ex, "Follow-up for person {ClientId} was already updated by a concurrent save.", client.Id);
+        }
+
         return Ok();
     }
+
+    // Deleting a person is only allowed while nothing else points at them: service records,
+    // outcomes, growth plans and documents are the organization's history and must not vanish
+    // (or be cascaded away) because a profile was removed. What goes with the person: their own
+    // follow-ups, the family members recorded on their profile, and their place in a household.
+    [HttpDelete("{id:guid}")]
+    [Authorize(Policy = "ServiceWriter")]
+    public async Task<IActionResult> DeleteClient(Guid id)
+    {
+        var client = await _context.Clients.FirstOrDefaultAsync(c => c.Id == id);
+        if (client == null) return NotFound("Person not found.");
+
+        var familyMembers = await _context.FamilyMembers
+            .Where(f => f.ClientId == id)
+            .ToListAsync();
+        var familyIds = familyMembers.Select(f => f.Id).ToList();
+
+        var blocked = new ClientDeleteBlockedDto
+        {
+            ServiceRecords = await _context.Investments.CountAsync(i =>
+                i.ClientId == id || (i.FamilyMemberId.HasValue && familyIds.Contains(i.FamilyMemberId.Value))),
+            Outcomes = await _context.Imprints.CountAsync(i =>
+                i.ClientId == id || (i.FamilyMemberId.HasValue && familyIds.Contains(i.FamilyMemberId.Value))),
+            GrowthPlans = await _context.GrowthPlans.CountAsync(g =>
+                g.ClientId == id || (g.FamilyMemberId.HasValue && familyIds.Contains(g.FamilyMemberId.Value))),
+            Documents = await _context.Documents.CountAsync(d => d.ClientId == id)
+        };
+
+        var name = $"{client.FirstName} {client.LastName}".Trim();
+        var linked = DescribeLinkedRecords(blocked);
+        if (linked.Count > 0)
+        {
+            blocked.Message =
+                $"{name} can't be deleted because {JoinWithAnd(linked)} {(IsSingular(blocked) ? "is" : "are")} linked to their profile. " +
+                "Delete or move those records first, or keep this profile.";
+            return Conflict(blocked);
+        }
+
+        var followUps = await _context.Tasks
+            .Where(t => t.ClientId == id)
+            .ToListAsync();
+
+        if (client.HouseholdId.HasValue)
+        {
+            await HouseholdMembership.UnlinkAsync(_context, client);
+        }
+
+        // Also covers stale data where they are recorded as head of a household they left.
+        var headedHouseholds = await _context.Households
+            .Where(h => h.PrimaryClientId == id)
+            .ToListAsync();
+        foreach (var household in headedHouseholds)
+        {
+            household.PrimaryClientId = null;
+        }
+
+        _context.Tasks.RemoveRange(followUps);
+        _context.FamilyMembers.RemoveRange(familyMembers);
+        _context.Clients.Remove(client);
+        await _context.SaveChangesAsync();
+
+        return Ok(new ClientDeleteResultDto
+        {
+            Message = $"Deleted {name}.",
+            FollowUpsRemoved = followUps.Count,
+            FamilyMembersRemoved = familyMembers.Count
+        });
+    }
+
+    private static List<string> DescribeLinkedRecords(ClientDeleteBlockedDto counts)
+    {
+        var parts = new List<string>();
+        if (counts.ServiceRecords > 0) parts.Add(Plural(counts.ServiceRecords, "service record", "service records"));
+        if (counts.Outcomes > 0) parts.Add(Plural(counts.Outcomes, "outcome", "outcomes"));
+        if (counts.GrowthPlans > 0) parts.Add(Plural(counts.GrowthPlans, "growth plan", "growth plans"));
+        if (counts.Documents > 0) parts.Add(Plural(counts.Documents, "document", "documents"));
+        return parts;
+    }
+
+    private static bool IsSingular(ClientDeleteBlockedDto counts) =>
+        counts.ServiceRecords + counts.Outcomes + counts.GrowthPlans + counts.Documents == 1;
+
+    private static string Plural(int count, string one, string many) => count == 1 ? $"1 {one}" : $"{count} {many}";
+
+    private static string JoinWithAnd(IReadOnlyList<string> parts) => parts.Count switch
+    {
+        0 => string.Empty,
+        1 => parts[0],
+        _ => string.Join(", ", parts.Take(parts.Count - 1)) + " and " + parts[^1]
+    };
 
     [HttpPost("{id}/members")]
     [Authorize(Policy = "ServiceWriter")]
     public async Task<IActionResult> AddFamilyMember(Guid id, CreateFamilyMemberRequest request)
     {
         var client = await _context.Clients.FirstOrDefaultAsync(c => c.Id == id);
-        if (client == null) return NotFound("Client not found.");
+        if (client == null) return NotFound("Person not found.");
 
         DateTime? utcBirthDate = null;
         if (request.DateOfBirth.HasValue)
@@ -425,13 +588,20 @@ public class ClientsController : ControllerBase
         var hasInvestments = await _context.Investments.AnyAsync(i => i.FamilyMemberId == memberId);
         if (hasInvestments)
         {
-            return BadRequest("Cannot delete a member who has recorded investments. Reassign the investments first.");
+            return BadRequest("This family member has service records, so they can't be deleted. Move those records to another person first.");
         }
 
         var hasImprints = await _context.Imprints.AnyAsync(i => i.FamilyMemberId == memberId);
         if (hasImprints)
         {
-            return BadRequest("Cannot delete a member who has recorded milestones. Reassign or remove the milestones first.");
+            return BadRequest("This family member has outcomes recorded, so they can't be deleted. Move or delete those outcomes first.");
+        }
+
+        // Growth plans reference the family member with a foreign key, so deleting would fail.
+        var hasGrowthPlans = await _context.GrowthPlans.AnyAsync(g => g.FamilyMemberId == memberId);
+        if (hasGrowthPlans)
+        {
+            return BadRequest("This family member has a growth plan, so they can't be deleted. Delete that growth plan first.");
         }
 
         _context.FamilyMembers.Remove(member);

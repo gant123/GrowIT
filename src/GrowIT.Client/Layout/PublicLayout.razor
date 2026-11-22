@@ -2,11 +2,18 @@
 @implements IDisposable
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
+@inject IContentService ContentService
 
 @* Theme is owned by data-theme on <html> (growITTheme in app.js) — see MainLayout. *@
 <div class="public-layout @(_mobileMenuOpen ? "mobile-menu-open" : string.Empty)">
     <HeadContent>
-        <PageTitle>@CurrentSeo.Title</PageTitle>
+        @* Only pages listed in SeoPages take their title from the layout. Others (a blog
+           article, the 404 page, ...) set their own, which the layout's title would otherwise
+           always override because HeadContent renders last. *@
+        @if (HasSeoEntry)
+        {
+            <PageTitle>@CurrentSeo.Title</PageTitle>
+        }
         <meta name="description" content="@CurrentSeo.Description" />
         <meta name="keywords" content="@CurrentSeo.Keywords" />
         <meta name="author" content="grow.IT" />
@@ -46,7 +53,10 @@
                 <a href="/welcome#features">Features</a>
                 <a href="/welcome#pricing">Pricing</a>
                 <a href="/welcome#demo">Demo</a>
-                <a href="/blog">Blog</a>
+                @if (_showBlogLink)
+                {
+                    <a href="/blog">Blog</a>
+                }
                 <a href="/contact">Contact</a>
             </nav>
             
@@ -111,7 +121,10 @@
                     <a href="/welcome#features" @onclick="CloseMobileMenu">Features</a>
                     <a href="/welcome#pricing" @onclick="CloseMobileMenu">Pricing</a>
                     <a href="/welcome#demo" @onclick="CloseMobileMenu">Demo</a>
-                    <a href="/blog" @onclick="CloseMobileMenu">Blog</a>
+                    @if (_showBlogLink)
+                    {
+                        <a href="/blog" @onclick="CloseMobileMenu">Blog</a>
+                    }
                     <a href="/contact" @onclick="CloseMobileMenu">Contact</a>
                 </nav>
                 <div class="mobile-actions">
@@ -129,7 +142,7 @@
 
     @if (ShowGlobalPublicFooter)
     {
-        <PublicSiteFooter CurrentTheme="@_currentTheme" />
+        <PublicSiteFooter CurrentTheme="@_currentTheme" ShowBlogLink="@_showBlogLink" />
     }
 </div>
 
@@ -217,6 +230,9 @@
 
     private string _currentTheme = "light";
     private bool _mobileMenuOpen = false;
+    // The Blog link is only shown once something is published; an empty blog in the main nav
+    // looked broken. Cached in ContentService, so this is not a request per page view.
+    private bool _showBlogLink;
     private static readonly HashSet<string> FooterExcludedPaths = new(StringComparer.OrdinalIgnoreCase)
     {
         "/login",
@@ -262,9 +278,18 @@
         get
         {
             var path = GetNormalizedPath();
+            if (IsBlogArticlePath)
+            {
+                return SeoPages["/blog"] with { OpenGraphType = "article" };
+            }
+
             return SeoPages.TryGetValue(path, out var entry) ? entry : DefaultSeo;
         }
     }
+
+    private bool IsBlogArticlePath => GetNormalizedPath().StartsWith("/blog/", StringComparison.Ordinal);
+
+    private bool HasSeoEntry => !IsBlogArticlePath && SeoPages.ContainsKey(GetNormalizedPath());
 
     private string CurrentSeoJsonLd
     {
@@ -347,9 +372,10 @@
         _ => normalizedPath
     };
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         Navigation.LocationChanged += HandleLocationChanged;
+        _showBlogLink = await ContentService.HasPublishedBlogPostsAsync();
     }
 
     private void HandleLocationChanged(object? sender, LocationChangedEventArgs e)

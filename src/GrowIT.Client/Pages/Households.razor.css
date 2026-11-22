@@ -137,6 +137,7 @@
 }
 
 .household-card {
+    min-width: 0;
     border: 1px solid var(--growit-border);
     border-radius: 14px;
     background: var(--growit-bg-secondary);
@@ -197,8 +198,19 @@
 .member-table-wrap {
     border: 1px solid var(--growit-border);
     border-radius: 12px;
-    overflow: hidden;
+    /* Scroll inside the card rather than widening the page on narrow screens. */
+    overflow-x: auto;
+    overflow-y: hidden;
     background: var(--growit-bg-card);
+}
+
+/* On phones the email column is what pushes the table past the screen; the
+   person's profile (linked from the name) still shows it. */
+@media (max-width: 576px) {
+    .member-table th:nth-child(3),
+    .member-table td:nth-child(3) {
+        display: none;
+    }
 }
 
 .member-table {
@@ -329,13 +341,49 @@
     color: var(--growit-text-primary);
 }
 
+/* Rename / delete sit beside the member count in each card header. */
+.household-card-heading {
+    min-width: 0;
+}
+
+.household-card-heading h3 {
+    overflow-wrap: anywhere;
+}
+
+.household-card-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    flex-shrink: 0;
+}
+
+.member-link {
+    color: var(--growit-text-primary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.member-link:hover,
+.member-link:focus-visible {
+    color: var(--brand-primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.member-remove-btn {
+    width: 30px;
+    height: 30px;
+}
+
 @media (max-width: 1200px) {
     .household-kpis {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .household-grid {
-        grid-template-columns: 1fr;
+        /* minmax(0, ...) lets the card shrink to the screen; a bare 1fr track grows to the
+           member table's minimum width and overflowed phones. */
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 
@@ -353,4 +401,30 @@
     .member-table-wrap {
         overflow-x: auto;
     }
+}
+
+/* Dark theme: the blue and violet accents were the only cool hues on the page and fought the
+   green-black palette. Map them onto the garden set (info teal, brand green, neutral). */
+[data-theme="dark"] .household-kpi-icon.total {
+    background: color-mix(in srgb, var(--growit-info) 16%, transparent);
+    color: var(--growit-info);
+    border-color: color-mix(in srgb, var(--growit-info) 30%, transparent);
+}
+
+[data-theme="dark"] .household-kpi-icon.head {
+    background: color-mix(in srgb, var(--brand-primary) 16%, transparent);
+    color: var(--growit-green-light);
+    border-color: color-mix(in srgb, var(--brand-primary) 30%, transparent);
+}
+
+[data-theme="dark"] .member-count-chip {
+    background: color-mix(in srgb, var(--growit-text-primary) 6%, var(--growit-bg-card));
+    border-color: var(--growit-border);
+    color: var(--growit-text-secondary);
+}
+
+[data-theme="dark"] .role-pill.role-spouse {
+    background: color-mix(in srgb, var(--growit-info) 16%, transparent);
+    color: var(--growit-info);
+    border-color: color-mix(in srgb, var(--growit-info) 30%, transparent);
 }

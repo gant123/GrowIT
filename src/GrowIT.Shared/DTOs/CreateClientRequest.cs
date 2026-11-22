@@ -6,19 +6,19 @@ namespace GrowIT.Shared.DTOs;
 public class CreateClientRequest : IValidatableObject
 {
    
-    [Required]
-    [MaxLength(80)]
+    [Required(ErrorMessage = "First name is required.")]
+    [MaxLength(80, ErrorMessage = "First name must be 80 characters or fewer.")]
     public string FirstName { get; set; } = string.Empty;
 
-    [Required]
-    [MaxLength(80)]
+    [Required(ErrorMessage = "Last name is required.")]
+    [MaxLength(80, ErrorMessage = "Last name must be 80 characters or fewer.")]
     public string LastName { get; set; } = string.Empty;
 
-    [EmailAddress]
+    [EmailAddress(ErrorMessage = "Enter a valid email address, or leave it blank.")]
     [MaxLength(254)]
     public string? Email { get; set; }
 
-    [Phone]
+    [Phone(ErrorMessage = "Enter a valid phone number, or leave it blank.")]
     [MaxLength(40)]
     public string? Phone { get; set; }
 

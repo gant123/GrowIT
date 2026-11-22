@@ -1,10 +1,13 @@
 @page "/imprints"
+@using System.ComponentModel.DataAnnotations
 @using GrowIT.Shared.DTOs
 @using GrowIT.Shared.Enums
+@using GrowIT.Shared.Validation
 @inject IImprintService ImprintService
 @inject IClientService ClientService
 @inject IInvestmentService InvestmentService
 @inject IRoleAccessService RoleAccessService
+@inject NavigationManager Nav
 
 <PageTitle>Outcomes - grow.IT</PageTitle>
 
@@ -13,7 +16,7 @@
         <Actions>
             @if (_canDocumentServiceRecords)
             {
-                <button class="btn btn-primary" @onclick="OpenNewImprint">
+                <button class="btn-growit btn-primary-growit" @onclick="OpenNewImprint">
                     <i class="bi bi-plus-lg"></i>
                     <span>Add Outcome</span>
                 </button>
@@ -23,14 +26,14 @@
 
     @if (!_canDocumentServiceRecords)
     {
-        <div class="alert alert-info mb-3">You can view outcomes, but only Case Manager, Manager, Admin, or Owner roles can add them.</div>
+        <div class="alert alert-info mb-3">You can view outcomes, but only Case Manager, Manager, Admin, or Owner roles can add or change them.</div>
     }
 
     @if (!string.IsNullOrWhiteSpace(_loadError))
     {
         <div class="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
             <div>@_loadError</div>
-            <button class="btn btn-sm btn-outline-light" @onclick="ReloadImprintsAsync">Retry</button>
+            <button class="btn-growit btn-secondary-growit btn-sm" @onclick="ReloadImprintsAsync">Retry</button>
         </div>
     }
 
@@ -43,10 +46,10 @@
             </div>
         </div>
         <div class="imprint-kpi-card">
-            <div class="imprint-kpi-icon verified"><i class="bi bi-patch-check"></i></div>
+            <div class="imprint-kpi-icon verified"><i class="bi bi-graph-up-arrow"></i></div>
             <div>
-                <div class="imprint-kpi-label">Verified Outcomes</div>
-                <div class="imprint-kpi-value">@VerifiedImprintCount</div>
+                <div class="imprint-kpi-label">Improved</div>
+                <div class="imprint-kpi-value">@ImprovedImprintCount</div>
             </div>
         </div>
         <div class="imprint-kpi-card">
@@ -69,26 +72,26 @@
         <div class="imprint-panel-header">
             <div>
                 <h2>Saved Outcomes</h2>
-                <p>Search, filter, and review the changes and milestones your organization has recorded.</p>
+                <p>Search, filter, and open an outcome to see what changed, edit it, or delete it.</p>
             </div>
             <div class="imprint-panel-meta">@FilteredImprints.Count() result(s)</div>
         </div>
 
         <div class="imprint-filters">
             <div class="imprint-filter-field imprint-filter-search">
-                <label>Search</label>
+                <label for="outcome-search">Search</label>
                 <div class="filter-input-wrap">
                     <i class="bi bi-search"></i>
-                    <input type="text" class="form-control" placeholder="Search title or person" @bind="_searchQuery" @bind:event="oninput" />
+                    <input id="outcome-search" type="text" class="form-control" placeholder="Search title or person" @bind="_searchQuery" @bind:event="oninput" />
                 </div>
             </div>
             <div class="imprint-filter-field">
-                <label>Category</label>
-                <select class="form-select" @bind="_categoryFilter">
+                <label for="outcome-category">Category</label>
+                <select id="outcome-category" class="form-select" @bind="_categoryFilter">
                     <option value="">All categories</option>
-                    @foreach (var cat in Enum.GetNames(typeof(ImprintCategory)))
+                    @foreach (var cat in Enum.GetValues<ImprintCategory>())
                     {
-                        <option value="@cat">@cat</option>
+                        <option value="@cat">@FormatEnumLabel(cat.ToString())</option>
                     }
                 </select>
             </div>
@@ -106,21 +109,26 @@
             <div class="imprint-list">
                 @foreach (var imprint in FilteredImprints.OrderByDescending(i => i.Date))
                 {
-                    <article class="imprint-row" @key="imprint.Id">
-                        <div class="imprint-row-leading">
-                            <div class="imprint-row-icon @GetCategoryTone(imprint.Category)">
+                    <button type="button" class="imprint-row" @key="imprint.Id" @onclick="() => OpenDetailsAsync(imprint.Id)"
+                            aria-label="@($"Open outcome: {imprint.Title}")">
+                        <span class="imprint-row-leading">
+                            <span class="imprint-row-icon @GetCategoryTone(imprint.Category)">
                                 <i class="@GetCategoryIcon(imprint.Category)"></i>
-                            </div>
-                            <div class="imprint-row-content">
-                                <h3>@imprint.Title</h3>
-                                <div class="imprint-row-meta">
+                            </span>
+                            <span class="imprint-row-content">
+                                <span class="imprint-row-title">@imprint.Title</span>
+                                <span class="imprint-row-meta">
                                     <span><i class="bi bi-person"></i> @imprint.PersonName</span>
-                                    <span><i class="bi bi-calendar3"></i> @imprint.Date.ToLocalTime().ToString("MMM d, yyyy")</span>
+                                    <span><i class="bi bi-calendar3"></i> @FormatDate(imprint.Date)</span>
                                     <span class="category-chip">@FormatEnumLabel(imprint.Category.ToString())</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="imprint-row-trailing">
+                                    @if (imprint.FollowupDate.HasValue)
+                                    {
+                                        <span><i class="bi bi-alarm"></i> Follow up @FormatDate(imprint.FollowupDate.Value)</span>
+                                    }
+                                </span>
+                            </span>
+                        </span>
+                        <span class="imprint-row-trailing">
                             @if (imprint.IsVerified)
                             {
                                 <span class="verification-pill verified">
@@ -128,15 +136,10 @@
                                     Verified
                                 </span>
                             }
-                            else
-                            {
-                                <span class="verification-pill pending">
-                                    <i class="bi bi-hourglass-split"></i>
-                                    Needs Proof
-                                </span>
-                            }
-                        </div>
-                    </article>
+                            <span class="outcome-pill @GetOutcomeTone(imprint.Outcome)">@FormatOutcome(imprint.Outcome)</span>
+                            <i class="bi bi-chevron-right imprint-row-chevron" aria-hidden="true"></i>
+                        </span>
+                    </button>
                 }
             </div>
         }
@@ -144,61 +147,180 @@
         {
             <div class="imprint-empty">
                 <div class="imprint-empty-icon"><i class="bi bi-journal-x"></i></div>
-                <h3>No outcomes yet</h3>
-                <p>Add outcomes as your work creates change. Grow.IT can reuse them in impact reports and portfolio content.</p>
-                @if (_canDocumentServiceRecords)
+                @if (_allImprints.Any())
                 {
-                    <button class="btn btn-outline-primary" @onclick="OpenNewImprint">
-                        <i class="bi bi-plus-lg"></i>
-                        <span>Add First Outcome</span>
-                    </button>
+                    <h3>No outcomes match</h3>
+                    <p>Try a different search or category.</p>
+                }
+                else
+                {
+                    <h3>No outcomes yet</h3>
+                    <p>Add outcomes as your work creates change. grow.IT can reuse them in impact reports and portfolio content.</p>
+                    @if (_canDocumentServiceRecords)
+                    {
+                        <button class="btn-growit btn-secondary-growit" @onclick="OpenNewImprint">
+                            <i class="bi bi-plus-lg"></i>
+                            <span>Add First Outcome</span>
+                        </button>
+                    }
                 }
             </div>
         }
     </section>
 </div>
 
-@if (_showCreateModal && _canDocumentServiceRecords)
+@* ---------- Outcome details ---------- *@
+@if (_showDetails)
 {
-    <div class="modal fade show d-block growit-modal-backdrop" tabindex="-1">
+    <div class="modal fade show d-block growit-modal-backdrop" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="outcome-details-title">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content growit-modal-shell">
                 <div class="modal-header">
                     <div>
-                        <h5 class="modal-title">Add Outcome</h5>
-                        <div class="modal-subtitle">Describe what changed in plain language. Add proof or follow-up details if you have them.</div>
+                        <h5 class="modal-title" id="outcome-details-title">@(_detail?.Title ?? "Outcome")</h5>
+                        <div class="modal-subtitle">@(_detail?.PersonName ?? "Loading...")</div>
                     </div>
-                    <button type="button" class="btn-close" @onclick="CloseCreateModal"></button>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseDetails"></button>
                 </div>
                 <div class="modal-body">
-                    @if (!string.IsNullOrWhiteSpace(_createError))
+                    @if (!string.IsNullOrWhiteSpace(_detailError))
                     {
-                        <div class="alert alert-danger">@_createError</div>
+                        <div class="alert alert-danger">@_detailError</div>
                     }
 
-                    @if (_isCreateLoading)
+                    @if (_isDetailLoading)
                     {
-                        <div class="text-center py-4 text-muted">Loading required data...</div>
+                        <div class="text-center py-4 text-muted">Loading outcome...</div>
+                    }
+                    else if (_detail != null)
+                    {
+                        <dl class="outcome-detail-grid">
+                            <div>
+                                <dt>Person</dt>
+                                <dd>
+                                    @_detail.PersonName
+                                    @if (_detail.FamilyMemberId.HasValue && !string.IsNullOrWhiteSpace(_detail.ClientName))
+                                    {
+                                        <span class="text-muted small"> (household of @_detail.ClientName)</span>
+                                    }
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>When it happened</dt>
+                                <dd>@FormatDate(_detail.DateOccurred)</dd>
+                            </div>
+                            <div>
+                                <dt>Type of outcome</dt>
+                                <dd>@FormatEnumLabel(_detail.Category.ToString())</dd>
+                            </div>
+                            <div>
+                                <dt>Improved or changed?</dt>
+                                <dd><span class="outcome-pill @GetOutcomeTone(_detail.Outcome)">@FormatOutcome(_detail.Outcome)</span></dd>
+                            </div>
+                            <div>
+                                <dt>Follow-up date</dt>
+                                <dd>
+                                    @if (_detail.FollowupDate.HasValue)
+                                    {
+                                        <span>@FormatDate(_detail.FollowupDate.Value)</span>
+                                        <div class="text-muted small">Listed in <a href="/tasks">Follow-ups</a>.</div>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">None</span>
+                                    }
+                                </dd>
+                            </div>
+                            <div>
+                                <dt>Related service record</dt>
+                                <dd>@(string.IsNullOrWhiteSpace(_detail.InvestmentSummary) ? "None" : _detail.InvestmentSummary)</dd>
+                            </div>
+                            <div class="outcome-detail-wide">
+                                <dt>What changed?</dt>
+                                <dd class="outcome-detail-notes">@(string.IsNullOrWhiteSpace(_detail.Notes) ? "Nothing written yet." : _detail.Notes)</dd>
+                            </div>
+                        </dl>
+                    }
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <div class="d-flex gap-2">
+                        @if (_canDocumentServiceRecords && _detail != null)
+                        {
+                            <button type="button" class="btn-growit btn-secondary-growit btn-sm" @onclick="OpenEditAsync">
+                                <i class="bi bi-pencil" aria-hidden="true"></i> Edit
+                            </button>
+                            <button type="button" class="btn-growit btn-ghost-growit btn-sm text-danger" @onclick="() => _confirmDelete = true">
+                                <i class="bi bi-trash3" aria-hidden="true"></i> Delete
+                            </button>
+                        }
+                    </div>
+                    <button type="button" class="btn-growit btn-secondary-growit btn-sm" @onclick="CloseDetails">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<ConfirmActionModal Show="_confirmDelete"
+                    Title="Delete this outcome?"
+                    Message="@DeleteMessage"
+                    ConfirmText="Delete Outcome"
+                    Danger="true"
+                    Busy="_isDeleting"
+                    OnConfirm="DeleteImprintAsync"
+                    OnCancel="() => _confirmDelete = false" />
+
+@* ---------- Add / edit outcome ---------- *@
+@if (_showFormModal && _canDocumentServiceRecords)
+{
+    <div class="modal fade show d-block growit-modal-backdrop" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="outcome-form-title">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content growit-modal-shell">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title" id="outcome-form-title">@(_editingId.HasValue ? "Edit Outcome" : "Add Outcome")</h5>
+                        <div class="modal-subtitle">Describe what changed in plain language. Add proof or follow-up details if you have them.</div>
+                    </div>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseFormModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(_formError))
+                    {
+                        <div class="alert alert-danger">@_formError</div>
+                    }
+
+                    @if (_isFormLoading)
+                    {
+                        <div class="text-center py-4 text-muted">Loading people and service records...</div>
                     }
                     else
                     {
-                        <EditForm Model="_createRequest" OnValidSubmit="SubmitImprintAsync">
+                        <EditForm Model="_form" OnValidSubmit="SubmitFormAsync">
                             <DataAnnotationsValidator />
+                            @* Without this, a missing person or title made "Save Outcome" do nothing. *@
+                            <ValidationSummary class="text-danger small mb-2" />
 
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label">Who does this outcome belong to?</label>
-                                    <select class="form-select" value="@_createRequest.ClientId" @onchange="OnCreateClientChanged">
-                                        <option value="">Select a person or household</option>
-                                        @foreach (var client in _clients.OrderBy(c => c.Name))
-                                        {
-                                            <option value="@client.Id">@client.Name</option>
-                                        }
-                                    </select>
+                                    <label class="form-label" for="outcome-person">Who does this outcome belong to? <span class="text-danger" aria-hidden="true">*</span></label>
+                                    @if (_editingId.HasValue)
+                                    {
+                                        <div class="form-control-plaintext" id="outcome-person">@_editingClientName</div>
+                                    }
+                                    else
+                                    {
+                                        <select id="outcome-person" class="form-select" value="@_form.ClientId" @onchange="OnFormClientChanged">
+                                            <option value="@Guid.Empty">Select a person or household</option>
+                                            @foreach (var client in _clients.OrderBy(c => c.Name))
+                                            {
+                                                <option value="@client.Id">@client.Name</option>
+                                            }
+                                        </select>
+                                    }
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Specific household member (optional)</label>
-                                    <InputSelect class="form-select" @bind-Value="_createRequest.FamilyMemberId">
+                                    <label class="form-label" for="outcome-member">Specific household member (optional)</label>
+                                    <InputSelect id="outcome-member" class="form-select" @bind-Value="_form.FamilyMemberId">
                                         <option value="">Entire household</option>
                                         @foreach (var member in _selectedMembers)
                                         {
@@ -207,22 +329,22 @@
                                     </InputSelect>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Related service record (optional)</label>
-                                    <InputSelect class="form-select" @bind-Value="_createRequest.InvestmentId">
+                                    <label class="form-label" for="outcome-service">Related service record (optional)</label>
+                                    <InputSelect id="outcome-service" class="form-select" @bind-Value="_form.InvestmentId">
                                         <option value="">None</option>
                                         @foreach (var inv in _selectedClientInvestments)
                                         {
-                                            <option value="@inv.Id">@inv.Date.ToLocalTime().ToString("MMM d") - @inv.Purpose - @inv.Amount.ToString("C0")</option>
+                                            <option value="@inv.Id">@inv.Date.ToString("MMM d") - @inv.Purpose - @inv.Amount.ToString("C0")</option>
                                         }
                                     </InputSelect>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">When did this happen?</label>
-                                    <InputDate class="form-control" @bind-Value="_createRequest.DateOccurred" />
+                                    <label class="form-label" for="outcome-date">When did this happen?</label>
+                                    <InputDate id="outcome-date" class="form-control" @bind-Value="_form.DateOccurred" />
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">What type of outcome is this?</label>
-                                    <InputSelect class="form-select" @bind-Value="_createRequest.Category">
+                                    <label class="form-label" for="outcome-type">What type of outcome is this?</label>
+                                    <InputSelect id="outcome-type" class="form-select" @bind-Value="_form.Category">
                                         @foreach (var cat in Enum.GetValues<ImprintCategory>())
                                         {
                                             <option value="@cat">@FormatEnumLabel(cat.ToString())</option>
@@ -230,36 +352,37 @@
                                     </InputSelect>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Was the situation improved or changed?</label>
-                                    <InputSelect class="form-select" @bind-Value="_createRequest.Outcome">
+                                    <label class="form-label" for="outcome-result">Was the situation improved or changed?</label>
+                                    <InputSelect id="outcome-result" class="form-select" @bind-Value="_form.Outcome">
                                         @foreach (var outcome in Enum.GetValues<ImpactOutcome>())
                                         {
-                                            <option value="@outcome">@FormatEnumLabel(outcome.ToString())</option>
+                                            <option value="@outcome">@FormatOutcome(outcome)</option>
                                         }
                                     </InputSelect>
                                 </div>
                                 <div class="col-12">
-                                    <label class="form-label">Short title</label>
-                                    <InputText class="form-control" @bind-Value="_createRequest.Title" placeholder="Example: Household retained housing for 90 days" />
+                                    <label class="form-label" for="outcome-title">Short title <span class="text-danger" aria-hidden="true">*</span></label>
+                                    <InputText id="outcome-title" class="form-control" @bind-Value="_form.Title" placeholder="Example: Household retained housing for 90 days" />
                                 </div>
                                 <div class="col-12">
-                                    <label class="form-label">What changed?</label>
-                                    <InputTextArea class="form-control" rows="4" @bind-Value="_createRequest.Notes" placeholder="Example: The household kept stable housing for 90 days. Proof: lease renewal confirmed on file." />
+                                    <label class="form-label" for="outcome-notes">What changed?</label>
+                                    <InputTextArea id="outcome-notes" class="form-control" rows="4" @bind-Value="_form.Notes" placeholder="Example: The household kept stable housing for 90 days. Proof: lease renewal confirmed on file." />
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Follow-up date (optional)</label>
-                                    <InputDate class="form-control" @bind-Value="_createRequest.FollowupDate" />
+                                    <label class="form-label" for="outcome-followup">Follow-up date (optional)</label>
+                                    <InputDate id="outcome-followup" class="form-control" @bind-Value="_form.FollowupDate" />
+                                    <div class="form-text">A follow-up for this person is added to Follow-ups on this date.</div>
                                 </div>
                             </div>
 
                             <div class="d-flex justify-content-end gap-2 mt-4">
-                                <button type="button" class="btn btn-outline-secondary" @onclick="CloseCreateModal">Cancel</button>
-                                <button type="submit" class="btn btn-primary" disabled="@_isSavingCreate">
-                                    @if (_isSavingCreate)
+                                <button type="button" class="btn-growit btn-secondary-growit" @onclick="CloseFormModal">Cancel</button>
+                                <button type="submit" class="btn-growit btn-primary-growit" disabled="@_isSavingForm">
+                                    @if (_isSavingForm)
                                     {
-                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                                     }
-                                    <span>Save Outcome</span>
+                                    <span>@(_editingId.HasValue ? "Save Changes" : "Save Outcome")</span>
                                 </button>
                             </div>
                         </EditForm>
@@ -271,6 +394,28 @@
 }
 
 @code {
+    /// <summary>Form model shared by "Add Outcome" and "Edit Outcome"; same rules as the API.</summary>
+    private sealed class OutcomeForm
+    {
+        [RequiredGuid(ErrorMessage = "Choose who this outcome belongs to.")]
+        public Guid ClientId { get; set; }
+        public Guid? FamilyMemberId { get; set; }
+        public Guid? InvestmentId { get; set; }
+
+        [Required(ErrorMessage = "Give the outcome a short title.")]
+        [MaxLength(200, ErrorMessage = "Keep the title under 200 characters.")]
+        public string Title { get; set; } = string.Empty;
+
+        public ImprintCategory Category { get; set; }
+        public ImpactOutcome Outcome { get; set; } = ImpactOutcome.Improved;
+        public DateTime DateOccurred { get; set; } = TodayAsDate();
+
+        [MaxLength(4000, ErrorMessage = "Keep \"What changed?\" under 4,000 characters.")]
+        public string Notes { get; set; } = string.Empty;
+
+        public DateTime? FollowupDate { get; set; }
+    }
+
     private List<ImprintListDto> _allImprints = new();
     private List<ClientDto> _clients = new();
     private List<FamilyMemberDto> _selectedMembers = new();
@@ -278,26 +423,70 @@
     private string _searchQuery = "";
     private string _categoryFilter = "";
     private bool _isLoading = true;
-    private bool _showCreateModal;
-    private bool _isCreateLoading;
-    private bool _isSavingCreate;
     private bool _canDocumentServiceRecords;
-    private string _createError = "";
     private string? _loadError;
-    private CreateImprintRequest _createRequest = new()
-    {
-        DateOccurred = DateTime.UtcNow,
-        Outcome = ImpactOutcome.Improved
-    };
 
-    private int VerifiedImprintCount => _allImprints.Count(i => i.IsVerified);
+    // Details
+    private bool _showDetails;
+    private bool _isDetailLoading;
+    private string? _detailError;
+    private ImprintResponseDto? _detail;
+    private bool _confirmDelete;
+    private bool _isDeleting;
+
+    // Add / edit
+    private bool _showFormModal;
+    private bool _isFormLoading;
+    private bool _isSavingForm;
+    private string _formError = "";
+    private Guid? _editingId;
+    private string _editingClientName = "";
+    private OutcomeForm _form = new();
+
+    private int ImprovedImprintCount => _allImprints.Count(i => i.Outcome == ImpactOutcome.Improved);
     private int DistinctPeopleCount => _allImprints.Select(i => i.PersonId).Distinct().Count();
-    private int ThisMonthImprintCount => _allImprints.Count(i => i.Date.ToUniversalTime() >= new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1));
+    private int ThisMonthImprintCount => _allImprints.Count(i => i.Date.Year == DateTime.UtcNow.Year && i.Date.Month == DateTime.UtcNow.Month);
+
+    private string DeleteMessage => _detail == null
+        ? string.Empty
+        : $"\"{_detail.Title}\" for {_detail.PersonName} will be removed from Outcomes and reports" +
+          (_detail.FollowupDate.HasValue ? ", along with its open follow-up" : string.Empty) +
+          ". This can't be undone.";
 
     protected override async Task OnInitializedAsync()
     {
         _canDocumentServiceRecords = (await RoleAccessService.GetAccessAsync()).CanDocumentServiceRecords;
+        _accessResolved = true;
+        if (_openCreateWhenReady)
+        {
+            _openCreateWhenReady = false;
+            await OpenNewImprint();
+        }
+
         await ReloadImprintsAsync();
+    }
+
+    // /imprints?new=1 opens the add-outcome form straight away (used by the "Log it" sheet).
+    [SupplyParameterFromQuery(Name = "new")]
+    public string? NewRequested { get; set; }
+
+    private bool _accessResolved;
+    private bool _openCreateWhenReady;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(NewRequested))
+        {
+            Nav.NavigateTo("/imprints", replace: true);
+            if (_accessResolved)
+            {
+                await OpenNewImprint();
+            }
+            else
+            {
+                _openCreateWhenReady = true;
+            }
+        }
     }
 
     private async Task ReloadImprintsAsync()
@@ -306,7 +495,7 @@
         _loadError = null;
         try
         {
-            _allImprints = await ImprintService.GetImprintsAsync();
+            _allImprints = await ImprintService.GetImprintsAsync(1, 200);
         }
         catch (Exception ex)
         {
@@ -341,19 +530,74 @@
         }
     }
 
+    // ---------- Details ----------
+
+    private async Task OpenDetailsAsync(Guid id)
+    {
+        _showDetails = true;
+        _isDetailLoading = true;
+        _detailError = null;
+        _detail = null;
+        try
+        {
+            _detail = await ImprintService.GetImprintByIdAsync(id);
+            if (_detail == null)
+            {
+                _detailError = "This outcome wasn't found. It may have been deleted.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _detailError = ex.Message;
+        }
+        finally
+        {
+            _isDetailLoading = false;
+        }
+    }
+
+    private void CloseDetails()
+    {
+        _showDetails = false;
+        _detail = null;
+        _detailError = null;
+        _confirmDelete = false;
+    }
+
+    private async Task DeleteImprintAsync()
+    {
+        if (!_canDocumentServiceRecords || _detail == null) return;
+        _isDeleting = true;
+        try
+        {
+            await ImprintService.DeleteImprintAsync(_detail.Id);
+            _confirmDelete = false;
+            CloseDetails();
+            await ReloadImprintsAsync();
+        }
+        catch (Exception ex)
+        {
+            _confirmDelete = false;
+            _detailError = ex.Message;
+        }
+        finally
+        {
+            _isDeleting = false;
+        }
+    }
+
+    // ---------- Add / edit ----------
+
     private async Task OpenNewImprint()
     {
         if (!_canDocumentServiceRecords) return;
-        _showCreateModal = true;
-        _isCreateLoading = true;
-        _createError = "";
+        _editingId = null;
+        _showFormModal = true;
+        _isFormLoading = true;
+        _formError = "";
         _selectedMembers.Clear();
         _selectedClientInvestments.Clear();
-        _createRequest = new CreateImprintRequest
-        {
-            DateOccurred = DateTime.UtcNow,
-            Outcome = ImpactOutcome.Improved
-        };
+        _form = new OutcomeForm();
 
         try
         {
@@ -361,29 +605,66 @@
         }
         catch (Exception ex)
         {
-            _createError = $"Failed to load clients: {ex.Message}";
+            _formError = $"We couldn't load your people: {ex.Message}";
         }
         finally
         {
-            _isCreateLoading = false;
+            _isFormLoading = false;
         }
     }
 
-    private async Task OnCreateClientChanged(ChangeEventArgs e)
+    private async Task OpenEditAsync()
+    {
+        if (!_canDocumentServiceRecords || _detail == null) return;
+        var detail = _detail;
+
+        _editingId = detail.Id;
+        _editingClientName = string.IsNullOrWhiteSpace(detail.ClientName) ? detail.PersonName : detail.ClientName;
+        _form = new OutcomeForm
+        {
+            ClientId = detail.ClientId,
+            FamilyMemberId = detail.FamilyMemberId,
+            InvestmentId = detail.InvestmentId,
+            Title = detail.Title,
+            Category = detail.Category,
+            Outcome = detail.Outcome,
+            DateOccurred = detail.DateOccurred,
+            Notes = detail.Notes,
+            FollowupDate = detail.FollowupDate
+        };
+        _formError = "";
+        _showDetails = false;
+        _showFormModal = true;
+        _isFormLoading = true;
+        try
+        {
+            await LoadPersonChoicesAsync(detail.ClientId);
+        }
+        finally
+        {
+            _isFormLoading = false;
+        }
+    }
+
+    private async Task OnFormClientChanged(ChangeEventArgs e)
     {
         _selectedMembers.Clear();
         _selectedClientInvestments.Clear();
-        _createRequest.FamilyMemberId = null;
-        _createRequest.InvestmentId = null;
+        _form.FamilyMemberId = null;
+        _form.InvestmentId = null;
 
-        if (!Guid.TryParse(e.Value?.ToString(), out var clientId))
+        if (!Guid.TryParse(e.Value?.ToString(), out var clientId) || clientId == Guid.Empty)
         {
-            _createRequest.ClientId = Guid.Empty;
+            _form.ClientId = Guid.Empty;
             return;
         }
 
-        _createRequest.ClientId = clientId;
+        _form.ClientId = clientId;
+        await LoadPersonChoicesAsync(clientId);
+    }
 
+    private async Task LoadPersonChoicesAsync(Guid clientId)
+    {
         try
         {
             var detail = await ClientService.GetClientDetailAsync(clientId);
@@ -399,57 +680,118 @@
         }
         catch (Exception ex)
         {
-            _createError = $"Failed to load client details: {ex.Message}";
+            _formError = $"We couldn't load this person's household and service records: {ex.Message}";
             _selectedMembers.Clear();
             _selectedClientInvestments.Clear();
         }
     }
 
-    private async Task SubmitImprintAsync()
+    private async Task SubmitFormAsync()
     {
         if (!_canDocumentServiceRecords) return;
-        _createError = "";
+        _formError = "";
 
-        if (_createRequest.ClientId == Guid.Empty)
+        if (_form.ClientId == Guid.Empty)
         {
-            _createError = "Client is required.";
+            _formError = "Choose who this outcome belongs to.";
             return;
         }
 
-        _isSavingCreate = true;
+        _isSavingForm = true;
         try
         {
-            var created = await ImprintService.CreateImprintAsync(_createRequest);
-            if (created == null)
+            if (_editingId.HasValue)
             {
-                _createError = "Failed to save imprint.";
+                var updated = await ImprintService.UpdateImprintAsync(_editingId.Value, new UpdateImprintRequest
+                {
+                    FamilyMemberId = _form.FamilyMemberId,
+                    InvestmentId = _form.InvestmentId,
+                    Title = _form.Title,
+                    Category = _form.Category,
+                    Outcome = _form.Outcome,
+                    DateOccurred = _form.DateOccurred,
+                    Notes = _form.Notes,
+                    FollowupDate = _form.FollowupDate
+                });
+
+                CloseFormModal();
+                await ReloadImprintsAsync();
+                if (updated != null)
+                {
+                    // Back to the details of what was just edited.
+                    _detail = updated;
+                    _showDetails = true;
+                }
                 return;
             }
 
-            CloseCreateModal();
+            var created = await ImprintService.CreateImprintAsync(new CreateImprintRequest
+            {
+                ClientId = _form.ClientId,
+                FamilyMemberId = _form.FamilyMemberId,
+                InvestmentId = _form.InvestmentId,
+                Title = _form.Title,
+                Category = _form.Category,
+                Outcome = _form.Outcome,
+                DateOccurred = _form.DateOccurred,
+                Notes = _form.Notes,
+                FollowupDate = _form.FollowupDate
+            });
+            if (created == null)
+            {
+                _formError = "We couldn't save the outcome. Please try again.";
+                return;
+            }
+
+            CloseFormModal();
             await ReloadImprintsAsync();
         }
         catch (Exception ex)
         {
-            _createError = ex.Message;
+            _formError = ex.Message;
         }
         finally
         {
-            _isSavingCreate = false;
+            _isSavingForm = false;
         }
     }
 
-    private void CloseCreateModal()
+    private void CloseFormModal()
     {
-        _showCreateModal = false;
-        _createError = "";
+        _showFormModal = false;
+        _formError = "";
+        _editingId = null;
     }
+
+    // ---------- Formatting ----------
+
+    // Outcome dates are calendar dates picked in a date field and stored at 00:00 UTC. Converting
+    // them to local time would show the day before in US time zones, so show the stored date.
+    private static string FormatDate(DateTime value) => value.ToString("MMM d, yyyy");
+
+    private static DateTime TodayAsDate() => DateTime.SpecifyKind(DateTime.Today, DateTimeKind.Utc);
 
     private static string FormatEnumLabel(string value)
     {
         if (string.IsNullOrWhiteSpace(value)) return value;
         return System.Text.RegularExpressions.Regex.Replace(value, "([a-z])([A-Z])", "$1 $2");
     }
+
+    private static string FormatOutcome(ImpactOutcome outcome) => outcome switch
+    {
+        ImpactOutcome.Improved => "Improved",
+        ImpactOutcome.Maintained => "Stayed stable",
+        ImpactOutcome.Regressed => "Got worse",
+        _ => "Not sure yet"
+    };
+
+    private static string GetOutcomeTone(ImpactOutcome outcome) => outcome switch
+    {
+        ImpactOutcome.Improved => "tone-green",
+        ImpactOutcome.Maintained => "tone-blue",
+        ImpactOutcome.Regressed => "tone-danger",
+        _ => "tone-neutral"
+    };
 
     private static string GetCategoryIcon(ImprintCategory category) => category switch
     {

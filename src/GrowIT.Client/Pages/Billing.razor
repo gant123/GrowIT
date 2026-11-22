@@ -2,6 +2,7 @@
 @using GrowIT.Shared.DTOs
 @using GrowIT.Shared.Enums
 @inject IBillingService BillingService
+@inject IRoleAccessService RoleAccessService
 @inject NavigationManager Nav
 
 <PageTitle>Billing - grow.IT</PageTitle>
@@ -9,10 +10,13 @@
 <div class="dashboard fade-in mt-4">
     <PageHeader Title="Billing" Subtitle="Plans, subscriptions, invoices, payments, and billing events.">
         <Actions>
+            @if (_hasAccess)
+            {
             <button class="btn-growit btn-secondary-growit" @onclick="LoadBilling" disabled="@_isLoading">
                 <i class="bi bi-arrow-clockwise me-1"></i>Refresh
             </button>
-            @if (_overview?.CurrentSubscription?.ExternalSubscriptionId is not null)
+            }
+            @if (_hasAccess && _overview?.CurrentSubscription?.ExternalSubscriptionId is not null)
             {
                 <button class="btn-growit btn-primary-growit" @onclick="OpenPortal" disabled="@_isRedirecting">
                     <i class="bi bi-credit-card me-1"></i>Manage Billing
@@ -21,7 +25,13 @@
         </Actions>
     </PageHeader>
 
-    @if (_isLoading)
+    @if (!_hasAccess && !_isLoading)
+    {
+        <div class="alert alert-warning" role="alert">
+            Billing is available to Admin or Owner roles. Ask your organization's admin if you need plan or invoice details.
+        </div>
+    }
+    else if (_isLoading)
     {
         <div class="loading-state">
             <div class="spinner-growit"></div>
@@ -247,7 +257,21 @@
     private string PaidInvoiceSummary =>
         _overview is null ? string.Empty : $"{_overview.Invoices.Count(i => i.Status == InvoiceStatus.Paid)} paid";
 
-    protected override async Task OnInitializedAsync() => await LoadBilling();
+    private bool _hasAccess;
+
+    // Same audience as the Billing menu item and the admin-only billing API.
+    protected override async Task OnInitializedAsync()
+    {
+        var access = await RoleAccessService.GetAccessAsync();
+        _hasAccess = access.CanManageAdminWorkspace;
+        if (!_hasAccess)
+        {
+            _isLoading = false;
+            return;
+        }
+
+        await LoadBilling();
+    }
 
     private async Task LoadBilling()
     {

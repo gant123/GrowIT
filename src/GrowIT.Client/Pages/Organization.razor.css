@@ -156,7 +156,8 @@
 .asc-meter {
     position: relative;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    /* Proportional tier widths are supplied by the page (see MeterColumns). */
+    grid-template-columns: var(--asc-meter-columns, repeat(5, 1fr));
     min-height: 76px;
     margin-top: 1.35rem;
     padding-top: 1.75rem;
@@ -552,4 +553,188 @@
     .asc-evidence-item:last-child {
         border-bottom: 0;
     }
+}
+
+/* The trust panel is dark in both themes. Without this its heading takes the global (dark)
+   heading color and "Earned, not given" is unreadable on the navy/green gradient. */
+.asc-trust-panel h3 {
+    color: #ffffff;
+}
+
+/* ----------------------------------------
+   DARK THEME
+   This page was written with fixed light colors, so in dark mode every panel stayed white
+   while the section headings (which follow the theme) turned light-on-white or dark-on-dark.
+   Map the surfaces, borders and text onto the shared theme tokens.
+   ---------------------------------------- */
+[data-theme="dark"] .asc-loading,
+[data-theme="dark"] .asc-alert,
+[data-theme="dark"] .asc-hero,
+[data-theme="dark"] .asc-evidence-grid,
+[data-theme="dark"] .asc-pillar,
+[data-theme="dark"] .asc-panel {
+    background: var(--growit-bg-card);
+    border-color: var(--growit-border);
+}
+
+/* Tier cards keep their colored top stripe; only the other three edges follow the theme. */
+[data-theme="dark"] .asc-tier-card {
+    background: var(--growit-bg-card);
+    border-right-color: var(--growit-border);
+    border-bottom-color: var(--growit-border);
+    border-left-color: var(--growit-border);
+}
+
+[data-theme="dark"] .asc-score-strip {
+    background: var(--growit-bg-primary);
+    border-color: var(--growit-border);
+}
+
+[data-theme="dark"] .asc-evidence-item,
+[data-theme="dark"] .asc-tier-card:last-child {
+    border-color: var(--growit-border);
+}
+
+[data-theme="dark"] .asc-logo,
+[data-theme="dark"] .asc-title-row p,
+[data-theme="dark"] .asc-score-number strong,
+[data-theme="dark"] .asc-score-copy h3,
+[data-theme="dark"] .asc-evidence-item strong,
+[data-theme="dark"] .asc-panel-header h2,
+[data-theme="dark"] .asc-section-heading h2,
+[data-theme="dark"] .asc-pillar h3,
+[data-theme="dark"] .asc-tier-card h3,
+[data-theme="dark"] .asc-alert h2,
+[data-theme="dark"] .asc-meter-marker {
+    color: var(--growit-text-primary);
+}
+
+[data-theme="dark"] .asc-meter-marker::after {
+    background: var(--growit-text-primary);
+}
+
+[data-theme="dark"] .asc-title-row h2,
+[data-theme="dark"] .asc-action-list i {
+    color: var(--growit-green-light);
+}
+
+[data-theme="dark"] .asc-action-list li,
+[data-theme="dark"] .asc-pillar-score strong,
+[data-theme="dark"] .asc-panel-header p,
+[data-theme="dark"] .asc-tier-card p {
+    color: var(--growit-text-secondary);
+}
+
+[data-theme="dark"] .asc-score-number span,
+[data-theme="dark"] .asc-score-copy p,
+[data-theme="dark"] .asc-pillar p,
+[data-theme="dark"] .asc-evidence-item span,
+[data-theme="dark"] .asc-section-heading span,
+[data-theme="dark"] .asc-empty,
+[data-theme="dark"] .asc-alert p,
+[data-theme="dark"] .asc-loading p {
+    color: var(--growit-text-muted);
+}
+
+/* Pillar and panel icons sit in the garden palette rather than a sky-blue wash. */
+[data-theme="dark"] .asc-panel-header > span,
+[data-theme="dark"] .asc-pillar-icon {
+    background: color-mix(in srgb, var(--brand-primary) 14%, transparent);
+    color: var(--growit-green-light);
+}
+
+[data-theme="dark"] .asc-tier-icon {
+    background: color-mix(in srgb, var(--tier-color) 22%, transparent);
+}
+
+[data-theme="dark"] .asc-tier-card.active {
+    background: color-mix(in srgb, var(--tier-color) 16%, var(--growit-bg-card));
+}
+
+[data-theme="dark"] .asc-pillar-bar {
+    background: var(--growit-border);
+}
+
+/* The tier scale keeps its hues (they carry meaning) but at night they are mixed toward the
+   card so five saturated blocks don't out-shout the score itself. The tier the organization
+   is in stays at full strength. Separators use the card colour instead of a white line. */
+[data-theme="dark"] .asc-meter-segment {
+    background: color-mix(in srgb, var(--tier-color) 55%, var(--growit-bg-card));
+    border-right-color: var(--growit-bg-card);
+}
+
+[data-theme="dark"] .asc-meter-segment.active {
+    background: var(--tier-color);
+}
+
+[data-theme="dark"] .asc-tier-card {
+    border-top-color: color-mix(in srgb, var(--tier-color) 70%, var(--growit-bg-card));
+}
+
+/* The trust panel was a navy-to-green gradient, the only blue surface in the dark app.
+   Make it a raised garden surface with a soft green glow from the corner. */
+[data-theme="dark"] .asc-trust-panel {
+    background:
+        radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--brand-primary) 22%, transparent), transparent 60%),
+        color-mix(in srgb, var(--growit-bg-card) 82%, var(--brand-primary) 6%);
+    border-left: 1px solid var(--growit-border);
+    color: var(--growit-text-primary);
+}
+
+[data-theme="dark"] .asc-trust-panel h3 {
+    color: var(--growit-text-primary);
+}
+
+[data-theme="dark"] .asc-trust-panel p {
+    color: var(--growit-text-secondary);
+}
+
+[data-theme="dark"] .asc-trust-icon {
+    background: color-mix(in srgb, var(--brand-primary) 16%, transparent);
+    color: var(--growit-green-light);
+}
+
+@media (min-width: 761px) {
+    [data-theme="dark"] .asc-meter-segment span {
+        color: var(--growit-text-secondary);
+    }
+}
+
+/* ----------------------------------------
+   Unscored requirements and document evidence note
+   ---------------------------------------- */
+.asc-requirements {
+    margin-top: .75rem;
+    padding: .75rem .9rem;
+    border: 1px solid color-mix(in srgb, #f97316 30%, transparent);
+    border-radius: 10px;
+    background: #fff7ed;
+    color: #10203c;
+    font-size: .9rem;
+}
+
+.asc-requirements ul {
+    margin: .35rem 0 0;
+    padding-left: 1.1rem;
+}
+
+.asc-requirements li + li {
+    margin-top: .2rem;
+}
+
+.asc-evidence-note {
+    display: block;
+    margin-top: .25rem;
+    color: #b45309;
+    font-size: .75rem;
+    font-weight: 600;
+}
+
+[data-theme="dark"] .asc-requirements {
+    background: color-mix(in srgb, #f97316 12%, var(--growit-bg-card));
+    color: var(--growit-text-primary);
+}
+
+[data-theme="dark"] .asc-evidence-note {
+    color: #fbbf24;
 }

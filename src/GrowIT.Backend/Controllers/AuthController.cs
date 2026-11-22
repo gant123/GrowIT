@@ -143,6 +143,8 @@ public class AuthController : ControllerBase
         var newTenant = new Tenant
         {
             Name = request.OrganizationName,
+            // The person signing up is the organization's first contact until they change it.
+            ContactEmail = request.Email.Trim(),
             // Defaults
             SubscriptionPlan = SubscriptionPlanType.Free,
             OrganizationType = request.OrganizationType,
@@ -340,14 +342,14 @@ public class AuthController : ControllerBase
         
         var body = $@"
             <h1>Reset your password</h1>
-            <p>You requested a password reset for GrowIT.</p>
+            <p>You requested a password reset for grow.IT.</p>
             <p>Please click the link below to reset your password. This link will expire in 24 hours.</p>
             <p><a href='{resetLink}'>{resetLink}</a></p>
             <p>If you did not request this, please ignore this email.</p>";
 
         try
         {
-            await _emailService.SendEmailAsync(user.Email ?? request.Email.Trim(), "Reset your GrowIT password", body);
+            await _emailService.SendEmailAsync(user.Email ?? request.Email.Trim(), "Reset your grow.IT password", body);
         }
         catch (Exception ex)
         {
@@ -515,7 +517,9 @@ public class AuthController : ControllerBase
             Email = invite.Email,
             OrganizationName = tenant?.Name ?? "Organization",
             Role = invite.Role,
-            ExpiresAt = invite.ExpiresAt
+            ExpiresAt = invite.ExpiresAt,
+            FirstName = invite.FirstName,
+            LastName = invite.LastName
         });
     }
 

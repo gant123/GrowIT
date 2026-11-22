@@ -1,17 +1,19 @@
 @using GrowIT.Shared.DTOs
 @using GrowIT.Shared.Enums 
 @inject IClientService ClientService
+@inject AppNotificationService Notifications
 
 @if (Show)
 {
-    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 1200;" tabindex="-1">
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 1200;" tabindex="-1"
+         role="dialog" aria-modal="true" aria-labelledby="add-client-modal-title">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content border-0 shadow-lg" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
                 <div class="modal-header border-bottom" style="border-color: var(--growit-border);">
-                    <h5 class="modal-title fw-bold">
-                        <span class="oi oi-person me-2 text-primary"></span>Add Person or Household
+                    <h5 class="modal-title fw-bold" id="add-client-modal-title">
+                        <i class="bi @(IsEditMode ? "bi-pencil-square" : "bi-person-plus") me-2" aria-hidden="true"></i>@(IsEditMode ? "Edit Profile" : "Add Person or Household")
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="Close"></button>
+                    <button type="button" class="btn-close" aria-label="Close" title="Close" @onclick="Close" disabled="@_isSaving"></button>
                 </div>
                 <div class="modal-body p-4">
                     @if (!string.IsNullOrEmpty(errorMessage))
@@ -24,15 +26,18 @@
 
                     <EditForm Model="@request" OnValidSubmit="HandleSubmit">
                         <DataAnnotationsValidator />
-                        
-                       <div class="mb-3">
-    <label class="form-label small fw-bold text-muted">First name</label>
-    <InputText @bind-Value="request.FirstName" class="form-control" placeholder="e.g. Robert" style="@ThemeInputStyle" />
-</div>
-<div class="mb-3">
-    <label class="form-label small fw-bold text-muted">Last name</label>
-    <InputText @bind-Value="request.LastName" class="form-control" placeholder="e.g. Gant" style="@ThemeInputStyle" />
-</div>
+                        @* Without a summary, an invalid form (e.g. no name) made "Save Profile" do
+                           nothing at all, with no hint why. *@
+                        <ValidationSummary class="text-danger small mb-2" />
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted" for="add-client-first-name">First name <span class="text-danger" aria-hidden="true">*</span></label>
+                            <InputText id="add-client-first-name" @bind-Value="request.FirstName" class="form-control" placeholder="e.g. Maria" style="@ThemeInputStyle" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold text-muted" for="add-client-last-name">Last name <span class="text-danger" aria-hidden="true">*</span></label>
+                            <InputText id="add-client-last-name" @bind-Value="request.LastName" class="form-control" placeholder="e.g. Alvarez" style="@ThemeInputStyle" />
+                        </div>
 
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
@@ -57,11 +62,14 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label small fw-bold text-muted">Last 4 digits of SSN</label>
-                                <InputText @bind-Value="request.SSNLast4" class="form-control" maxlength="4" style="@ThemeInputStyle" />
+                                <InputText @bind-Value="request.SSNLast4" class="form-control" maxlength="4" style="@ThemeInputStyle"
+                                           placeholder="@(IsEditMode && HasSsnOnFile ? "On file - leave blank to keep" : null)" />
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small fw-bold text-muted">Next follow-up date</label>
-                                <InputDate @bind-Value="request.NextFollowupDate" class="form-control" style="@ThemeInputStyle" />
+                                <label class="form-label small fw-bold text-muted" for="add-client-next-followup">Next follow-up date</label>
+                                <InputDate id="add-client-next-followup" @bind-Value="request.NextFollowupDate" class="form-control" style="@ThemeInputStyle"
+                                           aria-describedby="add-client-next-followup-help" />
+                                <div id="add-client-next-followup-help" class="form-text small">Adds a check-in to Follow-ups.</div>
                             </div>
                         </div>
 
@@ -113,16 +121,26 @@
                                 <InputSelect @bind-Value="request.HouseholdRole" class="form-select" style="@ThemeInputStyle">
                                     @foreach (var role in Enum.GetValues<HouseholdRole>())
                                     {
-                                        <option value="@role">@role</option>
+                                        <option value="@role">@(role == HouseholdRole.Head ? "Head of household" : role.ToString())</option>
                                     }
                                 </InputSelect>
                             </div>
                         </div>
 
                         <div class="d-flex justify-content-end gap-2 border-top pt-3" style="border-color: var(--growit-border);">
-                            <button type="button" class="btn btn-outline-secondary" @onclick="Close">Cancel</button>
-                            <button type="submit" class="btn btn-primary fw-bold">
-                                <span class="oi oi-check me-2"></span>Save Profile
+                            <button type="button" class="btn-growit btn-secondary-growit" @onclick="Close" disabled="@_isSaving">Cancel</button>
+                            @* Disabled while saving so a double click can't create the same person twice. *@
+                            <button type="submit" class="btn-growit btn-primary-growit" disabled="@_isSaving">
+                                @if (_isSaving)
+                                {
+                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                    <span>Saving...</span>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-check2" aria-hidden="true"></i>
+                                    <span>@(IsEditMode ? "Save Changes" : "Save Profile")</span>
+                                }
                             </button>
                         </div>
                     </EditForm>
@@ -137,35 +155,74 @@
     [Parameter] public EventCallback<bool> ShowChanged { get; set; }
     [Parameter] public EventCallback OnClientAdded { get; set; }
 
+    // Edit mode: set both to change an existing person instead of adding one. The profile page
+    // had no way to correct a name, update contact details, or move someone out of "Crisis".
+    [Parameter] public Guid? EditClientId { get; set; }
+    [Parameter] public CreateClientRequest? EditValues { get; set; }
+    // The SSN digits are never sent back to the browser, so the field starts empty when editing.
+    [Parameter] public bool HasSsnOnFile { get; set; }
+
+    private bool IsEditMode => EditClientId.HasValue;
+
     private CreateClientRequest request = new();
+    private bool wasShown;
+    private bool _isSaving;
     private string errorMessage = ""; // Surface API failures inline instead of faulting the circuit.
     private string ThemeInputStyle => "background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border: 1px solid var(--growit-border);";
 
-protected override void OnParametersSet()
+    protected override void OnParametersSet()
     {
-        // Check for FirstName instead of Name
-        if (Show && string.IsNullOrEmpty(request.FirstName))
+        // Start from a clean form (or the person being edited) each time the modal opens.
+        var justOpened = Show && !wasShown;
+        wasShown = Show;
+        if (!justOpened)
         {
-            errorMessage = "";
-            request = new CreateClientRequest
+            return;
+        }
+
+        errorMessage = "";
+        _isSaving = false;
+        request = IsEditMode && EditValues is not null
+            ? EditValues
+            : new CreateClientRequest
             {
                 HouseholdCount = 1,
                 StabilityScore = 5,
                 LifePhase = LifePhase.Crisis
             };
-        }
     }
+
     private async Task HandleSubmit()
     {
+        if (_isSaving)
+        {
+            return;
+        }
+
         errorMessage = "";
+        _isSaving = true;
+        var name = $"{request.FirstName} {request.LastName}".Trim();
         try
         {
+            if (IsEditMode)
+            {
+                await ClientService.UpdateClientAsync(EditClientId!.Value, request);
+                // Saving used to close the dialog with no sign that anything happened.
+                Notifications.Success($"Saved changes to {name}.");
+                await OnClientAdded.InvokeAsync();
+                await CloseAfterSave();
+                return;
+            }
+
             var clientId = await ClientService.CreateClientAsync(request);
             if (clientId != Guid.Empty)
             {
+                Notifications.Success(request.NextFollowupDate.HasValue
+                    ? $"Added {name}. Their next follow-up is in Follow-ups."
+                    : $"Added {name} to People.");
                 request = new CreateClientRequest();
                 await OnClientAdded.InvokeAsync();
-                await Close();
+                await CloseAfterSave();
             }
             else
             {
@@ -178,7 +235,26 @@ protected override void OnParametersSet()
             // ErrorBoundary above the page, tears down the whole circuit.
             errorMessage = ex is ApiException ? ex.Message : "We couldn't save this person. Please try again.";
         }
+        finally
+        {
+            _isSaving = false;
+        }
     }
 
-    private async Task Close() => await ShowChanged.InvokeAsync(false);
+    private async Task CloseAfterSave()
+    {
+        _isSaving = false;
+        await Close();
+    }
+
+    private async Task Close()
+    {
+        if (_isSaving)
+        {
+            return;
+        }
+
+        wasShown = false;
+        await ShowChanged.InvokeAsync(false);
+    }
 }

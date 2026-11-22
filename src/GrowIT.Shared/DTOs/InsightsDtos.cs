@@ -10,10 +10,16 @@ public class InsightsDto
 
 public class FundingReadinessDto
 {
+    // Kept for API compatibility; the page no longer shows a separate readiness score
+    // (the ASC Score is the one funding-readiness score in the app).
     public int Score { get; set; }
     public List<string> Suggestions { get; set; } = new();
+    // Average monthly spending over the last 90 days (or the months observed, if fewer).
     public decimal BurnRateMonthly { get; set; }
     public int EstimatedRunwayMonths { get; set; }
+    public decimal AvailableFunds { get; set; }
+    // False until there is enough spending history for a runway estimate to mean anything.
+    public bool HasSpendingHistory { get; set; }
 }
 
 public class ImpactVelocityDto

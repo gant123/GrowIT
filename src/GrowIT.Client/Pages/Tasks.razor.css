@@ -1,0 +1,54 @@
+/* Person name: app link styling instead of Bootstrap's raw underlined blue .btn-link. */
+.person-link {
+    color: var(--growit-text-primary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.person-link:hover,
+.person-link:focus-visible {
+    color: var(--brand-primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.followup-source {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    margin-top: .3rem;
+    padding: .1rem .5rem;
+    border-radius: 999px;
+    font-size: .7rem;
+    font-weight: 600;
+    color: var(--growit-text-muted);
+    background: color-mix(in srgb, var(--growit-text-muted) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--growit-text-muted) 22%, transparent);
+}
+
+.followup-actions {
+    display: inline-flex;
+    gap: .35rem;
+    justify-content: flex-end;
+}
+
+.followup-actions .btn-icon-only {
+    width: 32px;
+    height: 32px;
+}
+
+.followup-actions .btn-icon-only.success:hover:not(:disabled) {
+    color: var(--growit-success, #059669);
+    border-color: color-mix(in srgb, var(--growit-success, #059669) 35%, var(--growit-border));
+    background: color-mix(in srgb, var(--growit-success, #059669) 8%, transparent);
+}
+
+.followup-actions .btn-icon-only:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.followup-actions .btn-icon-only:focus-visible {
+    outline: 2px solid var(--brand-primary);
+    outline-offset: 2px;
+}

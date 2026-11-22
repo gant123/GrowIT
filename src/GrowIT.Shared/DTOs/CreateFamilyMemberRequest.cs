@@ -4,13 +4,13 @@ namespace GrowIT.Shared.DTOs;
 
 public class CreateFamilyMemberRequest
 {
-    [Required]
+    [Required(ErrorMessage = "First name is required.")]
     public string FirstName { get; set; } = string.Empty;
     
-    [Required]
+    [Required(ErrorMessage = "Last name is required.")]
     public string LastName { get; set; } = string.Empty; // Default to Client's last name in UI
     
-    [Required]
+    [Required(ErrorMessage = "Choose a relationship.")]
     public string Relationship { get; set; } = "Child"; // Child, Spouse, etc.
     
     public DateTime? DateOfBirth { get; set; }

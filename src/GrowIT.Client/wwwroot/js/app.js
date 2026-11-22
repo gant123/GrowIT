@@ -11,6 +11,22 @@
     // Enterprise Light/Dark Theme System
     // ========================================
 
+    // Small facts about the viewer's machine for the Blazor side:
+    // zone() - IANA time zone (e.g. "America/Chicago") so report names and PDF timestamps match
+    //          the local time the app shows;
+    // isMac() - whether to label the search shortcut ⌘K (Mac) or Ctrl K (everyone else).
+    window.growitTime = {
+        zone: function () {
+            try { return Intl.DateTimeFormat().resolvedOptions().timeZone || null; } catch (e) { return null; }
+        },
+        isMac: function () {
+            try {
+                const platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || '';
+                return /mac|iphone|ipad|ipod/i.test(platform);
+            } catch (e) { return false; }
+        }
+    };
+
     window.themeManager = {
         THEME_KEY: 'growit-theme',
         
@@ -1115,4 +1131,30 @@
         }
     };
 
+})();
+
+// ========================================
+// DOCUMENT DOWNLOADS (Documents page)
+// Receives a file streamed from .NET (DotNetStreamReference) and saves it through a temporary
+// blob: URL. Unlike downloadFile (base64 data: URL), this handles multi-MB files and keeps the
+// bytes out of the DOM. The content is never rendered in the page.
+// ========================================
+(function () {
+    'use strict';
+
+    window.blazorInterop = window.blazorInterop || {};
+
+    window.blazorInterop.downloadFileFromStream = async function (fileName, contentType, streamRef) {
+        const buffer = await streamRef.arrayBuffer();
+        const blob = new Blob([buffer], { type: contentType || 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName || 'document';
+        link.rel = 'noopener';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
 })();

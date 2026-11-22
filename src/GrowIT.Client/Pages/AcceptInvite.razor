@@ -185,6 +185,8 @@
         {
             _inviteValidation = await AuthService.ValidateInvite(Token, EmailQuery);
             _email = _inviteValidation?.Email ?? EmailQuery ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(_firstName)) _firstName = _inviteValidation?.FirstName ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(_lastName)) _lastName = _inviteValidation?.LastName ?? string.Empty;
         }
         catch (Exception ex)
         {

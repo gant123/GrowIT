@@ -11,7 +11,8 @@
     --brand-primary: #32505A;       /* Logo blue */
     --brand-primary-light: #486873;
     --brand-primary-dark: #243a42;
-    
+    --brand-on-primary: #ffffff;    /* text/icons on a --brand-primary fill */
+
     --brand-accent: #27B062;        /* Logo green */
     --brand-accent-light: #45c379;
     --brand-accent-dark: #1f8f4f;
@@ -155,6 +156,20 @@
     --growit-green-light: #52d68d;
     --growit-warning: #e09a3e;
     --growit-danger: #e0664f;
+
+    /* One action colour at night. The light theme's logo slate (#32505A) turns to mud on
+       green-black, both as a button fill and as link/outline text, and it competed with the
+       green "Add Service" button. In dark mode every primary action uses the lifted brand
+       green with near-black text (about 8.8:1). */
+    --brand-primary: #45c983;
+    --brand-primary-light: #62d79a;
+    --brand-primary-dark: #2fae6c;
+    --brand-on-primary: #06140c;
+
+    /* Semantic hues pulled toward the garden palette: the light theme's emerald success and
+       electric cyan info read as extra greens/blues fighting the brand green. */
+    --growit-success: #52d68d;
+    --growit-info: #7cb8cc;
 
     --growit-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.4);
     --growit-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.5), 0 1px 2px -1px rgba(0, 0, 0, 0.4);
@@ -531,7 +546,7 @@ button {
 
 .btn-primary-growit {
     background: var(--brand-primary);
-    color: white;
+    color: var(--brand-on-primary);
 }
 
 .btn-primary-growit:hover:not(:disabled) {
@@ -559,7 +574,7 @@ button {
 
 .btn-outline-growit:hover:not(:disabled) {
     background: var(--brand-primary);
-    color: white;
+    color: var(--brand-on-primary);
 }
 
 .btn-danger-growit {
@@ -810,7 +825,7 @@ button {
     text-transform: uppercase;
     border-radius: var(--radius-lg);
     background: var(--brand-primary);
-    color: white;
+    color: var(--brand-on-primary);
 }
 
 .avatar-sm {

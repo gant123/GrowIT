@@ -19,7 +19,10 @@
             <div class="footer-column">
                 <h4>Resources</h4>
                 <a href="/docs">How It Works</a>
-                <a href="/blog">Blog</a>
+                @if (ShowBlogLink)
+                {
+                    <a href="/blog">Blog</a>
+                }
                 <a href="/webinars">Webinars</a>
                 <a href="/templates">Report Examples</a>
             </div>
@@ -51,4 +54,7 @@
 @code {
     [Parameter]
     public string CurrentTheme { get; set; } = "light";
+
+    [Parameter]
+    public bool ShowBlogLink { get; set; } = true;
 }

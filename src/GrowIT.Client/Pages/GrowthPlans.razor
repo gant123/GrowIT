@@ -4,7 +4,7 @@
 @inject IGrowthPlanService GrowthPlanService
 @inject IClientService ClientService
 @inject IRoleAccessService RoleAccessService
-@inject IJSRuntime JS
+@inject ITaskService TaskService
 
 <PageTitle>Growth Plans - grow.IT</PageTitle>
 
@@ -13,7 +13,7 @@
         <Actions>
             @if (_canDocumentServiceRecords)
             {
-                <button class="btn btn-primary" @onclick="OpenCreateModal">
+                <button class="btn-growit btn-primary-growit" @onclick="OpenCreateModal">
                     <i class="bi bi-plus-lg"></i>
                     <span>New Growth Plan</span>
                 </button>
@@ -23,14 +23,14 @@
 
     @if (!_canDocumentServiceRecords)
     {
-        <div class="alert alert-info mb-3">You have read-only access to growth plans. `Case Manager`, `Manager`, `Admin`, or `Owner` can create and update plans.</div>
+        <div class="alert alert-info mb-3">You have read-only access to growth plans. Case Manager, Manager, Admin, or Owner roles can create and update plans.</div>
     }
 
     @if (!string.IsNullOrWhiteSpace(_listError))
     {
         <div class="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
             <div>@_listError</div>
-            <button class="btn btn-sm btn-outline-light" @onclick="ReloadPlansAsync">Retry</button>
+            <button class="btn-growit btn-secondary-growit btn-sm" @onclick="ReloadPlansAsync">Retry</button>
         </div>
     }
 
@@ -77,7 +77,7 @@
         <div class="growth-toolbar">
             <div class="growth-search">
                 <i class="bi bi-search"></i>
-                <input type="text" class="form-control" placeholder="Search by person or plan title" @bind="SearchQuery" @bind:event="oninput" />
+                <input type="text" class="form-control" placeholder="Search by person, plan title or owner" aria-label="Search growth plans" @bind="SearchQuery" @bind:event="oninput" />
             </div>
             <div class="growth-status-filters">
                 @foreach (var option in _statusFilterOptions)
@@ -105,7 +105,7 @@
                 <p>Create a plan to document capacity pacing, milestones, and the support needed to keep service sustainable.</p>
                 @if (_canDocumentServiceRecords)
                 {
-                    <button class="btn btn-outline-primary" @onclick="OpenCreateModal">
+                    <button class="btn-growit btn-secondary-growit" @onclick="OpenCreateModal">
                         <i class="bi bi-plus-lg"></i>
                         <span>Create Growth Plan</span>
                     </button>
@@ -133,15 +133,15 @@
                             <div class="plan-meta-grid">
                                 <div class="plan-meta-item">
                                     <span class="label">Start</span>
-                                    <span class="value">@plan.StartDate.ToLocalTime().ToString("MMM d, yyyy")</span>
+                                    <span class="value">@FormatPlanDate(plan.StartDate)</span>
                                 </div>
                                 <div class="plan-meta-item">
                                     <span class="label">Target</span>
-                                    <span class="value">@(plan.TargetEndDate?.ToLocalTime().ToString("MMM d, yyyy") ?? "Not set")</span>
+                                    <span class="value">@(plan.TargetEndDate.HasValue ? FormatPlanDate(plan.TargetEndDate.Value) : "Not set")</span>
                                 </div>
                                 <div class="plan-meta-item">
                                     <span class="label">Goals</span>
-                                    <span class="value">@plan.CompletedGoals / @plan.TotalGoals</span>
+                                    <span class="value">@(plan.TotalGoals > 0 ? $"{plan.CompletedGoals} of {plan.TotalGoals} done" : "None set yet")</span>
                                 </div>
                                 <div class="plan-meta-item">
                                     <span class="label">Owner</span>
@@ -151,8 +151,8 @@
 
                             <div class="plan-progress-wrap">
                                 <div class="plan-progress-header">
-                                    <span>Completion Progress</span>
-                                    <strong>@plan.ProgressPercentage.ToString("F0")%</strong>
+                                    <span>Goals completed</span>
+                                    <strong>@(plan.TotalGoals > 0 ? $"{plan.ProgressPercentage:F0}%" : "--")</strong>
                                 </div>
                                 <div class="plan-progress-track" role="progressbar" aria-valuenow="@plan.ProgressPercentage" aria-valuemin="0" aria-valuemax="100">
                                     <div class="plan-progress-fill" style="width: @GetProgressWidth(plan.ProgressPercentage)"></div>
@@ -163,11 +163,15 @@
                         <div class="plan-card-actions">
                             @if (_canDocumentServiceRecords)
                             {
-                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => OpenEditModal(plan)">
+                                <button class="btn-growit btn-primary-growit btn-sm" @onclick="() => OpenProgressModal(plan)">
+                                    <i class="bi bi-check2-square"></i>
+                                    <span>@(plan.TotalGoals > 0 ? "Record Progress" : "Set Goals")</span>
+                                </button>
+                                <button class="btn-growit btn-secondary-growit btn-sm" @onclick="() => OpenEditModal(plan)">
                                     <i class="bi bi-pencil"></i>
                                     <span>Edit</span>
                                 </button>
-                                <button class="btn btn-sm btn-outline-danger" @onclick="() => DeletePlanAsync(plan.Id)">
+                                <button class="btn-growit btn-ghost-growit btn-sm text-danger" @onclick="() => _planToDelete = plan">
                                     <i class="bi bi-trash3"></i>
                                     <span>Delete</span>
                                 </button>
@@ -190,7 +194,7 @@
                         <h5 class="modal-title">Create Growth Plan</h5>
                         <div class="modal-subtitle">Map a realistic pathway that protects the founder and supports long-term continuity.</div>
                     </div>
-                    <button type="button" class="btn-close" @onclick="CloseCreateModal"></button>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseCreateModal"></button>
                 </div>
                 <div class="modal-body">
                     @if (!string.IsNullOrWhiteSpace(_createError))
@@ -206,11 +210,12 @@
                     {
                         <EditForm Model="_createRequest" OnValidSubmit="CreatePlanAsync">
                             <DataAnnotationsValidator />
+                            <ValidationSummary class="text-danger small mb-2" />
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label class="form-label">Person</label>
                                     <select class="form-select" value="@_selectedClientId" @onchange="OnSelectedClientChanged">
-                                        <option value="">Select a client</option>
+                                        <option value="">Select a person</option>
                                         @foreach (var client in _clients.OrderBy(c => c.Name))
                                         {
                                             <option value="@client.Id">@client.Name</option>
@@ -238,14 +243,30 @@
                                     <label class="form-label">Target End Date (Optional)</label>
                                     <InputDate class="form-control" @bind-Value="_createRequest.TargetEndDate" />
                                 </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="plan-create-owner">Owner (optional)</label>
+                                    <InputSelect id="plan-create-owner" class="form-select" @bind-Value="_createRequest.AssignedToUserId">
+                                        <option value="">Unassigned</option>
+                                        @foreach (var member in _assignees)
+                                        {
+                                            <option value="@member.Id">@member.FullName</option>
+                                        }
+                                    </InputSelect>
+                                    <div class="form-text">The team member responsible for this plan.</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="plan-create-goals">Number of goals</label>
+                                    <InputNumber id="plan-create-goals" class="form-control" min="0" max="100" @bind-Value="_createRequest.TotalGoals" />
+                                    <div class="form-text">Progress is the share of these goals marked done. You can change it later.</div>
+                                </div>
                             </div>
 
                             <div class="d-flex justify-content-end gap-2 mt-4">
-                                <button type="button" class="btn btn-outline-secondary" @onclick="CloseCreateModal">Cancel</button>
-                                <button type="submit" class="btn btn-primary" disabled="@_isSavingCreate">
+                                <button type="button" class="btn-growit btn-secondary-growit" @onclick="CloseCreateModal">Cancel</button>
+                                <button type="submit" class="btn-growit btn-primary-growit" disabled="@_isSavingCreate">
                                     @if (_isSavingCreate)
                                     {
-                                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                                     }
                                     <span>Create Plan</span>
                                 </button>
@@ -268,7 +289,7 @@
                         <h5 class="modal-title">Edit Growth Plan</h5>
                         <div class="modal-subtitle">Adjust status and timing as capacity changes in real time.</div>
                     </div>
-                    <button type="button" class="btn-close" @onclick="CloseEditModal"></button>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseEditModal"></button>
                 </div>
                 <div class="modal-body">
                     @if (!string.IsNullOrWhiteSpace(_editError))
@@ -278,6 +299,7 @@
 
                     <EditForm Model="_editRequest" OnValidSubmit="SaveEditAsync">
                         <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger small mb-2" />
                         <div class="row g-3">
                             <div class="col-12">
                                 <label class="form-label">Title</label>
@@ -305,14 +327,37 @@
                                 <label class="form-label">Target End Date (Optional)</label>
                                 <InputDate class="form-control" @bind-Value="_editRequest.TargetEndDate" />
                             </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="plan-edit-owner">Owner</label>
+                                <InputSelect id="plan-edit-owner" class="form-select" @bind-Value="_editRequest.AssignedToUserId">
+                                    <option value="">Unassigned</option>
+                                    @if (_editRequest.AssignedToUserId.HasValue && _assignees.All(a => a.Id != _editRequest.AssignedToUserId))
+                                    {
+                                        @* Keep showing an owner who is no longer an active team member. *@
+                                        <option value="@_editRequest.AssignedToUserId">@(_editingOwnerName ?? "Current owner") (inactive)</option>
+                                    }
+                                    @foreach (var member in _assignees)
+                                    {
+                                        <option value="@member.Id">@member.FullName</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <label class="form-label" for="plan-edit-total">Number of goals</label>
+                                <InputNumber id="plan-edit-total" class="form-control" min="0" max="100" @bind-Value="_editRequest.TotalGoals" />
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <label class="form-label" for="plan-edit-done">Goals done</label>
+                                <InputNumber id="plan-edit-done" class="form-control" min="0" max="100" @bind-Value="_editRequest.CompletedGoals" />
+                            </div>
                         </div>
 
                         <div class="d-flex justify-content-end gap-2 mt-4">
-                            <button type="button" class="btn btn-outline-secondary" @onclick="CloseEditModal">Cancel</button>
-                            <button type="submit" class="btn btn-primary" disabled="@_isSavingEdit">
+                            <button type="button" class="btn-growit btn-secondary-growit" @onclick="CloseEditModal">Cancel</button>
+                            <button type="submit" class="btn-growit btn-primary-growit" disabled="@_isSavingEdit">
                                 @if (_isSavingEdit)
                                 {
-                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                                 }
                                 <span>Save Changes</span>
                             </button>
@@ -324,6 +369,73 @@
     </div>
 }
 
+@if (_progressPlan != null && _canDocumentServiceRecords)
+{
+    <div class="modal fade show d-block growth-modal-backdrop" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="plan-progress-title">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content growth-modal-shell">
+                <div class="modal-header">
+                    <div>
+                        <h5 class="modal-title" id="plan-progress-title">Record Progress</h5>
+                        <div class="modal-subtitle">@_progressPlan.Title &middot; @_progressPlan.PersonName</div>
+                    </div>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="CloseProgressModal"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrWhiteSpace(_progressError))
+                    {
+                        <div class="alert alert-danger">@_progressError</div>
+                    }
+
+                    <div class="row g-3 align-items-end">
+                        <div class="col-6">
+                            <label class="form-label" for="plan-progress-done">Goals done</label>
+                            <input id="plan-progress-done" type="number" class="form-control" min="0" max="@_progressTotal" @bind="_progressCompleted" />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="plan-progress-total">Out of (number of goals)</label>
+                            <input id="plan-progress-total" type="number" class="form-control" min="0" max="100" @bind="_progressTotal" />
+                        </div>
+                    </div>
+
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+                        <button type="button" class="btn-growit btn-secondary-growit btn-sm"
+                                disabled="@(_progressTotal <= 0 || _progressCompleted >= _progressTotal)"
+                                @onclick="() => _progressCompleted = Math.Min(_progressTotal, _progressCompleted + 1)">
+                            <i class="bi bi-plus-lg"></i> One more goal done
+                        </button>
+                        <span class="small text-muted">
+                            @(_progressTotal > 0
+                                ? $"{Math.Clamp(_progressCompleted, 0, _progressTotal)} of {_progressTotal} goals done ({(Math.Clamp(_progressCompleted, 0, _progressTotal) * 100 / _progressTotal)}%)"
+                                : "Set how many goals this plan has to start tracking progress.")
+                        </span>
+                    </div>
+
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button type="button" class="btn-growit btn-secondary-growit" @onclick="CloseProgressModal">Cancel</button>
+                        <button type="button" class="btn-growit btn-primary-growit" disabled="@_isSavingProgress" @onclick="SaveProgressAsync">
+                            @if (_isSavingProgress)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            }
+                            <span>Save Progress</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<ConfirmActionModal Show="@(_planToDelete != null)"
+                    Title="Delete this growth plan?"
+                    Message="@(_planToDelete == null ? null : $"\"{_planToDelete.Title}\" for {_planToDelete.PersonName} will be removed. This can't be undone.")"
+                    ConfirmText="Delete Plan"
+                    Danger="true"
+                    Busy="_isDeleting"
+                    OnConfirm="DeletePlanAsync"
+                    OnCancel="() => _planToDelete = null" />
+
 @code {
     private readonly record struct StatusFilterOption(string Label, string Value);
 
@@ -331,13 +443,22 @@
     [
         new("All", "all"),
         new("Active", "active"),
-        new("Paused", "onhold"),
+        new("On Hold", "onhold"),
         new("Completed", "completed"),
         new("Graduated", "graduated")
     ];
 
     private List<GrowthPlanListDto> _allPlans = new();
     private List<ClientDto> _clients = new();
+    private List<TaskAssigneeDto> _assignees = new();
+    private bool _assigneesLoaded;
+    private GrowthPlanListDto? _planToDelete;
+    private bool _isDeleting;
+    private GrowthPlanListDto? _progressPlan;
+    private int _progressCompleted;
+    private int _progressTotal;
+    private bool _isSavingProgress;
+    private string? _progressError;
     private bool _isLoading = true;
     private bool _showCreateModal;
     private bool _showEditModal;
@@ -349,11 +470,21 @@
     private string? _listError;
     private string _selectedClientId = "";
     private Guid _editingPlanId;
+    private DateTime _editingPlanStart;
+    private string? _editingOwnerName;
     private CreateGrowthPlanRequest _createRequest = new()
     {
-        StartDate = DateTime.UtcNow,
+        StartDate = TodayAsPlanDate(),
         Season = Season.Planting
     };
+
+    // Start/target dates are calendar dates (picked in a date field), stored at 00:00 UTC.
+    // Converting them to local time for display showed the day before ("Oct 1" became "Sep 30").
+    private static string FormatPlanDate(DateTime value) =>
+        (value.Kind == DateTimeKind.Local ? value : DateTime.SpecifyKind(value, DateTimeKind.Utc))
+            .ToString("MMM d, yyyy");
+
+    private static DateTime TodayAsPlanDate() => DateTime.SpecifyKind(DateTime.Today, DateTimeKind.Utc);
     private UpdateGrowthPlanRequest _editRequest = new();
     private string SearchQuery { get; set; } = "";
     private string SelectedStatusFilter { get; set; } = "all";
@@ -361,7 +492,10 @@
 
     private int ActivePipelineCount => _allPlans.Count(p => p.Status is GrowthPlanStatus.Draft or GrowthPlanStatus.Active);
     private int CompletedOutcomeCount => _allPlans.Count(p => p.Status is GrowthPlanStatus.Completed or GrowthPlanStatus.Graduated);
-    private string AverageProgressLabel => _allPlans.Count == 0 ? "0%" : $"{_allPlans.Average(p => p.ProgressPercentage):F0}%";
+    // Only plans that have goals have a progress number; a plan with no goals isn't "0% done".
+    private string AverageProgressLabel => _allPlans.Any(p => p.TotalGoals > 0)
+        ? $"{_allPlans.Where(p => p.TotalGoals > 0).Average(p => p.ProgressPercentage):F0}%"
+        : "--";
 
     protected override async Task OnInitializedAsync()
     {
@@ -397,17 +531,18 @@
         _selectedClientId = "";
         _createRequest = new CreateGrowthPlanRequest
         {
-            StartDate = DateTime.UtcNow,
+            StartDate = TodayAsPlanDate(),
             Season = Season.Planting
         };
 
         try
         {
             _clients = await ClientService.GetAllClientsAsync();
+            await EnsureAssigneesLoadedAsync();
         }
         catch (Exception ex)
         {
-            _createError = $"Failed to load clients: {ex.Message}";
+            _createError = $"We couldn't load your people and team members: {ex.Message}";
         }
         finally
         {
@@ -421,10 +556,12 @@
         _createError = "";
     }
 
-    private void OpenEditModal(GrowthPlanListDto plan)
+    private async Task OpenEditModal(GrowthPlanListDto plan)
     {
         if (!_canDocumentServiceRecords) return;
         _editingPlanId = plan.Id;
+        _editingPlanStart = plan.StartDate;
+        _editingOwnerName = plan.AssignedToUserName;
         _editError = "";
         _showEditModal = true;
         _editRequest = new UpdateGrowthPlanRequest
@@ -432,8 +569,98 @@
             Title = plan.Title,
             Season = plan.Season,
             Status = plan.Status,
-            TargetEndDate = plan.TargetEndDate
+            TargetEndDate = plan.TargetEndDate,
+            AssignedToUserId = plan.AssignedToUserId,
+            TotalGoals = plan.TotalGoals,
+            CompletedGoals = plan.CompletedGoals
         };
+
+        try
+        {
+            await EnsureAssigneesLoadedAsync();
+        }
+        catch (Exception ex)
+        {
+            _editError = $"We couldn't load your team members: {ex.Message}";
+        }
+    }
+
+    // Owners are the organization's active team members, the same list Follow-ups assigns to.
+    private async Task EnsureAssigneesLoadedAsync()
+    {
+        if (_assigneesLoaded) return;
+        _assignees = await TaskService.GetAssigneesAsync();
+        _assigneesLoaded = true;
+    }
+
+    private void OpenProgressModal(GrowthPlanListDto plan)
+    {
+        if (!_canDocumentServiceRecords) return;
+        _progressPlan = plan;
+        _progressCompleted = plan.CompletedGoals;
+        _progressTotal = plan.TotalGoals;
+        _progressError = null;
+    }
+
+    private void CloseProgressModal()
+    {
+        _progressPlan = null;
+        _progressError = null;
+    }
+
+    private async Task SaveProgressAsync()
+    {
+        if (!_canDocumentServiceRecords || _progressPlan == null) return;
+        _progressError = null;
+
+        if (_progressTotal < 0 || _progressTotal > 100)
+        {
+            _progressError = "Use between 0 and 100 goals.";
+            return;
+        }
+
+        if (_progressCompleted < 0 || _progressCompleted > _progressTotal)
+        {
+            _progressError = _progressTotal == 0
+                ? "Set how many goals the plan has before marking goals done."
+                : $"Goals done must be between 0 and {_progressTotal}.";
+            return;
+        }
+
+        _isSavingProgress = true;
+        try
+        {
+            var updated = await GrowthPlanService.UpdateProgressAsync(_progressPlan.Id, new UpdateGrowthPlanProgressRequest
+            {
+                CompletedGoals = _progressCompleted,
+                TotalGoals = _progressTotal
+            });
+
+            if (updated != null)
+            {
+                ReplacePlan(updated);
+            }
+
+            CloseProgressModal();
+        }
+        catch (Exception ex)
+        {
+            _progressError = ex.Message;
+        }
+        finally
+        {
+            _isSavingProgress = false;
+        }
+    }
+
+    private void ReplacePlan(GrowthPlanListDto updated)
+    {
+        var index = _allPlans.FindIndex(p => p.Id == updated.Id);
+        if (index >= 0)
+        {
+            _allPlans[index] = updated;
+            _allPlans = _allPlans.OrderByDescending(p => p.StartDate).ToList();
+        }
     }
 
     private void CloseEditModal()
@@ -465,7 +692,7 @@
 
         if (_createRequest.PersonId == Guid.Empty)
         {
-            _createError = "Please select a client.";
+            _createError = "Choose the person this plan is for.";
             return;
         }
 
@@ -475,13 +702,19 @@
             return;
         }
 
+        if (_createRequest.TargetEndDate.HasValue && _createRequest.TargetEndDate.Value.Date < _createRequest.StartDate.Date)
+        {
+            _createError = "The target end date can't be before the start date.";
+            return;
+        }
+
         _isSavingCreate = true;
         try
         {
             var created = await GrowthPlanService.CreateGrowthPlanAsync(_createRequest);
             if (created == null)
             {
-                _createError = "Failed to create growth plan.";
+                _createError = "We couldn't create the growth plan. Please try again.";
                 return;
             }
 
@@ -499,10 +732,11 @@
         }
     }
 
-    private async Task DeletePlanAsync(Guid id)
+    private async Task DeletePlanAsync()
     {
-        if (!_canDocumentServiceRecords) return;
-        if (!await JS.InvokeAsync<bool>("confirm", "Delete this growth plan? This can't be undone.")) return;
+        if (!_canDocumentServiceRecords || _planToDelete == null) return;
+        var id = _planToDelete.Id;
+        _isDeleting = true;
         try
         {
             await GrowthPlanService.DeleteGrowthPlanAsync(id);
@@ -511,6 +745,11 @@
         catch (Exception ex)
         {
             _listError = ex.Message;
+        }
+        finally
+        {
+            _isDeleting = false;
+            _planToDelete = null;
         }
     }
 
@@ -531,23 +770,29 @@
             return;
         }
 
+        if (_editRequest.TargetEndDate.HasValue && _editRequest.TargetEndDate.Value.Date < _editingPlanStart.Date)
+        {
+            _editError = "The target end date can't be before the start date.";
+            return;
+        }
+
+        if ((_editRequest.CompletedGoals ?? 0) > (_editRequest.TotalGoals ?? 0))
+        {
+            _editError = "Goals done can't be more than the number of goals.";
+            return;
+        }
+
         _isSavingEdit = true;
         try
         {
             var updated = await GrowthPlanService.UpdateGrowthPlanAsync(_editingPlanId, _editRequest);
             if (updated == null)
             {
-                _editError = "Failed to update growth plan.";
+                _editError = "We couldn't save the growth plan. Please try again.";
                 return;
             }
 
-            var index = _allPlans.FindIndex(p => p.Id == _editingPlanId);
-            if (index >= 0)
-            {
-                _allPlans[index] = updated;
-                _allPlans = _allPlans.OrderByDescending(p => p.StartDate).ToList();
-            }
-
+            ReplacePlan(updated);
             CloseEditModal();
         }
         catch (Exception ex)
@@ -570,7 +815,8 @@
             {
                 query = query.Where(p =>
                     (p.PersonName?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ?? false) ||
-                    (p.Title?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ?? false));
+                    (p.Title?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                    (p.AssignedToUserName?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ?? false));
             }
 
             query = SelectedStatusFilter switch

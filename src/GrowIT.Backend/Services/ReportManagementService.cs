@@ -2,6 +2,8 @@ using GrowIT.Core.Entities;
 using GrowIT.Core.Interfaces;
 using GrowIT.Infrastructure.Data;
 using GrowIT.Shared.DTOs;
+using InvestmentStatus = GrowIT.Shared.Enums.InvestmentStatus;
+using ImpactOutcome = GrowIT.Shared.Enums.ImpactOutcome;
 using ClosedXML.Excel;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
@@ -180,7 +182,7 @@ public sealed class ReportManagementService : IReportManagementService
         {
             Id = Guid.NewGuid(),
             TenantId = tenantId.Value,
-            Name = BuildReportName(reportType),
+            Name = BuildReportName(reportType, normalizedRequest.TimeZone, now),
             Format = format,
             ReportType = reportType,
             RequestPayloadJson = requestPayloadJson,
@@ -375,9 +377,58 @@ public sealed class ReportManagementService : IReportManagementService
         UpdatedAt = item.UpdatedAt
     };
 
-    private static string BuildReportName(string reportType)
+    // "Impact Summary - Nov 15, 2026 11:16 AM" in the requester's time zone (UTC when unknown),
+    // instead of "impact-summary-20261115-1716" in UTC.
+    private static string BuildReportName(string reportType, string? timeZoneId, DateTime utcNow)
     {
-        return $"{reportType}-{DateTime.UtcNow:yyyyMMdd-HHmm}";
+        var clock = ReportClock.For(timeZoneId);
+        return $"{DescribeReportType(reportType)} - {clock.Stamp(utcNow)}";
+    }
+
+    // Same names the Reports page uses, so the PDF title matches the button that made it.
+    private static string DescribeReportType(string? reportType) => (reportType ?? string.Empty).Trim().ToLowerInvariant() switch
+    {
+        "impact-summary" => "Impact Summary",
+        "investment-detail" or "investments" => "Service Cost Detail",
+        "outcomes-by-category" => "Outcomes by Type",
+        "funding-utilization" => "Money Source Use",
+        "season-progression" => "Progress Over Time",
+        "demographic-breakdown" => "People Served Breakdown",
+        _ => "Custom Report"
+    };
+
+    // "FinancialStability" -> "Financial stability" for enum values shown in reports.
+    private static string Humanize(object? value)
+    {
+        var text = value?.ToString();
+        if (string.IsNullOrWhiteSpace(text)) return string.Empty;
+        var spaced = System.Text.RegularExpressions.Regex.Replace(text, "(?<=[a-z0-9])(?=[A-Z])", " ");
+        return spaced.Length <= 1 ? spaced : char.ToUpperInvariant(spaced[0]) + spaced[1..].ToLowerInvariant();
+    }
+
+    // Converts stored UTC timestamps for display. Date-only fields (an outcome's date, a plan's
+    // start date) are stored as UTC midnight and must NOT be shifted, or they show a day early.
+    private sealed class ReportClock
+    {
+        private ReportClock(TimeZoneInfo zone, bool isUtc) { Zone = zone; IsUtc = isUtc; }
+
+        public TimeZoneInfo Zone { get; }
+        public bool IsUtc { get; }
+
+        public static ReportClock For(string? timeZoneId) =>
+            !string.IsNullOrWhiteSpace(timeZoneId) && TimeZoneInfo.TryFindSystemTimeZoneById(timeZoneId.Trim(), out var zone)
+                ? new ReportClock(zone, zone.BaseUtcOffset == TimeSpan.Zero && zone.Id is "UTC" or "Etc/UTC")
+                : new ReportClock(TimeZoneInfo.Utc, isUtc: true);
+
+        public DateTime Local(DateTime utc) =>
+            TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc), Zone);
+
+        public string Stamp(DateTime utc) =>
+            Local(utc).ToString("MMM d, yyyy h:mm tt", CultureInfo.InvariantCulture) + (IsUtc ? " UTC" : string.Empty);
+
+        public string Day(DateTime utc) => Local(utc).ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
+
+        public static string CalendarDay(DateTime value) => value.ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
     }
 
     private static string BuildIdempotencyKey(string scope, Guid tenantId, Guid? userId, string fingerprint, DateTime now, TimeSpan window)
@@ -400,7 +451,10 @@ public sealed class ReportManagementService : IReportManagementService
             FiscalYear = string.IsNullOrWhiteSpace(request.FiscalYear) ? null : request.FiscalYear.Trim(),
             DateFrom = request.DateFrom,
             DateTo = request.DateTo,
-            GroupBy = string.IsNullOrWhiteSpace(request.GroupBy) ? null : request.GroupBy.Trim()
+            GroupBy = string.IsNullOrWhiteSpace(request.GroupBy) ? null : request.GroupBy.Trim(),
+            TimeZone = !string.IsNullOrWhiteSpace(request.TimeZone) && TimeZoneInfo.TryFindSystemTimeZoneById(request.TimeZone.Trim(), out _)
+                ? request.TimeZone.Trim()
+                : null
         };
     }
 
@@ -453,6 +507,12 @@ public sealed class ReportManagementService : IReportManagementService
         return ReportContract.SupportedFrequencies.FirstOrDefault(f => string.Equals(f, normalized, StringComparison.OrdinalIgnoreCase))
             ?? fallback;
     }
+
+    // Not ToString("C", InvariantCulture): the invariant culture's currency symbol is the
+    // generic sign "¤", which is what the PDFs showed ("¤125.00"). Culture-independent on
+    // purpose so it also works where the container has no ICU culture data.
+    private static string FormatMoney(decimal amount) =>
+        (amount < 0 ? "-$" : "$") + Math.Abs(amount).ToString("N2", CultureInfo.InvariantCulture);
 
     private static DateTime NormalizeUtc(DateTime value)
     {
@@ -592,23 +652,56 @@ public sealed class ReportManagementService : IReportManagementService
     {
         var reportType = string.IsNullOrWhiteSpace(run.ReportType) ? "custom-report" : run.ReportType.Trim().ToLowerInvariant();
         var dateFrom = request.DateFrom.HasValue ? NormalizeUtc(request.DateFrom.Value) : (DateTime?)null;
-        var dateTo = request.DateTo.HasValue ? NormalizeUtc(request.DateTo.Value) : (DateTime?)null;
+        // "To" is a calendar date: include the whole day. Using midnight as the upper bound
+        // dropped everything recorded on the end date itself.
+        var dateTo = request.DateTo.HasValue
+            ? NormalizeUtc(request.DateTo.Value.Date.AddDays(1).AddTicks(-1))
+            : (DateTime?)null;
 
-        return reportType switch
+        var clock = ReportClock.For(request.TimeZone);
+
+        var dataset = reportType switch
         {
-            "impact-summary" => await BuildImpactSummaryAsync(run, dateFrom, dateTo, cancellationToken),
-            "investment-detail" or "investments" => await BuildInvestmentDetailAsync(run, dateFrom, dateTo, cancellationToken),
-            "outcomes-by-category" => await BuildOutcomesByCategoryAsync(run, dateFrom, dateTo, cancellationToken),
-            "funding-utilization" => await BuildFundingUtilizationAsync(run, cancellationToken),
-            "season-progression" => await BuildSeasonProgressionAsync(run, cancellationToken),
-            "demographic-breakdown" => await BuildDemographicBreakdownAsync(run, cancellationToken),
-            _ => await BuildCustomSummaryAsync(run, request, dateFrom, dateTo, cancellationToken)
+            "impact-summary" => await BuildImpactSummaryAsync(dateFrom, dateTo, cancellationToken),
+            "investment-detail" or "investments" => await BuildInvestmentDetailAsync(dateFrom, dateTo, request.GroupBy, clock, cancellationToken),
+            "outcomes-by-category" => await BuildOutcomesByCategoryAsync(dateFrom, dateTo, cancellationToken),
+            "funding-utilization" => await BuildFundingUtilizationAsync(cancellationToken),
+            "season-progression" => await BuildSeasonProgressionAsync(cancellationToken),
+            "demographic-breakdown" => await BuildDemographicBreakdownAsync(cancellationToken),
+            _ => await BuildCustomSummaryAsync(request, dateFrom, dateTo, cancellationToken)
+        };
+
+        // Every report says whose it is, which period it covers, and when it was made.
+        var organizationName = await _context.Tenants.AsNoTracking()
+            .Where(t => t.Id == run.TenantId)
+            .Select(t => t.Name)
+            .FirstOrDefaultAsync(cancellationToken);
+        dataset.Organization = string.IsNullOrWhiteSpace(organizationName) ? "Your organization" : organizationName.Trim();
+        dataset.Generated = clock.Stamp(run.GeneratedAt);
+        dataset.Period = DescribePeriod(request.DateFrom, request.DateTo, dataset.UsesDateRange);
+        dataset.Subtitle = string.Join(" · ",
+            new[] { dataset.Organization, dataset.Period, dataset.Subtitle }.Where(s => !string.IsNullOrWhiteSpace(s)));
+        return dataset;
+    }
+
+    private static string DescribePeriod(DateTime? from, DateTime? to, bool usesDateRange)
+    {
+        if (!usesDateRange) return string.Empty;
+        return (from, to) switch
+        {
+            (null, null) => "All dates",
+            ({ } f, null) => $"From {ReportClock.CalendarDay(f)}",
+            (null, { } t) => $"Through {ReportClock.CalendarDay(t)}",
+            ({ } f, { } t) => $"{ReportClock.CalendarDay(f)} to {ReportClock.CalendarDay(t)}"
         };
     }
 
-    private async Task<ReportDataset> BuildImpactSummaryAsync(ReportRun run, DateTime? dateFrom, DateTime? dateTo, CancellationToken cancellationToken)
+    // A plain-language overview for funders and boards: who was served, what was provided,
+    // and what changed. (It used to print five numbers twice under internal labels.)
+    private async Task<ReportDataset> BuildImpactSummaryAsync(DateTime? dateFrom, DateTime? dateTo, CancellationToken cancellationToken)
     {
-        var investments = _context.Investments.AsNoTracking().AsQueryable();
+        var investments = _context.Investments.AsNoTracking()
+            .Where(i => i.Status != InvestmentStatus.Cancelled && i.Status != InvestmentStatus.Returned && i.Status != InvestmentStatus.Draft);
         var imprints = _context.Imprints.AsNoTracking().AsQueryable();
 
         if (dateFrom.HasValue)
@@ -623,40 +716,63 @@ public sealed class ReportManagementService : IReportManagementService
             imprints = imprints.Where(i => i.DateOccurred <= dateTo.Value);
         }
 
-        var totalInvestment = await investments.SumAsync(i => (decimal?)i.Amount, cancellationToken) ?? 0m;
-        var investmentCount = await investments.CountAsync(cancellationToken);
-        var householdsServed = await investments.Select(i => i.ClientId).Distinct().CountAsync(cancellationToken);
-        var imprintsCount = await imprints.CountAsync(cancellationToken);
-        var approvedInvestment = await investments.Where(i => i.Status == GrowIT.Shared.Enums.InvestmentStatus.Approved)
-            .SumAsync(i => (decimal?)i.Amount, cancellationToken) ?? 0m;
+        var serviceRows = await investments
+            .Select(i => new { i.ClientId, i.Amount, ProgramName = i.Program != null ? i.Program.Name : "" })
+            .ToListAsync(cancellationToken);
+        var outcomeRows = await imprints
+            .Select(i => new { i.ClientId, i.Category, i.Outcome })
+            .ToListAsync(cancellationToken);
+
+        var peopleServed = serviceRows.Select(r => r.ClientId).Concat(outcomeRows.Select(r => r.ClientId)).Distinct().Count();
+        var improved = outcomeRows.Count(o => o.Outcome == ImpactOutcome.Improved);
+        var maintained = outcomeRows.Count(o => o.Outcome == ImpactOutcome.Maintained);
 
         var data = new ReportDataset
         {
-            Title = "Seed to Harvest Summary",
-            Subtitle = "Portfolio-level service and funding readiness metrics",
+            Title = DescribeReportType("impact-summary"),
+            Subtitle = "Who you served, what you provided, and what changed",
+            UsesDateRange = true,
             Summary =
             {
-                ["Generated (UTC)"] = run.GeneratedAt.ToString("u"),
-                ["Report Type"] = run.ReportType,
-                ["Total Service Investments"] = investmentCount.ToString(CultureInfo.InvariantCulture),
-                ["Capital Deployed"] = totalInvestment.ToString("C", CultureInfo.InvariantCulture),
-                ["Approved Capital"] = approvedInvestment.ToString("C", CultureInfo.InvariantCulture),
-                ["Households Reached"] = householdsServed.ToString(CultureInfo.InvariantCulture),
-                ["Impact Records"] = imprintsCount.ToString(CultureInfo.InvariantCulture)
+                ["People served"] = peopleServed.ToString(CultureInfo.InvariantCulture),
+                ["Services provided"] = serviceRows.Count.ToString(CultureInfo.InvariantCulture),
+                ["Value of services"] = FormatMoney(serviceRows.Sum(r => r.Amount)),
+                ["Outcomes recorded"] = outcomeRows.Count.ToString(CultureInfo.InvariantCulture),
+                ["Outcomes showing improvement"] = outcomeRows.Count == 0
+                    ? "0"
+                    : $"{improved} of {outcomeRows.Count} ({improved * 100 / outcomeRows.Count}%)",
+                ["Outcomes holding steady"] = maintained.ToString(CultureInfo.InvariantCulture)
             },
-            Columns = { "Metric", "Value" }
+            Columns = { "Section", "Item", "How many", "Detail" }
         };
 
-        data.Rows.Add(["Total Service Investments", investmentCount.ToString(CultureInfo.InvariantCulture)]);
-        data.Rows.Add(["Capital Deployed", totalInvestment.ToString("F2", CultureInfo.InvariantCulture)]);
-        data.Rows.Add(["Approved Capital", approvedInvestment.ToString("F2", CultureInfo.InvariantCulture)]);
-        data.Rows.Add(["Households Reached", householdsServed.ToString(CultureInfo.InvariantCulture)]);
-        data.Rows.Add(["Impact Records", imprintsCount.ToString(CultureInfo.InvariantCulture)]);
+        foreach (var program in serviceRows
+                     .GroupBy(r => string.IsNullOrWhiteSpace(r.ProgramName) ? "No program" : r.ProgramName)
+                     .OrderByDescending(g => g.Sum(r => r.Amount)))
+        {
+            var people = program.Select(r => r.ClientId).Distinct().Count();
+            data.Rows.Add(["What you provided", program.Key,
+                $"{program.Count()} {(program.Count() == 1 ? "service" : "services")}",
+                $"{FormatMoney(program.Sum(r => r.Amount))} for {people} {(people == 1 ? "person" : "people")}"]);
+        }
+
+        foreach (var category in outcomeRows.GroupBy(o => o.Category).OrderByDescending(g => g.Count()))
+        {
+            var categoryImproved = category.Count(o => o.Outcome == ImpactOutcome.Improved);
+            data.Rows.Add(["What changed", Humanize(category.Key),
+                $"{category.Count()} {(category.Count() == 1 ? "outcome" : "outcomes")}",
+                $"{categoryImproved} improved"]);
+        }
+
+        if (data.Rows.Count == 0)
+        {
+            data.Rows.Add(["Nothing recorded yet", "Log services and outcomes to fill in this summary.", "", ""]);
+        }
 
         return data;
     }
 
-    private async Task<ReportDataset> BuildInvestmentDetailAsync(ReportRun run, DateTime? dateFrom, DateTime? dateTo, CancellationToken cancellationToken)
+    private async Task<ReportDataset> BuildInvestmentDetailAsync(DateTime? dateFrom, DateTime? dateTo, string? groupBy, ReportClock clock, CancellationToken cancellationToken)
     {
         var query = _context.Investments
             .AsNoTracking()
@@ -680,43 +796,90 @@ public sealed class ReportManagementService : IReportManagementService
                     : ((i.Client != null ? i.Client.FirstName : "") + " " + (i.Client != null ? i.Client.LastName : ""))).Trim(),
                 ProgramName = i.Program != null ? i.Program.Name : "",
                 FundName = i.Fund != null ? i.Fund.Name : "",
+                LifePhase = i.Client != null ? i.Client.LifePhase.ToString() : "",
                 i.Amount,
                 i.Status,
-                i.Reason
+                i.Reason,
+                i.PayeeName
             })
             .ToListAsync(cancellationToken);
 
+        // "Organize by" from the report builder. It used to be accepted and then ignored.
+        var (groupLabel, groupKey) = (groupBy ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "category" => ("Program", (Func<string, string, string, DateTime, string>)((program, _, _, _) => program)),
+            "funding-source" => ("Money source", (_, fund, _, _) => fund),
+            "season" => ("Progress stage", (_, _, phase, _) => phase),
+            "month" => ("Month", (_, _, _, created) => created.ToString("yyyy-MM (MMMM)", CultureInfo.InvariantCulture)),
+            _ => (string.Empty, (Func<string, string, string, DateTime, string>?)null)
+        };
+
+        string GroupOf(string program, string fund, string phase, DateTime created)
+        {
+            var value = groupKey!(program, fund, phase, created);
+            return string.IsNullOrWhiteSpace(value) ? "Not set" : value;
+        }
+
+        if (groupKey is not null)
+        {
+            rows = rows
+                .OrderBy(r => GroupOf(r.ProgramName, r.FundName, r.LifePhase, r.CreatedAt), StringComparer.OrdinalIgnoreCase)
+                .ThenByDescending(r => r.CreatedAt)
+                .ToList();
+        }
+
         var data = new ReportDataset
         {
-            Title = "Financial Intelligence Detail",
-            Subtitle = "Service investment line items for repeatability and cost modeling",
+            Title = DescribeReportType("investment-detail"),
+            Subtitle = "Every service provided, what it cost, and which money source paid for it",
+            UsesDateRange = true,
             Summary =
             {
-                ["Generated (UTC)"] = run.GeneratedAt.ToString("u"),
-                ["Rows"] = rows.Count.ToString(CultureInfo.InvariantCulture),
-                ["Total Amount"] = rows.Sum(r => r.Amount).ToString("C", CultureInfo.InvariantCulture)
+                ["Service records"] = rows.Count.ToString(CultureInfo.InvariantCulture),
+                ["Total cost"] = FormatMoney(rows.Sum(r => r.Amount))
             },
-            Columns = { "Date (UTC)", "Person", "Program", "Fund", "Amount", "Status", "Purpose" }
+            Columns = { "Date", "Person", "Program", "Money source", "Paid to", "Amount", "Status", "What was provided" }
         };
+
+        if (groupKey is not null)
+        {
+            data.Summary["Organized by"] = groupLabel;
+            foreach (var group in rows.GroupBy(r => GroupOf(r.ProgramName, r.FundName, r.LifePhase, r.CreatedAt), StringComparer.OrdinalIgnoreCase))
+            {
+                var count = group.Count();
+                data.Summary[$"{groupLabel}: {group.Key}"] =
+                    $"{FormatMoney(group.Sum(r => r.Amount))} ({count} {(count == 1 ? "record" : "records")})";
+            }
+
+            data.Columns.Insert(0, groupLabel);
+        }
 
         foreach (var row in rows)
         {
-            data.Rows.Add(new List<string>
+            var cells = new List<string>
             {
-                row.CreatedAt.ToString("u"),
+                clock.Day(row.CreatedAt),
                 string.IsNullOrWhiteSpace(row.ClientName) ? "Unknown" : row.ClientName,
                 row.ProgramName,
                 row.FundName,
-                row.Amount.ToString("F2", CultureInfo.InvariantCulture),
-                row.Status.ToString(),
+                row.PayeeName,
+                FormatMoney(row.Amount),
+                Humanize(row.Status),
                 row.Reason
-            });
+            };
+
+            if (groupKey is not null)
+            {
+                cells.Insert(0, GroupOf(row.ProgramName, row.FundName, row.LifePhase, row.CreatedAt));
+            }
+
+            data.Rows.Add(cells);
         }
 
         return data;
     }
 
-    private async Task<ReportDataset> BuildOutcomesByCategoryAsync(ReportRun run, DateTime? dateFrom, DateTime? dateTo, CancellationToken cancellationToken)
+    private async Task<ReportDataset> BuildOutcomesByCategoryAsync(DateTime? dateFrom, DateTime? dateTo, CancellationToken cancellationToken)
     {
         var query = _context.Imprints.AsNoTracking().AsQueryable();
         if (dateFrom.HasValue) query = query.Where(i => i.DateOccurred >= dateFrom.Value);
@@ -726,43 +889,43 @@ public sealed class ReportManagementService : IReportManagementService
             .GroupBy(i => new { i.Category, i.Outcome })
             .Select(g => new
             {
-                Category = g.Key.Category.ToString(),
-                Outcome = g.Key.Outcome.ToString(),
+                g.Key.Category,
+                g.Key.Outcome,
                 Count = g.Count(),
                 Latest = g.Max(x => x.DateOccurred)
             })
-            .OrderByDescending(x => x.Count)
-            .ThenBy(x => x.Category)
             .ToListAsync(cancellationToken);
+        grouped = grouped.OrderByDescending(x => x.Count).ThenBy(x => Humanize(x.Category)).ToList();
 
         var data = new ReportDataset
         {
-            Title = "Outcomes by Category",
-            Subtitle = "Verified outcome distribution across recorded impact events",
+            Title = DescribeReportType("outcomes-by-category"),
+            Subtitle = "What changed for the people you serve, by type of outcome",
+            UsesDateRange = true,
             Summary =
             {
-                ["Generated (UTC)"] = run.GeneratedAt.ToString("u"),
-                ["Category / Outcome Groups"] = grouped.Count.ToString(CultureInfo.InvariantCulture),
-                ["Total Outcome Records"] = grouped.Sum(g => g.Count).ToString(CultureInfo.InvariantCulture)
+                ["Outcomes recorded"] = grouped.Sum(g => g.Count).ToString(CultureInfo.InvariantCulture),
+                ["Types of outcome"] = grouped.Select(g => g.Category).Distinct().Count().ToString(CultureInfo.InvariantCulture)
             },
-            Columns = { "Category", "Outcome", "Count", "Latest Event (UTC)" }
+            Columns = { "Type", "Result", "How many", "Most recent" }
         };
 
         foreach (var row in grouped)
         {
             data.Rows.Add(new List<string>
             {
-                row.Category,
-                row.Outcome,
+                Humanize(row.Category),
+                Humanize(row.Outcome),
                 row.Count.ToString(CultureInfo.InvariantCulture),
-                row.Latest.ToString("u")
+                // DateOccurred is a calendar date stored as UTC midnight: format it, don't shift it.
+                ReportClock.CalendarDay(row.Latest)
             });
         }
 
         return data;
     }
 
-    private async Task<ReportDataset> BuildFundingUtilizationAsync(ReportRun run, CancellationToken cancellationToken)
+    private async Task<ReportDataset> BuildFundingUtilizationAsync(CancellationToken cancellationToken)
     {
         var funds = await _context.Funds
             .AsNoTracking()
@@ -777,16 +940,15 @@ public sealed class ReportManagementService : IReportManagementService
 
         var data = new ReportDataset
         {
-            Title = "Funding Utilization",
-            Subtitle = "Available vs deployed capital across funding sources",
+            Title = DescribeReportType("funding-utilization"),
+            Subtitle = "How much of each money source has been used and how much is left",
             Summary =
             {
-                ["Generated (UTC)"] = run.GeneratedAt.ToString("u"),
-                ["Funds"] = funds.Count.ToString(CultureInfo.InvariantCulture),
-                ["Total Capital"] = funds.Sum(f => f.TotalAmount).ToString("C", CultureInfo.InvariantCulture),
-                ["Available Capital"] = funds.Sum(f => f.AvailableAmount).ToString("C", CultureInfo.InvariantCulture)
+                ["Money sources"] = funds.Count.ToString(CultureInfo.InvariantCulture),
+                ["Total received"] = FormatMoney(funds.Sum(f => f.TotalAmount)),
+                ["Still available"] = FormatMoney(funds.Sum(f => f.AvailableAmount))
             },
-            Columns = { "Fund", "Total", "Available", "Deployed", "Utilization %" }
+            Columns = { "Money source", "Total", "Still available", "Used", "Percent used" }
         };
 
         foreach (var fund in funds)
@@ -796,17 +958,17 @@ public sealed class ReportManagementService : IReportManagementService
             data.Rows.Add(new List<string>
             {
                 fund.Name,
-                fund.TotalAmount.ToString("F2", CultureInfo.InvariantCulture),
-                fund.AvailableAmount.ToString("F2", CultureInfo.InvariantCulture),
-                deployed.ToString("F2", CultureInfo.InvariantCulture),
-                utilizationPct.ToString("F1", CultureInfo.InvariantCulture)
+                FormatMoney(fund.TotalAmount),
+                FormatMoney(fund.AvailableAmount),
+                FormatMoney(deployed),
+                utilizationPct.ToString("F1", CultureInfo.InvariantCulture) + "%"
             });
         }
 
         return data;
     }
 
-    private async Task<ReportDataset> BuildSeasonProgressionAsync(ReportRun run, CancellationToken cancellationToken)
+    private async Task<ReportDataset> BuildSeasonProgressionAsync(CancellationToken cancellationToken)
     {
         var plans = await _context.GrowthPlans
             .AsNoTracking()
@@ -828,16 +990,15 @@ public sealed class ReportManagementService : IReportManagementService
 
         var data = new ReportDataset
         {
-            Title = "Season Progression",
-            Subtitle = "Growth plan progression by season and completion rates",
+            Title = DescribeReportType("season-progression"),
+            Subtitle = "Growth plans by stage, with goals completed",
             Summary =
             {
-                ["Generated (UTC)"] = run.GeneratedAt.ToString("u"),
-                ["Growth Plans"] = plans.Count.ToString(CultureInfo.InvariantCulture),
-                ["Completed Goals"] = plans.Sum(p => p.CompletedGoals).ToString(CultureInfo.InvariantCulture),
-                ["Total Goals"] = plans.Sum(p => p.TotalGoals).ToString(CultureInfo.InvariantCulture)
+                ["Growth plans"] = plans.Count.ToString(CultureInfo.InvariantCulture),
+                ["Goals completed"] = plans.Sum(p => p.CompletedGoals).ToString(CultureInfo.InvariantCulture),
+                ["Goals set"] = plans.Sum(p => p.TotalGoals).ToString(CultureInfo.InvariantCulture)
             },
-            Columns = { "Plan", "Client", "Season", "Status", "Start", "Target End", "Goals", "Completion %" }
+            Columns = { "Plan", "Person", "Season", "Status", "Start", "Target end", "Goals", "Percent complete" }
         };
 
         foreach (var plan in plans)
@@ -847,19 +1008,19 @@ public sealed class ReportManagementService : IReportManagementService
             {
                 plan.Title,
                 string.IsNullOrWhiteSpace(plan.ClientName) ? "Unassigned" : plan.ClientName,
-                plan.Season.ToString(),
-                plan.Status.ToString(),
-                plan.StartDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                plan.TargetEndDate?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? string.Empty,
+                Humanize(plan.Season),
+                Humanize(plan.Status),
+                ReportClock.CalendarDay(plan.StartDate),
+                plan.TargetEndDate is { } end ? ReportClock.CalendarDay(end) : string.Empty,
                 $"{plan.CompletedGoals}/{plan.TotalGoals}",
-                completion.ToString("F1", CultureInfo.InvariantCulture)
+                completion.ToString("F0", CultureInfo.InvariantCulture) + "%"
             });
         }
 
         return data;
     }
 
-    private async Task<ReportDataset> BuildDemographicBreakdownAsync(ReportRun run, CancellationToken cancellationToken)
+    private async Task<ReportDataset> BuildDemographicBreakdownAsync(CancellationToken cancellationToken)
     {
         var clients = await _context.Clients
             .AsNoTracking()
@@ -876,7 +1037,7 @@ public sealed class ReportManagementService : IReportManagementService
             .OrderBy(g => g.Key.ToString())
             .Select(g => new
             {
-                Group = $"Life Phase: {g.Key}",
+                Group = $"Progress stage: {Humanize(g.Key)}",
                 Count = g.Count(),
                 AvgStability = g.Average(x => x.StabilityScore),
                 AvgHousehold = g.Average(x => x.HouseholdCount)
@@ -886,7 +1047,7 @@ public sealed class ReportManagementService : IReportManagementService
             .OrderBy(g => g.Key.ToString())
             .Select(g => new
             {
-                Group = $"Employment: {g.Key}",
+                Group = $"Employment: {Humanize(g.Key)}",
                 Count = g.Count(),
                 AvgStability = g.Average(x => x.StabilityScore),
                 AvgHousehold = g.Average(x => x.HouseholdCount)
@@ -896,15 +1057,14 @@ public sealed class ReportManagementService : IReportManagementService
 
         var data = new ReportDataset
         {
-            Title = "Demographic Breakdown",
-            Subtitle = "Portfolio segmentation for readiness and capacity planning",
+            Title = DescribeReportType("demographic-breakdown"),
+            Subtitle = "The people you serve, by progress stage and employment",
             Summary =
             {
-                ["Generated (UTC)"] = run.GeneratedAt.ToString("u"),
-                ["Case Files"] = clients.Count.ToString(CultureInfo.InvariantCulture),
-                ["Average Stability"] = (clients.Count == 0 ? 0d : clients.Average(c => c.StabilityScore)).ToString("F1", CultureInfo.InvariantCulture)
+                ["People"] = clients.Count.ToString(CultureInfo.InvariantCulture),
+                ["Average stability score"] = (clients.Count == 0 ? 0d : clients.Average(c => c.StabilityScore)).ToString("F1", CultureInfo.InvariantCulture)
             },
-            Columns = { "Segment", "Count", "Avg Stability", "Avg Household Size" }
+            Columns = { "Group", "People", "Average stability", "Average household size" }
         };
 
         foreach (var row in combined)
@@ -921,16 +1081,13 @@ public sealed class ReportManagementService : IReportManagementService
         return data;
     }
 
-    private async Task<ReportDataset> BuildCustomSummaryAsync(ReportRun run, GenerateReportRequest request, DateTime? dateFrom, DateTime? dateTo, CancellationToken cancellationToken)
+    private async Task<ReportDataset> BuildCustomSummaryAsync(GenerateReportRequest request, DateTime? dateFrom, DateTime? dateTo, CancellationToken cancellationToken)
     {
-        var dataset = await BuildImpactSummaryAsync(run, dateFrom, dateTo, cancellationToken);
-        dataset.Title = "Custom Funding Readiness Report";
-        dataset.Subtitle = "Custom report request metadata and portfolio metrics";
-        dataset.Summary["Requested Format"] = string.IsNullOrWhiteSpace(request.Format) ? run.Format : request.Format!;
-        dataset.Summary["Requested Grouping"] = string.IsNullOrWhiteSpace(request.GroupBy) ? "none" : request.GroupBy!;
+        var dataset = await BuildImpactSummaryAsync(dateFrom, dateTo, cancellationToken);
+        dataset.Title = DescribeReportType("custom-report");
         if (!string.IsNullOrWhiteSpace(request.FiscalYear))
         {
-            dataset.Summary["Fiscal Year"] = request.FiscalYear!;
+            dataset.Summary["Fiscal year"] = request.FiscalYear!;
         }
         return dataset;
     }
@@ -942,6 +1099,10 @@ public sealed class ReportManagementService : IReportManagementService
         if (!string.IsNullOrWhiteSpace(dataset.Subtitle))
         {
             sb.AppendLine(EscapeCsv(dataset.Subtitle));
+        }
+        if (!string.IsNullOrWhiteSpace(dataset.Generated))
+        {
+            sb.AppendLine(EscapeCsv($"Created {dataset.Generated}"));
         }
         sb.AppendLine();
 
@@ -1045,6 +1206,14 @@ public sealed class ReportManagementService : IReportManagementService
             row++;
         }
 
+        if (!string.IsNullOrWhiteSpace(dataset.Generated))
+        {
+            sheet.Cell(row, 1).Value = $"Created {dataset.Generated}";
+            sheet.Range(row, 1, row, maxColumns).Merge();
+            sheet.Cell(row, 1).Style.Font.FontColor = XLColor.FromHtml("#475569");
+            row++;
+        }
+
         row++;
 
         if (dataset.Summary.Count > 0)
@@ -1101,6 +1270,11 @@ public sealed class ReportManagementService : IReportManagementService
         if (!string.IsNullOrWhiteSpace(dataset.Subtitle))
         {
             lines.Add(dataset.Subtitle);
+        }
+
+        if (!string.IsNullOrWhiteSpace(dataset.Generated))
+        {
+            lines.Add($"Created {dataset.Generated}");
         }
 
         lines.Add(string.Empty);
@@ -1165,13 +1339,16 @@ public sealed class ReportManagementService : IReportManagementService
                             text.Span(".IT").FontColor("#27B062").SemiBold().FontSize(18);
                         });
 
-                        r.ConstantItem(170).AlignRight().Column(meta =>
+                        r.ConstantItem(220).AlignRight().Column(meta =>
                         {
-                            if (dataset.Summary.TryGetValue("Generated (UTC)", out var generated))
+                            if (!string.IsNullOrWhiteSpace(dataset.Organization))
                             {
-                                meta.Item().Text($"Generated: {generated}").FontColor(Colors.Grey.Darken2);
+                                meta.Item().AlignRight().Text(dataset.Organization).SemiBold().FontColor("#32505A");
                             }
-                            meta.Item().Text("Funding Readiness Report").FontColor(Colors.Grey.Darken2);
+                            if (!string.IsNullOrWhiteSpace(dataset.Generated))
+                            {
+                                meta.Item().AlignRight().Text($"Created {dataset.Generated}").FontColor(Colors.Grey.Darken2);
+                            }
                         });
                     });
 
@@ -1187,7 +1364,7 @@ public sealed class ReportManagementService : IReportManagementService
                 {
                     if (dataset.Summary.Count > 0)
                     {
-                        col.Item().Text("Executive Summary").SemiBold().FontColor("#32505A");
+                        col.Item().Text("At a glance").SemiBold().FontColor("#32505A");
                         col.Item().PaddingTop(4).Table(table =>
                         {
                             table.ColumnsDefinition(columns =>
@@ -1210,7 +1387,7 @@ public sealed class ReportManagementService : IReportManagementService
 
                     if (dataset.Columns.Count > 0)
                     {
-                        col.Item().Text("Report Data").SemiBold().FontColor("#32505A");
+                        col.Item().Text("Details").SemiBold().FontColor("#32505A");
                         col.Item().PaddingTop(4).Table(table =>
                         {
                             table.ColumnsDefinition(columns =>
@@ -1343,6 +1520,10 @@ public sealed class ReportManagementService : IReportManagementService
     {
         public string Title { get; set; } = string.Empty;
         public string Subtitle { get; set; } = string.Empty;
+        public string Organization { get; set; } = string.Empty;
+        public string Generated { get; set; } = string.Empty;
+        public string Period { get; set; } = string.Empty;
+        public bool UsesDateRange { get; set; }
         public Dictionary<string, string> Summary { get; } = new(StringComparer.OrdinalIgnoreCase);
         public List<string> Columns { get; } = new();
         public List<List<string>> Rows { get; } = new();

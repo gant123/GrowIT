@@ -1,0 +1,31 @@
+.confirm-action-backdrop {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    /* Above the page modals, including the service record details modal (1200). */
+    z-index: 1300;
+}
+
+.confirm-action-shell {
+    background: var(--growit-bg-card);
+    color: var(--growit-text-primary);
+    border: 1px solid var(--growit-border);
+    box-shadow: var(--growit-shadow-lg);
+    max-width: 480px;
+}
+
+.confirm-action-shell .modal-header,
+.confirm-action-shell .modal-footer {
+    border-color: var(--growit-border);
+}
+
+.confirm-action-shell .modal-title {
+    margin: 0;
+    font-weight: 700;
+    font-size: 1.05rem;
+}
+
+.confirm-action-message {
+    margin: 0;
+    color: var(--growit-text-secondary);
+    line-height: 1.5;
+}

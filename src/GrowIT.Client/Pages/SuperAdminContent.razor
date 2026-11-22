@@ -119,7 +119,16 @@
                                 <tr>
                                     <td>
                                         <div class="fw-semibold">@post.Title</div>
-                                        <div class="small text-muted">/@post.Slug</div>
+                                        @* Show the real public address (it used to read "/slug", which
+                                           looked like a broken path and isn't where the post lives). *@
+                                        @if (post.IsPublished)
+                                        {
+                                            <a class="small" href="@($"/blog/{post.Slug.Trim('/')}")" target="_blank" rel="noopener">/blog/@post.Slug.Trim('/')</a>
+                                        }
+                                        else
+                                        {
+                                            <div class="small text-muted">/blog/@post.Slug.Trim('/') (draft)</div>
+                                        }
                                     </td>
                                     <td>@post.Category</td>
                                     <td>

@@ -63,15 +63,20 @@ services:
       Reports__Scheduler__MaxSchedulesPerCycle: ${REPORT_SCHEDULER_MAX_PER_CYCLE:-20}
       Reports__Scheduler__DefaultReportType: ${REPORT_SCHEDULER_DEFAULT_TYPE:-impact-summary}
       Reports__Scheduler__DefaultFormat: ${REPORT_SCHEDULER_DEFAULT_FORMAT:-pdf}
+      # Uploaded documents (IDs, leases, IRS letters). Private: served only through the
+      # authenticated download endpoint, never from wwwroot.
+      Storage__DocumentsPath: /app/App_Data/documents
     ports:
       - "${CLIENT_PORT:-5180}:8080"
     volumes:
       - growit-web-uploads:/app/wwwroot/uploads
       - growit-web-dev-emails:/app/dev-emails
       - growit-web-keys:/app/keys
+      - growit-documents:/app/App_Data/documents
 
 volumes:
   growit-postgres-data:
   growit-web-uploads:
   growit-web-dev-emails:
   growit-web-keys:
+  growit-documents:

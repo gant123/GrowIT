@@ -26,6 +26,8 @@ public class ClientDetailDto
     public EmploymentStatus EmploymentStatus { get; set; }
     public DateTime? NextFollowupDate { get; set; }
     public Guid? HouseholdId { get; set; }
+    // Name of the household (Households page) this person is grouped into, if any.
+    public string? HouseholdName { get; set; }
     public HouseholdRole HouseholdRole { get; set; }
 
     // --- Financial Summary ---
@@ -64,4 +66,25 @@ public class TimelineItemDto
     public decimal? Amount { get; set; } // Only for Investments
     public string Icon { get; set; } = "oi-info";
     public string ColorClass { get; set; } = "text-secondary";
+}
+
+/// <summary>Result of deleting a person (DELETE api/clients/{id}).</summary>
+public class ClientDeleteResultDto
+{
+    public string Message { get; set; } = string.Empty;
+    public int FollowUpsRemoved { get; set; }
+    public int FamilyMembersRemoved { get; set; }
+}
+
+/// <summary>
+/// 409 body when a person cannot be deleted because records still point at them. The counts say
+/// what is linked so the screen can tell the user exactly what to deal with first.
+/// </summary>
+public class ClientDeleteBlockedDto
+{
+    public string Message { get; set; } = string.Empty;
+    public int ServiceRecords { get; set; }
+    public int Outcomes { get; set; }
+    public int GrowthPlans { get; set; }
+    public int Documents { get; set; }
 }

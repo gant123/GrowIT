@@ -43,8 +43,56 @@ public class ContentController : ControllerBase
             })
             .ToListAsync();
 
+        foreach (var post in posts)
+        {
+            post.Slug = NormalizeSlug(post.Slug);
+        }
+
         return Ok(posts);
     }
+
+    /// <summary>
+    /// One published article for the public /blog/{slug} page. Drafts and unknown slugs are 404.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("blog/{slug}")]
+    public async Task<ActionResult<PublicBlogPostDto>> GetPublishedBlogPost(string slug)
+    {
+        var normalized = NormalizeSlug(slug);
+        if (string.IsNullOrEmpty(normalized) || normalized.Length > 200)
+        {
+            return NotFound("That article isn't available.");
+        }
+
+        // Older rows may have been saved with a leading slash; match those too.
+        var legacySlug = "/" + normalized;
+        var post = await _context.BlogPosts
+            .AsNoTracking()
+            .Where(p => p.IsPublished && (p.Slug == normalized || p.Slug == legacySlug))
+            .Select(p => new PublicBlogPostDto
+            {
+                Id = p.Id,
+                Title = p.Title,
+                Slug = p.Slug,
+                Excerpt = p.Excerpt,
+                Content = p.Content,
+                Category = p.Category,
+                AuthorName = p.AuthorName,
+                PublishedAt = p.PublishedAt ?? p.CreatedAt
+            })
+            .FirstOrDefaultAsync();
+
+        if (post is null)
+        {
+            return NotFound("That article isn't available.");
+        }
+
+        post.Slug = NormalizeSlug(post.Slug);
+        return Ok(post);
+    }
+
+    internal static string NormalizeSlug(string? slug) =>
+        (slug ?? string.Empty).Trim().Trim('/').Trim().ToLowerInvariant();
 
     [AllowAnonymous]
     [EnableRateLimiting("contact-submit")]

@@ -18,6 +18,9 @@ services:
       ASPNETCORE_URLS: http://+:8080
       InternalApiBaseUrl: http://localhost:8080
       DataProtection__KeysPath: /app/keys
+      # Uploaded documents are private (served only through the authenticated download
+      # endpoint) and must survive redeploys, so they live on their own volume.
+      Storage__DocumentsPath: /app/App_Data/documents
       Email__DevFileFallbackDirectory: /app/dev-emails
     # Loopback only, for health checks from the server itself. Public traffic arrives
     # through the tunnel over the Docker network, not through this port.
@@ -27,6 +30,7 @@ services:
       - uploads:/app/wwwroot/uploads
       - keys:/app/keys
       - dev-emails:/app/dev-emails
+      - documents:/app/App_Data/documents
     networks:
       - db
       - tunnel
@@ -35,6 +39,7 @@ volumes:
   uploads:
   keys:
   dev-emails:
+  documents:
 
 networks:
   db:

@@ -7,11 +7,11 @@
 <PageTitle>Programs - grow.IT</PageTitle>
 
 <div class="programs-page">
-    <PageHeader Title="Programs & Services" Subtitle="Save what your organization does, who it serves, and what it usually costs. Grow.IT reuses this in service records, reports, and portfolio content.">
+    <PageHeader Title="Programs & Services" Subtitle="Save what your organization does, who it serves, and what it usually costs. grow.IT reuses this in service records, reports, and portfolio content.">
         <Actions>
             @if (_canManageFinancials)
             {
-                <button class="btn btn-primary" @onclick="OpenCreateModal">
+                <button class="btn-growit btn-primary-growit" @onclick="OpenCreateModal">
                     <i class="bi bi-plus-lg"></i>
                     <span>Add Program</span>
                 </button>
@@ -30,7 +30,7 @@
     {
         <div class="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
             <div>@_loadError</div>
-            <button class="btn btn-sm btn-outline-light" @onclick="LoadPrograms">Retry</button>
+            <button class="btn-growit btn-secondary-growit btn-sm" @onclick="LoadPrograms">Retry</button>
         </div>
     }
 
@@ -90,10 +90,10 @@
             <div class="program-empty">
                 <div class="program-empty-icon"><i class="bi bi-folder-x"></i></div>
                 <h3>No programs found</h3>
-                <p>Add the first program or service your organization offers. Use everyday language; Grow.IT will use it in records and reports.</p>
+                <p>Add the first program or service your organization offers. Use everyday language; grow.IT will use it in records and reports.</p>
                 @if (_canManageFinancials)
                 {
-                    <button class="btn btn-outline-primary" @onclick="OpenCreateModal">
+                    <button class="btn-growit btn-secondary-growit" @onclick="OpenCreateModal">
                         <i class="bi bi-plus-lg"></i>
                         <span>Create First Program</span>
                     </button>
@@ -113,17 +113,17 @@
                                     <i class="bi bi-cash-coin"></i>
                                     @if (p.DefaultUnitCost > 0)
                                     {
-                                        <span>@p.DefaultUnitCost.ToString("C0") default unit cost</span>
+                                        <span>Usually @p.DefaultUnitCost.ToString("C0") each time</span>
                                     }
                                     else
                                     {
-                                        <span>Unit cost not configured</span>
+                                        <span>Usual cost not set</span>
                                     }
                                 </div>
                             </div>
                             @if (p.CapacityLimit.HasValue)
                             {
-                                <span class="capacity-chip configured">@p.CapacityLimit @p.CapacityPeriod</span>
+                                <span class="capacity-chip configured">@FormatCapacity(p.CapacityLimit, p.CapacityPeriod)</span>
                             }
                             else
                             {
@@ -135,10 +135,10 @@
                             <div class="program-attributes">
                                 <div class="program-attr">
                                     <span class="label">Service Limit</span>
-                                    <span class="value">@(p.CapacityLimit.HasValue ? $"{p.CapacityLimit} per {p.CapacityPeriod}" : "Not set")</span>
+                                    <span class="value">@(p.CapacityLimit.HasValue ? FormatCapacity(p.CapacityLimit, p.CapacityPeriod) : "Not set")</span>
                                 </div>
                                 <div class="program-attr">
-                                    <span class="label">Unit Cost</span>
+                                    <span class="label">Cost Each Time</span>
                                     <span class="value">@(p.DefaultUnitCost > 0 ? p.DefaultUnitCost.ToString("C2") : "Not set")</span>
                                 </div>
                             </div>
@@ -197,11 +197,11 @@
                     </div>
 
                     <div class="d-flex justify-content-end gap-2 mt-4">
-                        <button type="button" class="btn btn-outline-secondary" @onclick="CloseCreateModal">Cancel</button>
-                        <button class="btn btn-primary" @onclick="CreateProgram" disabled="@_isSaving">
+                        <button type="button" class="btn-growit btn-secondary-growit" @onclick="CloseCreateModal">Cancel</button>
+                        <button class="btn-growit btn-primary-growit" @onclick="CreateProgram" disabled="@_isSaving">
                             @if (_isSaving)
                             {
-                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                             }
                             <span>Save Program</span>
                         </button>
@@ -213,6 +213,22 @@
 }
 
 @code {
+    // "20 per month" rather than "20 per Monthly".
+    private static string FormatCapacity(int? limit, string? period)
+    {
+        var unit = period?.Trim().ToLowerInvariant() switch
+        {
+            "weekly" => "week",
+            "monthly" => "month",
+            "annual" or "annually" or "yearly" => "year",
+            "daily" => "day",
+            "quarterly" => "quarter",
+            _ => null
+        };
+
+        return unit is null ? $"{limit}" : $"{limit} per {unit}";
+    }
+
     private List<ProgramDto>? programs;
     private bool showCreateModal;
     private bool _isSaving;

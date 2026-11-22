@@ -196,7 +196,10 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 // validator, so the ValidationInterval above was dead configuration and the OnValidatePrincipal
 // hook below had nothing to resolve. Register it so password reset / deactivation / role change
 // (all of which rotate the security stamp) actually revoke live cookie sessions.
-builder.Services.AddScoped<ISecurityStampValidator, SecurityStampValidator<User>>();
+// The custom validator looks the user up without the tenant query filter (tenant context does
+// not exist yet during cookie authentication) and signs out only the app cookie on rejection;
+// the stock validator rejected every session after the interval and then threw (HTTP 500).
+builder.Services.AddScoped<ISecurityStampValidator, GrowITSecurityStampValidator>();
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = CompositeAuthScheme;
@@ -321,6 +324,7 @@ builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddScoped<ITaskService, TaskService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<IOrganizationReadinessService, OrganizationReadinessService>();
+builder.Services.AddScoped<ISearchService, SearchService>();
 
 builder.Services.AddHttpClient("GrowITApi", (sp, client) =>
     {
@@ -420,6 +424,13 @@ else
 {
     app.UseHttpsRedirection();
 }
+
+// An unknown page URL matches no endpoint and would return an empty 404, leaving people on the
+// browser's own "page can't be found" screen. Re-run those requests through the branded
+// /not-found page (the status stays 404). API/BFF/asset requests keep their plain responses.
+app.UseWhen(
+    context => IsBrowserPageRequest(context.Request),
+    branch => branch.UseStatusCodePagesWithReExecute("/not-found"));
 
 app.UseStaticFiles();
 app.UseRouting();
@@ -804,6 +815,24 @@ static bool IsApiOrBffRequest(HttpRequest request) =>
     request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase) ||
     request.Path.StartsWithSegments("/bff", StringComparison.OrdinalIgnoreCase);
 
+static bool IsBrowserPageRequest(HttpRequest request)
+{
+    if (!HttpMethods.IsGet(request.Method) && !HttpMethods.IsHead(request.Method))
+    {
+        return false;
+    }
+
+    if (IsApiOrBffRequest(request) ||
+        request.Path.StartsWithSegments("/_blazor", StringComparison.OrdinalIgnoreCase) ||
+        request.Path.StartsWithSegments("/_framework", StringComparison.OrdinalIgnoreCase) ||
+        request.Path.StartsWithSegments("/_content", StringComparison.OrdinalIgnoreCase))
+    {
+        return false;
+    }
+
+    return request.Headers.Accept.ToString().Contains("text/html", StringComparison.OrdinalIgnoreCase);
+}
+
 static string GetClientIpPartitionKey(HttpContext context)
 {
     var ip = context.Connection.RemoteIpAddress?.ToString();
@@ -850,7 +879,10 @@ static void ApplySecurityHeaders(HttpContext context, bool enforceContentSecurit
             "base-uri 'self'; " +
             "frame-ancestors 'none'; " +
             "form-action 'self'; " +
-            "img-src 'self' data: https:; " +
+            // blob: is required by Blazor's InputFile.RequestImageFileAsync (profile photo resize):
+            // it loads the picked file through an object URL, and without this the image never
+            // loads and the upload spins forever.
+            "img-src 'self' data: blob: https:; " +
             "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " +
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " +
             scriptSrc +

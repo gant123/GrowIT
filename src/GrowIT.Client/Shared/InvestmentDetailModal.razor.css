@@ -1,0 +1,23 @@
+.service-record-backdrop {
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    z-index: 1200;
+}
+
+.service-record-shell {
+    background-color: var(--growit-bg-card);
+    color: var(--growit-text-primary);
+}
+
+.service-record-shell .modal-header,
+.service-record-shell .modal-footer {
+    border-color: var(--growit-border);
+}
+
+.service-record-shell .form-control-plaintext {
+    color: var(--growit-text-primary);
+}
+
+.service-record-description {
+    white-space: pre-line;
+}

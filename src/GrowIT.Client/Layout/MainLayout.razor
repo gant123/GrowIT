@@ -9,6 +9,7 @@
 @inject IRoleAccessService RoleAccessService
 @inject IAdminService AdminService
 @inject BreadcrumbState BreadcrumbLabels
+@inject ISearchService SearchService
 
 @* Theme is owned by the data-theme attribute on <html> (set by growITTheme in app.js,
    persisted in localStorage). Do NOT stamp data-theme here as well: this div starts as
@@ -25,8 +26,8 @@
                 <img src="images/logo-@(_currentTheme == "dark" ? "light" : "dark").png" alt="GrowIT" class="brand-logo" />
                 <span class="brand-text">grow<span class="brand-highlight">.IT</span></span>
             </a>
-            <button class="sidebar-collapse-btn" @onclick="ToggleSidebar" title="Toggle sidebar">
-                <i class="bi bi-chevron-bar-left"></i>
+            <button type="button" class="sidebar-collapse-btn" @onclick="ToggleSidebar" title="@(_sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar")" aria-label="@(_sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar")" aria-expanded="@(!_sidebarCollapsed)">
+                <i class="bi bi-chevron-bar-left" aria-hidden="true"></i>
             </button>
         </div>
         
@@ -161,8 +162,8 @@
                     <span class="sidebar-user-name">@_userName</span>
                     <span class="sidebar-user-role">@_userRole</span>
                 </div>
-                <button class="user-menu-btn" @onclick="ToggleUserMenu">
-                    <i class="bi bi-three-dots-vertical"></i>
+                <button type="button" class="user-menu-btn" @onclick="ToggleUserMenu" title="Account menu" aria-label="Account menu" aria-haspopup="menu" aria-expanded="@_userMenuOpen">
+                    <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
                 </button>
             </div>
         </div>
@@ -173,8 +174,8 @@
         <!-- Top Bar -->
         <header class="growit-topbar">
             <div class="topbar-left">
-                <button class="mobile-menu-btn" @onclick="OpenMobileSidebar" title="Open menu">
-                    <i class="bi bi-list"></i>
+                <button type="button" class="mobile-menu-btn" @onclick="OpenMobileSidebar" title="Open menu" aria-label="Open menu">
+                    <i class="bi bi-list" aria-hidden="true"></i>
                 </button>
 
                 <div class="workspace-chip" title="Current workspace context">
@@ -188,12 +189,19 @@
                         <div class="breadcrumb-item @(crumb.IsLast ? "active" : "")">
                             @if (crumb.IsLast)
                             {
-                                <span>@crumb.Label</span>
+                                <span aria-current="page">@crumb.Label</span>
                             }
                             else
                             {
-                                <a href="@crumb.Href">@crumb.Label</a>
-                                <span class="breadcrumb-separator">
+                                @if (crumb.Href is null)
+                                {
+                                    <span>@crumb.Label</span>
+                                }
+                                else
+                                {
+                                    <a href="@crumb.Href">@crumb.Label</a>
+                                }
+                                <span class="breadcrumb-separator" aria-hidden="true">
                                     <i class="bi bi-chevron-right"></i>
                                 </span>
                             }
@@ -206,11 +214,11 @@
                 <div class="topbar-search">
                     <div class="search-input-wrapper" @onfocusin="HandleSearchFocusIn" @onfocusout="HandleSearchFocusOut">
                         <i class="bi bi-search search-icon"></i>
-                        <input type="text" placeholder="Search anything (⌘K)" 
+                        <input type="text" placeholder="Search anything (@_searchShortcutLabel)" aria-label="Search people, programs, money sources and pages"
                                @ref="_searchInput"
-                               @bind="_searchQuery" @bind:event="oninput" 
+                               @bind="_searchQuery" @bind:event="oninput" @bind:after="OnSearchQueryChangedAsync"
                                @onkeyup="HandleSearchKeyUp" />
-                        <div class="search-shortcut">⌘K</div>
+                        <div class="search-shortcut" aria-hidden="true">@_searchShortcutLabel</div>
                     </div>
                     @if (_showSearchSuggestions)
                     {
@@ -237,7 +245,7 @@
                             {
                                 <div class="search-empty-state">
                                     <i class="bi bi-search"></i>
-                                    <span>No quick navigation matches</span>
+                                    <span>@SearchEmptyMessage</span>
                                 </div>
                             }
                         </div>
@@ -247,20 +255,21 @@
             
             <div class="topbar-right">
                 <div class="topbar-actions">
-                    <button class="topbar-btn theme-toggle" @onclick="ToggleTheme" title="Toggle theme">
+                    <button type="button" class="topbar-btn theme-toggle" @onclick="ToggleTheme" title="@(_currentTheme == "dark" ? "Switch to light mode" : "Switch to dark mode")" aria-label="@(_currentTheme == "dark" ? "Switch to light mode" : "Switch to dark mode")">
                         @if (_currentTheme == "dark")
                         {
-                            <i class="bi bi-sun-fill"></i>
+                            <i class="bi bi-sun-fill" aria-hidden="true"></i>
                         }
                         else
                         {
-                            <i class="bi bi-moon-stars"></i>
+                            <i class="bi bi-moon-stars" aria-hidden="true"></i>
                         }
                     </button>
                     
                     <div class="dropdown-container">
-                        <button class="topbar-btn notifications-btn @(_notificationsOpen ? "active" : "")" @onclick="ToggleNotificationsAsync" title="Notifications">
-                            <i class="bi bi-bell"></i>
+                        <button type="button" class="topbar-btn notifications-btn @(_notificationsOpen ? "active" : "")" @onclick="ToggleNotificationsAsync" title="Notifications"
+                                aria-label="@(_notificationCount > 0 ? $"Notifications ({_notificationCount} unread)" : "Notifications")" aria-haspopup="true" aria-expanded="@_notificationsOpen">
+                            <i class="bi bi-bell" aria-hidden="true"></i>
                             @if (_notificationCount > 0)
                             {
                                 <span class="notification-badge">@(_notificationCount > 9 ? "9+" : _notificationCount.ToString())</span>
@@ -323,7 +332,7 @@
                     </div>
 
                     <div class="dropdown-container">
-                        <button class="user-profile-btn" @onclick="ToggleUserMenu">
+                        <button type="button" class="user-profile-btn" @onclick="ToggleUserMenu" title="Account menu" aria-label="Account menu for @_userName" aria-haspopup="menu" aria-expanded="@_userMenuOpen">
                             <div class="user-avatar">
                                 @if (!string.IsNullOrWhiteSpace(_userPhotoUrl))
                                 {
@@ -529,17 +538,17 @@
                         <span class="log-option-desc">Money or support given</span>
                     </button>
                 }
-                <button type="button" class="log-option" @onclick="@(() => LogNavigate("/imprints"))">
+                <button type="button" class="log-option" @onclick="@(() => LogNavigate("/imprints?new=1"))">
                     <i class="bi bi-flower1"></i>
                     <span class="log-option-title">Outcome</span>
-                    <span class="log-option-desc">A harvest worth reporting</span>
+                    <span class="log-option-desc">A change worth reporting</span>
                 </button>
-                <button type="button" class="log-option" @onclick="@(() => LogNavigate("/clients/create"))">
+                <button type="button" class="log-option" @onclick="@(() => LogNavigate("/clients?new=1"))">
                     <i class="bi bi-person-plus"></i>
                     <span class="log-option-title">Person</span>
-                    <span class="log-option-desc">New case file</span>
+                    <span class="log-option-desc">New person or household</span>
                 </button>
-                <button type="button" class="log-option" @onclick="@(() => LogNavigate("/tasks"))">
+                <button type="button" class="log-option" @onclick="@(() => LogNavigate("/tasks?new=1"))">
                     <i class="bi bi-alarm"></i>
                     <span class="log-option-title">Follow-up</span>
                     <span class="log-option-desc">Remind future you</span>
@@ -571,6 +580,7 @@
     private string _currentTheme = "light";
     private bool _sidebarCollapsed = false;
     private string _searchQuery = "";
+    private string _searchShortcutLabel = "Ctrl K";
     private int _notificationCount;
     private bool _userMenuOpen = false;
     private bool _notificationsOpen = false;
@@ -591,7 +601,7 @@
     [
         new("/", "Dashboard", "Saved data, next steps, and organization progress", "Main", "bi bi-grid-1x2", "dashboard home overview"),
         new("/clients", "People & Households", "Profiles for people and households served", "Main", "bi bi-people", "clients cases people directory"),
-        new("/clients/create", "New Profile", "Add a person or household profile", "Main", "bi bi-person-plus", "new create client case"),
+        new("/clients?new=1", "New Profile", "Add a person or household profile", "Main", "bi bi-person-plus", "new create client case add person"),
         new("/households", "Households", "Manage household groupings", "Main", "bi bi-house-door", "households family homes"),
         new("/tasks", "Follow-ups", "Action items and case follow-ups", "Main", "bi bi-list-check", "tasks todo follow up reminders action items"),
         new("/documents", "Documents", "Client files and uploads", "Main", "bi bi-file-earmark-text", "documents files uploads attachments"),
@@ -605,7 +615,7 @@
         new("/insights", "Insights", "Helpful patterns and alerts (beta)", "Intelligence", "bi bi-activity", "insights analytics"),
         new("/settings", "Settings", "Organization details and team access", "System", "bi bi-gear", "settings preferences"),
         new("/billing", "Billing", "Plans, invoices, and payments", "System", "bi bi-credit-card", "billing plans invoices payments subscription upgrade"),
-        new("/documentation", "Documentation", "Plain-language guide to using Grow.IT", "System", "bi bi-journal-text", "documentation help guide how to use growit"),
+        new("/documentation", "Documentation", "Plain-language guide to using grow.IT", "System", "bi bi-journal-text", "documentation help guide how to use growit"),
         new("/super-admin/content", "Site Content", "Manage public blog and contact submissions", "System", "bi bi-journal-richtext", "site content blog contact super admin"),
         new("/profile", "Profile", "Account profile and preferences", "System", "bi bi-person-gear", "profile account user"),
         new("/notifications", "Notifications", "Alerts and updates", "System", "bi bi-bell", "notifications alerts"),
@@ -616,9 +626,15 @@
     private class Breadcrumb
     {
         public string Label { get; set; } = "";
-        public string Href { get; set; } = "";
+        // Null for path segments that are not pages of their own (rendered as plain text).
+        public string? Href { get; set; }
         public bool IsLast { get; set; }
     }
+
+    // URL segments that only group routes and have no page behind them. Linking them produced
+    // dead breadcrumb links (e.g. "Member" -> /clients/member -> 404).
+    private static readonly HashSet<string> BreadcrumbHiddenSegments = new(StringComparer.OrdinalIgnoreCase) { "member" };
+    private static readonly HashSet<string> BreadcrumbUnlinkedSegments = new(StringComparer.OrdinalIgnoreCase) { "super-admin" };
 
     private sealed record QuickNavItem(string Route, string Label, string Description, string Category, string Icon, string Keywords);
 
@@ -627,8 +643,95 @@
             .Where(item => MatchesQuickSearch(item, _searchQuery) && CanAccessRoute(item.Route))
             .OrderBy(item => item.Category)
             .ThenBy(item => item.Label)
-            .Take(8)
+            .Take(_recordSearchResults.Count > 0 ? 5 : 8)
+            .Concat(_recordSearchResults)
             .ToList();
+
+    // ---- Record search (people, household members, programs, money sources) ----
+    // Page shortcuts above only match page names; these come from GET /api/search (tenant-scoped,
+    // min 2 characters) and are debounced so typing doesn't fire a request per keystroke.
+    private const int RecordSearchMinLength = 2;
+    private const int RecordSearchDebounceMs = 250;
+    private List<QuickNavItem> _recordSearchResults = [];
+    private CancellationTokenSource? _recordSearchCts;
+    private bool _recordSearchPending;
+
+    private string SearchEmptyMessage =>
+        _recordSearchPending ? "Searching people, programs, and money sources..."
+        : _searchQuery.Trim().Length < RecordSearchMinLength ? "Keep typing to search people, programs, and money sources"
+        : $"No pages, people, programs, or money sources match \"{_searchQuery.Trim()}\"";
+
+    private async Task OnSearchQueryChangedAsync()
+    {
+        CancelRecordSearch();
+
+        var query = _searchQuery.Trim();
+        if (query.Length < RecordSearchMinLength)
+        {
+            _recordSearchResults = [];
+            _recordSearchPending = false;
+            return;
+        }
+
+        // Keep only earlier results that still match while the new request is in flight.
+        _recordSearchResults = _recordSearchResults
+            .Where(item => item.Label.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        var cts = new CancellationTokenSource();
+        _recordSearchCts = cts;
+        _recordSearchPending = true;
+        try
+        {
+            await Task.Delay(RecordSearchDebounceMs, cts.Token);
+            var results = await SearchService.SearchAsync(query, cts.Token);
+            if (cts.IsCancellationRequested)
+            {
+                return;
+            }
+
+            _recordSearchResults = results
+                .Where(result => !string.IsNullOrWhiteSpace(result.Url))
+                .Select(ToQuickNavItem)
+                .ToList();
+            _recordSearchPending = false;
+
+            var count = SearchSuggestions.Count;
+            if (count == 0)
+            {
+                _highlightedSearchIndex = -1;
+            }
+            else if (_highlightedSearchIndex < 0 || _highlightedSearchIndex >= count)
+            {
+                _highlightedSearchIndex = 0;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Superseded by a newer keystroke (or the layout was disposed).
+        }
+    }
+
+    private void CancelRecordSearch()
+    {
+        if (_recordSearchCts is null)
+        {
+            return;
+        }
+
+        _recordSearchCts.Cancel();
+        _recordSearchCts.Dispose();
+        _recordSearchCts = null;
+    }
+
+    private static QuickNavItem ToQuickNavItem(SearchResultDto result) => result.Type switch
+    {
+        SearchResultTypes.Person => new(result.Url, result.Title, result.Subtitle, "Person", "bi bi-person", string.Empty),
+        SearchResultTypes.HouseholdMember => new(result.Url, result.Title, result.Subtitle, "Household", "bi bi-people", string.Empty),
+        SearchResultTypes.Program => new(result.Url, result.Title, result.Subtitle, "Program", "bi bi-folder2-open", string.Empty),
+        SearchResultTypes.MoneySource => new(result.Url, result.Title, result.Subtitle, "Money Source", "bi bi-wallet2", string.Empty),
+        _ => new(result.Url, result.Title, result.Subtitle, "Record", "bi bi-search", string.Empty)
+    };
 
     private bool _showSearchSuggestions =>
         _searchFocused && (_searchQuery.Length > 0 || SearchSuggestions.Count > 0);
@@ -665,21 +768,15 @@
             _canManageFinancials = access.CanManageFinancials;
             _canDocumentServiceRecords = access.CanDocumentServiceRecords;
 
-            _userName = user.Identity.Name ?? "User";
             _userEmail = user.FindFirst(c => c.Type == "email" || c.Type == System.Security.Claims.ClaimTypes.Email)?.Value ?? "";
             _userRole = access.PrimaryRole;
-            
-            if (!string.IsNullOrEmpty(_userName))
+
+            // This runs on every in-app navigation. Once the profile has supplied the real
+            // name, keep it: re-reading the claim here used to swap "Dana Rivers" back to the
+            // sign-in email (and the initials to one letter) after the first page change.
+            if (!_profileSummaryLoaded)
             {
-                var parts = _userName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length > 1)
-                {
-                    _userInitials = $"{parts[0][0]}{parts[^1][0]}".ToUpper();
-                }
-                else if (parts.Length == 1)
-                {
-                    _userInitials = parts[0][0].ToString().ToUpper();
-                }
+                ApplyDisplayName(user.Identity.Name ?? "User");
             }
 
             await RefreshNotificationsAsync(silent: true);
@@ -710,6 +807,16 @@
         if (firstRender)
         {
             _currentTheme = await JS.InvokeAsync<string>("blazorInterop.getTheme");
+            // Ctrl+K and ⌘K both open search; show the one this keyboard has.
+            try
+            {
+                var isMac = await JS.InvokeAsync<bool>("growitTime.isMac");
+                _searchShortcutLabel = isMac ? "⌘K" : "Ctrl K";
+            }
+            catch (JSException)
+            {
+                // Keep the default label.
+            }
             StateHasChanged();
         }
     }
@@ -736,20 +843,30 @@
         var uri = new Uri(Navigation.Uri);
         var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
         
+        // The dashboard lives at /home; show a single "Home" crumb there instead of "Home > Home".
+        var isDashboard = segments.Length == 0 ||
+                          (segments.Length == 1 && segments[0].Equals("home", StringComparison.OrdinalIgnoreCase));
+
         _breadcrumbs.Clear();
-        _breadcrumbs.Add(new Breadcrumb { Label = "Home", Href = "/", IsLast = segments.Length == 0 });
-        
+        _breadcrumbs.Add(new Breadcrumb { Label = "Home", Href = "/home", IsLast = isDashboard });
+
         var path = "";
-        for (int i = 0; i < segments.Length; i++)
+        for (int i = 0; !isDashboard && i < segments.Length; i++)
         {
             path += "/" + segments[i];
+            var isLast = i == segments.Length - 1;
+            if (!isLast && BreadcrumbHiddenSegments.Contains(segments[i]))
+            {
+                continue;
+            }
+
             var previousSegment = i > 0 ? segments[i - 1] : null;
             var label = FormatBreadcrumbLabel(segments[i], previousSegment);
             _breadcrumbs.Add(new Breadcrumb
             {
                 Label = label,
-                Href = path,
-                IsLast = i == segments.Length - 1
+                Href = BreadcrumbUnlinkedSegments.Contains(segments[i]) ? null : path,
+                IsLast = isLast
             });
         }
 
@@ -779,6 +896,8 @@
         if (segment.Equals("imprints", StringComparison.OrdinalIgnoreCase)) return "Outcomes";
         if (segment.Equals("investments", StringComparison.OrdinalIgnoreCase)) return "Service Records";
         if (segment.Equals("funds", StringComparison.OrdinalIgnoreCase)) return "Money Sources";
+        if (segment.Equals("tasks", StringComparison.OrdinalIgnoreCase)) return "Follow-ups";
+        if (segment.Equals("organization", StringComparison.OrdinalIgnoreCase)) return "ASC Score";
 
         var label = segment.Replace("-", " ");
         return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(label);
@@ -917,6 +1036,9 @@
         _searchQuery = string.Empty;
         _searchFocused = false;
         _highlightedSearchIndex = -1;
+        CancelRecordSearch();
+        _recordSearchResults = [];
+        _recordSearchPending = false;
         Navigation.NavigateTo(item.Route);
     }
 
@@ -1132,6 +1254,20 @@
         };
     }
 
+    private void ApplyDisplayName(string name)
+    {
+        _userName = name;
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length > 1)
+        {
+            _userInitials = $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+        }
+        else if (parts.Length == 1)
+        {
+            _userInitials = parts[0][0].ToString().ToUpperInvariant();
+        }
+    }
+
     private async Task RefreshProfileSummaryAsync()
     {
         if (_profileSummaryLoaded)
@@ -1148,16 +1284,7 @@
                 var fullName = $"{profile.FirstName} {profile.LastName}".Trim();
                 if (!string.IsNullOrWhiteSpace(fullName))
                 {
-                    _userName = fullName;
-                    var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    if (parts.Length > 1)
-                    {
-                        _userInitials = $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
-                    }
-                    else if (parts.Length == 1)
-                    {
-                        _userInitials = parts[0][0].ToString().ToUpperInvariant();
-                    }
+                    ApplyDisplayName(fullName);
                 }
             }
         }
@@ -1238,5 +1365,6 @@
     {
         Navigation.LocationChanged -= OnLocationChanged;
         BreadcrumbLabels.Changed -= OnBreadcrumbChanged;
+        CancelRecordSearch();
     }
 }
