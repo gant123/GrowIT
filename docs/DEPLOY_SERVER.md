@@ -55,17 +55,19 @@ and run `docker compose up -d`. `ssh <server> docker images growit-client` lists
 
 ## Backups
 
-The data lives in Supabase's Postgres, so back up the `growit` database from there:
+The data lives in Supabase's Postgres. Back it up, drill-test and restore it with the
+scripts in `scripts/db/`, as described in
+[DB_BACKUP_RESTORE_RUNBOOK.md](DB_BACKUP_RESTORE_RUNBOOK.md):
 
 ```bash
-ssh <server> 'docker exec supabase-db pg_dump -U supabase_admin -d growit -Fc' > growit-$(date +%F).dump
+DB_SSH_HOST=<server> scripts/db/backup_postgres.sh
 ```
 
 Back up the `growit_uploads` and `growit_keys` volumes too.
 
-## The original move from the workstation (2026-11)
+## The original move from the main machine (2026-11)
 
-The app ran from a developer workstation as `beta.growit.now`, through the workstation's
+The app ran from the main development machine as `beta.growit.now`, through that machine's
 own tunnel. It moved to the home server and to `growit.now` on 2026-11-22. The steps,
 for reference:
 
@@ -75,17 +77,17 @@ for reference:
 3. Rehearse: `DST_DB_PASSWORD=<same password> scripts/deploy/copy-data.sh <server>`, start
    the app, check `/healthz` and a login on the server.
 4. Cut over:
-   1. On the workstation: `docker stop growit-client` (the site is down from here).
+   1. On the main machine: `docker stop growit-client` (the site is down from here).
    2. `scripts/deploy/copy-data.sh <server> --replace` (final copy of data, uploads, keys).
    3. On the server: `docker compose up -d` (or `restart` if already running).
    4. In Cloudflare: delete the old DNS records for `growit.now`, then in Zero Trust →
       Networks → Tunnels add a published application route on the home server's tunnel:
       `growit.now` (blank subdomain) → `http://growit-client:8080`. Make sure the
       `growit.now` DNS record is a proxied CNAME to `<tunnel-id>.cfargotunnel.com`.
-      Remove the old `beta.growit.now` route from the workstation's tunnel.
+      Remove the old `beta.growit.now` route from the main machine's tunnel.
    5. Check https://growit.now/healthz and sign in.
 5. **Roll back** (before any new data is written on the server): move the route back to
-   the workstation tunnel (`http://0.0.0.0:5180`) and `docker start growit-client` there.
+   the main machine's tunnel (`http://0.0.0.0:5180`) and `docker start growit-client` there.
 
-The workstation's `growit-db` container and volumes were left in place as a fallback.
+The main machine's `growit-db` container and volumes were left in place as a fallback.
 Do not run `copy-data.sh --replace` after the cutover: it would overwrite live data.
