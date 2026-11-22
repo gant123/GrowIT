@@ -7,7 +7,10 @@ public interface IHouseholdService
 {
     Task<List<HouseholdDto>> GetHouseholdsAsync();
     Task<Guid> CreateHouseholdAsync(CreateHouseholdRequest request);
-    Task AddMemberAsync(Guid householdId, Guid clientId, HouseholdRole role);
+    Task<string> AddMemberAsync(Guid householdId, Guid clientId, HouseholdRole role);
+    Task<string> RenameHouseholdAsync(Guid householdId, string name);
+    Task<string> DeleteHouseholdAsync(Guid householdId);
+    Task<string> RemoveMemberAsync(Guid householdId, Guid clientId);
 }
 
 public class HouseholdService : BaseApiService, IHouseholdService
@@ -27,8 +30,29 @@ public class HouseholdService : BaseApiService, IHouseholdService
         return result?.HouseholdId ?? Guid.Empty;
     }
 
-    public async Task AddMemberAsync(Guid householdId, Guid clientId, HouseholdRole role)
+    public async Task<string> AddMemberAsync(Guid householdId, Guid clientId, HouseholdRole role)
     {
-        await PostAsync($"{BaseEndpoint}/{householdId}/add-member/{clientId}?role={Uri.EscapeDataString(role.ToString())}", new { });
+        var result = await PostAsync<object, MessageResponse>(
+            $"{BaseEndpoint}/{householdId}/add-member/{clientId}?role={Uri.EscapeDataString(role.ToString())}", new { });
+        return result?.Message ?? "Household updated.";
+    }
+
+    public async Task<string> RenameHouseholdAsync(Guid householdId, string name)
+    {
+        var result = await PutAsync<UpdateHouseholdRequest, MessageResponse>(
+            $"{BaseEndpoint}/{householdId}", new UpdateHouseholdRequest { Name = name });
+        return result?.Message ?? "Household renamed.";
+    }
+
+    public async Task<string> DeleteHouseholdAsync(Guid householdId)
+    {
+        var result = await DeleteAsync<MessageResponse>($"{BaseEndpoint}/{householdId}");
+        return result?.Message ?? "Household deleted.";
+    }
+
+    public async Task<string> RemoveMemberAsync(Guid householdId, Guid clientId)
+    {
+        var result = await DeleteAsync<MessageResponse>($"{BaseEndpoint}/{householdId}/members/{clientId}");
+        return result?.Message ?? "Removed from the household.";
     }
 }

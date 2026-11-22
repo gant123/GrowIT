@@ -16,14 +16,14 @@
         <Actions>
             @if (_usage is not null && _usage.ClientsMax > 0)
             {
-                <span class="badge text-bg-light me-2 align-self-center" title="Client usage on your @_usage.PlanName plan">
-                    @_usage.ClientsUsed / @_usage.ClientsMax clients
+                <span class="badge text-bg-light me-2 align-self-center" title="People saved on your @_usage.PlanName plan">
+                    @_usage.ClientsUsed / @_usage.ClientsMax people
                 </span>
             }
             @if (_usage?.AtClientLimit == true)
             {
                 <button class="btn-growit btn-secondary-growit shadow-sm" @onclick="OpenUpgradeModal"
-                        title="You've reached your @_usage.PlanName plan's client limit">
+                        title="You've reached the number of people your @_usage.PlanName plan allows">
                     <i class="bi bi-arrow-up-circle me-2"></i>Upgrade to add more
                 </button>
             }
@@ -217,7 +217,9 @@
                             </Template>
                         </GridColumn>
 
-                        <GridColumn Field=@nameof(ClientDto.LifePhase) HeaderText="Progress Stage" Width="170" TextAlign="TextAlign.Center">
+                        @* "Progress Stage" did not fit next to the sort and filter icons at 1440px
+                           ("PROGRE..."); the profile calls this the person's stage. *@
+                        <GridColumn Field=@nameof(ClientDto.LifePhase) HeaderText="Stage" Width="150" TextAlign="TextAlign.Center">
                             <Template>
                                 @{
                                     var phase = ((ClientDto)context).LifePhase;
@@ -380,7 +382,7 @@
         "Strong" => "Portfolio shows repeatable stability patterns",
         "Building" => "Progressing, but needs focused stabilization",
         "At Risk" => "High crisis load may increase founder strain",
-        _ => "Add case files to establish a baseline"
+        _ => "Add people to establish a baseline"
     };
 
     private void NavigateToClient(Guid id) => Nav.NavigateTo($"clients/{id}");
@@ -391,7 +393,10 @@
 
     protected override void OnParametersSet()
     {
-        if (!string.IsNullOrEmpty(NewRequested))
+        // Only once the page is interactive: during the first (prerendered) response a
+        // NavigateTo becomes an HTTP redirect to /clients, which dropped the request to open
+        // the form on a direct visit (e.g. a bookmark or the old /clients/create link).
+        if (!string.IsNullOrEmpty(NewRequested) && RendererInfo.IsInteractive)
         {
             OpenCreateModal();
             // Drop the flag so asking again (or refreshing) behaves predictably.

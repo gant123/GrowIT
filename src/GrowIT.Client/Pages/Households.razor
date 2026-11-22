@@ -3,17 +3,18 @@
 @using GrowIT.Shared.Enums
 @inject IHouseholdService HouseholdService
 @inject IClientService ClientService
+@inject AppNotificationService Notifications
 
 <PageTitle>Households - grow.IT</PageTitle>
 
 <div class="households-page">
-    <PageHeader Title="Households" Subtitle="Group the people you serve into households so service, planning, and impact can be tracked with real context." />
+    <PageHeader Title="Households" Subtitle="Group people from People into households so service, planning, and impact can be tracked with real context. Changing or deleting a household never deletes anyone from People." />
 
     @if (!string.IsNullOrWhiteSpace(_error))
     {
         <div class="alert alert-danger d-flex justify-content-between align-items-center" role="alert">
             <div>@_error</div>
-            <button class="btn btn-sm btn-outline-light" @onclick="LoadAllAsync">Retry</button>
+            <button class="btn-growit btn-secondary-growit btn-sm" @onclick="LoadAllAsync">Retry</button>
         </div>
     }
 
@@ -36,7 +37,7 @@
             <div class="household-kpi-icon head"><i class="bi bi-person-badge"></i></div>
             <div>
                 <div class="household-kpi-label">With Head Assigned</div>
-                <div class="household-kpi-value">@HouseholdsWithPrimaryClient</div>
+                <div class="household-kpi-value">@HouseholdsWithHead</div>
             </div>
         </div>
         <div class="household-kpi-card">
@@ -52,21 +53,26 @@
         <div class="panel-heading">
             <div>
                 <h2>Create Household</h2>
-                <p>Set up a household grouping before assigning family members and tracking service context.</p>
+                <p>Name the household, then add the people in it. Family members recorded on a person's profile are listed with that person automatically.</p>
             </div>
         </div>
         <div class="panel-body">
             <EditForm Model="_createRequest" OnValidSubmit="CreateHouseholdAsync">
                 <DataAnnotationsValidator />
+                @* An empty Create used to fail silently; say what is missing next to the form. *@
                 <ValidationSummary class="text-danger small mb-2" />
+                @if (!string.IsNullOrWhiteSpace(_createError))
+                {
+                    <div class="text-danger small mb-2" role="alert">@_createError</div>
+                }
                 <div class="row g-3 align-items-end">
                     <div class="col-lg-5 col-md-6">
-                        <label class="form-label">Household Name</label>
-                        <InputText class="form-control" @bind-Value="_createRequest.Name" placeholder="Example: Williams Household" />
+                        <label class="form-label" for="household-create-name">Household name <span class="text-danger" aria-hidden="true">*</span></label>
+                        <InputText id="household-create-name" class="form-control" @bind-Value="_createRequest.Name" placeholder="Example: Williams Household" />
                     </div>
                     <div class="col-lg-5 col-md-6">
-                        <label class="form-label">Head of household (optional)</label>
-                        <InputSelect class="form-select" @bind-Value="_createRequest.PrimaryClientId">
+                        <label class="form-label" for="household-create-head">Head of household (optional)</label>
+                        <InputSelect id="household-create-head" class="form-select" @bind-Value="_createRequest.PrimaryClientId">
                             <option value="">Select a person</option>
                             @foreach (var client in _clients.OrderBy(c => c.Name))
                             {
@@ -75,10 +81,10 @@
                         </InputSelect>
                     </div>
                     <div class="col-lg-2 col-md-12">
-                        <button type="submit" class="btn btn-primary w-100" disabled="@_isSavingCreate">
+                        <button type="submit" class="btn-growit btn-primary-growit w-100" disabled="@_isSavingCreate">
                             @if (_isSavingCreate)
                             {
-                                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                             }
                             <span>Create</span>
                         </button>
@@ -92,7 +98,7 @@
         <div class="panel-heading">
             <div>
                 <h2>Household Directory</h2>
-                <p>Maintain household composition and member roles for case coordination and reporting clarity.</p>
+                <p>Who is in each household and their role. Removing someone only ungroups them; they keep their profile in People.</p>
             </div>
             <div class="panel-meta">@_households.Count household(s)</div>
         </div>
@@ -117,22 +123,34 @@
             <div class="household-grid">
                 @foreach (var household in _households.OrderBy(h => h.Name))
                 {
-                    <article class="household-card" @key="household.Id">
+                    <article class="household-card" @key="household.Id" aria-label="@household.Name">
                         <div class="household-card-header">
-                            <div>
+                            <div class="household-card-heading">
                                 <h3>@household.Name</h3>
                                 <div class="household-card-subtitle">
                                     @if (!string.IsNullOrWhiteSpace(household.PrimaryClientName))
                                     {
-                                        <span><i class="bi bi-person-badge"></i> Head: @household.PrimaryClientName</span>
+                                        <span><i class="bi bi-person-badge" aria-hidden="true"></i> Head: @household.PrimaryClientName</span>
                                     }
                                     else
                                     {
-                                        <span><i class="bi bi-person-dash"></i> No head of household set</span>
+                                        <span><i class="bi bi-person-dash" aria-hidden="true"></i> No head of household set</span>
                                     }
                                 </div>
                             </div>
-                            <span class="member-count-chip">@household.MemberCount member(s)</span>
+                            <div class="household-card-actions">
+                                <span class="member-count-chip">@household.MemberCount member(s)</span>
+                                <button type="button" class="btn-icon-only"
+                                        aria-label="@($"Rename {household.Name}")" title="Rename household"
+                                        @onclick="() => OpenRename(household)">
+                                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                                </button>
+                                <button type="button" class="btn-icon-only danger"
+                                        aria-label="@($"Delete {household.Name}")" title="Delete household"
+                                        @onclick="() => OpenDelete(household)">
+                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <div class="household-card-body">
@@ -145,6 +163,7 @@
                                                 <th>Name</th>
                                                 <th>Role</th>
                                                 <th>Email</th>
+                                                <th class="text-end"><span class="visually-hidden">Actions</span></th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -153,18 +172,33 @@
                                                 <tr>
                                                     <td>
                                                         <div class="member-name-cell">
-                                                            <span class="member-avatar">@GetInitials(member.Name)</span>
-                                                            <span>@member.Name</span>
-                                                            @if (!member.IsCaseFile)
+                                                            <span class="member-avatar" aria-hidden="true">@GetInitials(member.Name)</span>
+                                                            @if (member.IsCaseFile)
                                                             {
-                                                                <span class="member-kind-chip" title="Intake family member — no separate case file">Family</span>
+                                                                <a class="member-link" href="@($"/clients/{member.ClientId}")">@member.Name</a>
+                                                            }
+                                                            else
+                                                            {
+                                                                <span>@member.Name</span>
+                                                                <span class="member-kind-chip" title="Family member recorded on a person's profile (not a separate person in People)">Family</span>
                                                             }
                                                         </div>
                                                     </td>
                                                     <td>
-                                                        <span class="role-pill role-@member.Role.ToString().ToLowerInvariant()">@member.Role</span>
+                                                        <span class="role-pill role-@member.Role.ToString().ToLowerInvariant()">@FormatRole(member.Role)</span>
                                                     </td>
                                                     <td class="member-email">@(!string.IsNullOrWhiteSpace(member.Email) ? member.Email : "No email")</td>
+                                                    <td class="text-end">
+                                                        @if (member.IsCaseFile)
+                                                        {
+                                                            <button type="button" class="btn-icon-only danger member-remove-btn"
+                                                                    aria-label="@($"Remove {member.Name} from {household.Name}")"
+                                                                    title="Remove from household"
+                                                                    @onclick="() => OpenRemoveMember(household, member)">
+                                                                <i class="bi bi-person-dash" aria-hidden="true"></i>
+                                                            </button>
+                                                        }
+                                                    </td>
                                                 </tr>
                                             }
                                         </tbody>
@@ -178,14 +212,15 @@
 
                             <div class="add-member-panel">
                                 <div class="add-member-title">
-                                    <i class="bi bi-person-plus"></i>
+                                    <i class="bi bi-person-plus" aria-hidden="true"></i>
                                     <span>Add a member or change a role</span>
                                 </div>
                                 <div class="row g-2 align-items-end">
                                     <div class="col-md-6">
-                                        <label class="form-label small">Person</label>
-                                        <select class="form-select form-select-sm"
+                                        <label class="form-label small" for="@($"add-member-person-{household.Id}")">Person</label>
+                                        <select id="@($"add-member-person-{household.Id}")" class="form-select form-select-sm"
                                                 value="@GetSelectedClientForHousehold(household.Id)"
+                                                aria-invalid="@(_memberErrors.ContainsKey(household.Id) ? "true" : null)"
                                                 @onchange="(e) => OnMemberClientChanged(household.Id, e)">
                                             <option value="">Select a person</option>
                                             @foreach (var client in _clients.OrderBy(c => c.Name))
@@ -194,28 +229,29 @@
                                                    changed), but say so, so nobody re-adds the head as a
                                                    dependent by accident. *@
                                                 var existingMember = household.Members.FirstOrDefault(m => m.IsCaseFile && m.ClientId == client.Id);
-                                                <option value="@client.Id">@(existingMember is null ? client.Name : $"{client.Name} (already here as {existingMember.Role})")</option>
+                                                <option value="@client.Id">@(existingMember is null ? client.Name : $"{client.Name} (already here as {FormatRole(existingMember.Role)})")</option>
                                             }
                                         </select>
                                     </div>
                                     <div class="col-md-4">
-                                        <label class="form-label small">Role</label>
-                                        <select class="form-select form-select-sm"
+                                        <label class="form-label small" for="@($"add-member-role-{household.Id}")">Role</label>
+                                        <select id="@($"add-member-role-{household.Id}")" class="form-select form-select-sm"
                                                 value="@GetSelectedRoleForHousehold(household.Id)"
                                                 @onchange="(e) => OnMemberRoleChanged(household.Id, e)">
                                             @foreach (var role in Enum.GetValues<HouseholdRole>())
                                             {
-                                                <option value="@role">@role</option>
+                                                <option value="@role">@FormatRole(role)</option>
                                             }
                                         </select>
                                     </div>
                                     <div class="col-md-2">
-                                        <button class="btn btn-sm btn-outline-primary w-100"
+                                        <button type="button" class="btn-growit btn-secondary-growit btn-sm w-100"
                                                 disabled="@(_isAddingMemberHouseholdId == household.Id)"
                                                 @onclick="() => AddMemberAsync(household.Id)">
                                             @if (_isAddingMemberHouseholdId == household.Id)
                                             {
-                                                <span class="spinner-border spinner-border-sm" role="status"></span>
+                                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                                <span class="visually-hidden">Saving</span>
                                             }
                                             else
                                             {
@@ -224,6 +260,10 @@
                                         </button>
                                     </div>
                                 </div>
+                                @if (_memberErrors.TryGetValue(household.Id, out var memberError))
+                                {
+                                    <div class="text-danger small mt-2" role="alert">@memberError</div>
+                                }
                             </div>
                         </div>
                     </article>
@@ -233,6 +273,87 @@
     </section>
 </div>
 
+@if (_renameTarget is not null)
+{
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 1200;"
+         tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="rename-household-title">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
+                <div class="modal-header border-bottom" style="border-color: var(--growit-border);">
+                    <h5 class="modal-title fw-bold" id="rename-household-title">
+                        <i class="bi bi-pencil me-2" aria-hidden="true"></i>Rename household
+                    </h5>
+                    <button type="button" class="btn-close" aria-label="Close" title="Close" @onclick="CloseRename" disabled="@_isRenaming"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <EditForm Model="_renameRequest" OnValidSubmit="RenameAsync">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger small mb-2" />
+                        @if (!string.IsNullOrWhiteSpace(_renameError))
+                        {
+                            <div class="text-danger small mb-2" role="alert">@_renameError</div>
+                        }
+                        <label class="form-label small fw-bold text-muted" for="rename-household-name">Household name <span class="text-danger" aria-hidden="true">*</span></label>
+                        <InputText id="rename-household-name" class="form-control" @bind-Value="_renameRequest.Name"
+                                   style="background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border: 1px solid var(--growit-border);" />
+                        <div class="d-flex justify-content-end gap-2 border-top pt-3 mt-4" style="border-color: var(--growit-border);">
+                            <button type="button" class="btn-growit btn-secondary-growit" @onclick="CloseRename" disabled="@_isRenaming">Cancel</button>
+                            <button type="submit" class="btn-growit btn-primary-growit" disabled="@_isRenaming">
+                                @if (_isRenaming)
+                                {
+                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                }
+                                <span>Save name</span>
+                            </button>
+                        </div>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<ConfirmActionModal @bind-Show="_showDelete"
+                    Title="@($"Delete {_deleteTarget?.Name}?")"
+                    ConfirmText="Delete household"
+                    IsBusy="_isDeleting"
+                    ErrorMessage="@_dialogError"
+                    OnConfirm="DeleteAsync">
+    @if (_deleteTarget is not null)
+    {
+        var people = _deleteTarget.Members.Count(m => m.IsCaseFile);
+        <p class="mb-2">This removes the household grouping <strong>@_deleteTarget.Name</strong>.</p>
+        <p class="small text-secondary mb-0">
+            @(people switch
+            {
+                0 => "Nobody is linked to it.",
+                1 => "The 1 person in it stays in People with their profile and records; they just won't be grouped any more.",
+                _ => $"The {people} people in it stay in People with their profiles and records; they just won't be grouped any more."
+            })
+        </p>
+    }
+</ConfirmActionModal>
+
+<ConfirmActionModal @bind-Show="_showRemoveMember"
+                    Title="@($"Remove {_removeTarget?.Member.Name} from {_removeTarget?.Household.Name}?")"
+                    ConfirmText="Remove from household"
+                    IsBusy="_isRemovingMember"
+                    ErrorMessage="@_dialogError"
+                    OnConfirm="RemoveMemberAsync">
+    @if (_removeTarget is not null)
+    {
+        <p class="mb-2">@_removeTarget.Member.Name stays in People with their profile and records.</p>
+        @if (_removeTarget.Household.PrimaryClientId == _removeTarget.Member.ClientId)
+        {
+            <p class="small text-secondary mb-0">They are the head of this household, so it will have no head until you add someone as Head of household.</p>
+        }
+        else
+        {
+            <p class="small text-secondary mb-0">Family members recorded on their profile leave the household with them.</p>
+        }
+    }
+</ConfirmActionModal>
+
 @code {
     private List<HouseholdDto> _households = new();
     private List<ClientDto> _clients = new();
@@ -240,13 +361,31 @@
     private bool _isSavingCreate;
     private Guid? _isAddingMemberHouseholdId;
     private string? _error;
+    private string? _createError;
     private CreateHouseholdRequest _createRequest = new();
 
     private readonly Dictionary<Guid, Guid?> _pendingMemberByHousehold = new();
     private readonly Dictionary<Guid, HouseholdRole> _pendingRoleByHousehold = new();
+    private readonly Dictionary<Guid, string> _memberErrors = new();
+
+    // Rename
+    private HouseholdDto? _renameTarget;
+    private UpdateHouseholdRequest _renameRequest = new();
+    private bool _isRenaming;
+    private string? _renameError;
+
+    // Delete household / remove member (in-app confirmation)
+    private HouseholdDto? _deleteTarget;
+    private bool _showDelete;
+    private bool _isDeleting;
+    private sealed record RemoveTarget(HouseholdDto Household, HouseholdMemberSummaryDto Member);
+    private RemoveTarget? _removeTarget;
+    private bool _showRemoveMember;
+    private bool _isRemovingMember;
+    private string? _dialogError;
 
     private int TotalMembers => _households.Sum(h => h.MemberCount);
-    private int HouseholdsWithPrimaryClient => _households.Count(h => h.PrimaryClientId.HasValue);
+    private int HouseholdsWithHead => _households.Count(h => h.PrimaryClientId.HasValue);
     private string AverageHouseholdSizeLabel => _households.Count == 0 ? "0.0" : _households.Average(h => h.MemberCount).ToString("F1");
 
     protected override async Task OnInitializedAsync()
@@ -287,29 +426,24 @@
 
     private async Task CreateHouseholdAsync()
     {
-        _error = null;
-        if (string.IsNullOrWhiteSpace(_createRequest.Name))
-        {
-            _error = "Household name is required.";
-            return;
-        }
-
+        _createError = null;
         _isSavingCreate = true;
         try
         {
             var householdId = await HouseholdService.CreateHouseholdAsync(_createRequest);
             if (householdId == Guid.Empty)
             {
-                _error = "Failed to create household.";
+                _createError = "We couldn't create the household. Please try again.";
                 return;
             }
 
+            Notifications.Success($"Created {_createRequest.Name.Trim()}.");
             _createRequest = new CreateHouseholdRequest();
             await LoadAllAsync();
         }
         catch (Exception ex)
         {
-            _error = ex.Message;
+            _createError = ex.Message;
         }
         finally
         {
@@ -319,10 +453,11 @@
 
     private async Task AddMemberAsync(Guid householdId)
     {
-        _error = null;
+        _memberErrors.Remove(householdId);
         if (!_pendingMemberByHousehold.TryGetValue(householdId, out var clientId) || !clientId.HasValue || clientId == Guid.Empty)
         {
-            _error = "Select a person before adding to the household.";
+            // Shown inside this household's card, where the user is looking.
+            _memberErrors[householdId] = "Choose a person to add to this household.";
             return;
         }
 
@@ -333,13 +468,14 @@
         _isAddingMemberHouseholdId = householdId;
         try
         {
-            await HouseholdService.AddMemberAsync(householdId, clientId.Value, role);
+            var message = await HouseholdService.AddMemberAsync(householdId, clientId.Value, role);
+            Notifications.Success(message);
             _pendingMemberByHousehold[householdId] = null;
             await LoadAllAsync();
         }
         catch (Exception ex)
         {
-            _error = ex.Message;
+            _memberErrors[householdId] = ex.Message;
         }
         finally
         {
@@ -347,8 +483,113 @@
         }
     }
 
+    private void OpenRename(HouseholdDto household)
+    {
+        _renameTarget = household;
+        _renameRequest = new UpdateHouseholdRequest { Name = household.Name };
+        _renameError = null;
+    }
+
+    private void CloseRename()
+    {
+        if (_isRenaming) return;
+        _renameTarget = null;
+    }
+
+    private async Task RenameAsync()
+    {
+        if (_renameTarget is null || _isRenaming) return;
+
+        _renameError = null;
+        _isRenaming = true;
+        try
+        {
+            var message = await HouseholdService.RenameHouseholdAsync(_renameTarget.Id, _renameRequest.Name.Trim());
+            Notifications.Success(message);
+            _isRenaming = false;
+            _renameTarget = null;
+            await LoadAllAsync();
+        }
+        catch (Exception ex)
+        {
+            _renameError = ex.Message;
+        }
+        finally
+        {
+            _isRenaming = false;
+        }
+    }
+
+    private void OpenDelete(HouseholdDto household)
+    {
+        _deleteTarget = household;
+        _dialogError = null;
+        _showDelete = true;
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (_deleteTarget is null || _isDeleting) return;
+
+        _dialogError = null;
+        _isDeleting = true;
+        try
+        {
+            var message = await HouseholdService.DeleteHouseholdAsync(_deleteTarget.Id);
+            Notifications.Success(message);
+            _pendingMemberByHousehold.Remove(_deleteTarget.Id);
+            _pendingRoleByHousehold.Remove(_deleteTarget.Id);
+            _memberErrors.Remove(_deleteTarget.Id);
+            _isDeleting = false;
+            _showDelete = false;
+            _deleteTarget = null;
+            await LoadAllAsync();
+        }
+        catch (Exception ex)
+        {
+            _dialogError = ex.Message;
+        }
+        finally
+        {
+            _isDeleting = false;
+        }
+    }
+
+    private void OpenRemoveMember(HouseholdDto household, HouseholdMemberSummaryDto member)
+    {
+        _removeTarget = new RemoveTarget(household, member);
+        _dialogError = null;
+        _showRemoveMember = true;
+    }
+
+    private async Task RemoveMemberAsync()
+    {
+        if (_removeTarget is null || _isRemovingMember) return;
+
+        _dialogError = null;
+        _isRemovingMember = true;
+        try
+        {
+            var message = await HouseholdService.RemoveMemberAsync(_removeTarget.Household.Id, _removeTarget.Member.ClientId);
+            Notifications.Success(message);
+            _isRemovingMember = false;
+            _showRemoveMember = false;
+            _removeTarget = null;
+            await LoadAllAsync();
+        }
+        catch (Exception ex)
+        {
+            _dialogError = ex.Message;
+        }
+        finally
+        {
+            _isRemovingMember = false;
+        }
+    }
+
     private void OnMemberClientChanged(Guid householdId, ChangeEventArgs e)
     {
+        _memberErrors.Remove(householdId);
         if (Guid.TryParse(e.Value?.ToString(), out var clientId))
         {
             _pendingMemberByHousehold[householdId] = clientId;
@@ -380,6 +621,14 @@
             ? role.ToString()
             : HouseholdRole.Dependent.ToString();
     }
+
+    private static string FormatRole(HouseholdRole role) => role switch
+    {
+        HouseholdRole.Head => "Head of household",
+        HouseholdRole.Spouse => "Spouse",
+        HouseholdRole.Dependent => "Dependent",
+        _ => "Other"
+    };
 
     private static string GetInitials(string name)
     {

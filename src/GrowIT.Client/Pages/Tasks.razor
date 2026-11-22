@@ -4,6 +4,7 @@
 @inject ITaskService TaskService
 @inject IClientService ClientService
 @inject NavigationManager Nav
+@inject AppNotificationService Notifications
 
 <PageTitle>Follow-ups - grow.IT</PageTitle>
 
@@ -23,7 +24,7 @@
     {
         <div class="loading-state">
             <div class="spinner-growit"></div>
-            <p class="loading-state-text">Loading tasks...</p>
+            <p class="loading-state-text">Loading follow-ups...</p>
         </div>
     }
     else if (!string.IsNullOrWhiteSpace(_error))
@@ -43,8 +44,8 @@
             <div class="card-body">
                 <div class="d-flex flex-wrap gap-3 align-items-end">
                     <div style="min-width: 220px;">
-                        <label class="form-label">Status</label>
-                        <InputSelect @bind-Value="_statusFilter" class="form-select">
+                        <label class="form-label" for="followup-status-filter">Status</label>
+                        <InputSelect id="followup-status-filter" @bind-Value="_statusFilter" class="form-select">
                             <option value="">Pending only</option>
                             <option value="All">All</option>
                             <option value="@GrowIT.Shared.Enums.TaskStatus.Completed">Completed</option>
@@ -69,17 +70,17 @@
                         <p class="empty-state-description">
                             @(_allTasks.Any()
                                 ? "No follow-ups match this status. Choose another status above to see the rest."
-                                : "Use New Follow-up to record who owns the next step and when it is due.")
+                                : "Add one with New Follow-up, or set a Next follow-up date on a person's profile and it shows up here as a check-in.")
                         </p>
                     </div>
                 }
                 else
                 {
                     <div class="table-responsive">
-                        <table class="table mb-0 align-middle">
+                        <table class="table mb-0 align-middle followup-table">
                             <thead>
                                 <tr>
-                                    <th>Client</th>
+                                    <th>Person</th>
                                     <th>Follow-up</th>
                                     <th>Type</th>
                                     <th>Assignee</th>
@@ -91,32 +92,57 @@
                             <tbody>
                                 @foreach (var task in _tasks)
                                 {
-                                    <tr>
+                                    <tr @key="task.Id">
                                         <td>
-                                            <button class="btn btn-link p-0" @onclick="() => NavigateToClient(task.ClientId)">
-                                                @task.ClientName
-                                            </button>
+                                            <a class="person-link" href="@($"/clients/{task.ClientId}")">@task.ClientName</a>
                                         </td>
-                                        <td>@task.Notes</td>
+                                        <td>
+                                            <div>@task.Notes</div>
+                                            @if (task.IsFromNextFollowUpDate)
+                                            {
+                                                <span class="followup-source" title="Created from the Next follow-up date on this person's profile">
+                                                    <i class="bi bi-person-lines-fill" aria-hidden="true"></i> From profile date
+                                                </span>
+                                            }
+                                        </td>
                                         <td>@FormatActionItemType(task.Type)</td>
                                         <td>@task.AssignedToName</td>
                                         <td>
                                             <span class="@(task.IsOverdue ? "text-danger fw-bold" : "")">@task.DueDate.ToString("MMM dd, yyyy")</span>
+                                            @if (task.IsOverdue)
+                                            {
+                                                <span class="visually-hidden">(overdue)</span>
+                                            }
                                         </td>
                                         <td><span class="badge-growit @GetStatusBadge(task.Status)">@task.Status</span></td>
                                         <td class="text-end">
-                                            <div class="btn-group btn-group-sm">
+                                            <div class="followup-actions">
+                                                <button type="button" class="btn-icon-only"
+                                                        aria-label="@($"Edit follow-up for {task.ClientName}")" title="Edit"
+                                                        disabled="@(_busyTaskId == task.Id)"
+                                                        @onclick="() => OpenEdit(task)">
+                                                    <i class="bi bi-pencil" aria-hidden="true"></i>
+                                                </button>
                                                 @if (task.Status == GrowIT.Shared.Enums.TaskStatus.Pending)
                                                 {
-                                                    <button class="btn btn-outline-success" title="Complete" @onclick="() => ChangeStatus(task.Id, GrowIT.Shared.Enums.TaskStatus.Completed)">
-                                                        <i class="bi bi-check2"></i>
+                                                    <button type="button" class="btn-icon-only success"
+                                                            aria-label="@($"Mark follow-up for {task.ClientName} complete")" title="Mark complete"
+                                                            disabled="@(_busyTaskId == task.Id)"
+                                                            @onclick="() => ChangeStatus(task, GrowIT.Shared.Enums.TaskStatus.Completed)">
+                                                        <i class="bi bi-check2" aria-hidden="true"></i>
                                                     </button>
-                                                    <button class="btn btn-outline-secondary" title="Skip" @onclick="() => ChangeStatus(task.Id, GrowIT.Shared.Enums.TaskStatus.Skipped)">
-                                                        <i class="bi bi-skip-forward"></i>
+                                                    <button type="button" class="btn-icon-only"
+                                                            aria-label="@($"Skip follow-up for {task.ClientName}")" title="Skip"
+                                                            disabled="@(_busyTaskId == task.Id)"
+                                                            @onclick="() => ChangeStatus(task, GrowIT.Shared.Enums.TaskStatus.Skipped)">
+                                                        <i class="bi bi-skip-forward" aria-hidden="true"></i>
                                                     </button>
                                                 }
-                                                <button class="btn btn-outline-danger" title="Delete" @onclick="() => DeleteTask(task.Id)">
-                                                    <i class="bi bi-trash"></i>
+                                                <button type="button" class="btn-icon-only danger"
+                                                        aria-label="@($"Delete follow-up for {task.ClientName}")" title="Delete"
+                                                        disabled="@(_busyTaskId == task.Id)"
+                                                        @onclick="() => OpenDelete(task)">
+                                                    <i class="bi bi-trash" aria-hidden="true"></i>
                                                 </button>
                                             </div>
                                         </td>
@@ -131,26 +157,34 @@
     }
 </div>
 
-@if (_showCreate)
+@if (_showForm)
 {
-    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.65); z-index: 1200;" tabindex="-1">
+    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.65); z-index: 1200;" tabindex="-1"
+         role="dialog" aria-modal="true" aria-labelledby="followup-form-title">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header">
-                    <h5 class="modal-title">New Follow-up</h5>
-                    <button type="button" class="btn-close" @onclick="CloseCreate"></button>
+                    <h5 class="modal-title" id="followup-form-title">@(IsEditing ? "Edit Follow-up" : "New Follow-up")</h5>
+                    <button type="button" class="btn-close" aria-label="Close" title="Close" @onclick="CloseForm" disabled="@_isSaving"></button>
                 </div>
                 <div class="modal-body">
                     @if (!string.IsNullOrWhiteSpace(_modalError))
                     {
-                        <div class="alert alert-danger">@_modalError</div>
+                        <div class="alert alert-danger" role="alert">@_modalError</div>
                     }
-                    <EditForm Model="@_newTask" OnValidSubmit="CreateTask">
+                    @if (IsEditing && _editingFromProfileDate)
+                    {
+                        <div class="alert alert-info small py-2" role="note">
+                            This check-in comes from the person's Next follow-up date. Changing the due date here doesn't change the date on their profile.
+                        </div>
+                    }
+                    <EditForm Model="@_form" OnValidSubmit="SaveForm">
                         <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger small mb-2" />
                         <div class="mb-3">
-                            <label class="form-label">Client</label>
-                            <InputSelect @bind-Value="_newTask.ClientId" class="form-select">
-                                <option value="@Guid.Empty">Select client</option>
+                            <label class="form-label" for="followup-person">Person <span class="text-danger" aria-hidden="true">*</span></label>
+                            <InputSelect id="followup-person" @bind-Value="_form.ClientId" class="form-select">
+                                <option value="@Guid.Empty">Select a person</option>
                                 @foreach (var client in _clients)
                                 {
                                     <option value="@client.Id">@client.Name</option>
@@ -158,18 +192,18 @@
                             </InputSelect>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Assignee</label>
-                            <InputSelect @bind-Value="_newTask.AssignedTo" class="form-select">
+                            <label class="form-label" for="followup-assignee">Assignee <span class="text-danger" aria-hidden="true">*</span></label>
+                            <InputSelect id="followup-assignee" @bind-Value="_form.AssignedTo" class="form-select">
                                 <option value="@Guid.Empty">Select assignee</option>
-                                @foreach (var user in _assignees.Where(u => u.IsActive))
+                                @foreach (var user in _assignees.Where(u => u.IsActive || u.Id == _form.AssignedTo))
                                 {
                                     <option value="@user.Id">@user.FullName</option>
                                 }
                             </InputSelect>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Type</label>
-                            <InputSelect @bind-Value="_newTask.Type" class="form-select">
+                            <label class="form-label" for="followup-type">Type</label>
+                            <InputSelect id="followup-type" @bind-Value="_form.Type" class="form-select">
                                 @foreach (var type in Enum.GetValues<ActionItemType>())
                                 {
                                     <option value="@type">@FormatActionItemType(type)</option>
@@ -177,16 +211,34 @@
                             </InputSelect>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Due Date</label>
-                            <InputDate @bind-Value="_newTask.DueDate" class="form-control" />
+                            <label class="form-label" for="followup-due">Due date</label>
+                            <InputDate id="followup-due" @bind-Value="_form.DueDate" class="form-control" />
                         </div>
+                        @if (IsEditing)
+                        {
+                            <div class="mb-3">
+                                <label class="form-label" for="followup-status">Status</label>
+                                <InputSelect id="followup-status" @bind-Value="_form.Status" class="form-select">
+                                    @foreach (var status in Enum.GetValues<GrowIT.Shared.Enums.TaskStatus>())
+                                    {
+                                        <option value="@status">@status</option>
+                                    }
+                                </InputSelect>
+                            </div>
+                        }
                         <div class="mb-3">
-                            <label class="form-label">Notes</label>
-                            <InputTextArea @bind-Value="_newTask.Notes" class="form-control" rows="4" />
+                            <label class="form-label" for="followup-notes">What needs to happen? <span class="text-danger" aria-hidden="true">*</span></label>
+                            <InputTextArea id="followup-notes" @bind-Value="_form.Notes" class="form-control" rows="4" />
                         </div>
                         <div class="d-flex justify-content-end gap-2">
-                            <button type="button" class="btn btn-outline-secondary" @onclick="CloseCreate">Cancel</button>
-                            <button type="submit" class="btn btn-primary" disabled="@_isSaving">Save Follow-up</button>
+                            <button type="button" class="btn-growit btn-secondary-growit" @onclick="CloseForm" disabled="@_isSaving">Cancel</button>
+                            <button type="submit" class="btn-growit btn-primary-growit" disabled="@_isSaving">
+                                @if (_isSaving)
+                                {
+                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                }
+                                <span>@(IsEditing ? "Save Changes" : "Save Follow-up")</span>
+                            </button>
                         </div>
                     </EditForm>
                 </div>
@@ -194,6 +246,23 @@
         </div>
     </div>
 }
+
+<ConfirmActionModal @bind-Show="_showDelete"
+                    Title="Delete this follow-up?"
+                    ConfirmText="Delete follow-up"
+                    IsBusy="_isDeleting"
+                    ErrorMessage="@_deleteError"
+                    OnConfirm="DeleteTask">
+    @if (_deleteTarget is not null)
+    {
+        <p class="mb-2"><strong>@_deleteTarget.Notes</strong></p>
+        <p class="small text-secondary mb-0">For @_deleteTarget.ClientName, due @_deleteTarget.DueDate.ToString("MMM dd, yyyy"). This can't be undone; to keep a record, mark it complete or skipped instead.</p>
+        @if (_deleteTarget.IsFromNextFollowUpDate)
+        {
+            <p class="small text-secondary mt-2 mb-0">It came from the Next follow-up date on @(_deleteTarget.ClientName)'s profile, so that date is cleared too.</p>
+        }
+    }
+</ConfirmActionModal>
 
 @code {
     // Everything loaded for the workspace; the cards count from this, the table shows the
@@ -212,11 +281,22 @@
     private List<TaskAssigneeDto> _assignees = [];
     private bool _isLoading = true;
     private bool _isSaving;
-    private bool _showCreate;
+    private bool _showForm;
     private string? _error;
     private string? _modalError;
     private string? _statusFilter;
-    private CreateTaskRequest _newTask = new();
+
+    // One form for New and Edit (the edit request also carries the status).
+    private UpdateTaskRequest _form = new();
+    private Guid? _editingId;
+    private bool _editingFromProfileDate;
+    private bool IsEditing => _editingId.HasValue;
+
+    private Guid? _busyTaskId;
+    private TaskListDto? _deleteTarget;
+    private bool _showDelete;
+    private bool _isDeleting;
+    private string? _deleteError;
 
     private int PendingCount => _allTasks.Count(t => t.Status == GrowIT.Shared.Enums.TaskStatus.Pending);
     private int OverdueCount => _allTasks.Count(t => t.IsOverdue);
@@ -233,7 +313,9 @@
 
     protected override void OnParametersSet()
     {
-        if (!string.IsNullOrEmpty(NewRequested))
+        // Only once interactive: in the prerendered response a NavigateTo turns into an HTTP
+        // redirect to /tasks, which lost the request to open the form on a direct visit.
+        if (!string.IsNullOrEmpty(NewRequested) && RendererInfo.IsInteractive)
         {
             // The form's dropdowns need the loaded people/assignees; if they are still
             // loading (first visit), open as soon as LoadData finishes.
@@ -285,32 +367,63 @@
     private void OpenCreate()
     {
         _modalError = null;
-        _newTask = new CreateTaskRequest
+        _editingId = null;
+        _editingFromProfileDate = false;
+        _form = new UpdateTaskRequest
         {
             DueDate = DateTime.UtcNow.Date.AddDays(7),
             ClientId = _clients.FirstOrDefault()?.Id ?? Guid.Empty,
             AssignedTo = _assignees.FirstOrDefault(u => u.IsActive)?.Id ?? Guid.Empty,
-            Type = ActionItemType.ClientFollowUp
+            Type = ActionItemType.ClientFollowUp,
+            Status = GrowIT.Shared.Enums.TaskStatus.Pending
         };
-        _showCreate = true;
+        _showForm = true;
     }
 
-    private void CloseCreate() => _showCreate = false;
-
-    private async Task CreateTask()
+    private void OpenEdit(TaskListDto task)
     {
         _modalError = null;
-        if (_newTask.ClientId == Guid.Empty || _newTask.AssignedTo == Guid.Empty)
+        _editingId = task.Id;
+        _editingFromProfileDate = task.IsFromNextFollowUpDate;
+        _form = new UpdateTaskRequest
         {
-            _modalError = "Client and assignee are required.";
-            return;
-        }
+            ClientId = task.ClientId,
+            AssignedTo = task.AssignedTo,
+            Type = task.Type,
+            DueDate = task.DueDate.Date,
+            Notes = task.Notes,
+            Status = task.Status
+        };
+        _showForm = true;
+    }
 
+    private void CloseForm()
+    {
+        if (_isSaving) return;
+        _showForm = false;
+    }
+
+    private async Task SaveForm()
+    {
+        if (_isSaving) return;
+
+        _modalError = null;
         _isSaving = true;
         try
         {
-            await TaskService.CreateTaskAsync(_newTask);
-            _showCreate = false;
+            if (_editingId is { } id)
+            {
+                await TaskService.UpdateTaskAsync(id, _form);
+                Notifications.Success("Follow-up updated.");
+            }
+            else
+            {
+                await TaskService.CreateTaskAsync(_form);
+                Notifications.Success("Follow-up added.");
+            }
+
+            _isSaving = false;
+            _showForm = false;
             await LoadTasks();
         }
         catch (Exception ex)
@@ -323,19 +436,60 @@
         }
     }
 
-    private async Task ChangeStatus(Guid id, GrowIT.Shared.Enums.TaskStatus status)
+    private async Task ChangeStatus(TaskListDto task, GrowIT.Shared.Enums.TaskStatus status)
     {
-        await TaskService.UpdateTaskStatusAsync(id, status);
-        await LoadTasks();
+        if (_busyTaskId.HasValue) return;
+
+        _busyTaskId = task.Id;
+        try
+        {
+            await TaskService.UpdateTaskStatusAsync(task.Id, status);
+            Notifications.Success(status == GrowIT.Shared.Enums.TaskStatus.Completed
+                ? $"Marked the follow-up for {task.ClientName} complete."
+                : $"Skipped the follow-up for {task.ClientName}.");
+            await LoadTasks();
+        }
+        catch (Exception)
+        {
+            // The service already showed the reason as a toast; keep the page working.
+        }
+        finally
+        {
+            _busyTaskId = null;
+        }
     }
 
-    private async Task DeleteTask(Guid id)
+    private void OpenDelete(TaskListDto task)
     {
-        await TaskService.DeleteTaskAsync(id);
-        await LoadTasks();
+        _deleteTarget = task;
+        _deleteError = null;
+        _showDelete = true;
     }
 
-    private void NavigateToClient(Guid clientId) => Nav.NavigateTo($"/clients/{clientId}");
+    private async Task DeleteTask()
+    {
+        if (_deleteTarget is null || _isDeleting) return;
+
+        _isDeleting = true;
+        _deleteError = null;
+        try
+        {
+            await TaskService.DeleteTaskAsync(_deleteTarget.Id);
+            Notifications.Success("Follow-up deleted.");
+            _isDeleting = false;
+            _showDelete = false;
+            _deleteTarget = null;
+            await LoadTasks();
+        }
+        catch (Exception ex)
+        {
+            _deleteError = ex.Message;
+        }
+        finally
+        {
+            _isDeleting = false;
+        }
+    }
 
     private static string GetStatusBadge(GrowIT.Shared.Enums.TaskStatus status) => status switch
     {
@@ -346,7 +500,7 @@
 
     private static string FormatActionItemType(ActionItemType type) => type switch
     {
-        ActionItemType.ClientFollowUp => "Client follow-up",
+        ActionItemType.ClientFollowUp => "Person follow-up",
         ActionItemType.BoardGovernance => "Board / governance",
         _ => type.ToString()
     };

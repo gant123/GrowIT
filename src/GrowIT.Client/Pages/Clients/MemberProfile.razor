@@ -3,8 +3,8 @@
 @using GrowIT.Client.Shared
 @inject IClientService ClientService
 @inject NavigationManager Nav
-@inject IJSRuntime JS
 @inject BreadcrumbState Breadcrumb
+@inject AppNotificationService Notifications
 
 <PageTitle>@(string.IsNullOrWhiteSpace(profile?.Name) ? "Household member" : profile!.Name) - grow.IT</PageTitle>
 
@@ -22,11 +22,6 @@ else if (profile == null)
 else
 {
     <div class="member-profile-page fade-in">
-    @if (!string.IsNullOrWhiteSpace(_deleteError))
-    {
-        <div class="alert alert-danger mb-4">@_deleteError</div>
-    }
-
     <PageHeader Title="@profile.Name" Subtitle="@($"{profile.Relationship} Profile • {profile.Age} years old")">
         <Actions>
             <button class="btn-growit btn-secondary-growit" @onclick="GoBack">
@@ -35,7 +30,7 @@ else
             <button class="btn-growit btn-secondary-growit" @onclick="ToggleEdit">
                 <i class="bi bi-pencil-square me-1"></i>Edit
             </button>
-            <button class="btn-growit btn-danger-growit" @onclick="ConfirmDelete">
+            <button class="btn-growit btn-danger-growit" @onclick="OpenDeleteDialog">
                 <i class="bi bi-trash me-1"></i>Delete
             </button>
         </Actions>
@@ -140,8 +135,9 @@ else
                                                     <small class="text-muted">@item.Date.ToShortDateString()</small>
                                                     @if (item.Type == "Investment")
                                                     {
-                                                        <button class="btn btn-sm btn-link text-info p-0 ms-2" title="Reassign investment" @onclick="() => OpenReassignModal(item.Id)">
-                                                            <i class="bi bi-arrow-left-right"></i>
+                                                        <button type="button" class="btn btn-sm btn-link text-info p-0 ms-2" title="Move this service record to another family member"
+                                                                aria-label="Move this service record to another family member" @onclick="() => OpenReassignModal(item.Id)">
+                                                            <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
                                                         </button>
                                                     }
                                                 </div>
@@ -178,6 +174,15 @@ else
                                  InvestmentId="selectedInvestmentId"
                                  Members="householdMembers"
                                  OnChanged="LoadProfile" />
+
+        <ConfirmActionModal @bind-Show="_showDeleteDialog"
+                            Title="@($"Delete {profile.Name}?")"
+                            ConfirmText="Delete family member"
+                            IsBusy="_isDeleting"
+                            ErrorMessage="@_deleteError"
+                            OnConfirm="DeleteMemberAsync">
+            <p class="mb-0">This permanently removes <strong>@profile.Name</strong>. It can't be undone. Family members with service records, outcomes or a growth plan can't be deleted.</p>
+        </ConfirmActionModal>
 }
 
 @code {
@@ -227,21 +232,38 @@ else
         showReassignModal = true;
     }
 
-    private async Task ConfirmDelete()
+    private bool _showDeleteDialog;
+    private bool _isDeleting;
+
+    // In-app confirmation instead of the browser's native confirm()/alert().
+    private void OpenDeleteDialog()
     {
         _deleteError = null;
-        if (await JS.InvokeAsync<bool>("confirm", "Delete this member?"))
+        _showDeleteDialog = true;
+    }
+
+    private async Task DeleteMemberAsync()
+    {
+        if (profile is null || _isDeleting) return;
+
+        _isDeleting = true;
+        _deleteError = null;
+        try
         {
-            try
-            {
-                await ClientService.DeleteFamilyMemberAsync(Id);
-                Nav.NavigateTo("/clients");
-            }
-            catch (Exception ex)
-            {
-                _deleteError = ex.Message;
-                await JS.InvokeVoidAsync("alert", _deleteError);
-            }
+            var name = profile.Name;
+            var parentId = profile.ClientId;
+            await ClientService.DeleteFamilyMemberAsync(Id);
+            Notifications.Success($"Deleted {name}.");
+            _showDeleteDialog = false;
+            Nav.NavigateTo($"/clients/{parentId}");
+        }
+        catch (Exception ex)
+        {
+            _deleteError = ex.Message;
+        }
+        finally
+        {
+            _isDeleting = false;
         }
     }
 
