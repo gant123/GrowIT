@@ -1,5 +1,7 @@
 namespace GrowIT.Shared.DTOs;
 
+using System.ComponentModel.DataAnnotations;
+
 public class OrganizationSettingsDto
 {
     public Guid TenantId { get; set; }
@@ -15,7 +17,7 @@ public class OrganizationSettingsDto
     public DateTime CreatedAt { get; set; }
 }
 
-public class UpdateOrganizationSettingsRequest
+public class UpdateOrganizationSettingsRequest : IValidatableObject
 {
     public string Name { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;
@@ -26,6 +28,23 @@ public class UpdateOrganizationSettingsRequest
     public bool TrackInvestments { get; set; }
     public bool TrackOutcomes { get; set; }
     public bool TrackPrograms { get; set; }
+
+    // The organization name and contact email are reused on reports and emails, so don't let
+    // a blank name or something that is not an email address be saved.
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (string.IsNullOrWhiteSpace(Name))
+        {
+            yield return new ValidationResult("Organization name is required.", new[] { nameof(Name) });
+        }
+
+        var email = ContactEmail?.Trim();
+        if (!string.IsNullOrEmpty(email) && !new EmailAddressAttribute().IsValid(email))
+        {
+            yield return new ValidationResult(
+                "Enter a valid contact email address, or leave it blank.", new[] { nameof(ContactEmail) });
+        }
+    }
 }
 
 public class AdminUserListItemDto

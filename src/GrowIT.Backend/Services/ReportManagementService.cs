@@ -454,6 +454,12 @@ public sealed class ReportManagementService : IReportManagementService
             ?? fallback;
     }
 
+    // Not ToString("C", InvariantCulture): the invariant culture's currency symbol is the
+    // generic sign "¤", which is what the PDFs showed ("¤125.00"). Culture-independent on
+    // purpose so it also works where the container has no ICU culture data.
+    private static string FormatMoney(decimal amount) =>
+        (amount < 0 ? "-$" : "$") + Math.Abs(amount).ToString("N2", CultureInfo.InvariantCulture);
+
     private static DateTime NormalizeUtc(DateTime value)
     {
         return value.Kind switch
@@ -592,12 +598,16 @@ public sealed class ReportManagementService : IReportManagementService
     {
         var reportType = string.IsNullOrWhiteSpace(run.ReportType) ? "custom-report" : run.ReportType.Trim().ToLowerInvariant();
         var dateFrom = request.DateFrom.HasValue ? NormalizeUtc(request.DateFrom.Value) : (DateTime?)null;
-        var dateTo = request.DateTo.HasValue ? NormalizeUtc(request.DateTo.Value) : (DateTime?)null;
+        // "To" is a calendar date: include the whole day. Using midnight as the upper bound
+        // dropped everything recorded on the end date itself.
+        var dateTo = request.DateTo.HasValue
+            ? NormalizeUtc(request.DateTo.Value.Date.AddDays(1).AddTicks(-1))
+            : (DateTime?)null;
 
         return reportType switch
         {
             "impact-summary" => await BuildImpactSummaryAsync(run, dateFrom, dateTo, cancellationToken),
-            "investment-detail" or "investments" => await BuildInvestmentDetailAsync(run, dateFrom, dateTo, cancellationToken),
+            "investment-detail" or "investments" => await BuildInvestmentDetailAsync(run, dateFrom, dateTo, request.GroupBy, cancellationToken),
             "outcomes-by-category" => await BuildOutcomesByCategoryAsync(run, dateFrom, dateTo, cancellationToken),
             "funding-utilization" => await BuildFundingUtilizationAsync(run, cancellationToken),
             "season-progression" => await BuildSeasonProgressionAsync(run, cancellationToken),
@@ -639,8 +649,8 @@ public sealed class ReportManagementService : IReportManagementService
                 ["Generated (UTC)"] = run.GeneratedAt.ToString("u"),
                 ["Report Type"] = run.ReportType,
                 ["Total Service Investments"] = investmentCount.ToString(CultureInfo.InvariantCulture),
-                ["Capital Deployed"] = totalInvestment.ToString("C", CultureInfo.InvariantCulture),
-                ["Approved Capital"] = approvedInvestment.ToString("C", CultureInfo.InvariantCulture),
+                ["Capital Deployed"] = FormatMoney(totalInvestment),
+                ["Approved Capital"] = FormatMoney(approvedInvestment),
                 ["Households Reached"] = householdsServed.ToString(CultureInfo.InvariantCulture),
                 ["Impact Records"] = imprintsCount.ToString(CultureInfo.InvariantCulture)
             },
@@ -656,7 +666,7 @@ public sealed class ReportManagementService : IReportManagementService
         return data;
     }
 
-    private async Task<ReportDataset> BuildInvestmentDetailAsync(ReportRun run, DateTime? dateFrom, DateTime? dateTo, CancellationToken cancellationToken)
+    private async Task<ReportDataset> BuildInvestmentDetailAsync(ReportRun run, DateTime? dateFrom, DateTime? dateTo, string? groupBy, CancellationToken cancellationToken)
     {
         var query = _context.Investments
             .AsNoTracking()
@@ -680,11 +690,36 @@ public sealed class ReportManagementService : IReportManagementService
                     : ((i.Client != null ? i.Client.FirstName : "") + " " + (i.Client != null ? i.Client.LastName : ""))).Trim(),
                 ProgramName = i.Program != null ? i.Program.Name : "",
                 FundName = i.Fund != null ? i.Fund.Name : "",
+                LifePhase = i.Client != null ? i.Client.LifePhase.ToString() : "",
                 i.Amount,
                 i.Status,
                 i.Reason
             })
             .ToListAsync(cancellationToken);
+
+        // "Organize by" from the report builder. It used to be accepted and then ignored.
+        var (groupLabel, groupKey) = (groupBy ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "category" => ("Program", (Func<string, string, string, DateTime, string>)((program, _, _, _) => program)),
+            "funding-source" => ("Money source", (_, fund, _, _) => fund),
+            "season" => ("Progress stage", (_, _, phase, _) => phase),
+            "month" => ("Month", (_, _, _, created) => created.ToString("yyyy-MM (MMMM)", CultureInfo.InvariantCulture)),
+            _ => (string.Empty, (Func<string, string, string, DateTime, string>?)null)
+        };
+
+        string GroupOf(string program, string fund, string phase, DateTime created)
+        {
+            var value = groupKey!(program, fund, phase, created);
+            return string.IsNullOrWhiteSpace(value) ? "Not set" : value;
+        }
+
+        if (groupKey is not null)
+        {
+            rows = rows
+                .OrderBy(r => GroupOf(r.ProgramName, r.FundName, r.LifePhase, r.CreatedAt), StringComparer.OrdinalIgnoreCase)
+                .ThenByDescending(r => r.CreatedAt)
+                .ToList();
+        }
 
         var data = new ReportDataset
         {
@@ -694,14 +729,27 @@ public sealed class ReportManagementService : IReportManagementService
             {
                 ["Generated (UTC)"] = run.GeneratedAt.ToString("u"),
                 ["Rows"] = rows.Count.ToString(CultureInfo.InvariantCulture),
-                ["Total Amount"] = rows.Sum(r => r.Amount).ToString("C", CultureInfo.InvariantCulture)
+                ["Total Amount"] = FormatMoney(rows.Sum(r => r.Amount))
             },
             Columns = { "Date (UTC)", "Person", "Program", "Fund", "Amount", "Status", "Purpose" }
         };
 
+        if (groupKey is not null)
+        {
+            data.Summary["Organized by"] = groupLabel;
+            foreach (var group in rows.GroupBy(r => GroupOf(r.ProgramName, r.FundName, r.LifePhase, r.CreatedAt), StringComparer.OrdinalIgnoreCase))
+            {
+                var count = group.Count();
+                data.Summary[$"{groupLabel}: {group.Key}"] =
+                    $"{FormatMoney(group.Sum(r => r.Amount))} ({count} {(count == 1 ? "record" : "records")})";
+            }
+
+            data.Columns.Insert(0, groupLabel);
+        }
+
         foreach (var row in rows)
         {
-            data.Rows.Add(new List<string>
+            var cells = new List<string>
             {
                 row.CreatedAt.ToString("u"),
                 string.IsNullOrWhiteSpace(row.ClientName) ? "Unknown" : row.ClientName,
@@ -710,7 +758,14 @@ public sealed class ReportManagementService : IReportManagementService
                 row.Amount.ToString("F2", CultureInfo.InvariantCulture),
                 row.Status.ToString(),
                 row.Reason
-            });
+            };
+
+            if (groupKey is not null)
+            {
+                cells.Insert(0, GroupOf(row.ProgramName, row.FundName, row.LifePhase, row.CreatedAt));
+            }
+
+            data.Rows.Add(cells);
         }
 
         return data;
@@ -783,8 +838,8 @@ public sealed class ReportManagementService : IReportManagementService
             {
                 ["Generated (UTC)"] = run.GeneratedAt.ToString("u"),
                 ["Funds"] = funds.Count.ToString(CultureInfo.InvariantCulture),
-                ["Total Capital"] = funds.Sum(f => f.TotalAmount).ToString("C", CultureInfo.InvariantCulture),
-                ["Available Capital"] = funds.Sum(f => f.AvailableAmount).ToString("C", CultureInfo.InvariantCulture)
+                ["Total Capital"] = FormatMoney(funds.Sum(f => f.TotalAmount)),
+                ["Available Capital"] = FormatMoney(funds.Sum(f => f.AvailableAmount))
             },
             Columns = { "Fund", "Total", "Available", "Deployed", "Utilization %" }
         };

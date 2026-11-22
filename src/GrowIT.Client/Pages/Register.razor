@@ -138,6 +138,7 @@
                                    placeholder="Create a strong password"
                                    autocomplete="new-password"
                                    minlength="12"
+                                   aria-describedby="password-hint"
                                    required />
                             <button type="button" class="password-toggle" @onclick="() => _showPassword = !_showPassword">
                                 @if (_showPassword)
@@ -163,6 +164,7 @@
                             </div>
                             <span class="strength-text">@_passwordStrengthText</span>
                         </div>
+                        <p class="password-hint" id="password-hint">At least 12 characters, with an uppercase letter, a lowercase letter, and a number.</p>
                     </div>
 
                     <button type="submit" class="btn btn-primary btn-block">
@@ -342,7 +344,10 @@
 
                     <div class="form-group checkbox-group">
                         <label class="checkbox-label">
-                            <input type="checkbox" @bind="_agreeToTerms" required />
+                            @* Not "required": the real checkbox is visually hidden, so the browser cannot
+                               show its validation bubble and the submit button just did nothing.
+                               CompleteRegistration checks the box and shows the message instead. *@
+                            <input type="checkbox" @bind="_agreeToTerms" />
                             <span class="checkbox-custom"></span>
                             <span>I agree to the <a href="/terms" target="_blank">Terms of Service</a> and <a href="/privacy" target="_blank">Privacy Policy</a></span>
                         </label>
@@ -501,7 +506,15 @@
         
         _passwordStrength = Math.Min(score, 100);
         
-        if (_passwordStrength < 30)
+        if (password.Length is > 0 and < 12)
+        {
+            // Below the minimum length the password is rejected no matter what it contains,
+            // so never label it "Fair"/"Good".
+            _passwordStrength = Math.Min(_passwordStrength, 25);
+            _passwordStrengthClass = "weak";
+            _passwordStrengthText = "Too short";
+        }
+        else if (_passwordStrength < 30)
         {
             _passwordStrengthClass = "weak";
             _passwordStrengthText = "Weak";
@@ -544,6 +557,16 @@
             _errorMessage = "Password must be at least 12 characters.";
             return;
         }
+
+        // Catch the remaining password rules here instead of after step 3, when the server
+        // would reject the whole sign-up.
+        var password = _registerRequest.Password;
+        if (!password.Any(char.IsUpper) || !password.Any(char.IsLower) || !password.Any(char.IsDigit))
+        {
+            _errorMessage = "Password needs an uppercase letter, a lowercase letter, and a number.";
+            return;
+        }
+
         _errorMessage = null;
         _currentStep = 2;
     }

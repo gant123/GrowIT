@@ -393,6 +393,17 @@
     color: var(--growit-text-muted);
 }
 
+/* The shell draws its own chevron separator. Bootstrap's .breadcrumb-item rule would also
+   inject a "/" divider before every crumb after the first ("Home > /People"). */
+.breadcrumbs .breadcrumb-item + .breadcrumb-item::before {
+    content: none;
+}
+
+/* Crumbs with no page behind them render as plain text; align them with the linked ones. */
+.breadcrumb-item:not(.active) > span:not(.breadcrumb-separator) {
+    padding: 4px 8px;
+}
+
 .breadcrumb-item a {
     color: var(--growit-text-muted);
     text-decoration: none;
@@ -875,6 +886,13 @@
 /* User Dropdown specifics */
 .user-dropdown {
     width: 240px;
+}
+
+/* The account menu is a short fixed list ending in "Sign Out". The shared 400px cap (meant for
+   the notification list) cut "Sign Out" in half and hid it behind an inner scrollbar. Let the
+   menu use the room the window has; it only scrolls on very short screens. */
+.user-dropdown .dropdown-body {
+    max-height: calc(100vh - 200px);
 }
 
 .user-dropdown-header {
@@ -1454,6 +1472,9 @@
     .page-actions {
         width: 100%;
         justify-content: flex-start;
+        /* Several actions (usage badge + Change plan + Add) don't fit one row on a phone;
+           without wrapping the last button was pushed off the right edge. */
+        flex-wrap: wrap;
     }
 }
 

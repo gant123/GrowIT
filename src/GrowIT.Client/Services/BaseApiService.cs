@@ -196,6 +196,26 @@ public abstract class BaseApiService
 
             if (root.ValueKind == JsonValueKind.Object)
             {
+                // Model-validation failures (ValidationProblemDetails) carry the real reasons in
+                // "errors"; the title is only the generic "One or more validation errors occurred."
+                if (root.TryGetProperty("errors", out var errors) && errors.ValueKind == JsonValueKind.Object)
+                {
+                    var messages = errors.EnumerateObject()
+                        .Where(p => p.Value.ValueKind == JsonValueKind.Array)
+                        .SelectMany(p => p.Value.EnumerateArray())
+                        .Where(e => e.ValueKind == JsonValueKind.String)
+                        .Select(e => e.GetString())
+                        .Where(s => !string.IsNullOrWhiteSpace(s))
+                        .Distinct()
+                        .Take(5)
+                        .ToList();
+
+                    if (messages.Count > 0)
+                    {
+                        return string.Join(" ", messages);
+                    }
+                }
+
                 if (root.TryGetProperty("detail", out var detail) &&
                     detail.ValueKind == JsonValueKind.String &&
                     !string.IsNullOrWhiteSpace(detail.GetString()))

@@ -254,7 +254,12 @@ public class ClientsController : ControllerBase
         client.Phone = request.Phone?.Trim() ?? string.Empty;
         client.Address = request.Address.Trim();
         client.DateOfBirth = ToUtcDate(request.DateOfBirth);
-        client.SSNLast4 = NormalizeSsnLast4(request.SSNLast4);
+        // The stored digits are never returned to the browser, so an edit form cannot echo them
+        // back. A blank value on update therefore means "unchanged", not "erase".
+        if (!string.IsNullOrWhiteSpace(request.SSNLast4))
+        {
+            client.SSNLast4 = NormalizeSsnLast4(request.SSNLast4);
+        }
         client.PhotoUrl = string.IsNullOrWhiteSpace(request.PhotoUrl) ? null : request.PhotoUrl.Trim();
         client.MaritalStatus = request.MaritalStatus;
         client.EmploymentStatus = request.EmploymentStatus;

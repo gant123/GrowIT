@@ -5,6 +5,7 @@
 @inject IClientService ClientService
 @inject IInvestmentService InvestmentService
 @inject IRoleAccessService RoleAccessService
+@inject NavigationManager Nav
 
 <PageTitle>Outcomes - grow.IT</PageTitle>
 
@@ -88,7 +89,7 @@
                     <option value="">All categories</option>
                     @foreach (var cat in Enum.GetNames(typeof(ImprintCategory)))
                     {
-                        <option value="@cat">@cat</option>
+                        <option value="@cat">@FormatEnumLabel(cat)</option>
                     }
                 </select>
             </div>
@@ -184,12 +185,14 @@
                     {
                         <EditForm Model="_createRequest" OnValidSubmit="SubmitImprintAsync">
                             <DataAnnotationsValidator />
+                            @* Without this, a missing person or title made "Save Outcome" do nothing. *@
+                            <ValidationSummary class="text-danger small mb-2" />
 
                             <div class="row g-3">
                                 <div class="col-md-6">
-                                    <label class="form-label">Who does this outcome belong to?</label>
+                                    <label class="form-label">Who does this outcome belong to? <span class="text-danger" aria-hidden="true">*</span></label>
                                     <select class="form-select" value="@_createRequest.ClientId" @onchange="OnCreateClientChanged">
-                                        <option value="">Select a person or household</option>
+                                        <option value="@Guid.Empty">Select a person or household</option>
                                         @foreach (var client in _clients.OrderBy(c => c.Name))
                                         {
                                             <option value="@client.Id">@client.Name</option>
@@ -239,7 +242,7 @@
                                     </InputSelect>
                                 </div>
                                 <div class="col-12">
-                                    <label class="form-label">Short title</label>
+                                    <label class="form-label">Short title <span class="text-danger" aria-hidden="true">*</span></label>
                                     <InputText class="form-control" @bind-Value="_createRequest.Title" placeholder="Example: Household retained housing for 90 days" />
                                 </div>
                                 <div class="col-12">
@@ -297,7 +300,37 @@
     protected override async Task OnInitializedAsync()
     {
         _canDocumentServiceRecords = (await RoleAccessService.GetAccessAsync()).CanDocumentServiceRecords;
+        _accessResolved = true;
+        if (_openCreateWhenReady)
+        {
+            _openCreateWhenReady = false;
+            await OpenNewImprint();
+        }
+
         await ReloadImprintsAsync();
+    }
+
+    // /imprints?new=1 opens the add-outcome form straight away (used by the "Log it" sheet).
+    [SupplyParameterFromQuery(Name = "new")]
+    public string? NewRequested { get; set; }
+
+    private bool _accessResolved;
+    private bool _openCreateWhenReady;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(NewRequested))
+        {
+            Nav.NavigateTo("/imprints", replace: true);
+            if (_accessResolved)
+            {
+                await OpenNewImprint();
+            }
+            else
+            {
+                _openCreateWhenReady = true;
+            }
+        }
     }
 
     private async Task ReloadImprintsAsync()
@@ -412,7 +445,7 @@
 
         if (_createRequest.ClientId == Guid.Empty)
         {
-            _createError = "Client is required.";
+            _createError = "Choose who this outcome belongs to.";
             return;
         }
 

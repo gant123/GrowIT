@@ -188,12 +188,19 @@
                         <div class="breadcrumb-item @(crumb.IsLast ? "active" : "")">
                             @if (crumb.IsLast)
                             {
-                                <span>@crumb.Label</span>
+                                <span aria-current="page">@crumb.Label</span>
                             }
                             else
                             {
-                                <a href="@crumb.Href">@crumb.Label</a>
-                                <span class="breadcrumb-separator">
+                                @if (crumb.Href is null)
+                                {
+                                    <span>@crumb.Label</span>
+                                }
+                                else
+                                {
+                                    <a href="@crumb.Href">@crumb.Label</a>
+                                }
+                                <span class="breadcrumb-separator" aria-hidden="true">
                                     <i class="bi bi-chevron-right"></i>
                                 </span>
                             }
@@ -529,17 +536,17 @@
                         <span class="log-option-desc">Money or support given</span>
                     </button>
                 }
-                <button type="button" class="log-option" @onclick="@(() => LogNavigate("/imprints"))">
+                <button type="button" class="log-option" @onclick="@(() => LogNavigate("/imprints?new=1"))">
                     <i class="bi bi-flower1"></i>
                     <span class="log-option-title">Outcome</span>
-                    <span class="log-option-desc">A harvest worth reporting</span>
+                    <span class="log-option-desc">A change worth reporting</span>
                 </button>
-                <button type="button" class="log-option" @onclick="@(() => LogNavigate("/clients/create"))">
+                <button type="button" class="log-option" @onclick="@(() => LogNavigate("/clients?new=1"))">
                     <i class="bi bi-person-plus"></i>
                     <span class="log-option-title">Person</span>
-                    <span class="log-option-desc">New case file</span>
+                    <span class="log-option-desc">New person or household</span>
                 </button>
-                <button type="button" class="log-option" @onclick="@(() => LogNavigate("/tasks"))">
+                <button type="button" class="log-option" @onclick="@(() => LogNavigate("/tasks?new=1"))">
                     <i class="bi bi-alarm"></i>
                     <span class="log-option-title">Follow-up</span>
                     <span class="log-option-desc">Remind future you</span>
@@ -591,7 +598,7 @@
     [
         new("/", "Dashboard", "Saved data, next steps, and organization progress", "Main", "bi bi-grid-1x2", "dashboard home overview"),
         new("/clients", "People & Households", "Profiles for people and households served", "Main", "bi bi-people", "clients cases people directory"),
-        new("/clients/create", "New Profile", "Add a person or household profile", "Main", "bi bi-person-plus", "new create client case"),
+        new("/clients?new=1", "New Profile", "Add a person or household profile", "Main", "bi bi-person-plus", "new create client case add person"),
         new("/households", "Households", "Manage household groupings", "Main", "bi bi-house-door", "households family homes"),
         new("/tasks", "Follow-ups", "Action items and case follow-ups", "Main", "bi bi-list-check", "tasks todo follow up reminders action items"),
         new("/documents", "Documents", "Client files and uploads", "Main", "bi bi-file-earmark-text", "documents files uploads attachments"),
@@ -616,9 +623,15 @@
     private class Breadcrumb
     {
         public string Label { get; set; } = "";
-        public string Href { get; set; } = "";
+        // Null for path segments that are not pages of their own (rendered as plain text).
+        public string? Href { get; set; }
         public bool IsLast { get; set; }
     }
+
+    // URL segments that only group routes and have no page behind them. Linking them produced
+    // dead breadcrumb links (e.g. "Member" -> /clients/member -> 404).
+    private static readonly HashSet<string> BreadcrumbHiddenSegments = new(StringComparer.OrdinalIgnoreCase) { "member" };
+    private static readonly HashSet<string> BreadcrumbUnlinkedSegments = new(StringComparer.OrdinalIgnoreCase) { "super-admin" };
 
     private sealed record QuickNavItem(string Route, string Label, string Description, string Category, string Icon, string Keywords);
 
@@ -665,21 +678,15 @@
             _canManageFinancials = access.CanManageFinancials;
             _canDocumentServiceRecords = access.CanDocumentServiceRecords;
 
-            _userName = user.Identity.Name ?? "User";
             _userEmail = user.FindFirst(c => c.Type == "email" || c.Type == System.Security.Claims.ClaimTypes.Email)?.Value ?? "";
             _userRole = access.PrimaryRole;
-            
-            if (!string.IsNullOrEmpty(_userName))
+
+            // This runs on every in-app navigation. Once the profile has supplied the real
+            // name, keep it: re-reading the claim here used to swap "Dana Rivers" back to the
+            // sign-in email (and the initials to one letter) after the first page change.
+            if (!_profileSummaryLoaded)
             {
-                var parts = _userName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length > 1)
-                {
-                    _userInitials = $"{parts[0][0]}{parts[^1][0]}".ToUpper();
-                }
-                else if (parts.Length == 1)
-                {
-                    _userInitials = parts[0][0].ToString().ToUpper();
-                }
+                ApplyDisplayName(user.Identity.Name ?? "User");
             }
 
             await RefreshNotificationsAsync(silent: true);
@@ -736,20 +743,30 @@
         var uri = new Uri(Navigation.Uri);
         var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
         
+        // The dashboard lives at /home; show a single "Home" crumb there instead of "Home > Home".
+        var isDashboard = segments.Length == 0 ||
+                          (segments.Length == 1 && segments[0].Equals("home", StringComparison.OrdinalIgnoreCase));
+
         _breadcrumbs.Clear();
-        _breadcrumbs.Add(new Breadcrumb { Label = "Home", Href = "/", IsLast = segments.Length == 0 });
-        
+        _breadcrumbs.Add(new Breadcrumb { Label = "Home", Href = "/home", IsLast = isDashboard });
+
         var path = "";
-        for (int i = 0; i < segments.Length; i++)
+        for (int i = 0; !isDashboard && i < segments.Length; i++)
         {
             path += "/" + segments[i];
+            var isLast = i == segments.Length - 1;
+            if (!isLast && BreadcrumbHiddenSegments.Contains(segments[i]))
+            {
+                continue;
+            }
+
             var previousSegment = i > 0 ? segments[i - 1] : null;
             var label = FormatBreadcrumbLabel(segments[i], previousSegment);
             _breadcrumbs.Add(new Breadcrumb
             {
                 Label = label,
-                Href = path,
-                IsLast = i == segments.Length - 1
+                Href = BreadcrumbUnlinkedSegments.Contains(segments[i]) ? null : path,
+                IsLast = isLast
             });
         }
 
@@ -779,6 +796,8 @@
         if (segment.Equals("imprints", StringComparison.OrdinalIgnoreCase)) return "Outcomes";
         if (segment.Equals("investments", StringComparison.OrdinalIgnoreCase)) return "Service Records";
         if (segment.Equals("funds", StringComparison.OrdinalIgnoreCase)) return "Money Sources";
+        if (segment.Equals("tasks", StringComparison.OrdinalIgnoreCase)) return "Follow-ups";
+        if (segment.Equals("organization", StringComparison.OrdinalIgnoreCase)) return "ASC Score";
 
         var label = segment.Replace("-", " ");
         return System.Globalization.CultureInfo.CurrentCulture.TextInfo.ToTitleCase(label);
@@ -1132,6 +1151,20 @@
         };
     }
 
+    private void ApplyDisplayName(string name)
+    {
+        _userName = name;
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length > 1)
+        {
+            _userInitials = $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
+        }
+        else if (parts.Length == 1)
+        {
+            _userInitials = parts[0][0].ToString().ToUpperInvariant();
+        }
+    }
+
     private async Task RefreshProfileSummaryAsync()
     {
         if (_profileSummaryLoaded)
@@ -1148,16 +1181,7 @@
                 var fullName = $"{profile.FirstName} {profile.LastName}".Trim();
                 if (!string.IsNullOrWhiteSpace(fullName))
                 {
-                    _userName = fullName;
-                    var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                    if (parts.Length > 1)
-                    {
-                        _userInitials = $"{parts[0][0]}{parts[^1][0]}".ToUpperInvariant();
-                    }
-                    else if (parts.Length == 1)
-                    {
-                        _userInitials = parts[0][0].ToString().ToUpperInvariant();
-                    }
+                    ApplyDisplayName(fullName);
                 }
             }
         }

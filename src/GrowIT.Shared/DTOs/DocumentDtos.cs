@@ -1,3 +1,4 @@
+using GrowIT.Shared.Validation;
 using System.ComponentModel.DataAnnotations;
 using GrowIT.Shared.Enums;
 
@@ -29,13 +30,16 @@ public class DocumentQueryParams
 
 public class CreateDocumentRequest
 {
-    [Required]
+    [RequiredGuid(ErrorMessage = "Choose the person or household this document belongs to.")]
     public Guid ClientId { get; set; }
 
-    [Required]
+    [Required(ErrorMessage = "Add the link to the file.")]
+    [Url(ErrorMessage = "The link must be a full web address starting with http:// or https://.")]
+    [MaxLength(2000)]
     public string FileUrl { get; set; } = string.Empty;
 
-    [Required]
+    [Required(ErrorMessage = "Add the file type (for example PDF).")]
+    [MaxLength(40)]
     public string FileType { get; set; } = string.Empty;
 
     public DocumentCategory Category { get; set; } = DocumentCategory.Other;

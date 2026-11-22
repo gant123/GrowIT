@@ -43,6 +43,39 @@ else
             </button>
         </header>
 
+        @if (ShowStartHere)
+        {
+            @* A new workspace used to land on an all-zero dashboard with no hint of what to do
+               first. Show the same order the Documentation page recommends until it is done. *@
+            <section class="card-growit start-here mb-4" aria-labelledby="start-here-title">
+                <div class="card-body">
+                    <div class="hero-label">Start here</div>
+                    <h2 id="start-here-title" class="start-here-title">Four steps to your first report</h2>
+                    <p class="start-here-intro">Each step is reused by the next one, so this order saves retyping.</p>
+                    <ol class="start-here-steps">
+                        @foreach (var step in StartHereSteps)
+                        {
+                            <li class="start-here-step @(step.Done ? "is-done" : null)">
+                                <i class="bi @(step.Done ? "bi-check-circle-fill" : "bi-circle") start-here-mark" aria-hidden="true"></i>
+                                <div class="start-here-text">
+                                    <span class="start-here-step-title">@step.Title</span>
+                                    <span class="start-here-step-help">@step.Help</span>
+                                </div>
+                                @if (step.Done)
+                                {
+                                    <span class="start-here-done">Done</span>
+                                }
+                                else
+                                {
+                                    <a class="btn-growit btn-secondary-growit start-here-action" href="@step.Href">@step.Action</a>
+                                }
+                            </li>
+                        }
+                    </ol>
+                </div>
+            </section>
+        }
+
         <div class="card-growit today-hero mb-4">
             <div class="card-body">
                 <div class="hero-label">Service value this year</div>
@@ -78,7 +111,9 @@ else
                                 <ChartAxisLineStyle Width="0"></ChartAxisLineStyle>
                             </ChartPrimaryXAxis>
 
-                            <ChartPrimaryYAxis LabelFormat="${value}" EdgeLabelPlacement="EdgeLabelPlacement.Shift">
+                            @* Start at zero: with a single month of data the auto-range drew a $125 bar
+                               on a $124.4-$126.2 axis. *@
+                            <ChartPrimaryYAxis LabelFormat="${value}" Minimum="0" EdgeLabelPlacement="EdgeLabelPlacement.Shift">
                                 <ChartAxisLineStyle Width="0"></ChartAxisLineStyle>
                                 <ChartAxisMajorTickLines Width="0"></ChartAxisMajorTickLines>
                                 <ChartAxisMajorGridLines Width="1" Color="@_palette.GridLine" DashArray="4,4"></ChartAxisMajorGridLines>
@@ -138,7 +173,7 @@ else
             </button>
             <button type="button" class="today-stat" @onclick="@(() => Nav.NavigateTo("/clients"))">
                 <span class="today-stat-value">@stats.ActiveCases</span>
-                <span class="today-stat-label">Open records</span>
+                <span class="today-stat-label">People on file</span>
             </button>
             <button type="button" class="today-stat" @onclick="@(() => Nav.NavigateTo("/funds"))">
                 <span class="today-stat-value">@stats.FundsAvailable.ToString("C0")</span>
@@ -206,7 +241,7 @@ else
                         else
                         {
                             <div class="empty-state">
-                                <p class="empty-state-description">No entries yet. Use the Log button to add your first record — a person, a service record, or an outcome.</p>
+                                <p class="empty-state-description">No entries yet. The people, service records, and outcomes you add will be listed here as they happen.</p>
                             </div>
                         }
                     </div>
@@ -228,6 +263,20 @@ else
     [CascadingParameter] private Task<AuthenticationState>? AuthState { get; set; }
 
     private DashboardStatsDto? stats;
+
+    private sealed record StartHereStep(string Title, string Help, string Action, string Href, bool Done);
+
+    private List<StartHereStep> StartHereSteps => stats is null ? [] :
+    [
+        new("Add a person or household", "Who you serve. Their profile is reused in every record and report.", "Add a person", "/clients", stats.TotalClients > 0),
+        new("Add a program", "What your organization provides and what it usually costs.", "Add a program", "/programs", stats.ProgramCount > 0),
+        new("Add a money source", "A grant, donation pool, or budget that pays for services.", "Add a money source", "/funds", stats.FundCount > 0),
+        new("Record a service", "Who received support, what it cost, and what paid for it.", "Record a service", "/investments", stats.ServiceRecordCount > 0)
+    ];
+
+    // Hidden once every step is done, so established workspaces never see it.
+    private bool ShowStartHere => StartHereSteps.Any(s => !s.Done);
+
     private bool _isLoading = true;
     private string? _loadError;
     private bool _hasChartData;

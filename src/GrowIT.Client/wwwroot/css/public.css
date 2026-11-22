@@ -1395,7 +1395,24 @@
 }
 
 .input-wrapper input {
+    width: 100%;
     padding-left: calc(12px + 20px + 12px);
+}
+
+/* No leading icon (e.g. the sign-up password field): don't reserve icon space. */
+.input-wrapper:not(:has(.input-icon, .input-icon-bi)) input {
+    padding-left: 16px;
+}
+
+/* Keep typed text clear of the show/hide button. */
+.input-wrapper:has(.password-toggle) input {
+    padding-right: 48px;
+}
+
+.password-hint {
+    margin: 2px 0 0;
+    font-size: 0.8125rem;
+    color: var(--growit-text-muted);
 }
 
 .password-toggle {
@@ -1845,6 +1862,13 @@
 
 .auth-side-content {
     color: white;
+}
+
+/* Headings take the global dark heading color unless told otherwise, which made them
+   unreadable on the dark/green side panels. */
+.auth-side h2,
+.auth-side h3 {
+    color: #fff;
 }
 
 .auth-side blockquote {

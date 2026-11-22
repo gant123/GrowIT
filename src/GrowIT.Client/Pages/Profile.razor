@@ -149,7 +149,7 @@
                         <div class="mb-3">
                             <label class="form-label">New password</label>
                             <InputText type="password" class="form-control" @bind-Value="_changePassword.NewPassword" />
-                            <div class="form-text">Minimum 8 characters.</div>
+                            <div class="form-text">At least 12 characters, with an uppercase letter, a lowercase letter, and a number.</div>
                         </div>
                         <button class="btn btn-outline-primary" type="submit" disabled="@_isChangingPassword">
                             @if (_isChangingPassword)

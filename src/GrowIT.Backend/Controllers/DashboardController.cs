@@ -52,6 +52,11 @@ public class DashboardController : ControllerBase
             .SumAsync(i => (decimal?)i.Amount) ?? 0m;
         var totalMilestones = await _context.Imprints.CountAsync();
 
+        // Setup progress for the dashboard's first-steps checklist.
+        var programCount = await _context.Programs.CountAsync();
+        var fundCount = await _context.Funds.CountAsync();
+        var serviceRecordCount = await _context.Investments.CountAsync();
+
         // 6. CHART: Monthly Trends (Group by Month)
         var rawInvestments = await _context.Investments
             .Where(i => i.CreatedAt.Year == currentYear &&
@@ -151,6 +156,9 @@ public class DashboardController : ControllerBase
             HouseholdsServedYtd = householdsServed,
             ActiveCases = activeCases,
             FundsAvailable = fundsAvailable,
+            ProgramCount = programCount,
+            FundCount = fundCount,
+            ServiceRecordCount = serviceRecordCount,
             MonthlyTrends = monthlyTrends,
             RecentActivity = activityFeed.OrderByDescending(a => a.Date).Take(10).ToList(),
             PendingFollowUps = followUps

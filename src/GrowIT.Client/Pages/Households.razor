@@ -7,7 +7,7 @@
 <PageTitle>Households - grow.IT</PageTitle>
 
 <div class="households-page">
-    <PageHeader Title="Households" Subtitle="Group case files into households so service, planning, and impact can be tracked with real context." />
+    <PageHeader Title="Households" Subtitle="Group the people you serve into households so service, planning, and impact can be tracked with real context." />
 
     @if (!string.IsNullOrWhiteSpace(_error))
     {
@@ -65,9 +65,9 @@
                         <InputText class="form-control" @bind-Value="_createRequest.Name" placeholder="Example: Williams Household" />
                     </div>
                     <div class="col-lg-5 col-md-6">
-                        <label class="form-label">Primary Client (Optional)</label>
+                        <label class="form-label">Head of household (optional)</label>
                         <InputSelect class="form-select" @bind-Value="_createRequest.PrimaryClientId">
-                            <option value="">Select a client</option>
+                            <option value="">Select a person</option>
                             @foreach (var client in _clients.OrderBy(c => c.Name))
                             {
                                 <option value="@client.Id">@client.Name</option>
@@ -109,7 +109,7 @@
             <div class="panel-empty">
                 <div class="empty-icon"><i class="bi bi-house-x"></i></div>
                 <h3>No households created yet</h3>
-                <p>Create a household to organize related case files and capture family-level service context.</p>
+                <p>Create a household to group related people and capture family-level service context.</p>
             </div>
         }
         else
@@ -128,7 +128,7 @@
                                     }
                                     else
                                     {
-                                        <span><i class="bi bi-person-dash"></i> No primary client assigned</span>
+                                        <span><i class="bi bi-person-dash"></i> No head of household set</span>
                                     }
                                 </div>
                             </div>
@@ -179,18 +179,22 @@
                             <div class="add-member-panel">
                                 <div class="add-member-title">
                                     <i class="bi bi-person-plus"></i>
-                                    <span>Add Member</span>
+                                    <span>Add a member or change a role</span>
                                 </div>
                                 <div class="row g-2 align-items-end">
                                     <div class="col-md-6">
-                                        <label class="form-label small">Client</label>
+                                        <label class="form-label small">Person</label>
                                         <select class="form-select form-select-sm"
                                                 value="@GetSelectedClientForHousehold(household.Id)"
                                                 @onchange="(e) => OnMemberClientChanged(household.Id, e)">
-                                            <option value="">Select client</option>
+                                            <option value="">Select a person</option>
                                             @foreach (var client in _clients.OrderBy(c => c.Name))
                                             {
-                                                <option value="@client.Id">@client.Name</option>
+                                                @* People already here stay selectable (that is how a role is
+                                                   changed), but say so, so nobody re-adds the head as a
+                                                   dependent by accident. *@
+                                                var existingMember = household.Members.FirstOrDefault(m => m.IsCaseFile && m.ClientId == client.Id);
+                                                <option value="@client.Id">@(existingMember is null ? client.Name : $"{client.Name} (already here as {existingMember.Role})")</option>
                                             }
                                         </select>
                                     </div>
@@ -318,7 +322,7 @@
         _error = null;
         if (!_pendingMemberByHousehold.TryGetValue(householdId, out var clientId) || !clientId.HasValue || clientId == Guid.Empty)
         {
-            _error = "Select a client before adding to the household.";
+            _error = "Select a person before adding to the household.";
             return;
         }
 

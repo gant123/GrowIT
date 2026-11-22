@@ -63,7 +63,7 @@
                     </div>
                 </div>
 
-                <div class="asc-meter" aria-label="ASC score scale">
+                <div class="asc-meter" aria-label="ASC score scale" style="--asc-meter-columns:@MeterColumns">
                     @foreach (var tier in _score.Tiers.Where(t => t.Name != "Unscored"))
                     {
                         <div class="asc-meter-segment" style="--tier-color:@tier.Color">
@@ -239,6 +239,42 @@
     private decimal ScoreMarkerLeft => _score?.Score is decimal score
         ? Math.Clamp(score * 10m, 0m, 100m)
         : 0m;
+
+    // The marker sits at score x 10% of the bar, so each tier's segment has to be as wide as
+    // its share of the 0-10 scale. With five equal segments a 4.6 ("Foundation Stage",
+    // 2.0-4.9) was drawn inside the 5.0-7.4 segment.
+    private string MeterColumns
+    {
+        get
+        {
+            const string equalColumns = "repeat(5, 1fr)";
+            var starts = new List<decimal>();
+            foreach (var tier in _score?.Tiers.Where(t => t.Name != "Unscored") ?? [])
+            {
+                var lowerBound = tier.Range.Split('-', 2)[0].Trim();
+                if (!decimal.TryParse(lowerBound, System.Globalization.NumberStyles.Number,
+                        System.Globalization.CultureInfo.InvariantCulture, out var start))
+                {
+                    return equalColumns;
+                }
+
+                starts.Add(start);
+            }
+
+            if (starts.Count == 0)
+            {
+                return equalColumns;
+            }
+
+            var widths = starts
+                .Select((start, index) => (index + 1 < starts.Count ? starts[index + 1] : 10m) - start)
+                .ToList();
+
+            return widths.Any(w => w <= 0)
+                ? equalColumns
+                : string.Join(" ", widths.Select(w => w.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "fr"));
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {

@@ -6,6 +6,8 @@
 @inject IJSRuntime JS
 @inject BreadcrumbState Breadcrumb
 
+<PageTitle>@(string.IsNullOrWhiteSpace(profile?.Name) ? "Household member" : profile!.Name) - grow.IT</PageTitle>
+
 @if (_isLoading)
 {
     <div class="loading-state">
@@ -159,7 +161,7 @@ else
                             <div class="empty-state">
                                 <i class="bi bi-clock-history empty-state-icon"></i>
                                 <div class="empty-state-title">No personal activity yet</div>
-                                <div class="empty-state-description">Timeline entries will appear when investments or imprints are tied to this individual.</div>
+                                <div class="empty-state-description">Timeline entries will appear when service records or outcomes are tied to this person.</div>
                             </div>
                         }
                     </div>

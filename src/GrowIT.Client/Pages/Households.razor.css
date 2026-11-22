@@ -137,6 +137,7 @@
 }
 
 .household-card {
+    min-width: 0;
     border: 1px solid var(--growit-border);
     border-radius: 14px;
     background: var(--growit-bg-secondary);
@@ -335,7 +336,9 @@
     }
 
     .household-grid {
-        grid-template-columns: 1fr;
+        /* minmax(0, ...) lets the card shrink to the screen; a bare 1fr track grows to the
+           member table's minimum width and overflowed phones. */
+        grid-template-columns: minmax(0, 1fr);
     }
 }
 

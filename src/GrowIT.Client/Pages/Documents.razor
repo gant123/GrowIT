@@ -107,10 +107,11 @@
                     }
                     <EditForm Model="@_newDocument" OnValidSubmit="CreateDocument">
                         <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger small mb-2" />
                         <div class="mb-3">
-                            <label class="form-label">Client</label>
+                            <label class="form-label">Person or household <span class="text-danger" aria-hidden="true">*</span></label>
                             <InputSelect @bind-Value="_newDocument.ClientId" class="form-select">
-                                <option value="@Guid.Empty">Select client</option>
+                                <option value="@Guid.Empty">Select a person or household</option>
                                 @foreach (var client in _clients)
                                 {
                                     <option value="@client.Id">@client.Name</option>
@@ -118,12 +119,15 @@
                             </InputSelect>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">File URL</label>
-                            <InputText @bind-Value="_newDocument.FileUrl" class="form-control" />
+                            <label class="form-label">Link to the file <span class="text-danger" aria-hidden="true">*</span></label>
+                            <InputText @bind-Value="_newDocument.FileUrl" class="form-control" placeholder="https://drive.google.com/..." />
+                            @* Be upfront that this records a link: there is no file upload here yet, and
+                               arbitrary text used to be saved as a "document" that opened nothing. *@
+                            <div class="form-text">Paste the web address where the file is stored (for example Google Drive or Dropbox). Uploading a file directly isn't available yet.</div>
                         </div>
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
-                                <label class="form-label">File Type</label>
+                                <label class="form-label">File type <span class="text-danger" aria-hidden="true">*</span></label>
                                 <InputText @bind-Value="_newDocument.FileType" class="form-control" placeholder="PDF" />
                             </div>
                             <div class="col-md-6">
@@ -197,7 +201,7 @@
         _modalError = null;
         if (_newDocument.ClientId == Guid.Empty)
         {
-            _modalError = "Client is required.";
+            _modalError = "Choose the person or household this document belongs to.";
             return;
         }
 

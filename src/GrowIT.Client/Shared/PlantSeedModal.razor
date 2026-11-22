@@ -40,6 +40,45 @@
                             <p class="mt-2 small" style="color: var(--growit-text-secondary);">Loading saved people, programs, and money sources...</p>
                         </div>
                     }
+                    else if (MissingSetup.Count > 0 && string.IsNullOrEmpty(errorMessage))
+                    {
+                        @* A service record links a person, a program and a money source. On a new
+                           workspace those lists are empty, and the form used to open as three blank
+                           dropdowns with no way forward. Say what is missing and link to it. *@
+                        <div class="seed-setup-needed">
+                            <h6 class="fw-bold mb-1" style="color: var(--growit-text-primary);">A few things to add first</h6>
+                            <p class="small mb-3" style="color: var(--growit-text-secondary);">
+                                A service record connects a person, a program, and the money that paid for it.
+                                Add what's missing below, then come back to record the service.
+                            </p>
+                            <ul class="list-unstyled mb-0 d-grid gap-2">
+                                @foreach (var step in SetupSteps)
+                                {
+                                    <li class="d-flex align-items-center justify-content-between gap-3 p-3 rounded-3"
+                                        style="border: 1px solid var(--growit-border); background-color: var(--growit-bg-primary);">
+                                        <span class="d-flex align-items-center gap-2">
+                                            <i class="bi @(step.Done ? "bi-check-circle-fill" : "bi-circle")" style="color: @(step.Done ? "var(--growit-green)" : "var(--growit-text-muted)");" aria-hidden="true"></i>
+                                            <span>
+                                                <span class="fw-bold d-block" style="color: var(--growit-text-primary);">@step.Title</span>
+                                                <span class="small" style="color: var(--growit-text-secondary);">@(step.Done ? "Added" : step.Help)</span>
+                                            </span>
+                                        </span>
+                                        @if (!step.Done)
+                                        {
+                                            <a class="btn btn-sm fw-bold text-white flex-shrink-0" style="background-color: var(--growit-green); border: none;"
+                                               href="@step.Href" @onclick="Close">@step.Action</a>
+                                        }
+                                    </li>
+                                }
+                            </ul>
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-4 pt-3" style="border-top: 1px solid var(--growit-border);">
+                            <button type="button" class="btn btn-outline-secondary px-4"
+                                    style="color: var(--growit-text-primary); border-color: var(--growit-border);"
+                                    @onclick="Close">Close</button>
+                        </div>
+                    }
                     else
                     {
                         <EditForm Model="@request" OnValidSubmit="HandleValidSubmit">
@@ -49,17 +88,17 @@
                             <div class="row g-3">
                                 <div class="col-md-6">
                                     <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Who received support?</label>
-                                    <select class="form-select form-select-lg" style="@ThemeInputStyle" 
+                                    <select class="form-select" style="@ThemeInputStyle" 
                                             value="@request.ClientId" 
                                             @onchange="OnClientChanged">
-                                        <option value="">Select a person or household</option>
+                                        <option value="@Guid.Empty">Select a person or household</option>
                                         @foreach (var c in clients) { <option value="@c.Id">@c.Name</option> }
                                     </select>
                                 </div>
 
                                 <div class="col-md-6">
                                     <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Specific household member (optional)</label>
-                                    <InputSelect @bind-Value="request.FamilyMemberId" class="form-select form-select-lg" style="@ThemeInputStyle" disabled="@(!members.Any())">
+                                    <InputSelect @bind-Value="request.FamilyMemberId" class="form-select" style="@ThemeInputStyle" disabled="@(!members.Any())">
                                         <option value="">Entire household</option>
                                         @foreach (var m in members) { <option value="@m.Id">@m.Name (@m.Relationship)</option> }
                                     </InputSelect>
@@ -67,16 +106,18 @@
 
                                 <div class="col-md-6">
                                     <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Which program or service?</label>
-                                    <InputSelect @bind-Value="request.ProgramId" class="form-select" style="@ThemeInputStyle">
-                                        <option value="">Select a program</option>
+                                    <select class="form-select" style="@ThemeInputStyle"
+                                            value="@request.ProgramId"
+                                            @onchange="OnProgramChanged">
+                                        <option value="@Guid.Empty">Select a program</option>
                                         @foreach (var p in programs) { <option value="@p.Id">@p.Name</option> }
-                                    </InputSelect>
+                                    </select>
                                 </div>
 
                                 <div class="col-md-6">
                                     <label class="form-label small fw-bold text-uppercase" style="color: var(--growit-text-secondary);">Which money source paid for it?</label>
                                     <InputSelect @bind-Value="request.FundId" class="form-select" style="@ThemeInputStyle">
-                                        <option value="">Select a money source</option>
+                                        <option value="@Guid.Empty">Select a money source</option>
                                         @foreach (var f in funds) { <option value="@f.Id">@f.Name ($@f.AvailableAmount.ToString("N0"))</option> }
                                     </InputSelect>
                                 </div>
@@ -130,13 +171,31 @@
     private List<ProgramDto> programs = new();
     private List<FamilyMemberDto> members = new();
     private bool isLoading = true;
+    private bool wasShown;
     private string errorMessage = ""; // Holds any API error so the modal shows it inline instead of faulting the circuit.
+
+    private sealed record SetupStep(string Title, string Help, string Action, string Href, bool Done);
+
+    private List<SetupStep> SetupSteps =>
+    [
+        new("A person or household", "Who received the support.", "Add a person", "/clients", clients.Any()),
+        new("A program or service", "What your organization provided.", "Add a program", "/programs", programs.Any()),
+        new("A money source", "The grant, donation, or budget that paid for it.", "Add a money source", "/funds", funds.Any())
+    ];
+
+    private List<SetupStep> MissingSetup => SetupSteps.Where(s => !s.Done).ToList();
 
     private string ThemeInputStyle => "background-color: var(--growit-bg-primary); color: var(--growit-text-primary); border: 1px solid var(--growit-border);";
 
     protected override async Task OnParametersSetAsync()
     {
-        if (Show && !clients.Any())
+        // Reload every time the modal opens. It is mounted once for the whole app, so loading
+        // only "when there are no people yet" left the program and money-source lists stale
+        // (or empty) for anything added after the first open.
+        var justOpened = Show && !wasShown;
+        wasShown = Show;
+
+        if (justOpened)
         {
             isLoading = true;
             errorMessage = "";
@@ -190,6 +249,21 @@
         }
     }
 
+    private void OnProgramChanged(ChangeEventArgs e)
+    {
+        request.ProgramId = Guid.TryParse(e.Value?.ToString(), out var programId) ? programId : Guid.Empty;
+
+        // Start from the program's usual cost when no amount has been typed yet.
+        if (request.Amount == 0)
+        {
+            var program = programs.FirstOrDefault(p => p.Id == request.ProgramId);
+            if (program is { DefaultUnitCost: > 0 })
+            {
+                request.Amount = program.DefaultUnitCost;
+            }
+        }
+    }
+
     private async Task HandleValidSubmit()
     {
         errorMessage = "";
@@ -215,6 +289,7 @@
     private async Task Close()
     {
         Show = false;
+        wasShown = false;
         request = new();
         members.Clear();
         errorMessage = "";

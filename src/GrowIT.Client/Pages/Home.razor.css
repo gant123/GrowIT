@@ -52,6 +52,96 @@
     border-left: 4px solid var(--growit-green);
 }
 
+/* First-steps checklist (new workspaces only) */
+.start-here-title {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: clamp(1.2rem, 3.5vw, 1.5rem);
+    letter-spacing: -0.01em;
+    color: var(--growit-heading-color);
+    margin: 6px 0 4px;
+}
+
+.start-here-intro {
+    margin: 0 0 16px;
+    font-size: 0.9rem;
+    color: var(--growit-text-secondary);
+}
+
+.start-here-steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+}
+
+.start-here-step {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    border: 1px solid var(--growit-border);
+    border-radius: var(--radius-md);
+    background: var(--growit-bg-primary);
+}
+
+.start-here-mark {
+    font-size: 1.15rem;
+    color: var(--growit-text-muted);
+    flex-shrink: 0;
+}
+
+.start-here-step.is-done .start-here-mark {
+    color: var(--growit-green);
+}
+
+.start-here-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+.start-here-step-title {
+    font-weight: 600;
+    color: var(--growit-text-primary);
+}
+
+.start-here-step.is-done .start-here-step-title {
+    color: var(--growit-text-secondary);
+}
+
+.start-here-step-help {
+    font-size: 0.82rem;
+    color: var(--growit-text-secondary);
+}
+
+.start-here-done {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--growit-green);
+    flex-shrink: 0;
+}
+
+.start-here-action {
+    flex-shrink: 0;
+}
+
+@media (max-width: 560px) {
+    .start-here-step {
+        flex-wrap: wrap;
+    }
+
+    .start-here-action {
+        justify-content: center;
+        margin-left: 30px;
+        width: calc(100% - 30px);
+    }
+}
+
 .hero-label {
     font-size: 0.72rem;
     font-weight: 700;

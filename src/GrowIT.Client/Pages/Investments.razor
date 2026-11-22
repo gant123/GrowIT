@@ -112,7 +112,7 @@
                                 <span>@inv.Date.ToString("MMM d, yyyy")</span>
                             </Template>
                         </GridColumn>
-                        <GridColumn Field=@nameof(InvestmentListDto.PersonName) HeaderText="Person" Width="220" ClipMode="ClipMode.EllipsisWithTooltip">
+                        <GridColumn Field=@nameof(InvestmentListDto.PersonName) HeaderText="Person" Width="200" ClipMode="ClipMode.EllipsisWithTooltip">
                             <Template>
                                 @{
                                     var inv = (context as InvestmentListDto)!;
@@ -120,7 +120,7 @@
                                 <span class="fw-600 text-primary">@inv.PersonName</span>
                             </Template>
                         </GridColumn>
-                        <GridColumn Field=@nameof(InvestmentListDto.Purpose) HeaderText="What was provided?" Width="260" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
+                        <GridColumn Field=@nameof(InvestmentListDto.Purpose) HeaderText="What was provided?" ClipMode="ClipMode.EllipsisWithTooltip"></GridColumn>
                         <GridColumn Field=@nameof(InvestmentListDto.Amount) HeaderText="Cost" Width="140" TextAlign="TextAlign.Right">
                             <Template>
                                 @{
@@ -137,7 +137,7 @@
                                 <span class="badge-growit @GetBadge(inv.Status)">@inv.Status</span>
                             </Template>
                         </GridColumn>
-                        <GridColumn HeaderText="Actions" Width="280" AllowFiltering="false" AllowSorting="false" TextAlign="TextAlign.Right">
+                        <GridColumn HeaderText="Actions" Width="230" AllowFiltering="false" AllowSorting="false" TextAlign="TextAlign.Right">
                             <Template>
                                 @{
                                     var inv = (context as InvestmentListDto)!;

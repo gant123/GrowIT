@@ -47,12 +47,10 @@
                         <InputSelect @bind-Value="_statusFilter" class="form-select">
                             <option value="">Pending only</option>
                             <option value="All">All</option>
-                            <option value="@GrowIT.Shared.Enums.TaskStatus.Pending">Pending</option>
                             <option value="@GrowIT.Shared.Enums.TaskStatus.Completed">Completed</option>
                             <option value="@GrowIT.Shared.Enums.TaskStatus.Skipped">Skipped</option>
                         </InputSelect>
                     </div>
-                    <button class="btn-growit btn-secondary-growit" @onclick="ApplyFilter">Apply</button>
                 </div>
             </div>
         </div>
@@ -67,8 +65,12 @@
                 {
                     <div class="empty-state">
                         <i class="bi bi-check2-circle empty-state-icon text-success"></i>
-                        <div class="empty-state-title">No follow-ups found</div>
-                        <p class="empty-state-description">Follow-ups appear here as you log service records and outcomes — nothing needs your attention right now.</p>
+                        <div class="empty-state-title">@(_allTasks.Any() ? "Nothing in this view" : "No follow-ups yet")</div>
+                        <p class="empty-state-description">
+                            @(_allTasks.Any()
+                                ? "No follow-ups match this status. Choose another status above to see the rest."
+                                : "Use New Follow-up to record who owns the next step and when it is due.")
+                        </p>
                     </div>
                 }
                 else
@@ -194,7 +196,18 @@
 }
 
 @code {
-    private List<TaskListDto> _tasks = [];
+    // Everything loaded for the workspace; the cards count from this, the table shows the
+    // filtered subset. Counting from the filtered list made "Completed" and "Skipped" read 0
+    // under the default "Pending only" view, even right after completing a follow-up.
+    private List<TaskListDto> _allTasks = [];
+
+    private List<TaskListDto> _tasks => _statusFilter switch
+    {
+        "All" => _allTasks,
+        _ when Enum.TryParse<GrowIT.Shared.Enums.TaskStatus>(_statusFilter, out var status) =>
+            _allTasks.Where(t => t.Status == status).ToList(),
+        _ => _allTasks.Where(t => t.Status == GrowIT.Shared.Enums.TaskStatus.Pending).ToList()
+    };
     private List<ClientDto> _clients = [];
     private List<TaskAssigneeDto> _assignees = [];
     private bool _isLoading = true;
@@ -205,12 +218,37 @@
     private string? _statusFilter;
     private CreateTaskRequest _newTask = new();
 
-    private int PendingCount => _tasks.Count(t => t.Status == GrowIT.Shared.Enums.TaskStatus.Pending);
-    private int OverdueCount => _tasks.Count(t => t.IsOverdue);
-    private int CompletedCount => _tasks.Count(t => t.Status == GrowIT.Shared.Enums.TaskStatus.Completed);
-    private int SkippedCount => _tasks.Count(t => t.Status == GrowIT.Shared.Enums.TaskStatus.Skipped);
+    private int PendingCount => _allTasks.Count(t => t.Status == GrowIT.Shared.Enums.TaskStatus.Pending);
+    private int OverdueCount => _allTasks.Count(t => t.IsOverdue);
+    private int CompletedCount => _allTasks.Count(t => t.Status == GrowIT.Shared.Enums.TaskStatus.Completed);
+    private int SkippedCount => _allTasks.Count(t => t.Status == GrowIT.Shared.Enums.TaskStatus.Skipped);
 
     protected override async Task OnInitializedAsync() => await LoadData();
+
+    // /tasks?new=1 opens the new follow-up form straight away (used by the "Log it" sheet).
+    [SupplyParameterFromQuery(Name = "new")]
+    public string? NewRequested { get; set; }
+
+    private bool _openCreateWhenLoaded;
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrEmpty(NewRequested))
+        {
+            // The form's dropdowns need the loaded people/assignees; if they are still
+            // loading (first visit), open as soon as LoadData finishes.
+            if (_isLoading)
+            {
+                _openCreateWhenLoaded = true;
+            }
+            else
+            {
+                OpenCreate();
+            }
+
+            Nav.NavigateTo("/tasks", replace: true);
+        }
+    }
 
     private async Task LoadData()
     {
@@ -221,6 +259,12 @@
             _clients = await ClientService.GetAllClientsAsync();
             _assignees = await TaskService.GetAssigneesAsync();
             await LoadTasks();
+
+            if (_openCreateWhenLoaded)
+            {
+                _openCreateWhenLoaded = false;
+                OpenCreate();
+            }
         }
         catch (Exception ex)
         {
@@ -234,21 +278,9 @@
 
     private async Task LoadTasks()
     {
-        var query = new TaskQueryParams();
-        if (_statusFilter == "All")
-        {
-            query.IncludeCompleted = true;
-        }
-        else if (Enum.TryParse<GrowIT.Shared.Enums.TaskStatus>(_statusFilter, out var status))
-        {
-            query.Status = status;
-            query.IncludeCompleted = true;
-        }
-
-        _tasks = await TaskService.GetTasksAsync(query);
+        // The status dropdown filters this list in memory (see _tasks), so always load every status.
+        _allTasks = await TaskService.GetTasksAsync(new TaskQueryParams { IncludeCompleted = true, PageSize = 100 });
     }
-
-    private async Task ApplyFilter() => await LoadTasks();
 
     private void OpenCreate()
     {

@@ -156,18 +156,40 @@ public class HouseholdsController : ControllerBase
         var client = await _context.Clients.FirstOrDefaultAsync(c => c.Id == clientId);
         if (client == null) return NotFound("Client not found");
 
+        var alreadyMember = client.HouseholdId == householdId;
+
         // Link them
         client.HouseholdId = householdId;
         client.HouseholdRole = role;
 
-        // If this is the "Head", update the Household record too
+        // Keep the household's head (PrimaryClientId) and the members' roles in agreement.
+        // Previously, re-adding the head with another role left the card saying "Head: Maria"
+        // while her row said "Dependent", and naming a second head left two heads listed.
         if (role == HouseholdRole.Head)
         {
+            if (household.PrimaryClientId is { } previousHeadId && previousHeadId != clientId)
+            {
+                var previousHead = await _context.Clients
+                    .FirstOrDefaultAsync(c => c.Id == previousHeadId && c.HouseholdId == householdId);
+                if (previousHead is { HouseholdRole: HouseholdRole.Head })
+                {
+                    previousHead.HouseholdRole = HouseholdRole.Other;
+                }
+            }
+
             household.PrimaryClientId = clientId;
+        }
+        else if (household.PrimaryClientId == clientId)
+        {
+            household.PrimaryClientId = null;
         }
 
         await _context.SaveChangesAsync();
-        return Ok(new MessageResponse { Message = $"Added {client.FirstName} to the household." });
+
+        var message = alreadyMember
+            ? $"{client.FirstName} is already in this household. Their role is now {role}."
+            : $"Added {client.FirstName} to the household.";
+        return Ok(new MessageResponse { Message = message });
     }
 
 }

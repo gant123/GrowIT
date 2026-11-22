@@ -839,3 +839,47 @@
     background: rgba(34, 197, 94, 0.1) !important;
     color: var(--growit-green) !important;
 }
+
+/* ========================================
+   GRID SURFACES THAT IGNORED THE THEME
+   The header cells and rows already use the theme tokens, but the scroll area behind the rows,
+   the inner tables, the pager container and the toolbar search box kept the Syncfusion
+   light-theme white. In dark mode that left a white slab under short lists and around the pager.
+   ======================================== */
+.e-grid .e-gridcontent,
+.e-grid .e-content,
+.e-grid .e-headercontent,
+.e-grid .e-table,
+.e-grid .e-emptyrow td,
+.e-grid .e-emptyrow:hover td {
+    background: var(--growit-bg-card) !important;
+    color: var(--growit-text-secondary) !important;
+}
+
+.e-grid .e-gridheader .e-table,
+.e-grid .e-gridheader .e-headercontent {
+    background: var(--growit-bg-primary) !important;
+}
+
+.e-grid .e-pager,
+.e-grid .e-pager .e-pagercontainer,
+.e-grid .e-pager .e-parentmsgbar {
+    background: transparent !important;
+    color: var(--growit-text-secondary) !important;
+}
+
+.e-grid .e-pager .e-pagercontainer {
+    border-color: var(--growit-border) !important;
+}
+
+.e-grid .e-toolbar .e-input-group,
+.e-grid .e-toolbar .e-input-group.e-control-wrapper {
+    background: var(--growit-bg-primary) !important;
+    border-color: var(--growit-border) !important;
+    color: var(--growit-text-primary) !important;
+}
+
+.e-grid .e-toolbar .e-input-group input.e-input {
+    background: transparent !important;
+    color: var(--growit-text-primary) !important;
+}

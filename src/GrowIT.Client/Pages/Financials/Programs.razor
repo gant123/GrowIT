@@ -123,7 +123,7 @@
                             </div>
                             @if (p.CapacityLimit.HasValue)
                             {
-                                <span class="capacity-chip configured">@p.CapacityLimit @p.CapacityPeriod</span>
+                                <span class="capacity-chip configured">@FormatCapacity(p.CapacityLimit, p.CapacityPeriod)</span>
                             }
                             else
                             {
@@ -135,7 +135,7 @@
                             <div class="program-attributes">
                                 <div class="program-attr">
                                     <span class="label">Service Limit</span>
-                                    <span class="value">@(p.CapacityLimit.HasValue ? $"{p.CapacityLimit} per {p.CapacityPeriod}" : "Not set")</span>
+                                    <span class="value">@(p.CapacityLimit.HasValue ? FormatCapacity(p.CapacityLimit, p.CapacityPeriod) : "Not set")</span>
                                 </div>
                                 <div class="program-attr">
                                     <span class="label">Unit Cost</span>
@@ -213,6 +213,22 @@
 }
 
 @code {
+    // "20 per month" rather than "20 per Monthly".
+    private static string FormatCapacity(int? limit, string? period)
+    {
+        var unit = period?.Trim().ToLowerInvariant() switch
+        {
+            "weekly" => "week",
+            "monthly" => "month",
+            "annual" or "annually" or "yearly" => "year",
+            "daily" => "day",
+            "quarterly" => "quarter",
+            _ => null
+        };
+
+        return unit is null ? $"{limit}" : $"{limit} per {unit}";
+    }
+
     private List<ProgramDto>? programs;
     private bool showCreateModal;
     private bool _isSaving;

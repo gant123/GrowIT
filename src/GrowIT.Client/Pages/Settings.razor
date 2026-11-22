@@ -388,7 +388,15 @@
                             </div>
                             <div class="col-md-4">
                                 <label class="form-label">Role</label>
-                                <InputText class="form-control" @bind-Value="_newInvite.Role" placeholder="Admin / Manager / Case Manager" />
+                                @* A dropdown of the roles that can actually be invited. This was free text, so
+                                   a typo ("Volunteer", "case manager") either failed with no list of valid
+                                   roles or was stored with the wrong casing. *@
+                                <InputSelect class="form-select" @bind-Value="_newInvite.Role">
+                                    @foreach (var role in RoleOptions)
+                                    {
+                                        <option value="@role">@role</option>
+                                    }
+                                </InputSelect>
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label">Expires (days)</label>
@@ -912,6 +920,30 @@
 
 @code {
     private string ActiveTab { get; set; } = "organization";
+
+    // Lets links such as a notification's "Open linked page" (/settings?tab=invites) land on the
+    // right section. The parameter was previously ignored and Settings always opened on Organization.
+    [SupplyParameterFromQuery(Name = "tab")]
+    public string? RequestedTab { get; set; }
+
+    private string? _appliedRequestedTab;
+    private static readonly string[] KnownTabs = ["organization", "users", "invites", "security"];
+
+    protected override void OnParametersSet()
+    {
+        var requested = RequestedTab?.Trim().ToLowerInvariant();
+        if (requested == _appliedRequestedTab)
+        {
+            return;
+        }
+
+        _appliedRequestedTab = requested;
+        if (requested is not null && KnownTabs.Contains(requested))
+        {
+            ActiveTab = requested;
+        }
+    }
+
     private bool _isLoading = true;
     private bool _disposed;
     private readonly CancellationTokenSource _cts = new();

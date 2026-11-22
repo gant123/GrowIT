@@ -24,14 +24,15 @@
 
                     <EditForm Model="@request" OnValidSubmit="HandleSubmit">
                         <DataAnnotationsValidator />
+                        <ValidationSummary class="text-danger small mb-2" />
 
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label small fw-bold text-muted">First Name</label>
+                                <label class="form-label small fw-bold text-muted">First Name <span class="text-danger" aria-hidden="true">*</span></label>
                                 <InputText @bind-Value="request.FirstName" class="form-control" placeholder="Sarah" style="@ThemeInputStyle" />
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small fw-bold text-muted">Last Name</label>
+                                <label class="form-label small fw-bold text-muted">Last Name <span class="text-danger" aria-hidden="true">*</span></label>
                                 <InputText @bind-Value="request.LastName" class="form-control" style="@ThemeInputStyle" />
                             </div>
 

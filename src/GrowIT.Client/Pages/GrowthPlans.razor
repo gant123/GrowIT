@@ -133,11 +133,11 @@
                             <div class="plan-meta-grid">
                                 <div class="plan-meta-item">
                                     <span class="label">Start</span>
-                                    <span class="value">@plan.StartDate.ToLocalTime().ToString("MMM d, yyyy")</span>
+                                    <span class="value">@FormatPlanDate(plan.StartDate)</span>
                                 </div>
                                 <div class="plan-meta-item">
                                     <span class="label">Target</span>
-                                    <span class="value">@(plan.TargetEndDate?.ToLocalTime().ToString("MMM d, yyyy") ?? "Not set")</span>
+                                    <span class="value">@(plan.TargetEndDate.HasValue ? FormatPlanDate(plan.TargetEndDate.Value) : "Not set")</span>
                                 </div>
                                 <div class="plan-meta-item">
                                     <span class="label">Goals</span>
@@ -210,7 +210,7 @@
                                 <div class="col-md-6">
                                     <label class="form-label">Person</label>
                                     <select class="form-select" value="@_selectedClientId" @onchange="OnSelectedClientChanged">
-                                        <option value="">Select a client</option>
+                                        <option value="">Select a person</option>
                                         @foreach (var client in _clients.OrderBy(c => c.Name))
                                         {
                                             <option value="@client.Id">@client.Name</option>
@@ -331,7 +331,7 @@
     [
         new("All", "all"),
         new("Active", "active"),
-        new("Paused", "onhold"),
+        new("On Hold", "onhold"),
         new("Completed", "completed"),
         new("Graduated", "graduated")
     ];
@@ -351,9 +351,17 @@
     private Guid _editingPlanId;
     private CreateGrowthPlanRequest _createRequest = new()
     {
-        StartDate = DateTime.UtcNow,
+        StartDate = TodayAsPlanDate(),
         Season = Season.Planting
     };
+
+    // Start/target dates are calendar dates (picked in a date field), stored at 00:00 UTC.
+    // Converting them to local time for display showed the day before ("Oct 1" became "Sep 30").
+    private static string FormatPlanDate(DateTime value) =>
+        (value.Kind == DateTimeKind.Local ? value : DateTime.SpecifyKind(value, DateTimeKind.Utc))
+            .ToString("MMM d, yyyy");
+
+    private static DateTime TodayAsPlanDate() => DateTime.SpecifyKind(DateTime.Today, DateTimeKind.Utc);
     private UpdateGrowthPlanRequest _editRequest = new();
     private string SearchQuery { get; set; } = "";
     private string SelectedStatusFilter { get; set; } = "all";
@@ -397,7 +405,7 @@
         _selectedClientId = "";
         _createRequest = new CreateGrowthPlanRequest
         {
-            StartDate = DateTime.UtcNow,
+            StartDate = TodayAsPlanDate(),
             Season = Season.Planting
         };
 
@@ -465,13 +473,19 @@
 
         if (_createRequest.PersonId == Guid.Empty)
         {
-            _createError = "Please select a client.";
+            _createError = "Please select a person.";
             return;
         }
 
         if (string.IsNullOrWhiteSpace(_createRequest.Title))
         {
             _createError = "Title is required.";
+            return;
+        }
+
+        if (_createRequest.TargetEndDate.HasValue && _createRequest.TargetEndDate.Value.Date < _createRequest.StartDate.Date)
+        {
+            _createError = "The target end date can't be before the start date.";
             return;
         }
 

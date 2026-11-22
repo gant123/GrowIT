@@ -156,7 +156,8 @@
 .asc-meter {
     position: relative;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    /* Proportional tier widths are supplied by the page (see MeterColumns). */
+    grid-template-columns: var(--asc-meter-columns, repeat(5, 1fr));
     min-height: 76px;
     margin-top: 1.35rem;
     padding-top: 1.75rem;
@@ -551,5 +552,110 @@
 
     .asc-evidence-item:last-child {
         border-bottom: 0;
+    }
+}
+
+/* The trust panel is dark in both themes. Without this its heading takes the global (dark)
+   heading color and "Earned, not given" is unreadable on the navy/green gradient. */
+.asc-trust-panel h3 {
+    color: #ffffff;
+}
+
+/* ----------------------------------------
+   DARK THEME
+   This page was written with fixed light colors, so in dark mode every panel stayed white
+   while the section headings (which follow the theme) turned light-on-white or dark-on-dark.
+   Map the surfaces, borders and text onto the shared theme tokens.
+   ---------------------------------------- */
+[data-theme="dark"] .asc-loading,
+[data-theme="dark"] .asc-alert,
+[data-theme="dark"] .asc-hero,
+[data-theme="dark"] .asc-evidence-grid,
+[data-theme="dark"] .asc-pillar,
+[data-theme="dark"] .asc-panel {
+    background: var(--growit-bg-card);
+    border-color: var(--growit-border);
+}
+
+/* Tier cards keep their colored top stripe; only the other three edges follow the theme. */
+[data-theme="dark"] .asc-tier-card {
+    background: var(--growit-bg-card);
+    border-right-color: var(--growit-border);
+    border-bottom-color: var(--growit-border);
+    border-left-color: var(--growit-border);
+}
+
+[data-theme="dark"] .asc-score-strip {
+    background: var(--growit-bg-primary);
+    border-color: var(--growit-border);
+}
+
+[data-theme="dark"] .asc-evidence-item,
+[data-theme="dark"] .asc-tier-card:last-child {
+    border-color: var(--growit-border);
+}
+
+[data-theme="dark"] .asc-logo,
+[data-theme="dark"] .asc-title-row p,
+[data-theme="dark"] .asc-score-number strong,
+[data-theme="dark"] .asc-score-copy h3,
+[data-theme="dark"] .asc-evidence-item strong,
+[data-theme="dark"] .asc-panel-header h2,
+[data-theme="dark"] .asc-section-heading h2,
+[data-theme="dark"] .asc-pillar h3,
+[data-theme="dark"] .asc-tier-card h3,
+[data-theme="dark"] .asc-alert h2,
+[data-theme="dark"] .asc-meter-marker {
+    color: var(--growit-text-primary);
+}
+
+[data-theme="dark"] .asc-meter-marker::after {
+    background: var(--growit-text-primary);
+}
+
+[data-theme="dark"] .asc-title-row h2,
+[data-theme="dark"] .asc-action-list i {
+    color: var(--growit-green-light);
+}
+
+[data-theme="dark"] .asc-action-list li,
+[data-theme="dark"] .asc-pillar-score strong,
+[data-theme="dark"] .asc-panel-header p,
+[data-theme="dark"] .asc-tier-card p {
+    color: var(--growit-text-secondary);
+}
+
+[data-theme="dark"] .asc-score-number span,
+[data-theme="dark"] .asc-score-copy p,
+[data-theme="dark"] .asc-pillar p,
+[data-theme="dark"] .asc-evidence-item span,
+[data-theme="dark"] .asc-section-heading span,
+[data-theme="dark"] .asc-empty,
+[data-theme="dark"] .asc-alert p,
+[data-theme="dark"] .asc-loading p {
+    color: var(--growit-text-muted);
+}
+
+[data-theme="dark"] .asc-panel-header > span,
+[data-theme="dark"] .asc-pillar-icon {
+    background: color-mix(in srgb, var(--growit-info) 18%, transparent);
+    color: #7dd3fc;
+}
+
+[data-theme="dark"] .asc-tier-icon {
+    background: color-mix(in srgb, var(--tier-color) 22%, transparent);
+}
+
+[data-theme="dark"] .asc-tier-card.active {
+    background: color-mix(in srgb, var(--tier-color) 16%, var(--growit-bg-card));
+}
+
+[data-theme="dark"] .asc-pillar-bar {
+    background: var(--growit-border);
+}
+
+@media (min-width: 761px) {
+    [data-theme="dark"] .asc-meter-segment span {
+        color: var(--growit-text-secondary);
     }
 }

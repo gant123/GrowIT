@@ -9,6 +9,8 @@
 @inject IRoleAccessService RoleAccessService
 @inject NavigationManager Nav
 
+<PageTitle>People - grow.IT</PageTitle>
+
 <div class="dashboard fade-in mt-4">
     <PageHeader Title="People & Households" Subtitle="Save information about the people you serve once, then reuse it in service records, reports, and impact summaries.">
         <Actions>
@@ -198,7 +200,7 @@
                         <GridEvents TValue="ClientDto" OnToolbarClick="OnClientsToolbarClick"></GridEvents>
 
                         <GridColumns>
-                            <GridColumn Field=@nameof(ClientDto.Name) HeaderText="Name" Width="260" ClipMode="ClipMode.EllipsisWithTooltip">
+                            <GridColumn Field=@nameof(ClientDto.Name) HeaderText="Name" Width="240" ClipMode="ClipMode.EllipsisWithTooltip">
                                 <Template>
                                 @{
                                     var client = (ClientDto)context;
@@ -215,7 +217,7 @@
                             </Template>
                         </GridColumn>
 
-                        <GridColumn Field=@nameof(ClientDto.LifePhase) HeaderText="Progress Stage" Width="140" TextAlign="TextAlign.Center">
+                        <GridColumn Field=@nameof(ClientDto.LifePhase) HeaderText="Progress Stage" Width="170" TextAlign="TextAlign.Center">
                             <Template>
                                 @{
                                     var phase = ((ClientDto)context).LifePhase;
@@ -243,7 +245,7 @@
                             </Template>
                         </GridColumn>
 
-                            <GridColumn HeaderText="Contact" Width="220">
+                            <GridColumn HeaderText="Contact" Width="210">
                             <Template>
                                 @{
                                     var client = (ClientDto)context;
@@ -255,7 +257,7 @@
                             </Template>
                         </GridColumn>
 
-                            <GridColumn HeaderText="Readiness" Width="220">
+                            <GridColumn HeaderText="Readiness">
                             <Template>
                                 @{
                                     var client = (ClientDto)context;
@@ -382,6 +384,21 @@
     };
 
     private void NavigateToClient(Guid id) => Nav.NavigateTo($"clients/{id}");
+
+    // /clients?new=1 opens the add form straight away (used by the "Log it" sheet and quick search).
+    [SupplyParameterFromQuery(Name = "new")]
+    public string? NewRequested { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrEmpty(NewRequested))
+        {
+            OpenCreateModal();
+            // Drop the flag so asking again (or refreshing) behaves predictably.
+            Nav.NavigateTo("/clients", replace: true);
+        }
+    }
+
     private void OpenCreateModal()
     {
         if (_usage?.AtClientLimit == true)

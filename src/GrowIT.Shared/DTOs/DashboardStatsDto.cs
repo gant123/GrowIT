@@ -15,6 +15,11 @@ public class DashboardStatsDto
     public int ActiveCases { get; set; }
     public decimal FundsAvailable { get; set; }
 
+    // Setup progress, for the "Start here" checklist a new workspace sees on the dashboard.
+    public int ProgramCount { get; set; }
+    public int FundCount { get; set; }
+    public int ServiceRecordCount { get; set; }
+
     // "The Harvest" (Charts)
     public List<MonthlyMetric> MonthlyTrends { get; set; } = new();
 

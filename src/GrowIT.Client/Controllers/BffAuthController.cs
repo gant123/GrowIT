@@ -16,6 +16,8 @@ namespace GrowIT.Client.Controllers;
 [Route("bff/auth")]
 public class BffAuthController : ControllerBase
 {
+    private static readonly TimeSpan RememberMeLifetime = TimeSpan.FromDays(30);
+
     private readonly ApplicationDbContext _context;
     private readonly IAntiforgery _antiforgery;
     private readonly SignInManager<User> _signInManager;
@@ -114,7 +116,15 @@ public class BffAuthController : ControllerBase
             });
         }
 
-        await _signInManager.SignInAsync(user, request.RememberMe);
+        // "Remember me for 30 days" must actually last 30 days: without an explicit expiry the
+        // persistent cookie only gets the cookie scheme's default lifetime (12 hours).
+        var authProperties = new AuthenticationProperties { IsPersistent = request.RememberMe };
+        if (request.RememberMe)
+        {
+            authProperties.ExpiresUtc = DateTimeOffset.UtcNow.Add(RememberMeLifetime);
+        }
+
+        await _signInManager.SignInAsync(user, authProperties);
         await RecordSignInEventAsync(user);
         return NoContent();
     }
