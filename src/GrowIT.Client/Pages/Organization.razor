@@ -79,7 +79,7 @@
                 <div class="asc-meter" aria-label="ASC score scale" style="--asc-meter-columns:@MeterColumns">
                     @foreach (var tier in _score.Tiers.Where(t => t.Name != "Unscored"))
                     {
-                        <div class="asc-meter-segment" style="--tier-color:@tier.Color">
+                        <div class="asc-meter-segment @(tier.Name == _score.TierName ? "active" : null)" style="--tier-color:@tier.Color">
                             <span>@tier.Range</span>
                         </div>
                     }

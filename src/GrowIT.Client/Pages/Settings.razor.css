@@ -108,6 +108,8 @@
 .settings-ops-spotlight {
     display: grid;
     gap: 0.85rem;
+    /* Don't stretch the two count boxes to the full height of the intro copy. */
+    align-self: start;
 }
 
 .settings-ops-card,

@@ -883,3 +883,25 @@
     background: transparent !important;
     color: var(--growit-text-primary) !important;
 }
+
+/* Grid chrome that kept the stock bootstrap5 theme colors: the toolbar button label is a
+   separate span painted #212529 (invisible on the dark toolbar), and the toolbar/header
+   borders stayed light grey, drawing a bright line across every grid in dark mode. */
+.e-grid .e-toolbar .e-tbar-btn .e-tbar-btn-text,
+.e-grid .e-toolbar .e-tbar-btn .e-icons {
+    color: inherit !important;
+}
+
+.e-grid .e-toolbar,
+.e-grid .e-gridheader,
+.e-grid .e-gridheader .e-headercontent,
+.e-grid .e-headercell {
+    border-color: var(--growit-border) !important;
+}
+
+.e-grid .e-toolbar .e-input-group,
+.e-grid .e-toolbar .e-input-group input.e-input {
+    background: var(--growit-bg-input) !important;
+    color: var(--growit-text-primary) !important;
+    border-color: var(--growit-border) !important;
+}

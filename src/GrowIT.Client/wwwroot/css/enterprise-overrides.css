@@ -170,17 +170,17 @@ body {
    page actions on People / Follow-ups / Service Records, so a primary action looks the same
    on every page. (The green .btn-plant "Add Service" button keeps its own style.) */
 .growit-app .btn-primary:not(.btn-plant) {
-    --bs-btn-color: #fff;
+    --bs-btn-color: var(--brand-on-primary);
     --bs-btn-bg: var(--brand-primary);
     --bs-btn-border-color: var(--brand-primary);
-    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-color: var(--brand-on-primary);
     --bs-btn-hover-bg: var(--brand-primary-light);
     --bs-btn-hover-border-color: var(--brand-primary-light);
     --bs-btn-focus-shadow-rgb: 50, 80, 90;
-    --bs-btn-active-color: #fff;
+    --bs-btn-active-color: var(--brand-on-primary);
     --bs-btn-active-bg: var(--brand-primary-dark);
     --bs-btn-active-border-color: var(--brand-primary-dark);
-    --bs-btn-disabled-color: #fff;
+    --bs-btn-disabled-color: var(--brand-on-primary);
     --bs-btn-disabled-bg: var(--brand-primary);
     --bs-btn-disabled-border-color: var(--brand-primary);
 }
@@ -188,11 +188,11 @@ body {
 .growit-app .btn-outline-primary {
     --bs-btn-color: var(--brand-primary);
     --bs-btn-border-color: var(--brand-primary);
-    --bs-btn-hover-color: #fff;
+    --bs-btn-hover-color: var(--brand-on-primary);
     --bs-btn-hover-bg: var(--brand-primary);
     --bs-btn-hover-border-color: var(--brand-primary);
     --bs-btn-focus-shadow-rgb: 50, 80, 90;
-    --bs-btn-active-color: #fff;
+    --bs-btn-active-color: var(--brand-on-primary);
     --bs-btn-active-bg: var(--brand-primary-dark);
     --bs-btn-active-border-color: var(--brand-primary-dark);
     --bs-btn-disabled-color: var(--brand-primary);
@@ -705,4 +705,81 @@ table:not(.e-table):not([class*="e-"]) {
     --bs-alert-bg: var(--growit-bg-secondary);
     --bs-alert-color: var(--growit-text-secondary);
     --bs-alert-border-color: var(--growit-border);
+}
+
+/* ==========================================================================
+   NIGHT GARDEN: dark theme composition
+   The dark tokens (app.css) give green-black grounds; these rules make the parts that were
+   painted with light-theme fixed colors follow them. Selectors start with html[...] so they
+   outrank the components' scoped CSS, which loads after this file.
+   ========================================================================== */
+
+/* One action colour. "Add Service" and every page action share the lifted brand green with
+   near-black text; before, the top button was green and page actions were slate. */
+html[data-theme="dark"] .btn-plant {
+    background: var(--brand-primary);
+    color: var(--brand-on-primary);
+}
+
+html[data-theme="dark"] .btn-plant:hover {
+    background: var(--brand-primary-light);
+}
+
+html[data-theme="dark"] .btn-primary-growit,
+html[data-theme="dark"] .btn-plant,
+html[data-theme="dark"] .growit-app .btn.btn-primary {
+    box-shadow: 0 8px 18px -14px rgba(69, 201, 131, 0.55);
+}
+
+html[data-theme="dark"] .e-grid .e-pager .e-numericitem.e-currentitem {
+    background: var(--brand-primary) !important;
+    border-color: var(--brand-primary) !important;
+    color: var(--brand-on-primary) !important;
+}
+
+/* Status pills are tinted, never solid. Solid cyan "Building"/"Paid" fills glared against the
+   green-black page; a tint keeps the hue as the signal and the label as the content. */
+html[data-theme="dark"] :is(.badge, .badge-growit):is(.bg-info, .bg-success, .bg-warning, .bg-danger, .bg-primary, .bg-secondary, .bg-dark) {
+    --pill: var(--growit-info);
+    background-color: color-mix(in srgb, var(--pill) 16%, var(--growit-bg-card)) !important;
+    color: color-mix(in srgb, var(--pill) 82%, #ffffff) !important;
+    border: 1px solid color-mix(in srgb, var(--pill) 34%, transparent);
+}
+
+html[data-theme="dark"] :is(.badge, .badge-growit).bg-success { --pill: var(--growit-success); }
+html[data-theme="dark"] :is(.badge, .badge-growit).bg-warning { --pill: var(--growit-warning); }
+html[data-theme="dark"] :is(.badge, .badge-growit).bg-danger { --pill: var(--growit-danger); }
+html[data-theme="dark"] :is(.badge, .badge-growit).bg-primary { --pill: var(--brand-primary); }
+html[data-theme="dark"] :is(.badge, .badge-growit):is(.bg-secondary, .bg-dark) { --pill: var(--growit-text-muted); }
+
+/* Bootstrap's light badge ("2 / 25 people") is a white slab with black text in the dark. */
+html[data-theme="dark"] .badge:is(.text-bg-light, .bg-light) {
+    background-color: color-mix(in srgb, var(--growit-text-primary) 7%, var(--growit-bg-card)) !important;
+    color: var(--growit-text-secondary) !important;
+    border: 1px solid var(--growit-border);
+}
+
+/* Icon chips still carried the light theme's cyan wash behind the (now calmer) info icon. */
+html[data-theme="dark"] :is(.metric-icon, .notification-icon, .timeline-dot, .member-timeline-dot).info,
+html[data-theme="dark"] .kpi-card.info .kpi-icon-wrapper {
+    background: color-mix(in srgb, var(--growit-info) 16%, transparent);
+}
+
+/* Browser surfaces follow the palette too. */
+html[data-theme="dark"] {
+    color-scheme: dark;
+    accent-color: var(--brand-primary);
+}
+
+html[data-theme="dark"] ::selection {
+    background: color-mix(in srgb, var(--brand-primary) 38%, transparent);
+    color: var(--growit-text-primary);
+}
+
+html[data-theme="dark"] :is(input, textarea, [contenteditable="true"]) {
+    caret-color: var(--brand-primary);
+}
+
+html[data-theme="dark"] :focus-visible {
+    outline-color: var(--brand-primary);
 }

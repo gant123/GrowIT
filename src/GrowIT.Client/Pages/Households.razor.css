@@ -402,3 +402,29 @@
         overflow-x: auto;
     }
 }
+
+/* Dark theme: the blue and violet accents were the only cool hues on the page and fought the
+   green-black palette. Map them onto the garden set (info teal, brand green, neutral). */
+[data-theme="dark"] .household-kpi-icon.total {
+    background: color-mix(in srgb, var(--growit-info) 16%, transparent);
+    color: var(--growit-info);
+    border-color: color-mix(in srgb, var(--growit-info) 30%, transparent);
+}
+
+[data-theme="dark"] .household-kpi-icon.head {
+    background: color-mix(in srgb, var(--brand-primary) 16%, transparent);
+    color: var(--growit-green-light);
+    border-color: color-mix(in srgb, var(--brand-primary) 30%, transparent);
+}
+
+[data-theme="dark"] .member-count-chip {
+    background: color-mix(in srgb, var(--growit-text-primary) 6%, var(--growit-bg-card));
+    border-color: var(--growit-border);
+    color: var(--growit-text-secondary);
+}
+
+[data-theme="dark"] .role-pill.role-spouse {
+    background: color-mix(in srgb, var(--growit-info) 16%, transparent);
+    color: var(--growit-info);
+    border-color: color-mix(in srgb, var(--growit-info) 30%, transparent);
+}
