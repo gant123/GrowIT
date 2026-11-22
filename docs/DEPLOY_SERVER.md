@@ -55,15 +55,11 @@ and run `docker compose up -d`. `ssh <server> docker images growit-client` lists
 
 ## Backups
 
-The data lives in Supabase's Postgres. Back it up, drill-test and restore it with the
-scripts in `scripts/db/`, as described in
-[DB_BACKUP_RESTORE_RUNBOOK.md](DB_BACKUP_RESTORE_RUNBOOK.md):
-
-```bash
-DB_SSH_HOST=<server> scripts/db/backup_postgres.sh
-```
-
-Back up the `growit_uploads` and `growit_keys` volumes too.
+The server backs up the database and the `growit_uploads` / `growit_keys` volumes every
+night with `~/docker/growit/backup.sh` (from [deploy/server/](../deploy/server/)), keeping
+7 daily and 4 weekly backups in `~/backups/growit/` and restore-drilling each weekly one.
+For a backup on your own machine, or to restore, use the scripts in `scripts/db/`. Both
+are described in [DB_BACKUP_RESTORE_RUNBOOK.md](DB_BACKUP_RESTORE_RUNBOOK.md).
 
 ## The original move from the main machine (2026-11)
 

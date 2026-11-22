@@ -63,13 +63,47 @@ restores as that role so the app keeps access to every table. Without
 Local database: `scripts/db/restore_postgres.sh backups/<backup-file>.dump` (restores
 over the existing objects with `--clean --if-exists`).
 
-## 4. Schedule and retention
+## 4. Automatic nightly backups
 
-- Full backup: nightly
-- Keep 7 daily and 4 weekly backups
-- Restore drill: weekly
+The server backs itself up with [deploy/server/backup.sh](../deploy/server/backup.sh),
+installed as `~/docker/growit/backup.sh` and run by the user crontab:
 
-Nothing runs this automatically yet; backups are taken by hand with the commands above.
+```
+40 * * * * $HOME/docker/growit/backup.sh 2>&1 | logger -t growit-backup
+```
+
+- **What:** the `growit` database (custom-format dump, checked to read back) and a
+  tarball of the `growit_uploads` and `growit_keys` volumes. Files are mode 600.
+- **When:** cron runs it hourly, but it only backs up once per night after 03:45. A night
+  the PC slept through is made up within an hour of waking; a failed run retries hourly.
+- **Kept:** 7 daily backups in `~/backups/growit/daily/` and 4 weekly in
+  `~/backups/growit/weekly/` (the first backup of each week, hard-linked).
+- **Drill:** every new weekly backup is restored into a temporary database, checked
+  (migration history and users) and dropped. A failed drill fails the backup.
+- **Logs:** `ssh <server> journalctl -t growit-backup`. Back up now:
+  `ssh <server> '~/docker/growit/backup.sh --now'`.
+- **Alerts:** run `~/docker/growit/hc-set-url.sh` on the server once and paste a
+  healthchecks.io ping URL (a separate check from the Supabase one). Until then a failed
+  backup is only visible in the log.
+- **Off-site copy:** off by default. To copy each backup to Cloudflare R2 (checked by size
+  and MD5, same retention), put the rclone destination in
+  `~/.config/growit-backup/r2-dest` on the server, for example
+  `r2:<bucket>/growit`. Without it, backups exist only on the server.
+
+To restore from a server backup, copy it here first:
+
+```bash
+scp <server>:backups/growit/daily/db-<stamp>.dump backups/
+DB_SSH_HOST=<server> scripts/db/restore_drill.sh backups/db-<stamp>.dump
+```
+
+then restore it as in section 3. To restore the files tarball (uploads and login keys),
+with the app stopped:
+
+```bash
+ssh <server> 'docker run --rm -v growit_uploads:/dst/uploads -v growit_keys:/dst/keys \
+  -v ~/backups/growit/daily:/in:ro alpine:3.20 tar -C /dst -xzf /in/files-<stamp>.tar.gz'
+```
 
 ## 5. Incident restore checklist
 
