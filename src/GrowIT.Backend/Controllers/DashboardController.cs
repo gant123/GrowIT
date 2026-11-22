@@ -174,40 +174,49 @@ public class DashboardController : ControllerBase
         var last30Days = now.AddDays(-30);
         var prev30Days = now.AddDays(-60);
 
-        // 1. Funding Readiness
+        // 1. Money runway. This used to turn a single $125 record into "Score 80 / 39 months of
+        // runway", contradicting the ASC Score. Estimate only once there is real spending history
+        // (paid-out services spread over at least a month) and average over 90 days.
+        var last90Days = now.AddDays(-90);
         var fundsAvailable = await _context.Funds.SumAsync(f => (decimal?)f.AvailableAmount) ?? 0m;
-        var recentSpending = await _context.Investments
-            .Where(i => i.CreatedAt >= last30Days &&
-                (i.Status == InvestmentStatus.Disbursed || i.Status == InvestmentStatus.Completed))
-            .SumAsync(i => (decimal?)i.Amount) ?? 0m;
-        
-        var burnRate = recentSpending; // Monthly burn rate
-        var runway = burnRate > 0 ? (int)(fundsAvailable / burnRate) : 99;
-        
-        var score = 70; // Base score
+        var paidOut = _context.Investments
+            .Where(i => i.Status == InvestmentStatus.Disbursed || i.Status == InvestmentStatus.Completed);
+        var spending90 = await paidOut.Where(i => i.CreatedAt >= last90Days).SumAsync(i => (decimal?)i.Amount) ?? 0m;
+        var firstPaidOut = await paidOut.MinAsync(i => (DateTime?)i.CreatedAt);
+        var paidOutCount = await paidOut.CountAsync(i => i.CreatedAt >= last90Days);
+        var historyDays = firstPaidOut.HasValue ? (now - firstPaidOut.Value).TotalDays : 0;
+
+        var hasSpendingHistory = spending90 > 0 && paidOutCount >= 3 && historyDays >= 30;
+        // Months actually observed within the 90-day window (at least one), so a young
+        // organization's spending isn't divided by three months it didn't exist for.
+        var monthsObserved = (decimal)Math.Clamp(Math.Ceiling(Math.Min(historyDays, 90) / 30d), 1d, 3d);
+        var burnRate = hasSpendingHistory ? Math.Round(spending90 / monthsObserved, 2) : 0m;
+        var runway = hasSpendingHistory && burnRate > 0 ? (int)Math.Min(120m, fundsAvailable / burnRate) : 0;
+
+        var score = 0;
         var suggestions = new List<string>();
 
-        if (runway < 3)
+        if (!hasSpendingHistory)
         {
-            score -= 30;
-            suggestions.Add("Runway is critically low (under 3 months). Focus on immediate fundraising.");
+            suggestions.Add("Record paid-out services for a few weeks to see how long your money sources will last.");
+        }
+        else if (runway < 3)
+        {
+            suggestions.Add("Money on hand covers less than 3 months at your current pace. Prioritize fundraising now.");
         }
         else if (runway < 6)
         {
-            score -= 10;
-            suggestions.Add("Runway is moderate. Plan for next funding cycle within 60 days.");
+            suggestions.Add("Money on hand covers 3 to 6 months. Plan your next funding request within 60 days.");
         }
         else
         {
-            score += 10;
-            suggestions.Add("Healthy runway detected. Focus on deepening program impact.");
+            suggestions.Add("Money on hand covers 6 months or more at your current pace.");
         }
 
         var unapprovedInvestments = await _context.Investments.CountAsync(i => i.Status == InvestmentStatus.Pending);
         if (unapprovedInvestments > 5)
         {
-            score -= 5;
-            suggestions.Add($"{unapprovedInvestments} pending investments need approval to maintain data accuracy.");
+            suggestions.Add($"{unapprovedInvestments} service records are waiting for approval.");
         }
 
         // 2. Impact Velocity
@@ -249,7 +258,8 @@ public class DashboardController : ControllerBase
                 .ToListAsync())
             .Select(g => new TopPerformerDto
             {
-                Name = g.Key.ToString(),
+                // "FinancialStability" -> "Financial stability"
+                Name = HumanizeEnum(g.Key.ToString()),
                 Count = g.Count
             })
             .ToList();
@@ -258,10 +268,12 @@ public class DashboardController : ControllerBase
         {
             FundingReadiness = new FundingReadinessDto
             {
-                Score = Math.Clamp(score, 0, 100),
+                Score = score,
                 Suggestions = suggestions,
                 BurnRateMonthly = burnRate,
-                EstimatedRunwayMonths = runway
+                EstimatedRunwayMonths = runway,
+                AvailableFunds = fundsAvailable,
+                HasSpendingHistory = hasSpendingHistory
             },
             ImpactVelocity = new ImpactVelocityDto
             {
@@ -272,5 +284,12 @@ public class DashboardController : ControllerBase
             AllocationInsights = allocation.OrderByDescending(a => a.Amount).ToList(),
             ProgramPerformance = topPrograms
         });
+    }
+
+    private static string HumanizeEnum(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return value;
+        var spaced = System.Text.RegularExpressions.Regex.Replace(value, "(?<=[a-z0-9])(?=[A-Z])", " ");
+        return char.ToUpperInvariant(spaced[0]) + spaced[1..].ToLowerInvariant();
     }
 }

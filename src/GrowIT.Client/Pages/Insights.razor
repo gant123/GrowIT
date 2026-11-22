@@ -28,31 +28,35 @@
     else
     {
         <div class="grid-2 mb-4">
-            <!-- Funding Readiness Card -->
+            <!-- Money runway card. The funding-readiness score lives on the ASC Score page; this
+                 card used to show a second, contradictory score computed from almost no data. -->
             <div class="card-growit">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h3 class="section-title mb-0">Funding Readiness</h3>
-                    <span class="badge-growit @(GetScoreColor(_insights.FundingReadiness.Score))">Score: @_insights.FundingReadiness.Score</span>
+                    <h3 class="section-title mb-0">Money Runway</h3>
+                    <a class="small" href="/organization">Funding readiness score <i class="bi bi-arrow-right"></i></a>
                 </div>
                 <div class="card-body">
-                    <div class="d-flex align-items-center mb-4">
-                        <div style="width: 120px; height: 120px; margin-right: 20px;">
-                            <SfAccumulationChart Background="transparent" Theme="@_chartTheme" Height="100%" Width="100%">
-                                <AccumulationChartSeriesCollection>
-                                    <AccumulationChartSeries DataSource="@(new List<object> { new { x="Score", y=_insights.FundingReadiness.Score }, new { x="Gap", y=100-_insights.FundingReadiness.Score } })" 
-                                                              XName="x" YName="y" InnerRadius="70%" Palettes="@(new string[] { GetHexColor(_insights.FundingReadiness.Score), _isDarkMode ? "#1e293b" : "#f0f0f0" })">
-                                    </AccumulationChartSeries>
-                                </AccumulationChartSeriesCollection>
-                                <AccumulationChartTooltipSettings Enable="false"></AccumulationChartTooltipSettings>
-                            </SfAccumulationChart>
+                    <div class="runway-stats mb-4">
+                        <div>
+                            <div class="text-muted small text-uppercase fw-700">Available now</div>
+                            <div class="display-6 fw-700">@_insights.FundingReadiness.AvailableFunds.ToString("C0", UsCulture)</div>
+                            <div class="text-muted small">across your money sources</div>
                         </div>
                         <div>
-                            <div class="text-muted small text-uppercase fw-700">Estimated Runway</div>
-                            <div class="display-6 fw-700">@_insights.FundingReadiness.EstimatedRunwayMonths Months</div>
-                            <div class="text-muted">Monthly Burn: @_insights.FundingReadiness.BurnRateMonthly.ToString("C0")</div>
+                            <div class="text-muted small text-uppercase fw-700">Estimated runway</div>
+                            @if (_insights.FundingReadiness.HasSpendingHistory)
+                            {
+                                <div class="display-6 fw-700">@_insights.FundingReadiness.EstimatedRunwayMonths @(_insights.FundingReadiness.EstimatedRunwayMonths == 1 ? "month" : "months")</div>
+                                <div class="text-muted small">at @_insights.FundingReadiness.BurnRateMonthly.ToString("C0", UsCulture) a month (last 90 days)</div>
+                            }
+                            else
+                            {
+                                <div class="display-6 fw-700 text-muted">Not yet</div>
+                                <div class="text-muted small">needs a few weeks of paid-out services</div>
+                            }
                         </div>
                     </div>
-                    
+
                     <div class="recommendations">
                         <div class="fw-600 mb-2 small text-uppercase" style="letter-spacing: 0.05em;">Recommendations</div>
                         @foreach (var suggestion in _insights.FundingReadiness.Suggestions)
@@ -69,13 +73,13 @@
             <!-- Impact Velocity Card -->
             <div class="card-growit">
                 <div class="card-header">
-                    <h3 class="section-title mb-0">Impact Velocity</h3>
+                    <h3 class="section-title mb-0">Outcomes Pace</h3>
                 </div>
                 <div class="card-body">
                     <div class="mb-4">
                         <div class="d-flex justify-content-between align-items-end mb-2">
                             <div>
-                                <div class="text-muted small text-uppercase fw-700">Milestones (Last 30 Days)</div>
+                                <div class="text-muted small text-uppercase fw-700">Outcomes (last 30 days)</div>
                                 <div class="display-6 fw-700">@_insights.ImpactVelocity.CurrentVelocity</div>
                             </div>
                             <div class="text-end">
@@ -92,7 +96,7 @@
                     </div>
 
                     <div class="mt-4">
-                        <h4 class="small fw-700 text-uppercase mb-3">Top Impact Categories</h4>
+                        <h4 class="small fw-700 text-uppercase mb-3">Most common outcome types</h4>
                         @foreach (var program in _insights.ProgramPerformance)
                         {
                             <div class="d-flex justify-content-between align-items-center mb-2">
@@ -113,24 +117,32 @@
 
         <div class="card-growit">
             <div class="card-header">
-                <h3 class="section-title mb-0">Resource Allocation by Program</h3>
+                <h3 class="section-title mb-0">Spending by Program</h3>
             </div>
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-6">
+                        @if (_insights.AllocationInsights.Count == 0)
+                        {
+                            <div class="text-muted small py-5 text-center">No paid-out services yet.</div>
+                        }
+                        else
+                        {
                         <SfAccumulationChart Background="transparent" Theme="@_chartTheme" Height="300px">
                             <AccumulationChartSeriesCollection>
-                                <AccumulationChartSeries DataSource="@_insights.AllocationInsights" 
+                                <AccumulationChartSeries DataSource="@_insights.AllocationInsights"
                                                           XName="Category" YName="Amount" Name="Program"
-                                                          InnerRadius="40%">
+                                                          InnerRadius="40%" Palettes="@AllocationPalette">
                                     <AccumulationDataLabelSettings Visible="true" Name="Category" Position="AccumulationLabelPosition.Outside">
                                         <AccumulationChartConnector Type="ConnectorType.Line" Length="10%"></AccumulationChartConnector>
+                                        <AccumulationChartDataLabelFont FontFamily="@ChartFont" Size="12px"></AccumulationChartDataLabelFont>
                                     </AccumulationDataLabelSettings>
                                 </AccumulationChartSeries>
                             </AccumulationChartSeriesCollection>
                             <AccumulationChartLegendSettings Visible="false"></AccumulationChartLegendSettings>
-                            <AccumulationChartTooltipSettings Enable="true" Format="${point.x}: <b>${point.y}</b>"></AccumulationChartTooltipSettings>
+                            <AccumulationChartTooltipSettings Enable="true" Format="${point.x}: <b>$${point.y}</b>"></AccumulationChartTooltipSettings>
                         </SfAccumulationChart>
+                        }
                     </div>
                     <div class="col-md-6">
                         <div class="table-responsive">
@@ -143,16 +155,18 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach (var item in _insights.AllocationInsights)
+                                    @for (var index = 0; index < _insights.AllocationInsights.Count; index++)
                                     {
+                                        var item = _insights.AllocationInsights[index];
                                         <tr>
                                             <td class="py-2">
                                                 <div class="d-flex align-items-center">
-                                                    <div class="category-dot" style="opacity: @(0.3 + (item.Percentage/100))"></div>
+                                                    @* Same color as this program's slice in the chart. *@
+                                                    <div class="category-dot" style="background: @AllocationPalette[index % AllocationPalette.Length]"></div>
                                                     @item.Category
                                                 </div>
                                             </td>
-                                            <td class="text-end py-2 fw-600">@item.Amount.ToString("C0")</td>
+                                            <td class="text-end py-2 fw-600">@item.Amount.ToString("C0", UsCulture)</td>
                                             <td class="text-end py-2 text-muted">@item.Percentage.ToString("F1")%</td>
                                         </tr>
                                     }
@@ -180,6 +194,11 @@
         font-size: 1.75rem;
         letter-spacing: -0.02em;
         color: var(--growit-text-primary);
+    }
+    .runway-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 16px;
     }
     .velocity-track, .impact-track {
         height: 10px; 
@@ -225,6 +244,13 @@
 
     private bool _hasAccess = true;
 
+    // One palette for the chart slices and the table dots so they match.
+    private static readonly string[] AllocationPalette =
+        ["#27B062", "#32505A", "#F59E0B", "#3B82F6", "#A855F7", "#EF4444", "#14B8A6", "#64748B"];
+    private const string ChartFont = "Inter, 'Segoe UI', system-ui, sans-serif";
+    // Amounts are dollars; don't depend on the server's culture (that printed "¤" in reports).
+    private static readonly System.Globalization.CultureInfo UsCulture = System.Globalization.CultureInfo.GetCultureInfo("en-US");
+
     protected override async Task OnInitializedAsync()
     {
         try
@@ -266,20 +292,6 @@
             }
         }
     }
-
-    private string GetScoreColor(int score) => score switch
-    {
-        >= 80 => "badge-success",
-        >= 50 => "badge-warning",
-        _ => "badge-danger"
-    };
-
-    private string GetHexColor(int score) => score switch
-    {
-        >= 80 => "#10b981", // Success
-        >= 50 => "#f59e0b", // Warning
-        _ => "#ef4444"      // Danger
-    };
 
     private double GetVelocityWidth()
     {

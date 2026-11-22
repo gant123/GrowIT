@@ -705,6 +705,19 @@
     private bool CustomReportUsesDates => _customReportType is "investments" or "outcomes-by-category";
     private bool CustomReportSupportsGrouping => _customReportType == "investments";
 
+    // Lets the server name the report and stamp the PDF in the viewer's local time.
+    private async Task<string?> GetBrowserTimeZoneAsync()
+    {
+        try
+        {
+            return await JS.InvokeAsync<string?>("growitTime.zone");
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     // "FY26-27" => July 1, 2026 through June 30, 2027 (same July start the labels assume).
     private static (DateTime From, DateTime To)? FiscalYearRange(string? label)
     {
@@ -784,6 +797,7 @@
             var payload = new GenerateReportRequest
             {
                 ReportType = reportType,
+                TimeZone = await GetBrowserTimeZoneAsync(),
                 Format = _customFormat
             };
 
@@ -855,7 +869,8 @@
                 FiscalYear = fiscalYear,
                 DateFrom = dateFrom,
                 DateTo = dateTo,
-                GroupBy = CustomReportSupportsGrouping && _customGroupBy != "none" ? _customGroupBy : null
+                GroupBy = CustomReportSupportsGrouping && _customGroupBy != "none" ? _customGroupBy : null,
+                TimeZone = await GetBrowserTimeZoneAsync()
             };
 
             var created = await ReportService.GenerateReportAsync(payload);

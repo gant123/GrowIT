@@ -47,6 +47,11 @@ public class GenerateReportRequest : IValidatableObject
     [MaxLength(80)]
     public string? GroupBy { get; set; }
 
+    // The requester's IANA time zone (e.g. "America/Chicago") so report names and timestamps
+    // match the times shown in the app. Optional: scheduled runs fall back to UTC.
+    [MaxLength(64)]
+    public string? TimeZone { get; set; }
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         if (!IsSupported(ReportType, ReportContract.SupportedReportTypes, allowBlank: true))

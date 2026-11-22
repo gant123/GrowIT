@@ -11,6 +11,14 @@
     // Enterprise Light/Dark Theme System
     // ========================================
 
+    // The browser's IANA time zone (e.g. "America/Chicago") so server-made files such as
+    // report names and PDF timestamps can use the same local time the app shows.
+    window.growitTime = {
+        zone: function () {
+            try { return Intl.DateTimeFormat().resolvedOptions().timeZone || null; } catch (e) { return null; }
+        }
+    };
+
     window.themeManager = {
         THEME_KEY: 'growit-theme',
         
