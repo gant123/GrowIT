@@ -1,0 +1,50 @@
+# grow.IT on a server that already runs PostgreSQL (e.g. self-hosted Supabase) and a
+# Cloudflare Tunnel. There is no database container here: the app joins the database's
+# Docker network and the tunnel's Docker network, and the tunnel route points at
+# http://growit-client:8080. See docs/DEPLOY_SERVER.md.
+#
+#   cp .env.example .env   # fill in values
+#   docker compose up -d
+name: growit
+
+services:
+  client:
+    image: ${GROWIT_IMAGE:-growit-client:latest}
+    container_name: growit-client
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      InternalApiBaseUrl: http://localhost:8080
+      DataProtection__KeysPath: /app/keys
+      # Uploaded documents are private (served only through the authenticated download
+      # endpoint) and must survive redeploys, so they live on their own volume.
+      Storage__DocumentsPath: /app/App_Data/documents
+      Email__DevFileFallbackDirectory: /app/dev-emails
+    # Loopback only, for health checks from the server itself. Public traffic arrives
+    # through the tunnel over the Docker network, not through this port.
+    ports:
+      - "127.0.0.1:${CLIENT_PORT:-5180}:8080"
+    volumes:
+      - uploads:/app/wwwroot/uploads
+      - keys:/app/keys
+      - dev-emails:/app/dev-emails
+      - documents:/app/App_Data/documents
+    networks:
+      - db
+      - tunnel
+
+volumes:
+  uploads:
+  keys:
+  dev-emails:
+  documents:
+
+networks:
+  db:
+    external: true
+    name: ${DB_NETWORK:-supabase_default}
+  tunnel:
+    external: true
+    name: ${TUNNEL_NETWORK:-proxy}

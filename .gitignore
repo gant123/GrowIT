@@ -489,3 +489,8 @@ $RECYCLE.BIN/
 # Private uploaded documents (Storage:DocumentsPath default: <content root>/App_Data/documents).
 # Never commit them; in Docker mount a volume there instead.
 App_Data/
+
+# Database backups (contain user data)
+backups/
+*.dump
+*.dump.partial

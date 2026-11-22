@@ -111,6 +111,19 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownIPNetworks.Clear();
     options.KnownProxies.Clear();
 });
+
+// Data Protection keys encrypt the auth cookie and antiforgery tokens. By default they live
+// inside the container and vanish on every rebuild, signing everyone out. When
+// DataProtection:KeysPath is set (mounted as a volume in Docker), keep them there instead.
+// The application name is deliberately left at its default (derived from the content root)
+// so keys copied from an older container still decrypt existing cookies.
+var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
+if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+{
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath));
+}
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -187,17 +200,6 @@ builder.Services.Configure<SecurityStampValidatorOptions>(options =>
 // not exist yet during cookie authentication) and signs out only the app cookie on rejection;
 // the stock validator rejected every session after the interval and then threw (HTTP 500).
 builder.Services.AddScoped<ISecurityStampValidator, GrowITSecurityStampValidator>();
-
-// Data-protection keys encrypt the auth cookie and the confirm-email / reset-password tokens.
-// Inside a container the default key ring lives in the container filesystem, so every redeploy
-// logged everyone out and broke outstanding email links. Persist it to a mounted directory.
-var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
-var dataProtection = builder.Services.AddDataProtection().SetApplicationName("GrowIT");
-if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
-{
-    dataProtection.PersistKeysToFileSystem(Directory.CreateDirectory(dataProtectionKeysPath));
-}
-
 builder.Services.AddAuthentication(options =>
     {
         options.DefaultScheme = CompositeAuthScheme;

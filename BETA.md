@@ -21,7 +21,7 @@ Use this file as the single go/no-go checklist before inviting beta testers.
 - [ ] Latest migrations applied successfully.
 - [ ] Nightly backup job configured.
 - [ ] Backup retention policy configured.
-- [ ] Weekly restore drill completed (see `/Users/robertgant/workspace/GrowIT/docs/DB_BACKUP_RESTORE_RUNBOOK.md`).
+- [ ] Weekly restore drill completed (see `docs/DB_BACKUP_RESTORE_RUNBOOK.md`).
 
 ### 3) Observability
 - [ ] `/healthz` monitored.
