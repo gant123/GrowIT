@@ -1,19 +1,20 @@
 @using GrowIT.Shared.DTOs
 @using GrowIT.Shared.Enums
 @inject IInvestmentService InvestmentService
-@inject IJSRuntime JS
+@inject IFinancialService FinancialService
+@inject IClientService ClientService
 
 @if (Show)
 {
-    <div class="modal fade show d-block" style="background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); z-index: 1200;" tabindex="-1">
+    <div class="modal fade show d-block service-record-backdrop" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg" style="background-color: var(--growit-bg-card); color: var(--growit-text-primary);">
-                <div class="modal-header border-bottom" style="border-color: var(--growit-border);">
+            <div class="modal-content border-0 shadow-lg service-record-shell">
+                <div class="modal-header">
                     <div>
-                        <h5 class="modal-title fw-bold mb-1">Service Record Details</h5>
+                        <h5 class="modal-title fw-bold mb-1">@(_isEditing ? "Edit Service Record" : "Service Record Details")</h5>
                         <div class="small text-muted">@(_detail?.PersonName ?? "Loading...")</div>
                     </div>
-                    <button type="button" class="btn-close btn-close-white" @onclick="Close"></button>
+                    <button type="button" class="btn-close" aria-label="Close" @onclick="Close"></button>
                 </div>
 
                 <div class="modal-body p-4">
@@ -33,16 +34,113 @@
                     {
                         <div class="alert alert-secondary mb-0">Service record not found.</div>
                     }
+                    else if (_isEditing)
+                    {
+                        <EditForm Model="_edit" OnValidSubmit="SaveEditAsync" id="service-record-edit-form">
+                            <DataAnnotationsValidator />
+                            <ValidationSummary class="text-danger small mb-2" />
+
+                            @if (_detail.MoneyLocked)
+                            {
+                                <div class="alert alert-info small">
+                                    @if (_detail.Status == InvestmentStatus.Approved)
+                                    {
+                                        <span>This record is approved, so its cost is already set aside from @FundLabel. The cost, money source and program can't change. To correct them, a manager can delete the record (which releases the money) and it can be recorded again.</span>
+                                    }
+                                    else
+                                    {
+                                        <span>This record has been paid, so its cost, money source and program are final. You can still correct the description, who was paid and the household member.</span>
+                                    }
+                                </div>
+                            }
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold text-uppercase text-muted">Who received support?</label>
+                                    <div class="form-control-plaintext">@_clientName</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold text-uppercase text-muted" for="sr-member">Specific household member (optional)</label>
+                                    <InputSelect id="sr-member" class="form-select" @bind-Value="_edit.FamilyMemberId" disabled="@(!_members.Any())">
+                                        <option value="">Entire household</option>
+                                        @foreach (var m in _members)
+                                        {
+                                            <option value="@m.Id">@m.Name (@m.Relationship)</option>
+                                        }
+                                    </InputSelect>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold text-uppercase text-muted" for="sr-program">Program or service</label>
+                                    @if (_detail.MoneyLocked)
+                                    {
+                                        <div class="form-control-plaintext">@ProgramLabel</div>
+                                    }
+                                    else
+                                    {
+                                        <InputSelect id="sr-program" class="form-select" @bind-Value="_edit.ProgramId">
+                                            <option value="@Guid.Empty">Select a program</option>
+                                            @foreach (var p in _programs)
+                                            {
+                                                <option value="@p.Id">@p.Name</option>
+                                            }
+                                        </InputSelect>
+                                    }
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold text-uppercase text-muted" for="sr-fund">Money source that paid for it</label>
+                                    @if (_detail.MoneyLocked)
+                                    {
+                                        <div class="form-control-plaintext">@FundLabel</div>
+                                    }
+                                    else
+                                    {
+                                        <InputSelect id="sr-fund" class="form-select" @bind-Value="_edit.FundId">
+                                            <option value="@Guid.Empty">Select a money source</option>
+                                            @foreach (var f in _funds)
+                                            {
+                                                <option value="@f.Id">@f.Name (@f.AvailableAmount.ToString("C0") left)</option>
+                                            }
+                                        </InputSelect>
+                                    }
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold text-uppercase text-muted" for="sr-amount">Cost</label>
+                                    @if (_detail.MoneyLocked)
+                                    {
+                                        <div class="form-control-plaintext fw-bold">@_detail.Amount.ToString("C2")</div>
+                                    }
+                                    else
+                                    {
+                                        <div class="input-group">
+                                            <span class="input-group-text">$</span>
+                                            <InputNumber id="sr-amount" class="form-control" @bind-Value="_edit.Amount" />
+                                        </div>
+                                    }
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small fw-bold text-uppercase text-muted" for="sr-payee">Who was paid? (optional)</label>
+                                    <InputText id="sr-payee" class="form-control" @bind-Value="_edit.PayeeName" placeholder="Example: City Power & Light" />
+                                </div>
+
+                                <div class="col-12">
+                                    <label class="form-label small fw-bold text-uppercase text-muted" for="sr-reason">What was provided?</label>
+                                    <InputTextArea id="sr-reason" class="form-control" rows="3" @bind-Value="_edit.Reason" />
+                                </div>
+                            </div>
+                        </EditForm>
+                    }
                     else
                     {
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <div class="small text-muted text-uppercase fw-bold">Date</div>
+                                <div class="small text-muted text-uppercase fw-bold">Date recorded</div>
                                 <div>@_detail.Date.ToLocalTime().ToString("MMM d, yyyy h:mm tt")</div>
                             </div>
                             <div class="col-md-6">
                                 <div class="small text-muted text-uppercase fw-bold">Status</div>
-                                <div><span class="badge @GetStatusBadge(_detail.Status)">@_detail.Status</span></div>
+                                <div><span class="badge @GetStatusBadge(_detail.Status)">@ServiceRecordRules.StatusLabel(_detail.Status)</span></div>
                             </div>
                             <div class="col-md-6">
                                 <div class="small text-muted text-uppercase fw-bold">Person</div>
@@ -52,60 +150,104 @@
                                 <div class="small text-muted text-uppercase fw-bold">Cost</div>
                                 <div class="fw-bold">@_detail.Amount.ToString("C2")</div>
                             </div>
-                            <div class="col-md-12">
+                            <div class="col-md-6">
+                                <div class="small text-muted text-uppercase fw-bold">Program or service</div>
+                                <div>@ProgramLabel</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="small text-muted text-uppercase fw-bold">Money source</div>
+                                <div>@FundLabel</div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="small text-muted text-uppercase fw-bold">Who was paid?</div>
+                                <div>@(string.IsNullOrWhiteSpace(_detail.PayeeName) ? "Not recorded" : _detail.PayeeName)</div>
+                            </div>
+                            <div class="col-12">
                                 <div class="small text-muted text-uppercase fw-bold">What was provided?</div>
-                                <div>@_detail.Purpose</div>
-                            </div>
-                            <div class="col-md-12">
-                                <div class="small text-muted text-uppercase fw-bold">Program or service type</div>
-                                <div>@(string.IsNullOrWhiteSpace(_detail.Category) ? "Unspecified" : _detail.Category)</div>
-                            </div>
-                            <div class="col-md-12">
-                                <div class="small text-muted text-uppercase fw-bold">Notes</div>
-                                <div class="p-3 rounded" style="background-color: var(--growit-bg-primary); border: 1px solid var(--growit-border);">
-                                    @(string.IsNullOrWhiteSpace(_detail.Notes) ? "No notes recorded." : _detail.Notes)
-                                </div>
+                                <div class="service-record-description">@(string.IsNullOrWhiteSpace(_detail.Purpose) ? "No description recorded." : _detail.Purpose)</div>
                             </div>
                         </div>
                     }
                 </div>
 
-                <div class="modal-footer border-top d-flex justify-content-between" style="border-color: var(--growit-border);">
-                    <div class="d-flex gap-2">
-                        @if (CanApproveDisburse && _detail != null && _detail.Status == InvestmentStatus.Pending)
-                        {
-                            <button class="btn btn-primary"
-                                    disabled="@_isMutating"
-                                    @onclick="ApproveAsync">
-                                Approve
-                            </button>
-                        }
-                        @if (CanApproveDisburse && _detail != null && _detail.Status == InvestmentStatus.Approved)
-                        {
-                            <button class="btn btn-secondary"
-                                    disabled="@_isMutating"
-                                    @onclick="DisburseAsync">
-                                Mark Paid
-                            </button>
-                        }
-                        @if (CanDelete && _detail != null)
-                        {
-                            <button class="btn btn-outline-danger"
-                                    disabled="@_isMutating"
-                                    @onclick="DeleteAsync">
-                                Delete
-                            </button>
-                        }
-                    </div>
-                    @if (_detail != null && !CanApproveDisburse && !CanDelete)
+                <div class="modal-footer d-flex justify-content-between">
+                    @if (_isEditing)
                     {
-                        <div class="small text-muted">Read-only access. Approval, payment, and deletion require elevated permissions.</div>
+                        <div></div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn-growit btn-secondary-growit btn-sm" disabled="@_isMutating" @onclick="CancelEdit">Cancel</button>
+                            <button type="submit" form="service-record-edit-form" class="btn-growit btn-primary-growit btn-sm" disabled="@_isMutating">
+                                @if (_isMutating)
+                                {
+                                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                }
+                                <span>Save Changes</span>
+                            </button>
+                        </div>
                     }
-                    <button class="btn btn-outline-secondary" @onclick="Close">Close</button>
+                    else
+                    {
+                        <div class="d-flex flex-wrap gap-2">
+                            @if (CanApproveDisburse && _detail != null && _detail.Status == InvestmentStatus.Pending)
+                            {
+                                <button class="btn-growit btn-primary-growit btn-sm"
+                                        disabled="@_isMutating"
+                                        @onclick="ApproveAsync">
+                                    Approve
+                                </button>
+                            }
+                            @if (CanApproveDisburse && _detail != null && _detail.Status == InvestmentStatus.Approved)
+                            {
+                                <button class="btn-growit btn-primary-growit btn-sm"
+                                        disabled="@_isMutating"
+                                        @onclick="() => _confirm = PendingConfirm.MarkPaid">
+                                    Mark Paid
+                                </button>
+                            }
+                            @if (CanEdit && _detail != null)
+                            {
+                                <button class="btn-growit btn-secondary-growit btn-sm"
+                                        disabled="@_isMutating"
+                                        @onclick="StartEditAsync">
+                                    <i class="bi bi-pencil" aria-hidden="true"></i> Edit
+                                </button>
+                            }
+                            @if (CanDelete && _detail != null && CanBeDeleted(_detail.Status))
+                            {
+                                <button class="btn-growit btn-ghost-growit btn-sm text-danger"
+                                        disabled="@_isMutating"
+                                        @onclick="() => _confirm = PendingConfirm.Delete">
+                                    <i class="bi bi-trash3" aria-hidden="true"></i> Delete
+                                </button>
+                            }
+                            @if (_detail != null && !CanApproveDisburse && !CanDelete && !CanEdit)
+                            {
+                                <div class="small text-muted align-self-center">Read-only access. Editing, approval and payment need a Case Manager, Manager, Admin, or Owner role.</div>
+                            }
+                        </div>
+                        <button class="btn-growit btn-secondary-growit btn-sm" @onclick="Close">Close</button>
+                    }
                 </div>
             </div>
         </div>
     </div>
+
+    <ConfirmActionModal Show="@(_confirm == PendingConfirm.MarkPaid)"
+                        Title="Mark this service record as paid?"
+                        Message="@MarkPaidMessage"
+                        ConfirmText="Mark Paid"
+                        Busy="_isMutating"
+                        OnConfirm="DisburseAsync"
+                        OnCancel="() => _confirm = PendingConfirm.None" />
+
+    <ConfirmActionModal Show="@(_confirm == PendingConfirm.Delete)"
+                        Title="Delete this service record?"
+                        Message="@DeleteMessage"
+                        ConfirmText="Delete"
+                        Danger="true"
+                        Busy="_isMutating"
+                        OnConfirm="DeleteAsync"
+                        OnCancel="() => _confirm = PendingConfirm.None" />
 }
 
 @code {
@@ -116,11 +258,38 @@
     [Parameter] public bool CanApproveDisburse { get; set; }
     [Parameter] public bool CanDelete { get; set; }
 
+    /// <summary>Who can correct a record (same roles that can create one).</summary>
+    [Parameter] public bool CanEdit { get; set; }
+
+    private enum PendingConfirm { None, MarkPaid, Delete }
+
     private InvestmentDetailDto? _detail;
     private bool _isLoading;
     private bool _isMutating;
+    private bool _isEditing;
     private string? _error;
     private Guid _loadedId;
+    private PendingConfirm _confirm;
+
+    private UpdateInvestmentRequest _edit = new();
+    private string _clientName = "";
+    private List<ProgramDto> _programs = new();
+    private List<FundDto> _funds = new();
+    private List<FamilyMemberDto> _members = new();
+
+    private string FundLabel => string.IsNullOrWhiteSpace(_detail?.FundName) ? "Not recorded" : _detail!.FundName;
+    private string ProgramLabel => string.IsNullOrWhiteSpace(_detail?.Category) ? "Unspecified" : _detail!.Category;
+
+    private string MarkPaidMessage => _detail == null
+        ? string.Empty
+        : $"This records that {_detail.Amount:C2} for {_detail.PersonName} was paid from {FundLabel}. " +
+          "After this the cost and money source are final, and the record can't be deleted.";
+
+    private string DeleteMessage => _detail == null
+        ? string.Empty
+        : _detail.Status == InvestmentStatus.Approved
+            ? $"This permanently removes the service record for {_detail.PersonName}. The {_detail.Amount:C2} set aside from {FundLabel} goes back to that money source. This can't be undone."
+            : $"This permanently removes the service record for {_detail.PersonName}. This can't be undone.";
 
     protected override async Task OnParametersSetAsync()
     {
@@ -136,6 +305,8 @@
 
         if (_loadedId != InvestmentId || _detail == null)
         {
+            _isEditing = false;
+            _confirm = PendingConfirm.None;
             await LoadAsync();
         }
     }
@@ -161,6 +332,90 @@
         finally
         {
             _isLoading = false;
+        }
+    }
+
+    private static bool CanBeDeleted(InvestmentStatus status) =>
+        status is not (InvestmentStatus.Disbursed or InvestmentStatus.Completed);
+
+    private async Task StartEditAsync()
+    {
+        if (!CanEdit || _detail == null) return;
+        _error = null;
+        _edit = new UpdateInvestmentRequest
+        {
+            FamilyMemberId = _detail.FamilyMemberId,
+            FundId = _detail.FundId,
+            ProgramId = _detail.ProgramId,
+            Amount = _detail.Amount,
+            PayeeName = _detail.PayeeName,
+            Reason = _detail.Purpose
+        };
+        _isEditing = true;
+
+        try
+        {
+            var detailTask = ClientService.GetClientDetailAsync(_detail.ClientId);
+            if (_detail.MoneyLocked)
+            {
+                var client = await detailTask;
+                _members = client?.HouseholdMembers ?? new();
+                _clientName = ClientName(client) ?? _detail.PersonName;
+            }
+            else
+            {
+                var programsTask = FinancialService.GetProgramsAsync();
+                var fundsTask = FinancialService.GetFundsAsync();
+                await Task.WhenAll(detailTask, programsTask, fundsTask);
+
+                var client = await detailTask;
+                _members = client?.HouseholdMembers ?? new();
+                _clientName = ClientName(client) ?? _detail.PersonName;
+                _programs = (await programsTask).OrderBy(p => p.Name).ToList();
+                _funds = (await fundsTask).OrderBy(f => f.Name).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex is ApiException ? ex.Message : "We couldn't load the lists for editing. Please try again.";
+        }
+    }
+
+    private static string? ClientName(ClientDetailDto? client)
+    {
+        if (client == null) return null;
+        var name = $"{client.FirstName} {client.LastName}".Trim();
+        return string.IsNullOrWhiteSpace(name) ? null : name;
+    }
+
+    private void CancelEdit()
+    {
+        _isEditing = false;
+        _error = null;
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (!CanEdit || _detail == null) return;
+        _isMutating = true;
+        _error = null;
+        try
+        {
+            var updated = await InvestmentService.UpdateInvestmentAsync(_detail.Id, _edit);
+            if (updated != null)
+            {
+                _detail = updated;
+            }
+            _isEditing = false;
+            await OnChanged.InvokeAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _isMutating = false;
         }
     }
 
@@ -194,9 +449,6 @@
         _error = null;
         try
         {
-            if (!await JS.InvokeAsync<bool>("confirm", "Mark this service record as paid?"))
-                return;
-
             await InvestmentService.DisburseInvestmentAsync(_detail.Id);
             await LoadAsync();
             await OnChanged.InvokeAsync();
@@ -208,6 +460,7 @@
         finally
         {
             _isMutating = false;
+            _confirm = PendingConfirm.None;
         }
     }
 
@@ -219,16 +472,15 @@
         _error = null;
         try
         {
-            if (!await JS.InvokeAsync<bool>("confirm", "Delete this service record?"))
-                return;
-
             await InvestmentService.DeleteInvestmentAsync(_detail.Id);
+            _confirm = PendingConfirm.None;
             await OnChanged.InvokeAsync();
             await Close();
         }
         catch (Exception ex)
         {
             _error = ex.Message;
+            _confirm = PendingConfirm.None;
         }
         finally
         {
@@ -241,6 +493,8 @@
         _error = null;
         _detail = null;
         _loadedId = Guid.Empty;
+        _isEditing = false;
+        _confirm = PendingConfirm.None;
         await ShowChanged.InvokeAsync(false);
     }
 

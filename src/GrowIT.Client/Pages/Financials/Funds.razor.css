@@ -37,7 +37,7 @@
 .funds-kpi-icon.total { background: rgba(59,130,246,.1); color: #2563eb; border-color: rgba(59,130,246,.2); }
 .funds-kpi-icon.available { background: rgba(16,185,129,.1); color: #059669; border-color: rgba(16,185,129,.2); }
 .funds-kpi-icon.deployed { background: rgba(245,158,11,.12); color: #b45309; border-color: rgba(245,158,11,.24); }
-.funds-kpi-icon.coverage { background: rgba(22,163,74,.1); color: #16a34a; border-color: rgba(22,163,74,.2); }
+.funds-kpi-icon.coverage { background: rgba(239,68,68,.08); color: #dc2626; border-color: rgba(239,68,68,.18); }
 
 .funds-kpi-label {
     font-size: .72rem;
@@ -51,6 +51,12 @@
     font-size: 1.2rem;
     font-weight: 700;
     color: var(--growit-text-primary);
+}
+
+.funds-kpi-unit {
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--growit-text-muted);
 }
 
 .funds-panel {
@@ -156,12 +162,6 @@
     color: var(--growit-text-primary);
 }
 
-.fund-card-subtitle {
-    margin-top: .35rem;
-    font-size: .8rem;
-    color: var(--growit-text-muted);
-}
-
 .fund-card-actions {
     display: flex;
     align-items: center;
@@ -193,7 +193,7 @@
 
 .fund-money-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: .6rem;
 }
 

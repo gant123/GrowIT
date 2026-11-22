@@ -15,5 +15,6 @@ public class GrowthPlanListDto
     public int CompletedGoals { get; set; }
     public int TotalGoals { get; set; }
     public decimal ProgressPercentage { get; set; }
+    public Guid? AssignedToUserId { get; set; }
     public string? AssignedToUserName { get; set; }
 }

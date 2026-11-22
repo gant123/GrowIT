@@ -4,7 +4,7 @@ using GrowIT.Shared.Enums;
 namespace GrowIT.Client.Services;
 
 /// <summary>
-/// Service for managing investments in the grow.IT system.
+/// Service for managing service records (stored as "investments") in the grow.IT system.
 /// Uses DTOs from GrowIT.Shared.DTOs (InvestmentListDto, InvestmentStatus, InvestmentCategory, PaginatedResult).
 /// </summary>
 public interface IInvestmentService
@@ -12,6 +12,7 @@ public interface IInvestmentService
     Task<PaginatedResult<InvestmentListDto>> GetInvestmentsAsync(InvestmentQueryParams query);
     Task<InvestmentDetailDto?> GetInvestmentAsync(Guid id);
     Task<Guid> CreateInvestmentAsync(CreateInvestmentRequest request);
+    Task<InvestmentDetailDto?> UpdateInvestmentAsync(Guid id, UpdateInvestmentRequest request);
     Task DeleteInvestmentAsync(Guid id);
     Task ApproveInvestmentAsync(Guid id);
     Task DisburseInvestmentAsync(Guid id);
@@ -40,6 +41,11 @@ public class InvestmentService : BaseApiService, IInvestmentService
     {
         var result = await PostAsync<CreateInvestmentRequest, InvestmentCreateResponse>(BaseEndpoint, request);
         return result?.InvestmentId ?? Guid.Empty;
+    }
+
+    public async Task<InvestmentDetailDto?> UpdateInvestmentAsync(Guid id, UpdateInvestmentRequest request)
+    {
+        return await PutAsync<UpdateInvestmentRequest, InvestmentDetailDto>($"{BaseEndpoint}/{id}", request);
     }
 
     public async Task DeleteInvestmentAsync(Guid id)

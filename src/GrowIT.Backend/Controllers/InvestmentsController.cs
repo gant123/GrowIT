@@ -73,6 +73,7 @@ public class InvestmentsController : ControllerBase
                     : (i.Client != null ? i.Client.FirstName + " " + i.Client.LastName : "Unknown"),
                 Purpose = i.Reason,
                 Category = i.Program != null ? i.Program.Name : string.Empty,
+                FundName = i.Fund != null ? i.Fund.Name : string.Empty,
                 Amount = i.Amount,
                 Status = i.Status
             })
@@ -90,27 +91,104 @@ public class InvestmentsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<InvestmentDetailDto>> GetInvestment(Guid id)
     {
-        var investment = await _context.Investments
-            .Include(i => i.Client)
-            .Include(i => i.FamilyMember)
-            .Include(i => i.Program)
-            .FirstOrDefaultAsync(i => i.Id == id);
+        var detail = await FindDetailAsync(id);
+        if (detail == null) return NotFound();
 
-        if (investment == null) return NotFound();
+        return Ok(detail);
+    }
 
-        return Ok(new InvestmentDetailDto
+    // Edit a service record. What can change depends on where it is in approval: see
+    // ServiceRecordRules.MoneyLocked. Same policy as creating one, so the case manager who
+    // recorded it can fix a typo; cost and money source are fixed once a manager approves it.
+    [HttpPut("{id:guid}")]
+    [Authorize(Policy = "ServiceWriter")]
+    public async Task<IActionResult> UpdateInvestment(Guid id, UpdateInvestmentRequest request)
+    {
+        var tenantId = _tenantService.TenantId;
+        if (!tenantId.HasValue || tenantId == Guid.Empty)
         {
-            Id = investment.Id,
-            Date = investment.CreatedAt,
-            PersonName = investment.FamilyMember != null
-                ? investment.FamilyMember.FirstName + " " + investment.FamilyMember.LastName
-                : (investment.Client != null ? investment.Client.FirstName + " " + investment.Client.LastName : "Unknown"),
-            Purpose = investment.Reason,
-            Category = investment.Program?.Name ?? string.Empty,
-            Amount = investment.Amount,
-            Status = investment.Status,
-            Notes = investment.Reason // Mapping Reason to Notes/Description for now
-        });
+            return Unauthorized("No valid tenant context found.");
+        }
+
+        var investment = await _context.Investments.FirstOrDefaultAsync(i => i.Id == id);
+        if (investment == null) return NotFound("Service record not found.");
+
+        var moneyChanged = request.Amount != investment.Amount || request.FundId != investment.FundId;
+        var programChanged = request.ProgramId != investment.ProgramId;
+
+        if ((moneyChanged || programChanged) && ServiceRecordRules.MoneyLocked(investment.Status))
+        {
+            return BadRequest(investment.Status == InvestmentStatus.Approved
+                ? "This service record is already approved, so its cost, money source and program can't change. To correct them, delete it (which releases the money) and record it again."
+                : "This service record has been paid, so its cost, money source and program can't change.");
+        }
+
+        if (request.FamilyMemberId.HasValue)
+        {
+            var memberExists = await _context.FamilyMembers
+                .AnyAsync(fm => fm.Id == request.FamilyMemberId.Value && fm.ClientId == investment.ClientId && fm.TenantId == tenantId.Value);
+            if (!memberExists) return BadRequest("That household member isn't part of this person's household.");
+        }
+
+        if (programChanged)
+        {
+            var program = await _context.Programs
+                .FirstOrDefaultAsync(p => p.Id == request.ProgramId && p.TenantId == tenantId.Value);
+            if (program == null) return BadRequest("Choose a program from your organization.");
+
+            investment.ProgramId = program.Id;
+            investment.SnapshotUnitCost = program.DefaultUnitCost;
+        }
+
+        if (moneyChanged)
+        {
+            var fund = await _context.Funds
+                .FirstOrDefaultAsync(f => f.Id == request.FundId && f.TenantId == tenantId.Value);
+            if (fund == null) return BadRequest("Choose a money source from your organization.");
+
+            // Same check as when the record was created: it must be approvable today.
+            if (fund.AvailableAmount < request.Amount)
+            {
+                return BadRequest($"Not enough money left in {fund.Name}. Available: ${fund.AvailableAmount:N2}");
+            }
+
+            investment.FundId = fund.Id;
+            investment.Amount = request.Amount;
+        }
+
+        investment.FamilyMemberId = request.FamilyMemberId;
+        investment.PayeeName = request.PayeeName?.Trim() ?? string.Empty;
+        investment.Reason = request.Reason?.Trim() ?? string.Empty;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(await FindDetailAsync(id));
+    }
+
+    private async Task<InvestmentDetailDto?> FindDetailAsync(Guid id)
+    {
+        return await _context.Investments
+            .AsNoTracking()
+            .Where(i => i.Id == id)
+            .Select(i => new InvestmentDetailDto
+            {
+                Id = i.Id,
+                Date = i.CreatedAt,
+                ClientId = i.ClientId,
+                FamilyMemberId = i.FamilyMemberId,
+                PersonName = i.FamilyMember != null
+                    ? i.FamilyMember.FirstName + " " + i.FamilyMember.LastName
+                    : (i.Client != null ? i.Client.FirstName + " " + i.Client.LastName : "Unknown"),
+                Purpose = i.Reason,
+                ProgramId = i.ProgramId,
+                Category = i.Program != null ? i.Program.Name : string.Empty,
+                FundId = i.FundId,
+                FundName = i.Fund != null ? i.Fund.Name : string.Empty,
+                PayeeName = i.PayeeName,
+                Amount = i.Amount,
+                Status = i.Status
+            })
+            .FirstOrDefaultAsync();
     }
 
     [HttpPost]
@@ -125,25 +203,25 @@ public class InvestmentsController : ControllerBase
 
         // 1. Validate core references inside this tenant
         var clientExists = await _context.Clients.AnyAsync(c => c.Id == request.ClientId && c.TenantId == tenantId.Value);
-        if (!clientExists) return BadRequest("Invalid client.");
+        if (!clientExists) return BadRequest("Choose a person from your organization.");
 
         var fund = await _context.Funds.FirstOrDefaultAsync(f => f.Id == request.FundId && f.TenantId == tenantId.Value);
-        if (fund == null) return NotFound("Fund not found");
+        if (fund == null) return NotFound("Money source not found.");
 
         var program = await _context.Programs.FirstOrDefaultAsync(p => p.Id == request.ProgramId && p.TenantId == tenantId.Value);
-        if (program == null) return BadRequest("Invalid program.");
+        if (program == null) return BadRequest("Choose a program from your organization.");
 
         if (request.FamilyMemberId.HasValue)
         {
             var memberExists = await _context.FamilyMembers
                 .AnyAsync(fm => fm.Id == request.FamilyMemberId.Value && fm.ClientId == request.ClientId && fm.TenantId == tenantId.Value);
-            if (!memberExists) return BadRequest("Family member not found for the selected client.");
+            if (!memberExists) return BadRequest("That household member isn't part of the selected person's household.");
         }
 
         // 2. Business Logic: Confirm the request could be approved today.
         if (fund.AvailableAmount < request.Amount)
         {
-            return BadRequest($"Insufficient funds. Available: ${fund.AvailableAmount}");
+            return BadRequest($"Not enough money left in {fund.Name}. Available: ${fund.AvailableAmount:N2}");
         }
 
         // 3. Create the Investment
@@ -168,7 +246,7 @@ public class InvestmentsController : ControllerBase
 
         return Ok(new InvestmentActionResponse
         {
-            Message = "Investment Recorded",
+            Message = "Service record saved",
             NewFundBalance = fund.AvailableAmount,
             InvestmentId = investment.Id
         });
@@ -188,13 +266,13 @@ public class InvestmentsController : ControllerBase
 
         if (investment.Status != InvestmentStatus.Pending && investment.Status != InvestmentStatus.Draft)
         {
-            return BadRequest("Only pending or draft investments can be approved.");
+            return BadRequest("Only pending service records can be approved.");
         }
 
         var fundExists = await _context.Funds.AnyAsync(f => f.Id == investment.FundId);
         if (!fundExists)
         {
-            return BadRequest("Investment fund was not found.");
+            return BadRequest("The money source for this service record was not found.");
         }
 
         // Atomically claim the approval so two concurrent requests cannot both debit the fund.
@@ -211,7 +289,7 @@ public class InvestmentsController : ControllerBase
             {
                 // Another request already approved it between our read and here.
                 if (transaction != null) await transaction.RollbackAsync();
-                return BadRequest("Only pending or draft investments can be approved.");
+                return BadRequest("Only pending service records can be approved.");
             }
 
             if (!await TryDecreaseFundBalanceAsync(investment.FundId, investment.Amount))
@@ -222,7 +300,7 @@ public class InvestmentsController : ControllerBase
                     .Where(f => f.Id == investment.FundId)
                     .Select(f => f.AvailableAmount)
                     .FirstOrDefaultAsync();
-                return BadRequest($"Insufficient funds. Available: ${available}");
+                return BadRequest($"Not enough money left in this money source. Available: ${available:N2}");
             }
         }
         else
@@ -233,7 +311,7 @@ public class InvestmentsController : ControllerBase
                     .Where(f => f.Id == investment.FundId)
                     .Select(f => f.AvailableAmount)
                     .FirstOrDefaultAsync();
-                return BadRequest($"Insufficient funds. Available: ${available}");
+                return BadRequest($"Not enough money left in this money source. Available: ${available:N2}");
             }
 
             investment.Status = InvestmentStatus.Approved;
@@ -252,7 +330,7 @@ public class InvestmentsController : ControllerBase
 
         return Ok(new InvestmentActionResponse
         {
-            Message = "Investment Approved",
+            Message = "Service record approved",
             NewFundBalance = newBalance,
             InvestmentId = investment.Id
         });
@@ -267,7 +345,7 @@ public class InvestmentsController : ControllerBase
 
         if (investment.Status != InvestmentStatus.Approved)
         {
-            return BadRequest("Only approved investments can be disbursed.");
+            return BadRequest("Only approved service records can be marked paid.");
         }
 
         investment.Status = InvestmentStatus.Disbursed;
@@ -275,7 +353,7 @@ public class InvestmentsController : ControllerBase
         await _context.SaveChangesAsync();
         return Ok(new InvestmentActionResponse
         {
-            Message = "Investment Disbursed",
+            Message = "Service record marked paid",
             InvestmentId = investment.Id
         });
     }
@@ -296,7 +374,7 @@ public class InvestmentsController : ControllerBase
         }
         else if (investment.Status == InvestmentStatus.Disbursed || investment.Status == InvestmentStatus.Completed)
         {
-            return BadRequest("Disbursed investments cannot be deleted. Mark them returned or create an offsetting record.");
+            return BadRequest("Paid service records can't be deleted, because the money has already left the money source.");
         }
 
         _context.Investments.Remove(investment);
@@ -322,7 +400,7 @@ public class InvestmentsController : ControllerBase
 
             if (!validTarget)
             {
-                return BadRequest("Target family member must belong to the same client.");
+                return BadRequest("That household member isn't part of this person's household.");
             }
         }
 

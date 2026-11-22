@@ -8,6 +8,7 @@ public interface IGrowthPlanService
     Task<GrowthPlanListDto?> GetGrowthPlanAsync(Guid id);
     Task<GrowthPlanListDto?> CreateGrowthPlanAsync(CreateGrowthPlanRequest request);
     Task<GrowthPlanListDto?> UpdateGrowthPlanAsync(Guid id, UpdateGrowthPlanRequest request);
+    Task<GrowthPlanListDto?> UpdateProgressAsync(Guid id, UpdateGrowthPlanProgressRequest request);
     Task DeleteGrowthPlanAsync(Guid id);
 }
 
@@ -35,6 +36,11 @@ public class GrowthPlanService : BaseApiService, IGrowthPlanService
     public async Task<GrowthPlanListDto?> UpdateGrowthPlanAsync(Guid id, UpdateGrowthPlanRequest request)
     {
         return await PutAsync<UpdateGrowthPlanRequest, GrowthPlanListDto>($"{BaseEndpoint}/{id}", request);
+    }
+
+    public async Task<GrowthPlanListDto?> UpdateProgressAsync(Guid id, UpdateGrowthPlanProgressRequest request)
+    {
+        return await PatchAsync<UpdateGrowthPlanProgressRequest, GrowthPlanListDto>($"{BaseEndpoint}/{id}/progress", request);
     }
 
     public async Task DeleteGrowthPlanAsync(Guid id)

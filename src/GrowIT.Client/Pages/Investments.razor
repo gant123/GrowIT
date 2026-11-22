@@ -7,7 +7,6 @@
 @using Syncfusion.Blazor.Navigations
 @inject IInvestmentService InvestmentService
 @inject IRoleAccessService RoleAccessService
-@inject IJSRuntime JS
 
 <PageTitle>Service Records - grow.IT</PageTitle>
 
@@ -34,15 +33,17 @@
                 <div class="col-md-8">
                     <div class="search-box">
                         <i class="bi bi-search search-icon"></i>
-                        <input type="text" placeholder="Search by person or purpose..." @bind="SearchQuery" @bind:event="oninput" />
+                        @* The only search on this page: the grid's own toolbar search was removed so there
+                           aren't two search boxes that filter differently. *@
+                        <input type="text" placeholder="Search by person, what was provided, program or money source..." aria-label="Search service records" @bind="SearchQuery" @bind:event="oninput" />
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <select class="form-select-growit" @bind="StatusFilter">
-                            <option value="">All statuses</option>
+                    <select class="form-select-growit" aria-label="Filter by status" @bind="StatusFilter">
+                        <option value="">All statuses</option>
                         @foreach (var status in Enum.GetValues<GrowIT.Shared.Enums.InvestmentStatus>())
                         {
-                            <option value="@status">@status</option>
+                            <option value="@status">@ServiceRecordRules.StatusLabel(status)</option>
                         }
                     </select>
                 </div>
@@ -79,7 +80,7 @@
                         </span>
                         <span class="money-row-side">
                             <span class="money-row-amount">@inv.Amount.ToString("C0")</span>
-                            <span class="badge-growit @GetBadge(inv.Status)">@inv.Status</span>
+                            <span class="badge-growit @GetBadge(inv.Status)">@ServiceRecordRules.StatusLabel(inv.Status)</span>
                         </span>
                     </button>
                 }
@@ -134,7 +135,7 @@
                                 @{
                                     var inv = (context as InvestmentListDto)!;
                                 }
-                                <span class="badge-growit @GetBadge(inv.Status)">@inv.Status</span>
+                                <span class="badge-growit @GetBadge(inv.Status)">@ServiceRecordRules.StatusLabel(inv.Status)</span>
                             </Template>
                         </GridColumn>
                         <GridColumn HeaderText="Actions" Width="230" AllowFiltering="false" AllowSorting="false" TextAlign="TextAlign.Right">
@@ -153,7 +154,7 @@
                                     {
                                         <button class="btn-growit btn-secondary-growit btn-sm"
                                                 disabled="@(_busyInvestmentId == inv.Id)"
-                                                @onclick="() => Disburse(inv.Id)">Disburse</button>
+                                                @onclick="() => AskMarkPaid(inv)">Mark Paid</button>
                                     }
                                     <button class="btn-growit btn-ghost-growit btn-sm" @onclick="() => OpenDetails(inv.Id)">Details</button>
                                 </div>
@@ -189,7 +190,16 @@
                        InvestmentId="selectedInvestmentId"
                        CanApproveDisburse="_canApproveServiceInvestments"
                        CanDelete="_canApproveServiceInvestments"
+                       CanEdit="_canDocumentServiceRecords"
                        OnChanged="ReloadInvestments" />
+
+<ConfirmActionModal Show="@(_markPaidTarget != null)"
+                    Title="Mark this service record as paid?"
+                    Message="@MarkPaidMessage"
+                    ConfirmText="Mark Paid"
+                    Busy="@(_busyInvestmentId != null)"
+                    OnConfirm="ConfirmMarkPaid"
+                    OnCancel="() => _markPaidTarget = null" />
 
 @code {
     private List<InvestmentListDto> _investments = new();
@@ -204,9 +214,9 @@
     private bool _canApproveServiceInvestments;
     private string SearchQuery { get; set; } = "";
     private string StatusFilter { get; set; } = "";
+    private InvestmentListDto? _markPaidTarget;
     private static readonly List<object> GridToolbarItems =
     [
-        "Search",
         "ColumnChooser",
         new ItemModel
         {
@@ -223,7 +233,11 @@
         {
             var query = _investments.AsEnumerable();
             if (!string.IsNullOrEmpty(SearchQuery))
-                query = query.Where(i => i.PersonName.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) || i.Purpose.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase));
+                query = query.Where(i =>
+                    i.PersonName.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
+                    i.Purpose.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
+                    i.Category.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
+                    i.FundName.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase));
             
             // FIXED: Fully qualified name
             if (!string.IsNullOrEmpty(StatusFilter) && Enum.TryParse<GrowIT.Shared.Enums.InvestmentStatus>(StatusFilter, out var status))
@@ -256,7 +270,9 @@
         try
         {
             _actionError = null;
-            var result = await InvestmentService.GetInvestmentsAsync(new InvestmentQueryParams());
+            // The API's default page is 20; load the latest 100 (its maximum) so the search box and
+            // status filter on this page work across more than the newest 20 records.
+            var result = await InvestmentService.GetInvestmentsAsync(new InvestmentQueryParams { PageSize = 100 });
             _investments = result.Items;
         }
         catch (Exception ex)
@@ -289,18 +305,27 @@
     }
 }
 
-    private async Task Disburse(Guid id)
+    private string MarkPaidMessage => _markPaidTarget == null
+        ? string.Empty
+        : $"This records that {_markPaidTarget.Amount:C2} for {_markPaidTarget.PersonName} was paid" +
+          (string.IsNullOrWhiteSpace(_markPaidTarget.FundName) ? "" : $" from {_markPaidTarget.FundName}") +
+          ". After this the cost and money source are final, and the record can't be deleted.";
+
+    private void AskMarkPaid(InvestmentListDto record)
     {
         if (!_canApproveServiceInvestments) return;
+        _actionError = null;
+        _markPaidTarget = record;
+    }
+
+    private async Task ConfirmMarkPaid()
+    {
+        if (!_canApproveServiceInvestments || _markPaidTarget == null) return;
+        var id = _markPaidTarget.Id;
         _actionError = null;
         _busyInvestmentId = id;
         try
         {
-            if (!await JS.InvokeAsync<bool>("confirm", "Mark this investment as disbursed?"))
-            {
-                return;
-            }
-
             await InvestmentService.DisburseInvestmentAsync(id);
             await ReloadInvestments();
         }
@@ -311,6 +336,7 @@
         finally
         {
             _busyInvestmentId = null;
+            _markPaidTarget = null;
         }
     }
 
