@@ -34,7 +34,7 @@ services:
       Jwt__Key: ${JWT_KEY:-ChangeMe-Set-A-Long-Random-Key-Before-Beta}
       SuperAdmin__Email: ${SUPER_ADMIN_EMAIL:-}
       SyncfusionLicense: ${SYNCFUSION_LICENSE:-}
-      ClientUrl: ${CLIENT_URL:-https://beta.growit.now}
+      ClientUrl: ${CLIENT_URL:-https://growit.now}
       InternalApiBaseUrl: ${INTERNAL_API_BASE_URL:-http://localhost:8080}
       Stripe__SecretKey: ${STRIPE_SECRET_KEY:-}
       Stripe__WebhookSecret: ${STRIPE_WEBHOOK_SECRET:-}
@@ -42,7 +42,7 @@ services:
       Stripe__Plans__Pro__YearlyPriceId: ${STRIPE_PRO_YEARLY_PRICE_ID:-}
       Stripe__Plans__Enterprise__MonthlyPriceId: ${STRIPE_ENTERPRISE_MONTHLY_PRICE_ID:-}
       Stripe__Plans__Enterprise__YearlyPriceId: ${STRIPE_ENTERPRISE_YEARLY_PRICE_ID:-}
-      Cors__AllowedOrigins__0: ${CLIENT_URL:-https://beta.growit.now}
+      Cors__AllowedOrigins__0: ${CLIENT_URL:-https://growit.now}
       Cors__AllowedOrigins__1: http://localhost:${CLIENT_PORT:-5180}
       Email__ResendApiKey: ${EMAIL_RESEND_API_KEY:-}
       Email__ResendBaseUrl: ${EMAIL_RESEND_BASE_URL:-https://api.resend.com}
@@ -51,6 +51,7 @@ services:
       Email__TimeoutMs: ${EMAIL_TIMEOUT_MS:-10000}
       Email__DevFileFallbackEnabled: ${EMAIL_DEV_FILE_FALLBACK_ENABLED:-false}
       Email__DevFileFallbackDirectory: /app/dev-emails
+      DataProtection__KeysPath: /app/keys
       Reports__Scheduler__Enabled: ${REPORT_SCHEDULER_ENABLED:-true}
       Reports__Scheduler__PollSeconds: ${REPORT_SCHEDULER_POLL_SECONDS:-60}
       Reports__Scheduler__MaxSchedulesPerCycle: ${REPORT_SCHEDULER_MAX_PER_CYCLE:-20}
@@ -61,8 +62,10 @@ services:
     volumes:
       - growit-web-uploads:/app/wwwroot/uploads
       - growit-web-dev-emails:/app/dev-emails
+      - growit-web-keys:/app/keys
 
 volumes:
   growit-postgres-data:
   growit-web-uploads:
   growit-web-dev-emails:
+  growit-web-keys:
