@@ -197,6 +197,7 @@
                     Title="Mark this service record as paid?"
                     Message="@MarkPaidMessage"
                     ConfirmText="Mark Paid"
+                    Danger="false"
                     Busy="@(_busyInvestmentId != null)"
                     OnConfirm="ConfirmMarkPaid"
                     OnCancel="() => _markPaidTarget = null" />

@@ -4,6 +4,7 @@
 @inject IClientService ClientService
 @inject NavigationManager Nav
 @inject BreadcrumbState Breadcrumb
+@inject AppNotificationService Notifications
 
 <PageTitle>@(client?.FullName ?? "Profile") - grow.IT</PageTitle>
 
@@ -11,7 +12,7 @@
 {
     <div class="loading-state">
         <div class="spinner-growit"></div>
-        <p class="loading-state-text">Loading case file...</p>
+        <p class="loading-state-text">Loading profile...</p>
     </div>
 }
 else if (!string.IsNullOrWhiteSpace(_loadError))
@@ -31,6 +32,9 @@ else
             </a>
             <button class="btn-growit btn-secondary-growit" @onclick="OpenEditModal">
                 <i class="bi bi-pencil-square me-1"></i> Edit
+            </button>
+            <button class="btn-growit btn-secondary-growit client-delete-btn" @onclick="OpenDeleteDialog">
+                <i class="bi bi-trash me-1" aria-hidden="true"></i> Delete
             </button>
             <button class="btn-growit btn-primary-growit" @onclick="OpenAddMemberModal">
                 <i class="bi bi-person-plus me-2"></i>Add Household Member
@@ -60,7 +64,7 @@ else
             <div class="metric-content">
                 <div class="metric-label">Household Members</div>
                 <div class="metric-value">@client.HouseholdMembers.Count</div>
-                <div class="metric-subtext">People in this service record</div>
+                <div class="metric-subtext">Family members on this profile</div>
             </div>
         </div>
         <div class="client-profile-metric">
@@ -115,9 +119,18 @@ else
                                 <span>Stability score</span>
                                 <strong>@client.StabilityScore / 10</strong>
                             </div>
+                            @* Which household (Households page) this person is grouped into. The "Household"
+                               card below lists the family members recorded on this profile. *@
                             <div class="detail-row">
-                                <span>Household role</span>
-                                <strong>@client.HouseholdRole</strong>
+                                <span>Household</span>
+                                @if (client.HouseholdId.HasValue && !string.IsNullOrWhiteSpace(client.HouseholdName))
+                                {
+                                    <strong><a href="/households" class="profile-household-link">@client.HouseholdName</a> · @FormatRole(client.HouseholdRole)</strong>
+                                }
+                                else
+                                {
+                                    <strong>Not in a household</strong>
+                                }
                             </div>
                             <div class="detail-row">
                                 <span>Date of birth</span>
@@ -129,7 +142,15 @@ else
                             </div>
                             <div class="detail-row">
                                 <span>Next follow-up</span>
-                                <strong>@(client.NextFollowupDate?.ToString("MMM dd, yyyy") ?? "Not set")</strong>
+                                @if (client.NextFollowupDate.HasValue)
+                                {
+                                    @* Setting this date adds a check-in to Follow-ups. *@
+                                    <strong><a href="/tasks" class="profile-household-link" title="Open Follow-ups">@client.NextFollowupDate.Value.ToString("MMM dd, yyyy")</a></strong>
+                                }
+                                else
+                                {
+                                    <strong>Not set</strong>
+                                }
                             </div>
                             <div class="detail-row">
                                 <span>Address</span>
@@ -159,6 +180,9 @@ else
                         </button>
                     </div>
                     <div class="card-body p-0">
+                        <p class="household-explainer">
+                            Family members recorded on this profile. To group people who each have their own profile, use <a href="/households">Households</a>.
+                        </p>
                         @if (client.HouseholdMembers.Any())
                         {
                             <ul class="list-group list-group-flush household-list">
@@ -237,8 +261,9 @@ else
                                                     <small class="text-muted">@item.Date.ToString("MMM dd, yyyy")</small>
                                                     @if (item.Type == "Investment")
                                                     {
-                                                        <button class="btn btn-sm btn-link text-info p-0 ms-2" title="Reassign investment" @onclick="() => OpenReassignModal(item.Id)">
-                                                            <i class="bi bi-arrow-left-right"></i>
+                                                        <button type="button" class="btn btn-sm btn-link text-info p-0 ms-2" title="Move this service record to another family member"
+                                                                aria-label="Move this service record to another family member" @onclick="() => OpenReassignModal(item.Id)">
+                                                            <i class="bi bi-arrow-left-right" aria-hidden="true"></i>
                                                         </button>
                                                     }
                                                 </div>
@@ -287,6 +312,28 @@ else
                                  InvestmentId="selectedInvestmentId"
                                  Members="client.HouseholdMembers"
                                  OnChanged="ReloadProfile" />
+
+        <ConfirmActionModal @bind-Show="_showDeleteDialog"
+                            Title="@($"Delete {client.FullName}?")"
+                            ConfirmText="Delete person"
+                            IsBusy="_isDeleting"
+                            ConfirmDisabled="_deleteBlocked"
+                            ErrorMessage="@_deleteMessage"
+                            OnConfirm="DeleteClientAsync">
+            <p class="mb-2">This permanently removes <strong>@client.FullName</strong> from People. It can't be undone.</p>
+            <ul class="small text-secondary mb-0 ps-3">
+                @if (client.HouseholdMembers.Count > 0)
+                {
+                    <li>The @client.HouseholdMembers.Count family member(s) recorded on this profile are removed too.</li>
+                }
+                @if (client.HouseholdId.HasValue)
+                {
+                    <li>They are taken out of @(client.HouseholdName ?? "their household"); the household and its other people stay.</li>
+                }
+                <li>Their follow-ups are removed.</li>
+                <li>People with service records, outcomes, growth plans or documents can't be deleted, so that history is never lost.</li>
+            </ul>
+        </ConfirmActionModal>
 }
 
 @code {
@@ -333,6 +380,73 @@ else
     }
 
     private void OpenAddMemberModal() => showAddMemberModal = true;
+
+    private bool _showDeleteDialog;
+    private bool _isDeleting;
+    private bool _deleteBlocked;
+    private string? _deleteMessage;
+
+    private void OpenDeleteDialog()
+    {
+        if (client is null) return;
+
+        // Service records and outcomes are already on this page, so say up front when the
+        // delete will be refused; growth plans and documents are checked by the server.
+        var serviceRecords = client.Timeline.Count(t => t.Type == "Investment");
+        var outcomes = client.Timeline.Count(t => t.Type != "Investment");
+        _deleteBlocked = serviceRecords + outcomes > 0;
+        _deleteMessage = _deleteBlocked
+            ? $"{client.FullName} can't be deleted because {DescribeCounts(serviceRecords, outcomes)} linked to their profile. Delete or move those records first, or keep this profile."
+            : null;
+        _showDeleteDialog = true;
+    }
+
+    private async Task DeleteClientAsync()
+    {
+        if (client is null || _isDeleting) return;
+
+        _isDeleting = true;
+        try
+        {
+            var outcome = await ClientService.DeleteClientAsync(Id);
+            if (outcome.Succeeded)
+            {
+                Notifications.Success(outcome.Message);
+                _showDeleteDialog = false;
+                Nav.NavigateTo("/clients");
+                return;
+            }
+
+            _deleteBlocked = true;
+            _deleteMessage = outcome.Message;
+        }
+        catch (Exception ex)
+        {
+            // The service already showed an error toast; keep the reason in the dialog too.
+            _deleteMessage = ex is ApiException ? ex.Message : "We couldn't delete this person. Please try again.";
+        }
+        finally
+        {
+            _isDeleting = false;
+        }
+    }
+
+    private static string DescribeCounts(int serviceRecords, int outcomes)
+    {
+        var parts = new List<string>();
+        if (serviceRecords > 0) parts.Add(serviceRecords == 1 ? "1 service record" : $"{serviceRecords} service records");
+        if (outcomes > 0) parts.Add(outcomes == 1 ? "1 outcome" : $"{outcomes} outcomes");
+        var verb = serviceRecords + outcomes == 1 ? "is" : "are";
+        return $"{string.Join(" and ", parts)} {verb}";
+    }
+
+    private static string FormatRole(GrowIT.Shared.Enums.HouseholdRole role) => role switch
+    {
+        GrowIT.Shared.Enums.HouseholdRole.Head => "Head of household",
+        GrowIT.Shared.Enums.HouseholdRole.Spouse => "Spouse",
+        GrowIT.Shared.Enums.HouseholdRole.Dependent => "Dependent",
+        _ => "Other"
+    };
 
     private bool showEditModal;
     private CreateClientRequest? _editValues;

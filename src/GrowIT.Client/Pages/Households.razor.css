@@ -330,6 +330,40 @@
     color: var(--growit-text-primary);
 }
 
+/* Rename / delete sit beside the member count in each card header. */
+.household-card-heading {
+    min-width: 0;
+}
+
+.household-card-heading h3 {
+    overflow-wrap: anywhere;
+}
+
+.household-card-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    flex-shrink: 0;
+}
+
+.member-link {
+    color: var(--growit-text-primary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.member-link:hover,
+.member-link:focus-visible {
+    color: var(--brand-primary);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.member-remove-btn {
+    width: 30px;
+    height: 30px;
+}
+
 @media (max-width: 1200px) {
     .household-kpis {
         grid-template-columns: repeat(2, minmax(0, 1fr));

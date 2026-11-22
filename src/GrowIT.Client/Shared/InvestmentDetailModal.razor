@@ -236,6 +236,7 @@
                         Title="Mark this service record as paid?"
                         Message="@MarkPaidMessage"
                         ConfirmText="Mark Paid"
+                        Danger="false"
                         Busy="_isMutating"
                         OnConfirm="DisburseAsync"
                         OnCancel="() => _confirm = PendingConfirm.None" />

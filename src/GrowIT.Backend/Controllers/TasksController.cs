@@ -1,3 +1,4 @@
+using GrowIT.Backend.Services;
 using GrowIT.Core.Entities;
 using GrowIT.Core.Interfaces;
 using GrowIT.Infrastructure.Data;
@@ -95,6 +96,7 @@ public class TasksController : ControllerBase
             })
             .ToListAsync();
 
+        await MarkNextFollowUpsAsync(result);
         return Ok(result);
     }
 
@@ -165,7 +167,7 @@ public class TasksController : ControllerBase
 
         return Ok(new EntityCreatedResponse
         {
-            Message = "Task created",
+            Message = "Follow-up created",
             Id = task.Id,
             TaskId = task.Id
         });
@@ -184,7 +186,7 @@ public class TasksController : ControllerBase
         var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == id);
         if (task is null)
         {
-            return NotFound("Task not found.");
+            return NotFound("Follow-up not found.");
         }
 
         var validationError = await ValidateTaskReferencesAsync(request.ClientId, request.AssignedTo, tenantId.Value);
@@ -212,7 +214,7 @@ public class TasksController : ControllerBase
         var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == id);
         if (task is null)
         {
-            return NotFound("Task not found.");
+            return NotFound("Follow-up not found.");
         }
 
         SetTaskStatus(task, request.Status);
@@ -229,7 +231,17 @@ public class TasksController : ControllerBase
         var task = await _context.Tasks.FirstOrDefaultAsync(t => t.Id == id);
         if (task is null)
         {
-            return NotFound("Task not found.");
+            return NotFound("Follow-up not found.");
+        }
+
+        // Deleting the follow-up that came from a person's "Next follow-up date" also clears that
+        // date, so the profile does not keep promising a check-in that no longer exists (and a
+        // later profile save does not bring the deleted follow-up back).
+        var person = await _context.Clients.FirstOrDefaultAsync(c => c.Id == task.ClientId);
+        if (person is not null &&
+            PersonFollowUps.IsFromNextFollowUpDate(task.Id, person.TenantId, person.Id, person.NextFollowupDate))
+        {
+            person.NextFollowupDate = null;
         }
 
         _context.Tasks.Remove(task);
@@ -243,7 +255,7 @@ public class TasksController : ControllerBase
         var clientExists = await _context.Clients.AnyAsync(c => c.Id == clientId && c.TenantId == tenantId);
         if (!clientExists)
         {
-            return "Selected client was not found.";
+            return "The selected person was not found.";
         }
 
         var userExists = await _context.Users.AnyAsync(u => u.Id == assignedTo && u.TenantId == tenantId && u.IsActive);
@@ -266,7 +278,44 @@ public class TasksController : ControllerBase
             : null;
     }
 
+    // Flags the follow-ups that come from a person's "Next follow-up date", so the list can say
+    // where they came from (changing that date on the profile moves or clears them).
+    private async Task MarkNextFollowUpsAsync(List<TaskListDto> items)
+    {
+        if (items.Count == 0)
+        {
+            return;
+        }
+
+        var clientIds = items.Select(t => t.ClientId).Distinct().ToList();
+        var people = await _context.Clients
+            .AsNoTracking()
+            .Where(c => clientIds.Contains(c.Id) && c.NextFollowupDate != null)
+            .Select(c => new { c.Id, c.TenantId, c.NextFollowupDate })
+            .ToDictionaryAsync(c => c.Id);
+
+        foreach (var item in items)
+        {
+            if (people.TryGetValue(item.ClientId, out var person))
+            {
+                item.IsFromNextFollowUpDate = PersonFollowUps.IsFromNextFollowUpDate(
+                    item.Id, person.TenantId, person.Id, person.NextFollowupDate);
+            }
+        }
+    }
+
     private async Task<TaskListDto?> FindTaskDtoAsync(Guid id)
+    {
+        var dto = await FindTaskDtoCoreAsync(id);
+        if (dto is not null)
+        {
+            await MarkNextFollowUpsAsync([dto]);
+        }
+
+        return dto;
+    }
+
+    private async Task<TaskListDto?> FindTaskDtoCoreAsync(Guid id)
     {
         return await _context.Tasks
             .AsNoTracking()
