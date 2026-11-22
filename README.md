@@ -29,7 +29,7 @@ grow.IT is a founder survivability and funding-readiness platform for early-stag
 
 - [.NET SDK 10.x](https://dotnet.microsoft.com/download/dotnet/10.0)
 - [PostgreSQL 16+](https://www.postgresql.org/)
-- [Node.js 20+](https://nodejs.org/) (required for Playwright smoke tests)
+- [Node.js 24](https://nodejs.org/) (required for Playwright smoke tests; CI uses 24)
 - [Docker & Docker Compose](https://www.docker.com/) (optional, for containerized dev/prod)
 
 ## Quick Start (Local Development)

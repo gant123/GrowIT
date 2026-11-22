@@ -485,3 +485,8 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Database backups (contain user data)
+backups/
+*.dump
+*.dump.partial
