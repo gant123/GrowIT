@@ -73,7 +73,8 @@ installed as `~/docker/growit/backup.sh` and run by the user crontab:
 ```
 
 - **What:** the `growit` database (custom-format dump, checked to read back) and a
-  tarball of the `growit_uploads` and `growit_keys` volumes. Files are mode 600.
+  tarball of the `growit_uploads`, `growit_keys` and `growit_documents` volumes. Files are
+  mode 600.
 - **When:** cron runs it hourly, but it only backs up once per night after 03:45. A night
   the PC slept through is made up within an hour of waking; a failed run retries hourly.
 - **Kept:** 7 daily backups in `~/backups/growit/daily/` and 4 weekly in
@@ -97,11 +98,12 @@ scp <server>:backups/growit/daily/db-<stamp>.dump backups/
 DB_SSH_HOST=<server> scripts/db/restore_drill.sh backups/db-<stamp>.dump
 ```
 
-then restore it as in section 3. To restore the files tarball (uploads and login keys),
-with the app stopped:
+then restore it as in section 3. To restore the files tarball (uploads, login keys and
+uploaded documents), with the app stopped:
 
 ```bash
 ssh <server> 'docker run --rm -v growit_uploads:/dst/uploads -v growit_keys:/dst/keys \
+  -v growit_documents:/dst/documents \
   -v ~/backups/growit/daily:/in:ro alpine:3.20 tar -C /dst -xzf /in/files-<stamp>.tar.gz'
 ```
 
