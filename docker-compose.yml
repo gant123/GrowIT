@@ -57,6 +57,9 @@ services:
       Email__TimeoutMs: ${EMAIL_TIMEOUT_MS:-10000}
       Email__DevFileFallbackEnabled: ${EMAIL_DEV_FILE_FALLBACK_ENABLED:-false}
       Email__DevFileFallbackDirectory: /app/dev-emails
+      # Who gets an email when someone submits the public contact form (incl. "Request Demo").
+      # Comma-separated. Empty = no notification; messages still appear under Super Admin > Site Content.
+      Contact__NotifyEmails: ${CONTACT_NOTIFY_EMAILS:-}
       DataProtection__KeysPath: /app/keys
       Reports__Scheduler__Enabled: ${REPORT_SCHEDULER_ENABLED:-true}
       Reports__Scheduler__PollSeconds: ${REPORT_SCHEDULER_POLL_SECONDS:-60}

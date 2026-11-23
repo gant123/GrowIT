@@ -1,3 +1,4 @@
+using GrowIT.Core.Interfaces;
 using GrowIT.Infrastructure.Data;
 using GrowIT.Infrastructure.Data.Interceptors;
 using Microsoft.AspNetCore.Authentication;
@@ -16,10 +17,19 @@ public sealed class GrowItApiFactory : WebApplicationFactory<Program>
     private readonly string _dbName = $"growit-tests-{Guid.NewGuid():N}";
     private readonly Dictionary<string, string?> _configOverrides;
     private readonly string _environment;
+    private readonly IEmailService? _emailService;
 
-    public GrowItApiFactory(IDictionary<string, string?>? configOverrides = null, string environment = "Development")
+    /// <param name="emailService">
+    /// Optional replacement for the real email service (e.g. <see cref="RecordingEmailService"/>),
+    /// so a test can assert what was sent without touching Resend or the dev-file fallback.
+    /// </param>
+    public GrowItApiFactory(
+        IDictionary<string, string?>? configOverrides = null,
+        string environment = "Development",
+        IEmailService? emailService = null)
     {
         _environment = environment;
+        _emailService = emailService;
         _configOverrides = configOverrides is null
             ? new Dictionary<string, string?>()
             : new Dictionary<string, string?>(configOverrides);
@@ -101,6 +111,12 @@ public sealed class GrowItApiFactory : WebApplicationFactory<Program>
                     options.DefaultScheme = TestAuthHandler.SchemeName;
                 })
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
+
+            if (_emailService is not null)
+            {
+                services.RemoveAll<IEmailService>();
+                services.AddSingleton(_emailService);
+            }
 
             var provider = services.BuildServiceProvider();
             using var scope = provider.CreateScope();
