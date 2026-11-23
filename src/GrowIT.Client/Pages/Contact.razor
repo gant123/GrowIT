@@ -38,15 +38,18 @@
 
     <section class="contact-form-section">
         <div class="contact-form-card">
-            <h2>Send A Message</h2>
-            <p>Share where your organization is today and what you need grow.IT to help explain, track, or report.</p>
+            @* Visitors who click a "Request Demo" button land here with the subject and message
+               already filled in. Say what the form is for in its heading instead of explaining the
+               pre-fill in a banner (which read like a setting being switched on). *@
             @if (_isDemoRequest)
             {
-                @* Arriving from a "Request Demo" link only pre-fills the subject and message; the
-                   message is sent like any other. Say that plainly instead of "demo mode is on". *@
-                <div class="alert alert-info mb-3" role="status">
-                    We've started a demo request for you. Add your name and email, then send it.
-                </div>
+                <h2>Request A Demo</h2>
+                <p>Tell us who you are and we'll follow up to set up a time.</p>
+            }
+            else
+            {
+                <h2>Send A Message</h2>
+                <p>Share where your organization is today and what you need grow.IT to help explain, track, or report.</p>
             }
 
             @if (_submitted)
