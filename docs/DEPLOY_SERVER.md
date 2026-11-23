@@ -30,6 +30,7 @@ In the commands below, `<server>` is your SSH host alias for the server (from
 | App container | `growit-client`, image `growit-client:<commit>` (also `:latest`) |
 | Uploads | volume `growit_uploads` → `/app/wwwroot/uploads` |
 | Login keys | volume `growit_keys` → `/app/keys` (`DataProtection__KeysPath`) |
+| Documents | volume `growit_documents` → `/app/App_Data/documents` (`Storage__DocumentsPath`, private) |
 | Database | `growit` database on `supabase-db`, owned by role `growit` |
 | Health check | `curl http://127.0.0.1:5180/healthz` on the server |
 
@@ -55,7 +56,7 @@ and run `docker compose up -d`. `ssh <server> docker images growit-client` lists
 
 ## Backups
 
-The server backs up the database and the `growit_uploads` / `growit_keys` volumes every
+The server backs up the database and the `growit_uploads` / `growit_keys` / `growit_documents` volumes every
 night with `~/docker/growit/backup.sh` (from [deploy/server/](../deploy/server/)), keeping
 7 daily and 4 weekly backups in `~/backups/growit/` and restore-drilling each weekly one.
 For a backup on your own machine, or to restore, use the scripts in `scripts/db/`. Both

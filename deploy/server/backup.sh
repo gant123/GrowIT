@@ -1,7 +1,8 @@
 #!/bin/bash
 # Nightly backup of grow.IT on the home server. Installed as ~/docker/growit/backup.sh.
 # Database: pg_dump (custom format) of the `growit` database in the supabase-db container.
-# Files: the growit_uploads and growit_keys volumes (keys = login cookie encryption keys).
+# Files: the growit_uploads, growit_keys and growit_documents volumes (keys = login cookie
+# encryption keys; documents = privately stored uploaded documents).
 #
 # Keeps 7 daily backups in daily/ and 4 weekly ones in weekly/ (the first backup of each
 # ISO week, hard-linked, so it costs no extra space while both copies exist). Every new
@@ -25,7 +26,7 @@ DEST=${DEST:-$HOME/backups/growit}             # override only to test
 DB_CONTAINER=supabase-db
 DB_NAME=growit
 DB_OWNER=growit
-VOLUMES=(growit_uploads growit_keys)
+VOLUMES=(growit_uploads growit_keys growit_documents)
 KEEP_DAILY=7
 KEEP_WEEKLY=4
 SLOT_TIME="03:45"
