@@ -18,7 +18,7 @@ test.describe('Public beta smoke', () => {
   test('contact page accepts a demo submission', async ({ page }) => {
     await page.goto('/contact?demo=1&subject=Demo%20Request');
 
-    await expect(page.getByText("We've started a demo request for you. Add your name and email, then send it.")).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Request A Demo' })).toBeVisible();
 
     await page.getByLabel('Full Name').fill('Beta Smoke Tester');
     await page.getByLabel('Email').fill('beta-smoke@example.com');
